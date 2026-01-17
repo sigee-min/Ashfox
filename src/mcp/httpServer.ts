@@ -1,0 +1,127 @@
+import { Logger } from '../logging';
+import { McpRouter } from './router';
+import { HttpRequest, ResponsePlan, SseConnection } from './types';
+import { encodeSseComment } from './sse';
+
+const MAX_BODY_BYTES = 5_000_000;
+
+const normalizeHeaders = (headers: Record<string, string | string[] | undefined>) => {
+  const normalized: Record<string, string> = {};
+  for (const [key, value] of Object.entries(headers ?? {})) {
+    if (!value) continue;
+    const lower = key.toLowerCase();
+    normalized[lower] = Array.isArray(value) ? value.join(', ') : String(value);
+  }
+  return normalized;
+};
+
+const readBody = (req: any): Promise<string> =>
+  new Promise((resolve, reject) => {
+    let total = 0;
+    let body = '';
+    req.on('data', (chunk: Buffer) => {
+      total += chunk.length ?? 0;
+      if (total > MAX_BODY_BYTES) {
+        reject(new Error('payload too large'));
+        req.destroy();
+        return;
+      }
+      body += chunk.toString();
+    });
+    req.on('end', () => resolve(body));
+  });
+
+const applyHeaders = (res: any, headers: Record<string, string>) => {
+  for (const [key, value] of Object.entries(headers)) {
+    res.setHeader(key, value);
+  }
+};
+
+const writePlan = (plan: ResponsePlan, res: any, log: Logger) => {
+  if (plan.kind === 'sse') {
+    res.statusCode = plan.status;
+    applyHeaders(res, plan.headers);
+    for (const event of plan.events) {
+      res.write(event);
+    }
+    if (plan.onOpen || !plan.close) {
+      createHttpSseConnection(res, plan.onOpen);
+      if (plan.close) {
+        res.end();
+      }
+      return;
+    }
+    res.end();
+    return;
+  }
+
+  res.statusCode = plan.status;
+  applyHeaders(res, plan.headers);
+  if (plan.kind === 'json') {
+    res.end(plan.body);
+    return;
+  }
+  if (plan.kind === 'binary') {
+    res.end(plan.body);
+    return;
+  }
+  res.end();
+};
+
+const createHttpSseConnection = (res: any, onOpen?: (conn: SseConnection) => void | (() => void)) => {
+  let closed = false;
+  const keepAliveMs = 15_000;
+  let cleanup: void | (() => void);
+
+  const connection: SseConnection = {
+    send: (payload) => {
+      if (closed) return;
+      res.write(payload);
+    },
+    close: () => {
+      if (closed) return;
+      closed = true;
+      if (cleanup) cleanup();
+      clearInterval(timer);
+      try {
+        res.end();
+      } catch {
+        res.destroy?.();
+      }
+    },
+    isClosed: () => closed
+  };
+
+  if (onOpen) {
+    cleanup = onOpen(connection);
+  }
+
+  const timer = setInterval(() => {
+    if (closed) return;
+    res.write(encodeSseComment('keepalive'));
+  }, keepAliveMs);
+
+  res.on('close', () => connection.close());
+};
+
+export const createMcpHttpServer = (http: any, router: McpRouter, log: Logger) =>
+  http.createServer(async (req: any, res: any) => {
+    const method = req.method ?? 'GET';
+    const url = req.url ?? '/';
+    const headers = normalizeHeaders(req.headers ?? {});
+    let body = '';
+    if (method === 'POST') {
+      try {
+        body = await readBody(req);
+      } catch (err) {
+        log.warn('MCP HTTP payload rejected', { message: err instanceof Error ? err.message : String(err) });
+        res.statusCode = 413;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: { code: 'payload_too_large', message: 'payload too large' } }));
+        return;
+      }
+    }
+
+    const plan = await router.handle({ method, url, headers, body } as HttpRequest);
+    writePlan(plan, res, log);
+  });

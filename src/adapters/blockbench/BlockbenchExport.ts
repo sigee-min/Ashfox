@@ -1,0 +1,61 @@
+import { ExportPort, ExportNativeParams } from '../../ports/exporter';
+import { ToolError } from '../../types';
+import { Logger } from '../../logging';
+
+/* Blockbench globals (provided at runtime). */
+declare const Blockbench: any;
+declare const ModelFormat: any;
+
+export class BlockbenchExport implements ExportPort {
+  private readonly log: Logger;
+
+  constructor(log: Logger) {
+    this.log = log;
+  }
+
+  exportNative(params: ExportNativeParams): ToolError | null {
+    try {
+      const blockbench = (globalThis as any).Blockbench;
+      if (!blockbench?.writeFile) {
+        return { code: 'not_implemented', message: 'Blockbench.writeFile not available' };
+      }
+      const format = getFormatById(params.formatId);
+      const compiler = resolveCompiler(format);
+      if (!compiler) {
+        return { code: 'not_implemented', message: `Native compiler not available for ${params.formatId}` };
+      }
+      const compiled = compiler();
+      if (compiled === null || compiled === undefined) {
+        return { code: 'not_implemented', message: 'Native compiler returned empty result' };
+      }
+      if (compiled && typeof (compiled as any).then === 'function') {
+        return { code: 'not_implemented', message: 'Async compiler not supported' };
+      }
+      const serialized = typeof compiled === 'string' ? compiled : JSON.stringify(compiled ?? {}, null, 2);
+      blockbench.writeFile(params.destPath, { content: serialized, savetype: 'text' });
+      return null;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'native export failed';
+      this.log.error('native export error', { message });
+      return { code: 'io_error', message };
+    }
+  }
+}
+
+function getFormatById(formatId: string): any | null {
+  const modelFormat = (globalThis as any).ModelFormat;
+  const formats = (globalThis as any).Formats ?? modelFormat?.formats ?? null;
+  if (!formats || typeof formats !== 'object') return null;
+  return formats[formatId] ?? null;
+}
+
+function resolveCompiler(format: any): (() => unknown) | null {
+  if (!format) return null;
+  if (typeof format.compile === 'function') {
+    return () => format.compile();
+  }
+  if (format.codec && typeof format.codec.compile === 'function') {
+    return () => format.codec.compile();
+  }
+  return null;
+}
