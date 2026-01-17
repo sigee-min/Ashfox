@@ -21,6 +21,7 @@ export interface Capabilities {
   formats: Capability[];
   limits: Limits;
   preview?: PreviewCapability;
+  guidance?: CapabilitiesGuidance;
 }
 
 export interface PreviewCapability {
@@ -28,6 +29,23 @@ export interface PreviewCapability {
   fixedOutput: 'single';
   turntableOutput: 'sequence';
   response: 'dataUri' | 'content' | 'content+dataUri';
+}
+
+export interface CapabilitiesGuidance {
+  toolPathStability: {
+    cache: 'no' | 'yes';
+    note: string;
+  };
+  retryPolicy: {
+    maxAttempts: number;
+    onErrors: string[];
+    steps: string[];
+  };
+  rediscovery: {
+    refetchTools: boolean;
+    refreshState: boolean;
+    methods: string[];
+  };
 }
 
 export type ProjectStateDetail = 'summary' | 'full';

@@ -4,7 +4,7 @@ import { FormatOverrides, resolveFormatId } from './domain/format';
 
 export const PLUGIN_ID = 'bbmcp';
 export const PLUGIN_VERSION = '0.0.2';
-export const TOOL_SCHEMA_VERSION = '2025-03-20';
+export const TOOL_SCHEMA_VERSION = '2025-03-21';
 export const DEFAULT_SERVER_HOST = '127.0.0.1';
 export const DEFAULT_SERVER_PORT = 8787;
 export const DEFAULT_SERVER_PATH = '/mcp';
@@ -20,6 +20,23 @@ const BASE_FORMATS: Array<{ format: FormatKind; animations: boolean }> = [
   { format: 'geckolib', animations: true },
   { format: 'animated_java', animations: true }
 ];
+
+const CAPABILITIES_GUIDANCE = {
+  toolPathStability: {
+    cache: 'no' as const,
+    note: 'Tool paths like /bbmcp/link_... are session-bound and can change. Do not cache them.'
+  },
+  retryPolicy: {
+    maxAttempts: 1,
+    onErrors: ['resource_not_found', 'invalid_state_revision_mismatch'],
+    steps: ['refetch_tools', 'refresh_state', 'retry_request']
+  },
+  rediscovery: {
+    refetchTools: true,
+    refreshState: true,
+    methods: ['list_capabilities', 'get_project_state']
+  }
+};
 
 const computeFormatCapabilities = (
   formats: FormatDescriptor[],
@@ -42,6 +59,7 @@ export function computeCapabilities(
     blockbenchVersion: blockbenchVersion ?? 'unknown',
     formats: computeFormatCapabilities(formats, overrides),
     limits: DEFAULT_LIMITS,
-    preview
+    preview,
+    guidance: CAPABILITIES_GUIDANCE
   };
 }
