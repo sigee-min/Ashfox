@@ -1,18 +1,26 @@
 import { ToolError } from '../../types';
 import {
+  AssignTextureCommand,
   BoneCommand,
   CubeCommand,
   DeleteBoneCommand,
   DeleteCubeCommand,
+  SetFaceUvCommand,
+  TextureUsageQuery,
+  TextureUsageResult,
+  TextureUsageUnresolved,
   UpdateBoneCommand,
   UpdateCubeCommand
 } from '../../ports/editor';
 import { Logger } from '../../logging';
 import {
+  CubeFaceDirection,
+  CubeFace,
   CubeInstance,
   GroupInstance,
   OutlinerApi,
-  OutlinerNode
+  OutlinerNode,
+  TextureInstance
 } from '../../types/blockbench';
 import {
   assignVec2,
@@ -22,6 +30,8 @@ import {
   normalizeParent,
   readGlobals,
   readNodeId,
+  readTextureAliases,
+  readTextureId,
   removeOutlinerNode,
   withUndo
 } from './blockbenchUtils';
@@ -244,6 +254,246 @@ export class BlockbenchGeometryAdapter {
     }
   }
 
+  assignTexture(params: AssignTextureCommand): ToolError | null {
+    try {
+      const globals = readGlobals();
+      const CubeCtor = globals.Cube;
+      const TextureCtor = globals.Texture;
+      if (typeof CubeCtor === 'undefined' || typeof TextureCtor === 'undefined') {
+        return { code: 'not_implemented', message: 'Cube/Texture API not available' };
+      }
+      const texture = this.findTextureRef(params.textureName, params.textureId);
+      if (!texture) {
+        const label = params.textureId ?? params.textureName ?? 'unknown';
+        return { code: 'invalid_payload', message: `Texture not found: ${label}` };
+      }
+      const cubes = this.resolveTargetCubes(params);
+      if (cubes.length === 0) {
+        return { code: 'invalid_payload', message: 'No target cubes found' };
+      }
+      const supportsApply = cubes.every((cube) => typeof cube.applyTexture === 'function');
+      if (!supportsApply) {
+        return { code: 'not_implemented', message: 'Cube.applyTexture is not available' };
+      }
+      const faces = normalizeFaces(params.faces);
+      const textureRef = resolveFaceTextureRef(texture);
+      withUndo({ elements: true, textures: true }, 'Assign texture', () => {
+        cubes.forEach((cube) => {
+          if (typeof cube.setUVMode === 'function') {
+            cube.setUVMode(false);
+          } else if (typeof cube.box_uv === 'boolean') {
+            cube.box_uv = false;
+          }
+          if (typeof cube.autouv === 'number') {
+            cube.autouv = 0;
+          }
+          const faceMap = ensureFaceMap(cube);
+          const targets = faces ?? ALL_FACES;
+          const uvBackup = new Map<CubeFaceDirection, [number, number, number, number] | undefined>();
+          targets.forEach((faceKey) => {
+            const face = faceMap[faceKey];
+            if (face?.uv) {
+              uvBackup.set(faceKey, [...face.uv]);
+            }
+          });
+          cube.applyTexture?.(texture, faces ?? true);
+          if (textureRef) {
+            targets.forEach((faceKey) => {
+              const face = faceMap[faceKey] ?? {};
+              if (!faceMap[faceKey]) faceMap[faceKey] = face;
+              if (typeof face.extend === 'function') {
+                face.extend({ texture: textureRef });
+              } else {
+                face.texture = textureRef;
+              }
+            });
+          }
+          uvBackup.forEach((uv, faceKey) => {
+            if (!uv) return;
+            const face = faceMap[faceKey];
+            if (!face) return;
+            if (typeof face.extend === 'function') {
+              face.extend({ uv });
+            } else {
+              face.uv = uv;
+            }
+          });
+        });
+      });
+      this.log.info('texture assigned', { texture: texture?.name, cubeCount: cubes.length, faces: faces ?? 'all' });
+      return null;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'texture assign failed';
+      this.log.error('texture assign error', { message });
+      return { code: 'unknown', message };
+    }
+  }
+
+  setFaceUv(params: SetFaceUvCommand): ToolError | null {
+    try {
+      const globals = readGlobals();
+      const CubeCtor = globals.Cube;
+      if (typeof CubeCtor === 'undefined') {
+        return { code: 'not_implemented', message: 'Cube API not available' };
+      }
+      const target = this.findCubeRef(params.cubeName, params.cubeId);
+      if (!target) {
+        const label = params.cubeId ?? params.cubeName ?? 'unknown';
+        return { code: 'invalid_payload', message: `Cube not found: ${label}` };
+      }
+      const faceEntries = Object.entries(params.faces ?? {});
+      if (faceEntries.length === 0) {
+        return { code: 'invalid_payload', message: 'faces must include at least one mapping' };
+      }
+      const faceMap = ensureFaceMap(target);
+      withUndo({ elements: true }, 'Set face UV', () => {
+        if (typeof target.setUVMode === 'function') {
+          target.setUVMode(false);
+        } else if (typeof target.box_uv === 'boolean') {
+          target.box_uv = false;
+        }
+        if (typeof target.autouv === 'number') {
+          target.autouv = 0;
+        }
+        faceEntries.forEach(([faceKey, uv]) => {
+          if (!VALID_FACE_KEYS.has(faceKey as CubeFaceDirection) || !uv) return;
+          const face = faceMap[faceKey] ?? {};
+          if (!faceMap[faceKey]) faceMap[faceKey] = face;
+          if (typeof face.extend === 'function') {
+            face.extend({ uv: uv as [number, number, number, number] });
+          } else {
+            face.uv = uv as [number, number, number, number];
+          }
+        });
+      });
+      this.log.info('face UV updated', { cube: target?.name ?? params.cubeName, faces: faceEntries.length });
+      return null;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'face UV update failed';
+      this.log.error('face UV update error', { message });
+      return { code: 'unknown', message };
+    }
+  }
+
+  getTextureUsage(params: TextureUsageQuery): { result?: TextureUsageResult; error?: ToolError } {
+    try {
+      const globals = readGlobals();
+      const CubeCtor = globals.Cube;
+      const TextureCtor = globals.Texture;
+      if (typeof CubeCtor === 'undefined' || typeof TextureCtor === 'undefined') {
+        return { error: { code: 'not_implemented', message: 'Cube/Texture API not available' } };
+      }
+      const textures = Array.isArray(TextureCtor?.all) ? TextureCtor.all : [];
+      const usageMap = new Map<
+        string,
+        {
+          id?: string;
+          name: string;
+          cubes: Map<
+            string,
+            { id?: string; name: string; faces: Map<CubeFaceDirection, { face: CubeFaceDirection; uv?: [number, number, number, number] }> }
+          >;
+          faceCount: number;
+        }
+      >();
+      const byId = new Map<string, string>();
+      const byName = new Map<string, string>();
+      const metaByKey = new Map<string, { id?: string; name: string }>();
+      textures.forEach((tex) => {
+        const id = readTextureId(tex) ?? undefined;
+        const name = tex?.name ?? tex?.id ?? 'texture';
+        const key = id ? `id:${id}` : `name:${name}`;
+        metaByKey.set(key, { id, name });
+        const aliases = readTextureAliases(tex);
+        aliases.forEach((alias) => {
+          if (!byId.has(alias)) {
+            byId.set(alias, key);
+          }
+        });
+        if (name) byName.set(name, key);
+      });
+
+      const targetKeys = new Set<string>(metaByKey.keys());
+      if (params.textureId || params.textureName) {
+        const label = params.textureId ?? params.textureName ?? 'unknown';
+        const match =
+          (params.textureId && byId.get(params.textureId)) ||
+          (params.textureName && byName.get(params.textureName)) ||
+          null;
+        if (!match) {
+          return { error: { code: 'invalid_payload', message: `Texture not found: ${label}` } };
+        }
+        targetKeys.clear();
+        targetKeys.add(match);
+      }
+
+      targetKeys.forEach((key) => {
+        const meta = metaByKey.get(key);
+        if (!meta) return;
+        usageMap.set(key, { id: meta.id, name: meta.name, cubes: new Map(), faceCount: 0 });
+      });
+
+      const unresolved: TextureUsageUnresolved[] = [];
+      const cubes = this.collectCubes();
+      cubes.forEach((cube) => {
+        const cubeId = readNodeId(cube) ?? undefined;
+        const cubeName = cube?.name ? String(cube.name) : 'cube';
+        const faces = cube.faces ?? {};
+        Object.entries(faces).forEach(([faceKey, face]) => {
+          if (!VALID_FACE_KEYS.has(faceKey)) return;
+          const ref = face?.texture;
+          if (ref === false || ref === undefined || ref === null) return;
+          const refValue = typeof ref === 'string' ? ref : String(ref);
+          const key = resolveTextureKey(refValue, byId, byName);
+          if (!key) {
+            unresolved.push({ textureRef: refValue, cubeId, cubeName, face: faceKey as CubeFaceDirection });
+            return;
+          }
+          if (!targetKeys.has(key)) return;
+          const entry = usageMap.get(key);
+          if (!entry) return;
+          const cubeKey = cubeId ? `id:${cubeId}` : `name:${cubeName}`;
+          let cubeEntry = entry.cubes.get(cubeKey);
+          if (!cubeEntry) {
+            cubeEntry = { id: cubeId, name: cubeName, faces: new Map() };
+            entry.cubes.set(cubeKey, cubeEntry);
+          }
+          const faceDir = faceKey as CubeFaceDirection;
+          if (!cubeEntry.faces.has(faceDir)) {
+            cubeEntry.faces.set(faceDir, { face: faceDir, uv: normalizeFaceUv(face?.uv) });
+          } else {
+            const existing = cubeEntry.faces.get(faceDir);
+            if (existing && !existing.uv) {
+              existing.uv = normalizeFaceUv(face?.uv);
+            }
+          }
+          entry.faceCount += 1;
+        });
+      });
+
+      const texturesResult = Array.from(usageMap.values()).map((entry) => ({
+        id: entry.id,
+        name: entry.name,
+        cubeCount: entry.cubes.size,
+        faceCount: entry.faceCount,
+        cubes: Array.from(entry.cubes.values()).map((cube) => ({
+          id: cube.id,
+          name: cube.name,
+          faces: Array.from(cube.faces.values())
+        }))
+      }));
+      const result: TextureUsageResult = {
+        textures: texturesResult,
+        ...(unresolved.length > 0 ? { unresolved } : {})
+      };
+      return { result };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'texture usage failed';
+      this.log.error('texture usage error', { message });
+      return { error: { code: 'unknown', message } };
+    }
+  }
+
   private findGroup(name?: string): GroupInstance | null {
     if (!name) return null;
     return this.findOutlinerNode((node) => isGroupNode(node) && node.name === name);
@@ -291,7 +541,87 @@ export class BlockbenchGeometryAdapter {
     };
     return search(outliner?.root ?? []);
   }
+
+  private resolveTargetCubes(params: AssignTextureCommand): CubeInstance[] {
+    const all = this.collectCubes();
+    const ids = new Set(params.cubeIds ?? []);
+    const names = new Set(params.cubeNames ?? []);
+    if (ids.size === 0 && names.size === 0) return all;
+    return all.filter((cube) => {
+      const id = readNodeId(cube) ?? undefined;
+      const name = cube?.name ? String(cube.name) : undefined;
+      return (id && ids.has(id)) || (name && names.has(name));
+    });
+  }
+
+  private collectCubes(): CubeInstance[] {
+    const outliner = readGlobals().Outliner;
+    const root = outliner?.root;
+    const nodes = Array.isArray(root) ? root : root?.children ?? [];
+    const cubes: CubeInstance[] = [];
+    const walk = (items: OutlinerNode[] | undefined) => {
+      if (!items) return;
+      for (const node of items) {
+        if (isCubeNode(node)) {
+          cubes.push(node);
+          continue;
+        }
+        const children = Array.isArray(node?.children) ? node.children : [];
+        if (children.length > 0) {
+          walk(children);
+        }
+      }
+    };
+    walk(nodes);
+    return cubes;
+  }
+
+  private findTextureRef(name?: string, id?: string): TextureInstance | null {
+    const { Texture: TextureCtor } = readGlobals();
+    const textures = Array.isArray(TextureCtor?.all) ? TextureCtor.all : [];
+    if (id) {
+      const byId = textures.find((tex) => readTextureId(tex) === id);
+      if (byId) return byId;
+    }
+    if (name) {
+      return textures.find((tex) => tex?.name === name || tex?.id === name) ?? null;
+    }
+    return null;
+  }
 }
+
+const VALID_FACE_KEYS = new Set<CubeFaceDirection>(['north', 'south', 'east', 'west', 'up', 'down']);
+const ALL_FACES: CubeFaceDirection[] = ['north', 'south', 'east', 'west', 'up', 'down'];
+
+const resolveTextureKey = (ref: string, byId: Map<string, string>, byName: Map<string, string>): string | null => {
+  if (byId.has(ref)) return byId.get(ref) ?? null;
+  if (byName.has(ref)) return byName.get(ref) ?? null;
+  return null;
+};
+
+const resolveFaceTextureRef = (texture: TextureInstance | null | undefined): string | null => {
+  if (!texture) return null;
+  const raw = texture.uuid ?? texture.id ?? texture.bbmcpId ?? texture.name ?? null;
+  return raw ? String(raw) : null;
+};
+
+const ensureFaceMap = (cube: CubeInstance): Record<string, CubeFace> => {
+  if (!cube.faces || typeof cube.faces !== 'object') {
+    cube.faces = {};
+  }
+  return cube.faces as Record<string, CubeFace>;
+};
+
+const normalizeFaceUv = (value: unknown): [number, number, number, number] | undefined => {
+  if (!value) return undefined;
+  if (Array.isArray(value) && value.length >= 4) {
+    const [x1, y1, x2, y2] = value;
+    if ([x1, y1, x2, y2].every((v) => typeof v === 'number')) {
+      return [x1, y1, x2, y2];
+    }
+  }
+  return undefined;
+};
 
 const isGroupNode = (node: OutlinerNode): node is GroupInstance => {
   const groupCtor = readGlobals().Group;
@@ -303,4 +633,13 @@ const isCubeNode = (node: OutlinerNode): node is CubeInstance => {
   const cubeCtor = readGlobals().Cube;
   if (cubeCtor && node instanceof cubeCtor) return true;
   return node.from !== undefined && node.to !== undefined;
+};
+
+const normalizeFaces = (faces?: CubeFaceDirection[]): CubeFaceDirection[] | undefined => {
+  if (!faces || faces.length === 0) return undefined;
+  const valid = new Set<CubeFaceDirection>();
+  faces.forEach((face) => {
+    if (face) valid.add(face);
+  });
+  return valid.size > 0 ? Array.from(valid) : undefined;
 };

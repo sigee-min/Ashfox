@@ -86,7 +86,7 @@ export class ProxyRouter {
     if (guard) return guard;
     return this.runWithoutRevisionGuard(() => {
       const report = createApplyReport();
-      const result = applyTextureSpecSteps(this.service, this.limits, payload.textures, report, meta);
+      const result = applyTextureSpecSteps(this.service, this.limits, payload.textures, report, meta, this.log);
       if (!result.ok) return result;
       this.log.info('applyTextureSpec applied', { textures: payload.textures.length });
       return { ok: true, data: withMeta({ applied: true, report }, meta, this.service) };
@@ -154,7 +154,7 @@ export class ProxyRouter {
         }
       }
       if (payload.textures && payload.textures.length > 0) {
-        const texRes = applyTextureSpecSteps(this.service, this.limits, payload.textures, report, meta);
+        const texRes = applyTextureSpecSteps(this.service, this.limits, payload.textures, report, meta, this.log);
         if (!texRes.ok) return texRes;
       }
       if (payload.animation) {

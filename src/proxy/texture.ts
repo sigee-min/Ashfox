@@ -4,6 +4,8 @@ import { TextureSource } from '../ports/editor';
 import { readBlockbenchGlobals } from '../types/blockbench';
 import { err } from './response';
 
+const MAX_TEX_OPS = 4096;
+
 export const renderTextureSpec = (
   spec: TextureSpec,
   limits: Limits,
@@ -39,7 +41,14 @@ export const renderTextureSpec = (
   if (base?.image) {
     ctx.drawImage(base.image, 0, 0, width, height);
   }
-  for (const op of spec.ops ?? []) {
+  const ops = Array.isArray(spec.ops) ? spec.ops : [];
+  if (ops.length === 0) {
+    return err('invalid_payload', `texture ops must be a non-empty array (${label})`);
+  }
+  if (ops.length > MAX_TEX_OPS) {
+    return err('invalid_payload', `too many texture ops (>${MAX_TEX_OPS}) (${label})`);
+  }
+  for (const op of ops) {
     const res = applyTextureOp(ctx, op);
     if (!res.ok) return res;
   }

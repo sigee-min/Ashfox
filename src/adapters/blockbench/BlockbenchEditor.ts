@@ -1,5 +1,6 @@
 import {
   AnimationCommand,
+  AssignTextureCommand,
   BoneCommand,
   CubeCommand,
   DeleteAnimationCommand,
@@ -10,8 +11,11 @@ import {
   ImportTextureCommand,
   KeyframeCommand,
   ReadTextureCommand,
+  SetFaceUvCommand,
   TextureSource,
   TextureStat,
+  TextureUsageQuery,
+  TextureUsageResult,
   UpdateAnimationCommand,
   UpdateBoneCommand,
   UpdateCubeCommand,
@@ -69,6 +73,14 @@ export class BlockbenchEditor implements EditorPort {
     return this.textures.listTextures();
   }
 
+  assignTexture(params: AssignTextureCommand): ToolError | null {
+    return this.geometry.assignTexture(params);
+  }
+
+  setFaceUv(params: SetFaceUvCommand): ToolError | null {
+    return this.geometry.setFaceUv(params);
+  }
+
   addBone(params: BoneCommand): ToolError | null {
     return this.geometry.addBone(params);
   }
@@ -113,7 +125,19 @@ export class BlockbenchEditor implements EditorPort {
     return this.preview.renderPreview(params);
   }
 
+  getTextureUsage(params: TextureUsageQuery): { result?: TextureUsageResult; error?: ToolError } {
+    return this.geometry.getTextureUsage(params);
+  }
+
   writeFile(path: string, contents: string): ToolError | null {
     return this.project.writeFile(path, contents);
+  }
+
+  getProjectTextureResolution(): { width: number; height: number } | null {
+    return this.project.getProjectTextureResolution();
+  }
+
+  setProjectTextureResolution(width: number, height: number): ToolError | null {
+    return this.project.setProjectTextureResolution(width, height);
   }
 }

@@ -12,6 +12,7 @@ import { isZeroSize } from '../domain/geometry';
 import { err } from './response';
 
 const MAX_KEYS = 4096;
+const MAX_TEX_OPS = 4096;
 const SUPPORTED_INTERP: AnimInterp[] = ['linear', 'step', 'catmullrom'];
 
 export const validateModelSpec = (payload: ApplyModelSpecPayload, limits: Limits): ToolResponse<unknown> => {
@@ -132,10 +133,13 @@ export const validateTextureSpec = (payload: ApplyTextureSpecPayload, limits: Li
         return err('invalid_payload', `texture size exceeds max ${limits.maxTextureSize} (${label})`);
       }
     }
-    if (tex.ops && !Array.isArray(tex.ops)) {
-      return err('invalid_payload', `texture ops must be an array (${label})`);
+    if (!Array.isArray(tex.ops) || tex.ops.length === 0) {
+      return err('invalid_payload', `texture ops must be a non-empty array (${label})`);
     }
-    const ops = Array.isArray(tex.ops) ? tex.ops : [];
+    const ops = tex.ops;
+    if (ops.length > MAX_TEX_OPS) {
+      return err('invalid_payload', `too many texture ops (>${MAX_TEX_OPS}) (${label})`);
+    }
     for (const op of ops) {
       if (!isTextureOp(op)) {
         return err('invalid_payload', `invalid texture op (${label})`);

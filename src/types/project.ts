@@ -50,6 +50,8 @@ export interface ProjectState {
   formatId?: string | null;
   dirty?: boolean;
   revision: string;
+  textureResolution?: { width: number; height: number };
+  textureUsage?: ProjectTextureUsage;
   counts: {
     bones: number;
     cubes: number;
@@ -61,6 +63,37 @@ export interface ProjectState {
   textures?: TrackedTexture[];
   animations?: TrackedAnimation[];
 }
+
+export type ProjectTextureUsageFace = {
+  face: 'north' | 'south' | 'east' | 'west' | 'up' | 'down';
+  uv?: [number, number, number, number];
+};
+
+export type ProjectTextureUsageCube = {
+  id?: string;
+  name: string;
+  faces: ProjectTextureUsageFace[];
+};
+
+export type ProjectTextureUsageEntry = {
+  id?: string;
+  name: string;
+  cubeCount: number;
+  faceCount: number;
+  cubes: ProjectTextureUsageCube[];
+};
+
+export type ProjectTextureUsageUnresolved = {
+  textureRef: string;
+  cubeId?: string;
+  cubeName: string;
+  face: 'north' | 'south' | 'east' | 'west' | 'up' | 'down';
+};
+
+export type ProjectTextureUsage = {
+  textures: ProjectTextureUsageEntry[];
+  unresolved?: ProjectTextureUsageUnresolved[];
+};
 
 export interface ProjectInfo {
   id: string;

@@ -5,6 +5,9 @@ export interface BlockbenchProject {
   uuid?: string;
   id?: string;
   uid?: string;
+  texture_width?: number;
+  texture_height?: number;
+  setTextureSize?: (width: number, height: number) => void;
   saved?: boolean;
   isSaved?: boolean;
   dirty?: boolean;
@@ -47,7 +50,10 @@ export interface ModelFormatApi {
 }
 
 export interface TextureInstance {
+  uuid?: string;
   id?: string;
+  uid?: string;
+  _uuid?: string;
   name?: string;
   path?: string;
   source?: string;
@@ -65,9 +71,21 @@ export interface TextureInstance {
   remove?: () => void;
   delete?: () => void;
   dispose?: () => void;
+  updateChangesAfterEdit?: () => void;
+  updateLayerChanges?: (force?: boolean) => void;
   getDataUrl?: () => string;
   getBase64?: () => string;
   toDataURL?: (mime?: string) => string;
+}
+
+export type CubeFaceDirection = 'north' | 'south' | 'east' | 'west' | 'up' | 'down';
+
+export interface CubeFace {
+  texture?: string | false;
+  uv?: [number, number, number, number];
+  rotation?: number;
+  enabled?: boolean;
+  extend?: (data: Partial<CubeFace>) => void;
 }
 
 export interface TextureConstructor {
@@ -104,12 +122,18 @@ export interface GroupConstructor {
 }
 
 export interface CubeInstance extends OutlinerNode {
+  autouv?: 0 | 1 | 2;
   from?: [number, number, number] | { x: number; y: number; z: number };
   to?: [number, number, number] | { x: number; y: number; z: number };
   uv_offset?: [number, number] | { x: number; y: number };
   inflate?: number;
   mirror?: boolean;
   mirror_uv?: boolean;
+  box_uv?: boolean;
+  faces?: Record<string, CubeFace>;
+  applyTexture?: (texture: TextureInstance, faces?: true | CubeFaceDirection[]) => void;
+  mapAutoUV?: () => void;
+  setUVMode?: (boxUv: boolean) => void;
   init?: () => CubeInstance | void;
 }
 

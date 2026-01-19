@@ -1,7 +1,7 @@
 import { ToolResponse } from '../types';
 import { UsecaseResult } from '../usecases/result';
 
-export type ErrorCode = 'invalid_payload' | 'not_implemented' | 'unknown';
+export type ErrorCode = 'invalid_payload' | 'not_implemented' | 'no_change' | 'unknown';
 
 export const err = (code: ErrorCode, message: string): ToolResponse<unknown> => ({
   ok: false,

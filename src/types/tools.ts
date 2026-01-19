@@ -15,6 +15,8 @@ export type ToolName =
   | 'reload_plugin'
   | 'get_project_state'
   | 'get_project_diff'
+  | 'set_project_texture_resolution'
+  | 'get_texture_usage'
   | 'list_projects'
   | 'select_project'
   | 'create_project'
@@ -22,6 +24,8 @@ export type ToolName =
   | 'import_texture'
   | 'update_texture'
   | 'delete_texture'
+  | 'assign_texture'
+  | 'set_face_uv'
   | 'add_bone'
   | 'update_bone'
   | 'delete_bone'
@@ -63,6 +67,16 @@ export interface GetProjectDiffPayload {
   detail?: ProjectStateDetail;
 }
 
+export interface SetProjectTextureResolutionPayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
+  width: number;
+  height: number;
+}
+
+export interface GetTextureUsagePayload {
+  textureId?: string;
+  textureName?: string;
+}
+
 export interface ImportTexturePayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
   id?: string;
   name: string;
@@ -81,6 +95,24 @@ export interface UpdateTexturePayload extends IncludeStateOption, IncludeDiffOpt
 export interface DeleteTexturePayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
   id?: string;
   name?: string;
+}
+
+export type CubeFaceDirection = 'north' | 'south' | 'east' | 'west' | 'up' | 'down';
+
+export interface AssignTexturePayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
+  textureId?: string;
+  textureName?: string;
+  cubeIds?: string[];
+  cubeNames?: string[];
+  faces?: CubeFaceDirection[];
+}
+
+export type FaceUvMap = Partial<Record<CubeFaceDirection, [number, number, number, number]>>;
+
+export interface SetFaceUvPayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
+  cubeId?: string;
+  cubeName?: string;
+  faces: FaceUvMap;
 }
 
 export interface AddBonePayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
@@ -195,6 +227,8 @@ export interface ToolPayloadMap {
   reload_plugin: ReloadPluginPayload;
   get_project_state: GetProjectStatePayload;
   get_project_diff: GetProjectDiffPayload;
+  set_project_texture_resolution: SetProjectTextureResolutionPayload;
+  get_texture_usage: GetTextureUsagePayload;
   list_projects: ListProjectsPayload;
   select_project: SelectProjectPayload;
   create_project: CreateProjectPayload;
@@ -202,6 +236,8 @@ export interface ToolPayloadMap {
   import_texture: ImportTexturePayload;
   update_texture: UpdateTexturePayload;
   delete_texture: DeleteTexturePayload;
+  assign_texture: AssignTexturePayload;
+  set_face_uv: SetFaceUvPayload;
   add_bone: AddBonePayload;
   update_bone: UpdateBonePayload;
   delete_bone: DeleteBonePayload;
@@ -247,6 +283,37 @@ export interface GetProjectDiffResult {
   diff: ProjectDiff;
 }
 
+export interface SetProjectTextureResolutionResult {
+  width: number;
+  height: number;
+}
+
+export interface GetTextureUsageCube {
+  id?: string;
+  name: string;
+  faces: Array<{ face: CubeFaceDirection; uv?: [number, number, number, number] }>;
+}
+
+export interface GetTextureUsageEntry {
+  id?: string;
+  name: string;
+  cubeCount: number;
+  faceCount: number;
+  cubes: GetTextureUsageCube[];
+}
+
+export interface GetTextureUsageUnresolved {
+  textureRef: string;
+  cubeId?: string;
+  cubeName: string;
+  face: CubeFaceDirection;
+}
+
+export interface GetTextureUsageResult {
+  textures: GetTextureUsageEntry[];
+  unresolved?: GetTextureUsageUnresolved[];
+}
+
 export interface ExportResult {
   path: string;
 }
@@ -266,6 +333,8 @@ export interface ToolResultMap {
   reload_plugin: ReloadPluginResult;
   get_project_state: GetProjectStateResult;
   get_project_diff: GetProjectDiffResult;
+  set_project_texture_resolution: WithState<SetProjectTextureResolutionResult>;
+  get_texture_usage: GetTextureUsageResult;
   list_projects: ListProjectsResult;
   select_project: WithState<SelectProjectResult>;
   create_project: WithState<CreateProjectResult>;
@@ -273,6 +342,8 @@ export interface ToolResultMap {
   import_texture: WithState<{ id: string; name: string; path?: string }>;
   update_texture: WithState<{ id: string; name: string }>;
   delete_texture: WithState<{ id: string; name: string }>;
+  assign_texture: WithState<{ textureId?: string; textureName: string; cubeCount: number; faces?: CubeFaceDirection[] }>;
+  set_face_uv: WithState<{ cubeId?: string; cubeName: string; faces: CubeFaceDirection[] }>;
   add_bone: WithState<{ id: string; name: string }>;
   update_bone: WithState<{ id: string; name: string }>;
   delete_bone: WithState<{ id: string; name: string; removedBones: number; removedCubes: number }>;

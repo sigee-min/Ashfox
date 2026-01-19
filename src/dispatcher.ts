@@ -80,6 +80,13 @@ export class ToolDispatcherImpl implements Dispatcher {
           return toToolResponse(this.service.getProjectState(payload)) as ToolResponse<ToolResultMap[TName]>;
         case 'get_project_diff':
           return toToolResponse(this.service.getProjectDiff(payload)) as ToolResponse<ToolResultMap[TName]>;
+        case 'set_project_texture_resolution':
+          return this.attachState(
+            payload,
+            toToolResponse(this.service.setProjectTextureResolution(payload))
+          ) as ToolResponse<ToolResultMap[TName]>;
+        case 'get_texture_usage':
+          return toToolResponse(this.service.getTextureUsage(payload)) as ToolResponse<ToolResultMap[TName]>;
         case 'list_projects':
           return toToolResponse(this.service.listProjects()) as ToolResponse<ToolResultMap[TName]>;
         case 'select_project':
@@ -102,6 +109,16 @@ export class ToolDispatcherImpl implements Dispatcher {
           return this.attachState(
             payload,
             toToolResponse(this.service.deleteTexture(payload))
+          ) as ToolResponse<ToolResultMap[TName]>;
+        case 'assign_texture':
+          return this.attachState(
+            payload,
+            toToolResponse(this.service.assignTexture(payload))
+          ) as ToolResponse<ToolResultMap[TName]>;
+        case 'set_face_uv':
+          return this.attachState(
+            payload,
+            toToolResponse(this.service.setFaceUv(payload))
           ) as ToolResponse<ToolResultMap[TName]>;
         case 'add_bone':
           return this.attachState(

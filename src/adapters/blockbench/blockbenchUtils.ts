@@ -50,6 +50,25 @@ export const readTextureId = (tex: TextureInstance | null | undefined): string |
   return raw ? String(raw) : null;
 };
 
+export const readTextureAliases = (tex: TextureInstance | null | undefined): string[] => {
+  if (!tex) return [];
+  const candidates: Array<string | null | undefined> = [
+    tex.bbmcpId,
+    tex.uuid,
+    tex.id,
+    tex.uid,
+    tex._uuid
+  ];
+  const unique = new Set<string>();
+  candidates.forEach((value) => {
+    if (!value) return;
+    const label = String(value).trim();
+    if (!label) return;
+    unique.add(label);
+  });
+  return Array.from(unique);
+};
+
 export const readAnimationId = (anim: AnimationClip | null | undefined): string | null => {
   if (!anim) return null;
   const raw = anim.bbmcpId ?? anim.uuid ?? anim.id ?? anim.uid ?? anim._uuid ?? null;

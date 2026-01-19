@@ -70,10 +70,12 @@ export class ProjectStateService {
       revision,
       counts
     };
+    if (snapshot.textures.length > 0) {
+      project.textures = snapshot.textures;
+    }
     if (detail === 'full') {
       project.bones = snapshot.bones;
       project.cubes = snapshot.cubes;
-      project.textures = snapshot.textures;
       project.animations = snapshot.animations;
     }
     return project;

@@ -10,8 +10,8 @@ import {
   RenderPreviewResult,
   ToolError
 } from '../types';
-import { ProjectSession } from '../session';
-import { EditorPort, TextureSource } from '../ports/editor';
+import { ProjectSession, SessionState } from '../session';
+import { CubeFaceDirection, EditorPort, FaceUvMap, TextureSource } from '../ports/editor';
 import { FormatPort } from '../ports/formats';
 import { SnapshotPort } from '../ports/snapshot';
 import { ExportPort } from '../ports/exporter';
@@ -40,6 +40,7 @@ import {
 
 const FORMAT_OVERRIDE_HINT = 'Set Format ID override in Settings (bbmcp).';
 const REVISION_CACHE_LIMIT = 5;
+const MAX_DATA_URI_BYTES = 4 * 1024 * 1024;
 
 function withFormatOverrideHint(message: string) {
   return `${message} ${FORMAT_OVERRIDE_HINT}`;
@@ -104,6 +105,58 @@ export class ToolService {
     return ok({ projects: info ? [info] : [] });
   }
 
+  getProjectTextureResolution(): { width: number; height: number } | null {
+    return this.editor.getProjectTextureResolution();
+  }
+
+  setProjectTextureResolution(payload: {
+    width: number;
+    height: number;
+    ifRevision?: string;
+  }): UsecaseResult<{ width: number; height: number }> {
+    const activeErr = this.ensureActive();
+    if (activeErr) return fail(activeErr);
+    const revisionErr = this.ensureRevisionMatch(payload.ifRevision);
+    if (revisionErr) return fail(revisionErr);
+    const width = Number(payload.width);
+    const height = Number(payload.height);
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+      return fail({ code: 'invalid_payload', message: 'width and height must be positive numbers.' });
+    }
+    if (!Number.isInteger(width) || !Number.isInteger(height)) {
+      return fail({ code: 'invalid_payload', message: 'width and height must be integers.' });
+    }
+    const maxSize = this.capabilities.limits.maxTextureSize;
+    if (width > maxSize || height > maxSize) {
+      return fail({
+        code: 'invalid_payload',
+        message: `Texture resolution exceeds max size (${maxSize}).`,
+        fix: `Use width/height <= ${maxSize}.`,
+        details: { width, height, maxSize }
+      });
+    }
+    const err = this.editor.setProjectTextureResolution(width, height);
+    if (err) return fail(err);
+    return ok({ width, height });
+  }
+
+  getTextureUsage(payload: { textureId?: string; textureName?: string }): UsecaseResult<{
+    textures: Array<{
+      id?: string;
+      name: string;
+      cubeCount: number;
+      faceCount: number;
+      cubes: Array<{ id?: string; name: string; faces: Array<{ face: CubeFaceDirection; uv?: [number, number, number, number] }> }>;
+    }>;
+    unresolved?: Array<{ textureRef: string; cubeId?: string; cubeName: string; face: CubeFaceDirection }>;
+  }> {
+    const activeErr = this.ensureActive();
+    if (activeErr) return fail(activeErr);
+    const res = this.editor.getTextureUsage(payload);
+    if (res.error) return fail(res.error);
+    return ok(res.result!);
+  }
+
   getProjectState(payload: { detail?: ProjectStateDetail }): UsecaseResult<{ project: ProjectState }> {
     const detail: ProjectStateDetail = payload.detail ?? 'summary';
     const snapshot = this.getSnapshot(this.policies.snapshotPolicy ?? 'hybrid');
@@ -111,6 +164,16 @@ export class ToolService {
     const active = Boolean(info);
     const revision = this.revisionStore.track(snapshot);
     const project = this.projectState.buildProjectState(snapshot, detail, active, revision);
+    const resolution = this.editor.getProjectTextureResolution();
+    if (resolution) {
+      project.textureResolution = resolution;
+    }
+    if (detail === 'full') {
+      const usage = this.editor.getTextureUsage({});
+      if (!usage.error && usage.result) {
+        project.textureUsage = usage.result;
+      }
+    }
     return ok({ project });
   }
 
@@ -235,6 +298,8 @@ export class ToolService {
     name: string;
     dataUri?: string;
     path?: string;
+    width?: number;
+    height?: number;
     ifRevision?: string;
   }): UsecaseResult<{ id: string; name: string; path?: string }> {
     const activeErr = this.ensureActive();
@@ -254,17 +319,27 @@ export class ToolService {
     if (idConflict) {
       return fail({ code: 'invalid_payload', message: `Texture id already exists: ${id}` });
     }
+    if (payload.dataUri) {
+      const dataErr = validateDataUriSize(payload.dataUri);
+      if (dataErr) return fail(dataErr);
+    }
+    const contentHash = payload.dataUri ? hashText(payload.dataUri) : undefined;
     const err = this.editor.importTexture({ id, name: payload.name, dataUri: payload.dataUri, path: payload.path });
     if (err) return fail(err);
     const match = this.editor
       .listTextures()
       .find((t) => (t.id && t.id === id) || t.name === payload.name);
+    const resolvedSize = resolveTextureSize({
+      width: match?.width,
+      height: match?.height
+    }, { width: payload.width, height: payload.height });
     this.session.addTexture({
       id,
       name: payload.name,
       path: payload.path,
-      width: match?.width,
-      height: match?.height
+      width: resolvedSize.width,
+      height: resolvedSize.height,
+      contentHash
     });
     return ok({ id, name: payload.name, path: payload.path });
   }
@@ -275,6 +350,8 @@ export class ToolService {
     newName?: string;
     dataUri?: string;
     path?: string;
+    width?: number;
+    height?: number;
     ifRevision?: string;
   }): UsecaseResult<{ id: string; name: string }> {
     const activeErr = this.ensureActive();
@@ -294,6 +371,11 @@ export class ToolService {
       const label = payload.id ?? payload.name ?? 'unknown';
       return fail({ code: 'invalid_payload', message: `Texture not found: ${label}` });
     }
+    if (payload.dataUri) {
+      const dataErr = validateDataUriSize(payload.dataUri);
+      if (dataErr) return fail(dataErr);
+    }
+    const contentHash = payload.dataUri ? hashText(payload.dataUri) : undefined;
     const targetName = target.name;
     const targetId = target.id ?? payload.id ?? createId('tex');
     if (payload.newName && payload.newName !== targetName) {
@@ -301,6 +383,15 @@ export class ToolService {
       if (conflict) {
         return fail({ code: 'invalid_payload', message: `Texture already exists: ${payload.newName}` });
       }
+    }
+    const renaming = Boolean(payload.newName && payload.newName !== targetName);
+    const pathChanging = payload.path !== undefined && payload.path !== target.path;
+    if (payload.dataUri && target.contentHash && contentHash === target.contentHash && !renaming && !pathChanging) {
+      return fail({
+        code: 'no_change',
+        message: 'Texture content is unchanged.',
+        fix: 'Adjust ops or include a rename/path change before updating.'
+      });
     }
     const err = this.editor.updateTexture({
       id: targetId,
@@ -314,12 +405,18 @@ export class ToolService {
     const match = this.editor
       .listTextures()
       .find((t) => (t.id && t.id === targetId) || t.name === effectiveName);
+    const resolvedSize = resolveTextureSize(
+      { width: match?.width, height: match?.height },
+      { width: payload.width, height: payload.height },
+      { width: target.width, height: target.height }
+    );
     this.session.updateTexture(targetName, {
       id: targetId,
       newName: payload.newName,
       path: payload.path,
-      width: match?.width,
-      height: match?.height
+      width: resolvedSize.width,
+      height: resolvedSize.height,
+      contentHash
     });
     return ok({ id: targetId, name: effectiveName });
   }
@@ -353,6 +450,122 @@ export class ToolService {
     const res = this.editor.readTexture({ id: payload.id, name: payload.name });
     if (res.error) return fail(res.error);
     return ok(res.result!);
+  }
+
+  assignTexture(payload: {
+    textureId?: string;
+    textureName?: string;
+    cubeIds?: string[];
+    cubeNames?: string[];
+    faces?: CubeFaceDirection[];
+    ifRevision?: string;
+  }): UsecaseResult<{ textureId?: string; textureName: string; cubeCount: number; faces?: CubeFaceDirection[] }> {
+    const activeErr = this.ensureActive();
+    if (activeErr) return fail(activeErr);
+    const revisionErr = this.ensureRevisionMatch(payload.ifRevision);
+    if (revisionErr) return fail(revisionErr);
+    if (!payload.textureId && !payload.textureName) {
+      return fail({
+        code: 'invalid_payload',
+        message: 'textureId or textureName is required',
+        fix: 'Provide textureId or textureName from list_textures.'
+      });
+    }
+    const snapshot = this.getSnapshot(this.policies.snapshotPolicy ?? 'hybrid');
+    const texture = resolveTextureTarget(snapshot.textures, payload.textureId, payload.textureName);
+    if (!texture) {
+      const label = payload.textureId ?? payload.textureName ?? 'unknown';
+      return fail({ code: 'invalid_payload', message: `Texture not found: ${label}` });
+    }
+    const cubes = resolveCubeTargets(snapshot.cubes, payload.cubeIds, payload.cubeNames);
+    if (cubes.length === 0) {
+      return fail({ code: 'invalid_payload', message: 'No target cubes found' });
+    }
+    const faces = normalizeCubeFaces(payload.faces);
+    if (payload.faces && payload.faces.length > 0 && !faces) {
+      return fail({
+        code: 'invalid_payload',
+        message: 'faces must include valid directions (north/south/east/west/up/down)'
+      });
+    }
+    const cubeIds = Array.from(new Set(cubes.map((cube) => cube.id).filter(Boolean) as string[]));
+    const cubeNames = Array.from(new Set(cubes.map((cube) => cube.name)));
+    const err = this.editor.assignTexture({
+      textureId: texture.id ?? payload.textureId,
+      textureName: texture.name,
+      cubeIds,
+      cubeNames,
+      faces: faces ?? undefined
+    });
+    if (err) return fail(err);
+    return ok({
+      textureId: texture.id ?? payload.textureId,
+      textureName: texture.name,
+      cubeCount: cubes.length,
+      faces: faces ?? undefined
+    });
+  }
+
+  setFaceUv(payload: {
+    cubeId?: string;
+    cubeName?: string;
+    faces: FaceUvMap;
+    ifRevision?: string;
+  }): UsecaseResult<{ cubeId?: string; cubeName: string; faces: CubeFaceDirection[] }> {
+    const activeErr = this.ensureActive();
+    if (activeErr) return fail(activeErr);
+    const revisionErr = this.ensureRevisionMatch(payload.ifRevision);
+    if (revisionErr) return fail(revisionErr);
+    if (!payload.cubeId && !payload.cubeName) {
+      return fail({
+        code: 'invalid_payload',
+        message: 'cubeId or cubeName is required',
+        fix: 'Provide cubeId or cubeName from get_project_state.'
+      });
+    }
+    const faceEntries = Object.entries(payload.faces ?? {});
+    if (faceEntries.length === 0) {
+      return fail({
+        code: 'invalid_payload',
+        message: 'faces must include at least one face mapping',
+        fix: 'Provide a faces map with at least one face (e.g., {"north":[0,0,4,4]}).'
+      });
+    }
+    const faces: CubeFaceDirection[] = [];
+    const normalized: FaceUvMap = {};
+    for (const [faceKey, uv] of faceEntries) {
+      if (!VALID_CUBE_FACES.has(faceKey as CubeFaceDirection)) {
+        return fail({
+          code: 'invalid_payload',
+          message: `Invalid face: ${faceKey}`,
+          fix: 'Use north, south, east, west, up, or down.'
+        });
+      }
+      if (!Array.isArray(uv) || uv.length !== 4) {
+        return fail({
+          code: 'invalid_payload',
+          message: `UV for ${faceKey} must be [x1,y1,x2,y2].`
+        });
+      }
+      const [x1, y1, x2, y2] = uv;
+      if (![x1, y1, x2, y2].every((value) => typeof value === 'number' && Number.isFinite(value))) {
+        return fail({
+          code: 'invalid_payload',
+          message: `UV for ${faceKey} must contain finite numbers.`
+        });
+      }
+      const boundsErr = this.ensureFaceUvWithinResolution([x1, y1, x2, y2]);
+      if (boundsErr) return fail(boundsErr);
+      normalized[faceKey as CubeFaceDirection] = [x1, y1, x2, y2];
+      faces.push(faceKey as CubeFaceDirection);
+    }
+    const err = this.editor.setFaceUv({
+      cubeId: payload.cubeId,
+      cubeName: payload.cubeName,
+      faces: normalized
+    });
+    if (err) return fail(err);
+    return ok({ cubeId: payload.cubeId, cubeName: payload.cubeName ?? payload.cubeId ?? 'cube', faces });
   }
 
   addBone(payload: {
@@ -574,6 +787,8 @@ export class ToolService {
     if (idConflict) {
       return fail({ code: 'invalid_payload', message: `Cube id already exists: ${id}` });
     }
+    const uvErr = this.ensureUvWithinResolution(payload.uv);
+    if (uvErr) return fail(uvErr);
     const err = this.editor.addCube({
       id,
       name: payload.name,
@@ -649,6 +864,8 @@ export class ToolService {
         return fail({ code: 'invalid_payload', message: `Bone not found: ${boneUpdate}` });
       }
     }
+    const uvErr = this.ensureUvWithinResolution(payload.uv);
+    if (uvErr) return fail(uvErr);
     const err = this.editor.updateCube({
       id: targetId,
       name: targetName,
@@ -1001,7 +1218,12 @@ export class ToolService {
     if (activeErr) return fail(activeErr);
     const snapshot = this.getSnapshot(this.policies.snapshotPolicy ?? 'hybrid');
     const textures = this.editor.listTextures();
-    const findings = validateSnapshot(snapshot, { limits: this.capabilities.limits, textures });
+    const textureResolution = this.editor.getProjectTextureResolution() ?? undefined;
+    const findings = validateSnapshot(snapshot, {
+      limits: this.capabilities.limits,
+      textures,
+      textureResolution
+    });
     return ok({ findings });
   }
 
@@ -1073,6 +1295,51 @@ export class ToolService {
     return null;
   }
 
+  private ensureUvWithinResolution(uv?: [number, number]): ToolError | null {
+    if (!uv) return null;
+    const resolution = this.editor.getProjectTextureResolution();
+    if (!resolution) return null;
+    const [u, v] = uv;
+    if (u < 0 || v < 0 || u >= resolution.width || v >= resolution.height) {
+      return {
+        code: 'invalid_payload',
+        message: `UV ${u},${v} is outside texture resolution ${resolution.width}x${resolution.height}.`,
+        fix: 'Use get_project_state to read textureResolution and adjust uv or change the project texture resolution.',
+        details: { uv, textureResolution: resolution }
+      };
+    }
+    return null;
+  }
+
+  private ensureFaceUvWithinResolution(uv: [number, number, number, number]): ToolError | null {
+    const resolution = this.editor.getProjectTextureResolution();
+    if (!resolution) return null;
+    const [x1, y1, x2, y2] = uv;
+    if (x1 < 0 || y1 < 0 || x2 < 0 || y2 < 0) {
+      return {
+        code: 'invalid_payload',
+        message: 'Face UV coordinates must be non-negative.',
+        details: { uv, textureResolution: resolution }
+      };
+    }
+    if (x1 > resolution.width || x2 > resolution.width || y1 > resolution.height || y2 > resolution.height) {
+      return {
+        code: 'invalid_payload',
+        message: `Face UV is outside texture resolution ${resolution.width}x${resolution.height}.`,
+        fix: 'Use get_project_state to read textureResolution and adjust UVs or change the project texture resolution.',
+        details: { uv, textureResolution: resolution }
+      };
+    }
+    if (x2 < x1 || y2 < y1) {
+      return {
+        code: 'invalid_payload',
+        message: 'Face UV coordinates must satisfy x2 >= x1 and y2 >= y1.',
+        details: { uv }
+      };
+    }
+    return null;
+  }
+
   private ensureCubeLimit(increment: number): ToolError | null {
     const snapshot = this.getSnapshot(this.policies.snapshotPolicy ?? 'hybrid');
     const current = snapshot.cubes.length;
@@ -1084,6 +1351,89 @@ export class ToolService {
   }
 
 }
+
+const validateDataUriSize = (dataUri: string): ToolError | null => {
+  const bytes = estimateDataUriBytes(dataUri);
+  if (bytes === null) return null;
+  if (bytes > MAX_DATA_URI_BYTES) {
+    return {
+      code: 'invalid_payload',
+      message: `dataUri exceeds ${MAX_DATA_URI_BYTES} bytes`,
+      fix: 'Use smaller textures or apply_texture_spec ops.',
+      details: { bytes, maxBytes: MAX_DATA_URI_BYTES }
+    };
+  }
+  return null;
+};
+
+const estimateDataUriBytes = (dataUri: string): number | null => {
+  const commaIndex = dataUri.indexOf(',');
+  if (commaIndex < 0) return null;
+  const payload = dataUri.slice(commaIndex + 1);
+  if (!payload) return 0;
+  const header = dataUri.slice(0, commaIndex);
+  if (!header.includes(';base64')) {
+    return payload.length;
+  }
+  const padding = payload.endsWith('==') ? 2 : payload.endsWith('=') ? 1 : 0;
+  return Math.max(0, Math.floor((payload.length * 3) / 4) - padding);
+};
+
+const resolveTextureSize = (
+  primary: { width?: number; height?: number },
+  ...fallbacks: Array<{ width?: number; height?: number } | undefined>
+): { width?: number; height?: number } => {
+  const pick = (value?: number): number | undefined =>
+    typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
+  const candidates = [primary, ...fallbacks].filter(Boolean) as Array<{ width?: number; height?: number }>;
+  let width: number | undefined;
+  let height: number | undefined;
+  candidates.forEach((entry) => {
+    if (width === undefined) width = pick(entry.width);
+    if (height === undefined) height = pick(entry.height);
+  });
+  return { width, height };
+};
+
+const hashText = (value: string): string => {
+  let hash = 5381;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = ((hash << 5) + hash) ^ value.charCodeAt(i);
+  }
+  return (hash >>> 0).toString(16);
+};
+
+const VALID_CUBE_FACES: ReadonlySet<CubeFaceDirection> = new Set([
+  'north',
+  'south',
+  'east',
+  'west',
+  'up',
+  'down'
+]);
+
+const normalizeCubeFaces = (faces?: CubeFaceDirection[]): CubeFaceDirection[] | null => {
+  if (!faces || faces.length === 0) return null;
+  const normalized: CubeFaceDirection[] = [];
+  for (const face of faces) {
+    if (!VALID_CUBE_FACES.has(face)) {
+      return null;
+    }
+    if (!normalized.includes(face)) {
+      normalized.push(face);
+    }
+  }
+  return normalized.length > 0 ? normalized : null;
+};
+
+const resolveCubeTargets = (cubes: SessionState['cubes'], cubeIds?: string[], cubeNames?: string[]) => {
+  const ids = new Set(cubeIds ?? []);
+  const names = new Set(cubeNames ?? []);
+  if (ids.size === 0 && names.size === 0) {
+    return [...cubes];
+  }
+  return cubes.filter((cube) => (cube.id && ids.has(cube.id)) || names.has(cube.name));
+};
 
 function exportFormatToCapability(format: ExportPayload['format']): FormatKind | null {
   switch (format) {

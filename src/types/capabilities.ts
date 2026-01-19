@@ -24,15 +24,12 @@ export interface CapabilitiesGuidance {
     cache: 'no' | 'yes';
     note: string;
   };
-  retryPolicy: {
-    maxAttempts: number;
-    onErrors: string[];
-    steps: string[];
+  mutationPolicy: {
+    requiresRevision: boolean;
+    note: string;
   };
-  rediscovery: {
-    refetchTools: boolean;
-    refreshState: boolean;
-    methods: string[];
+  textureStrategy: {
+    note: string;
   };
 }
 

@@ -94,7 +94,14 @@ const cubeSig = (cube: TrackedCube) =>
     cube.mirror ?? null
   ]);
 const textureSig = (texture: TrackedTexture) =>
-  JSON.stringify([texture.id ?? null, texture.name, texture.path ?? '', texture.width ?? 0, texture.height ?? 0]);
+  JSON.stringify([
+    texture.id ?? null,
+    texture.name,
+    texture.path ?? '',
+    texture.width ?? 0,
+    texture.height ?? 0,
+    texture.contentHash ?? ''
+  ]);
 const animationSig = (anim: TrackedAnimation) =>
   JSON.stringify([anim.id ?? null, anim.name, anim.length, anim.loop, anim.fps ?? null, anim.channels?.length ?? 0]);
 

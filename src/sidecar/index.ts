@@ -43,7 +43,7 @@ const router = new McpRouter(
     token: config.token,
     serverInfo: { name: PLUGIN_ID, version: PLUGIN_VERSION },
     instructions:
-      'Use get_project_state/get_project_diff (or includeState/includeDiff) before mutations and include ifRevision. Prefer apply_project_spec/apply_* specs and id-based updates.'
+      'Use get_project_state/get_project_diff (or includeState/includeDiff) before mutations and include ifRevision. Prefer apply_project_spec/apply_* specs and id-based updates. Texture creation does not bind textures to cubes; call assign_texture explicitly, then set_face_uv for per-face UVs.'
   },
   executor,
   log

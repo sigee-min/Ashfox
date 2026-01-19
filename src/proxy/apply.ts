@@ -102,11 +102,13 @@ export const applyTextureSpecSteps = (
   limits: Limits,
   textures: TextureSpec[],
   report: ApplyReport,
-  meta: MetaOptions
+  meta: MetaOptions,
+  log?: Logger
 ): ToolResponse<ApplyReport> => {
   for (const texture of textures) {
     const label = texture.name ?? texture.targetName ?? texture.targetId ?? 'texture';
     const mode = texture.mode ?? 'create';
+    log?.info('applyTextureSpec ops', { texture: label, mode, ops: summarizeOps(texture.ops) });
     if (mode === 'create') {
       const renderRes = renderTextureSpec(texture, limits);
       if (!renderRes.ok) {
@@ -115,7 +117,9 @@ export const applyTextureSpecSteps = (
       const res = service.importTexture({
         id: texture.id,
         name: texture.name ?? label,
-        dataUri: renderRes.data.dataUri
+        dataUri: renderRes.data.dataUri,
+        width: texture.width,
+        height: texture.height
       });
       if (!res.ok) return withReportError(res.error, report, 'import_texture', label, meta, service);
       report.applied.textures.push(texture.name ?? label);
@@ -142,22 +146,48 @@ export const applyTextureSpecSteps = (
       );
     }
     let base: { image: CanvasImageSource; width: number; height: number } | null = null;
+    let baseDataUri: string | null = null;
     if (texture.useExisting) {
+      log?.info('applyTextureSpec base requested', { texture: label });
       const baseRes = toToolResponse(service.readTexture({ id: texture.targetId, name: texture.targetName }));
-      if (!baseRes.ok) return withReportError(baseRes.error, report, 'read_texture', label, meta, service);
+      if (!baseRes.ok) {
+        log?.warn('applyTextureSpec base missing', { texture: label, code: baseRes.error.code });
+        return withReportError(baseRes.error, report, 'read_texture', label, meta, service);
+      }
+      baseDataUri = baseRes.data.dataUri ?? null;
       const resolved = resolveTextureBase(baseRes.data);
-      if (!resolved.ok) return withReportError(resolved.error, report, 'read_texture', label, meta, service);
+      if (!resolved.ok) {
+        log?.warn('applyTextureSpec base unresolved', { texture: label, code: resolved.error.code });
+        return withReportError(resolved.error, report, 'read_texture', label, meta, service);
+      }
       base = resolved.data;
+      log?.info('applyTextureSpec base resolved', {
+        texture: label,
+        width: base.width,
+        height: base.height
+      });
     }
     const renderRes = renderTextureSpec(texture, limits, base ?? undefined);
     if (!renderRes.ok) {
       return withReportError(renderRes.error, report, 'render_texture', label, meta, service);
     }
+    if (baseDataUri && renderRes.data.dataUri === baseDataUri) {
+      return withReportError(
+        { code: 'no_change', message: 'Texture content is unchanged.' },
+        report,
+        'update_texture',
+        label,
+        meta,
+        service
+      );
+    }
     const res = service.updateTexture({
       id: texture.targetId,
       name: texture.targetName,
       newName: texture.name,
-      dataUri: renderRes.data.dataUri
+      dataUri: renderRes.data.dataUri,
+      width: texture.width,
+      height: texture.height
     });
     if (!res.ok) return withReportError(res.error, report, 'update_texture', label, meta, service);
     report.applied.textures.push(texture.name ?? texture.targetName ?? texture.targetId ?? label);
@@ -261,4 +291,17 @@ const recordApplyError = (
 ): ApplyReport => {
   report.errors.push({ step, item, message });
   return report;
+};
+
+
+const summarizeOps = (ops: TextureSpec['ops'] | undefined) => {
+  const list = Array.isArray(ops) ? ops : [];
+  const counts = new Map<string, number>();
+  list.forEach((op) => {
+    counts.set(op.op, (counts.get(op.op) ?? 0) + 1);
+  });
+  return {
+    total: list.length,
+    byOp: Object.fromEntries(counts)
+  };
 };

@@ -20,6 +20,7 @@ export type ToolErrorCode =
   | 'not_implemented'
   | 'invalid_state'
   | 'invalid_payload'
+  | 'no_change'
   | 'io_error'
   | 'unknown';
 

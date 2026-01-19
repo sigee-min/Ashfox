@@ -2,6 +2,7 @@
 
 export type Vec2 = [number, number];
 export type Vec3 = [number, number, number];
+export type CubeFaceDirection = 'north' | 'south' | 'east' | 'west' | 'up' | 'down';
 
 export type TextureSource = {
   id?: string;
@@ -19,6 +20,42 @@ export type TextureStat = {
   width: number;
   height: number;
   path?: string;
+};
+
+export type TextureResolution = {
+  width: number;
+  height: number;
+};
+
+export type TextureUsageCube = {
+  id?: string;
+  name: string;
+  faces: Array<{ face: CubeFaceDirection; uv?: [number, number, number, number] }>;
+};
+
+export type TextureUsageEntry = {
+  id?: string;
+  name: string;
+  cubeCount: number;
+  faceCount: number;
+  cubes: TextureUsageCube[];
+};
+
+export type TextureUsageUnresolved = {
+  textureRef: string;
+  cubeId?: string;
+  cubeName: string;
+  face: CubeFaceDirection;
+};
+
+export type TextureUsageResult = {
+  textures: TextureUsageEntry[];
+  unresolved?: TextureUsageUnresolved[];
+};
+
+export type TextureUsageQuery = {
+  textureId?: string;
+  textureName?: string;
 };
 
 export type ImportTextureCommand = {
@@ -39,6 +76,22 @@ export type UpdateTextureCommand = {
 export type DeleteTextureCommand = {
   id?: string;
   name?: string;
+};
+
+export type AssignTextureCommand = {
+  textureId?: string;
+  textureName?: string;
+  cubeIds?: string[];
+  cubeNames?: string[];
+  faces?: CubeFaceDirection[];
+};
+
+export type FaceUvMap = Partial<Record<CubeFaceDirection, [number, number, number, number]>>;
+
+export type SetFaceUvCommand = {
+  cubeId?: string;
+  cubeName?: string;
+  faces: FaceUvMap;
 };
 
 export type ReadTextureCommand = {
@@ -141,6 +194,8 @@ export interface EditorPort {
   updateTexture: (params: UpdateTextureCommand) => ToolError | null;
   deleteTexture: (params: DeleteTextureCommand) => ToolError | null;
   readTexture: (params: ReadTextureCommand) => { result?: TextureSource; error?: ToolError };
+  assignTexture: (params: AssignTextureCommand) => ToolError | null;
+  setFaceUv: (params: SetFaceUvCommand) => ToolError | null;
   addBone: (params: BoneCommand) => ToolError | null;
   updateBone: (params: UpdateBoneCommand) => ToolError | null;
   deleteBone: (params: DeleteBoneCommand) => ToolError | null;
@@ -154,4 +209,7 @@ export interface EditorPort {
   renderPreview: (params: RenderPreviewPayload) => { result?: RenderPreviewResult; error?: ToolError };
   writeFile: (path: string, contents: string) => ToolError | null;
   listTextures: () => TextureStat[];
+  getProjectTextureResolution: () => TextureResolution | null;
+  setProjectTextureResolution: (width: number, height: number) => ToolError | null;
+  getTextureUsage: (params: TextureUsageQuery) => { result?: TextureUsageResult; error?: ToolError };
 }

@@ -81,6 +81,43 @@ export class BlockbenchProjectAdapter {
       return { code: 'io_error', message };
     }
   }
+
+  getProjectTextureResolution(): { width: number; height: number } | null {
+    try {
+      const globals = readGlobals();
+      const project = globals.Project ?? globals.Blockbench?.project ?? null;
+      const width = Number(project?.texture_width);
+      const height = Number(project?.texture_height);
+      if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+        return null;
+      }
+      return { width, height };
+    } catch {
+      return null;
+    }
+  }
+
+  setProjectTextureResolution(width: number, height: number): ToolError | null {
+    try {
+      const globals = readGlobals();
+      const project = globals.Project ?? globals.Blockbench?.project ?? null;
+      if (!project) {
+        return { code: 'invalid_state', message: 'No active project.' };
+      }
+      if (typeof project.setTextureSize === 'function') {
+        project.setTextureSize(width, height);
+      } else {
+        project.texture_width = width;
+        project.texture_height = height;
+      }
+      this.log.info('project texture resolution set', { width, height });
+      return null;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'project texture resolution update failed';
+      this.log.error('project texture resolution update error', { message });
+      return { code: 'unknown', message };
+    }
+  }
 }
 
 const tryAutoConfirmProjectDialog = (

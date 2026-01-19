@@ -49,6 +49,7 @@ export class BlockbenchTextureAdapter {
         if (!loadedViaData) {
           tex.load?.();
         }
+        finalizeTextureChange(tex);
         tex.select?.();
       });
       this.log.info('texture imported', { name: params.name });
@@ -91,6 +92,7 @@ export class BlockbenchTextureAdapter {
             if (params.path) target.path = params.path;
             target.load?.();
           }
+          finalizeTextureChange(target);
         }
       });
       this.log.info('texture updated', { name: params.name, newName: params.newName });
@@ -201,6 +203,16 @@ export class BlockbenchTextureAdapter {
     return null;
   }
 }
+
+const finalizeTextureChange = (tex: TextureInstance): void => {
+  if (typeof tex.updateChangesAfterEdit === 'function') {
+    tex.updateChangesAfterEdit();
+    return;
+  }
+  if (typeof tex.updateLayerChanges === 'function') {
+    tex.updateLayerChanges(true);
+  }
+};
 
 const getTextureDataUri = (tex: TextureInstance): string | null => {
   if (!tex) return null;

@@ -5,11 +5,12 @@ import { TextureStat } from '../ports/editor';
 export interface ValidationContext {
   limits: Limits;
   textures?: TextureStat[];
+  textureResolution?: { width: number; height: number };
 }
 
 export function validateSnapshot(state: SessionState, context: ValidationContext): ValidateFinding[] {
   const findings: ValidateFinding[] = [];
-  const { limits, textures } = context;
+  const { limits, textures, textureResolution } = context;
 
   const boneNames = new Set(state.bones.map((b) => b.name));
   if (state.bones.length === 0) {
@@ -59,6 +60,21 @@ export function validateSnapshot(state: SessionState, context: ValidationContext
           code: 'texture_too_large',
           message: `Texture "${tex.name}" exceeds max size (${limits.maxTextureSize}px).`,
           severity: 'error'
+        });
+      }
+    });
+  }
+
+  if (textureResolution) {
+    const { width, height } = textureResolution;
+    state.cubes.forEach((cube) => {
+      if (!cube.uv) return;
+      const [u, v] = cube.uv;
+      if (u < 0 || v < 0 || u >= width || v >= height) {
+        findings.push({
+          code: 'uv_out_of_bounds',
+          message: `Cube "${cube.name}" UV ${u},${v} is outside texture resolution ${width}x${height}.`,
+          severity: 'warning'
         });
       }
     });

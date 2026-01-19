@@ -8,10 +8,15 @@ const numberArray = (minItems: number, maxItems: number): JsonSchema => ({
 });
 
 const emptyObject: JsonSchema = { type: 'object', additionalProperties: false };
+const cubeFaceSchema: JsonSchema = {
+  type: 'string',
+  enum: ['north', 'south', 'east', 'west', 'up', 'down']
+};
 
 const textureOpSchema: JsonSchema = {
   type: 'object',
-  additionalProperties: true,
+  required: ['op'],
+  additionalProperties: false,
   properties: {
     op: { type: 'string', enum: ['set_pixel', 'fill_rect', 'draw_rect', 'draw_line'] },
     x: { type: 'number' },
@@ -24,6 +29,20 @@ const textureOpSchema: JsonSchema = {
     y2: { type: 'number' },
     color: { type: 'string' },
     lineWidth: { type: 'number' }
+  }
+};
+
+const faceUvSchema: JsonSchema = {
+  type: 'object',
+  minProperties: 1,
+  additionalProperties: false,
+  properties: {
+    north: numberArray(4, 4),
+    south: numberArray(4, 4),
+    east: numberArray(4, 4),
+    west: numberArray(4, 4),
+    up: numberArray(4, 4),
+    down: numberArray(4, 4)
   }
 };
 
@@ -85,6 +104,25 @@ const toolSchemas: Record<string, JsonSchema> = {
     properties: {
       sinceRevision: { type: 'string' },
       detail: { type: 'string', enum: ['summary', 'full'] }
+    }
+  },
+  set_project_texture_resolution: {
+    type: 'object',
+    required: ['width', 'height'],
+    additionalProperties: false,
+    properties: {
+      width: { type: 'number' },
+      height: { type: 'number' },
+      ifRevision: { type: 'string' },
+      ...metaProps
+    }
+  },
+  get_texture_usage: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      textureId: { type: 'string' },
+      textureName: { type: 'string' }
     }
   },
   list_projects: emptyObject,
@@ -150,6 +188,31 @@ const toolSchemas: Record<string, JsonSchema> = {
     properties: {
       id: { type: 'string' },
       name: { type: 'string' },
+      ifRevision: { type: 'string' },
+      ...metaProps
+    }
+  },
+  assign_texture: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      textureId: { type: 'string' },
+      textureName: { type: 'string' },
+      cubeIds: { type: 'array', items: { type: 'string' } },
+      cubeNames: { type: 'array', items: { type: 'string' } },
+      faces: { type: 'array', minItems: 1, items: cubeFaceSchema },
+      ifRevision: { type: 'string' },
+      ...metaProps
+    }
+  },
+  set_face_uv: {
+    type: 'object',
+    required: ['faces'],
+    additionalProperties: false,
+    properties: {
+      cubeId: { type: 'string' },
+      cubeName: { type: 'string' },
+      faces: faceUvSchema,
       ifRevision: { type: 'string' },
       ...metaProps
     }
@@ -381,9 +444,10 @@ const toolSchemas: Record<string, JsonSchema> = {
     properties: {
       textures: {
         type: 'array',
+        minItems: 1,
         items: {
           type: 'object',
-          required: ['width', 'height'],
+          required: ['width', 'height', 'ops'],
           additionalProperties: false,
           properties: {
             mode: { type: 'string', enum: ['create', 'update'] },
@@ -397,6 +461,7 @@ const toolSchemas: Record<string, JsonSchema> = {
             useExisting: { type: 'boolean' },
             ops: {
               type: 'array',
+              minItems: 1,
               items: textureOpSchema
             }
           }
@@ -437,9 +502,10 @@ const toolSchemas: Record<string, JsonSchema> = {
       },
       textures: {
         type: 'array',
+        minItems: 1,
         items: {
           type: 'object',
-          required: ['width', 'height'],
+          required: ['width', 'height', 'ops'],
           additionalProperties: false,
           properties: {
             mode: { type: 'string', enum: ['create', 'update'] },
@@ -453,6 +519,7 @@ const toolSchemas: Record<string, JsonSchema> = {
             useExisting: { type: 'boolean' },
             ops: {
               type: 'array',
+              minItems: 1,
               items: textureOpSchema
             }
           }
@@ -470,7 +537,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   {
     name: 'list_capabilities',
     title: 'List Capabilities',
-    description: 'Returns plugin capabilities and limits.',
+    description: 'Returns plugin capabilities and limits. Tool schemas are strict (extra fields are rejected).',
     inputSchema: toolSchemas.list_capabilities
   },
   {
@@ -483,7 +550,8 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   {
     name: 'get_project_state',
     title: 'Get Project State',
-    description: 'Returns the current project state (summary by default).',
+    description:
+      'Returns the current project state (summary by default). Summary includes texture metadata and textureResolution. Full detail includes textureUsage (per-face mappings) when available.',
     inputSchema: toolSchemas.get_project_state
   },
   {
@@ -491,6 +559,20 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     title: 'Get Project Diff',
     description: 'Returns a diff from a prior revision to the current project state.',
     inputSchema: toolSchemas.get_project_diff
+  },
+  {
+    name: 'set_project_texture_resolution',
+    title: 'Set Project Texture Resolution',
+    description:
+      'Sets the project texture resolution (width/height). Requires ifRevision; call get_project_state first. This does not resize existing textures; use it before creating textures. Choose a size that fits your manual UV layout; for box-style layouts, use width >= 2*(w+d), height >= 2*(h+d), then round up to 32/64/128.',
+    inputSchema: toolSchemas.set_project_texture_resolution
+  },
+  {
+    name: 'get_texture_usage',
+    title: 'Get Texture Usage',
+    description:
+      'Returns which cubes/faces reference each texture, including per-face UVs when available. unresolved lists face references that do not match known textures.',
+    inputSchema: toolSchemas.get_texture_usage
   },
   {
     name: 'list_projects',
@@ -508,103 +590,121 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     name: 'create_project',
     title: 'Create Project',
     description:
-      'Creates a new Blockbench project with the given format. Set confirmDiscard=true to discard unsaved changes. If a project dialog opens, pass dialog values and set confirmDialog=true to auto-confirm.',
+      'Creates a new Blockbench project with the given format. Requires ifRevision; call get_project_state first. Set confirmDiscard=true to discard unsaved changes. If a project dialog opens, pass dialog values and set confirmDialog=true to auto-confirm.',
     inputSchema: toolSchemas.create_project
   },
   {
     name: 'reset_project',
     title: 'Reset Project',
-    description: 'Resets the current Blockbench project.',
+    description: 'Resets the current Blockbench project. Requires ifRevision; call get_project_state first.',
     inputSchema: toolSchemas.reset_project
   },
   {
     name: 'import_texture',
     title: 'Import Texture',
-    description: 'Imports a texture from a file path or data URI.',
+    description:
+      'Imports a texture from a file path or data URI. Requires ifRevision; call get_project_state first. This does not bind the texture to cubes; call assign_texture to apply it.',
     inputSchema: toolSchemas.import_texture
   },
   {
     name: 'update_texture',
     title: 'Update Texture',
-    description: 'Updates a texture by id or name.',
+    description:
+      'Updates a texture by id or name. Requires ifRevision; call get_project_state first. This does not bind the texture to cubes; call assign_texture to apply it.',
     inputSchema: toolSchemas.update_texture
   },
   {
     name: 'delete_texture',
     title: 'Delete Texture',
-    description: 'Deletes a texture by id or name.',
+    description: 'Deletes a texture by id or name. Requires ifRevision; call get_project_state first.',
     inputSchema: toolSchemas.delete_texture
+  },
+  {
+    name: 'assign_texture',
+    title: 'Assign Texture',
+    description:
+      'Assigns a texture to cubes/faces without changing UVs. Requires ifRevision; call get_project_state first. Use this after import/update/apply_texture_spec. Omit cubeIds/cubeNames to apply to all cubes. Use set_face_uv to define per-face UVs explicitly. Prefer material-group textures (pot/soil/plant) and assign by cubeNames for stability.',
+    inputSchema: toolSchemas.assign_texture
+  },
+  {
+    name: 'set_face_uv',
+    title: 'Set Face UV',
+    description:
+      'Sets per-face UVs for a cube without auto-UV. Requires ifRevision; call get_project_state first. Provide cubeId or cubeName plus a faces map (e.g., {north:[x1,y1,x2,y2], up:[x1,y1,x2,y2]}). UVs are in texture pixels and should fit within the project textureResolution.',
+    inputSchema: toolSchemas.set_face_uv
   },
   {
     name: 'add_bone',
     title: 'Add Bone',
-    description: 'Adds a bone to the current project.',
+    description: 'Adds a bone to the current project. Requires ifRevision; call get_project_state first.',
     inputSchema: toolSchemas.add_bone
   },
   {
     name: 'update_bone',
     title: 'Update Bone',
-    description: 'Updates a bone (rename, transform, or reparent).',
+    description: 'Updates a bone (rename, transform, or reparent). Requires ifRevision; call get_project_state first.',
     inputSchema: toolSchemas.update_bone
   },
   {
     name: 'delete_bone',
     title: 'Delete Bone',
-    description: 'Deletes a bone (and its descendants).',
+    description: 'Deletes a bone (and its descendants). Requires ifRevision; call get_project_state first.',
     inputSchema: toolSchemas.delete_bone
   },
   {
     name: 'add_cube',
     title: 'Add Cube',
-    description: 'Adds a cube to the given bone.',
+    description:
+      'Adds a cube to the given bone. Requires ifRevision; call get_project_state first. If uv is provided it must fit within the project textureResolution. Texture binding is separate; use assign_texture.',
     inputSchema: toolSchemas.add_cube
   },
   {
     name: 'update_cube',
     title: 'Update Cube',
-    description: 'Updates a cube (rename, transform, or reparent).',
+    description:
+      'Updates a cube (rename, transform, or reparent). Requires ifRevision; call get_project_state first. If uv is provided it must fit within the project textureResolution.',
     inputSchema: toolSchemas.update_cube
   },
   {
     name: 'delete_cube',
     title: 'Delete Cube',
-    description: 'Deletes a cube.',
+    description: 'Deletes a cube. Requires ifRevision; call get_project_state first.',
     inputSchema: toolSchemas.delete_cube
   },
   {
     name: 'apply_rig_template',
     title: 'Apply Rig Template',
-    description: 'Applies a rig template to the project.',
+    description: 'Applies a rig template to the project. Requires ifRevision; call get_project_state first.',
     inputSchema: toolSchemas.apply_rig_template
   },
   {
     name: 'create_animation_clip',
     title: 'Create Animation Clip',
-    description: 'Creates an animation clip.',
+    description: 'Creates an animation clip. Requires ifRevision; call get_project_state first.',
     inputSchema: toolSchemas.create_animation_clip
   },
   {
     name: 'update_animation_clip',
     title: 'Update Animation Clip',
-    description: 'Updates an animation clip.',
+    description: 'Updates an animation clip. Requires ifRevision; call get_project_state first.',
     inputSchema: toolSchemas.update_animation_clip
   },
   {
     name: 'delete_animation_clip',
     title: 'Delete Animation Clip',
-    description: 'Deletes an animation clip.',
+    description: 'Deletes an animation clip. Requires ifRevision; call get_project_state first.',
     inputSchema: toolSchemas.delete_animation_clip
   },
   {
     name: 'set_keyframes',
     title: 'Set Keyframes',
-    description: 'Adds keyframes to an animation clip.',
+    description: 'Adds keyframes to an animation clip. Requires ifRevision; call get_project_state first.',
     inputSchema: toolSchemas.set_keyframes
   },
   {
     name: 'export',
     title: 'Export',
-    description: 'Exports the current model to a file path.',
+    description: 'Exports the current model to a file path. Requires ifRevision; call get_project_state first.',
     inputSchema: toolSchemas.export
   },
   {
@@ -623,25 +723,28 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   {
     name: 'apply_model_spec',
     title: 'Apply Model Spec',
-    description: 'Applies a structured model specification.',
+    description:
+      'Applies a structured model specification. Requires ifRevision; call get_project_state first. Texture imports only create textures; call assign_texture to bind them to cubes.',
     inputSchema: toolSchemas.apply_model_spec
   },
   {
     name: 'apply_texture_spec',
     title: 'Apply Texture Spec',
-    description: 'Applies a structured texture specification.',
+    description:
+      'Applies a structured texture specification (ops-only). Requires ifRevision; returns no_change when no pixels change. This creates/updates texture data only; call assign_texture to bind it to cubes, then set_face_uv for manual per-face UVs. Prefer separate textures per material group (pot/soil/plant) rather than one mega-texture. Choose width/height to fit the UV layout; for box-style layouts use width >= 2*(w+d), height >= 2*(h+d), then round up to 32/64/128. If you change texture size, consider set_project_texture_resolution first.',
     inputSchema: toolSchemas.apply_texture_spec
   },
   {
     name: 'apply_anim_spec',
     title: 'Apply Animation Spec',
-    description: 'Applies a structured animation specification.',
+    description: 'Applies a structured animation specification. Requires ifRevision; call get_project_state first.',
     inputSchema: toolSchemas.apply_anim_spec
   },
   {
     name: 'apply_project_spec',
     title: 'Apply Project Spec',
-    description: 'Applies a combined model, texture, and animation specification.',
+    description:
+      'Applies a combined model, texture, and animation specification (textures are ops-only). Requires ifRevision; call get_project_state first. Call assign_texture after texture steps to apply them to cubes.',
     inputSchema: toolSchemas.apply_project_spec
   }
 ];
@@ -649,3 +752,4 @@ export const MCP_TOOLS: McpToolDefinition[] = [
 export const getToolSchema = (name: string): JsonSchema | null => toolSchemas[name] ?? null;
 
 export const isKnownTool = (name: string) => Boolean(toolSchemas[name]);
+

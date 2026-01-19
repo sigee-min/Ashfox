@@ -74,7 +74,8 @@ function mergeTexture(
     name: pickString(liveTex.name, sessionTex.name),
     path: pickString(liveTex.path, sessionTex.path),
     width: pickSize(liveTex.width, sessionTex.width),
-    height: pickSize(liveTex.height, sessionTex.height)
+    height: pickSize(liveTex.height, sessionTex.height),
+    contentHash: pickString(liveTex.contentHash, sessionTex.contentHash)
   };
 }
 

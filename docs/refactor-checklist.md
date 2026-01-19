@@ -11,5 +11,7 @@
 - `create_project(ifRevision)` succeeds.
 - `add_bone` and `add_cube` succeed.
 - `apply_texture_spec` updates state and revision.
+- `assign_texture` binds textures to cubes without changing UVs.
+- `set_face_uv` updates per-face UVs as provided.
 - `render_preview` returns content output.
 - `export` writes a file when path is writable.

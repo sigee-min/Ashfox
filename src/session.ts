@@ -26,6 +26,7 @@ export interface TrackedTexture {
   path?: string;
   width?: number;
   height?: number;
+  contentHash?: string;
 }
 
 export interface TrackedAnimationChannel {
@@ -248,6 +249,7 @@ export class ProjectSession {
       path?: string;
       width?: number;
       height?: number;
+      contentHash?: string;
     }
   ): boolean {
     const tex = this.state.textures.find((t) => t.name === name);
@@ -257,6 +259,7 @@ export class ProjectSession {
     if (updates.path !== undefined) tex.path = updates.path;
     if (typeof updates.width === 'number') tex.width = updates.width;
     if (typeof updates.height === 'number') tex.height = updates.height;
+    if (updates.contentHash !== undefined) tex.contentHash = updates.contentHash;
     return true;
   }
 

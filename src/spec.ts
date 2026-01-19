@@ -69,7 +69,7 @@ export interface TextureSpec {
   height: number;
   background?: string;
   useExisting?: boolean;
-  ops?: TextureOp[];
+  ops: TextureOp[];
 }
 
 export type TextureOp =

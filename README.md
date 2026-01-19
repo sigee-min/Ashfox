@@ -7,6 +7,7 @@ bbmcp turns Blockbench into an MCP-native modeling backend with a clean tool sur
 - MCP-first HTTP server with tool discovery and schema versioning.
 - High-level spec tools (`apply_model_spec`, `apply_texture_spec`, `apply_project_spec`).
 - Low-level controls (bones, cubes, textures, animations, export, validate).
+- Explicit texture assignment via `assign_texture` (no hidden auto-assign).
 - Revision guard (`ifRevision`) for safe concurrent edits.
 - Preview output as MCP `content` image blocks (base64 PNG).
 - Vanilla enabled by default; GeckoLib/Animated Java gated by capabilities.
@@ -42,6 +43,13 @@ http://127.0.0.1:8787/mcp
 4) `render_preview` for images.
 5) `export` for JSON output.
 
+## Texture Flow (Recommended)
+1) `apply_texture_spec` (or `import_texture` / `update_texture`) to create or update texture data.
+2) `assign_texture` to bind textures to cubes (required for visible results; does not change UVs).
+3) `set_face_uv` to apply per-face UVs explicitly.
+4) Prefer material-group textures (pot/soil/plant) and assign via `cubeNames` for stability.
+5) Size textures to fit the UV layout (width >= 2*(w+d), height >= 2*(h+d)) and round up to 32/64/128; use `set_project_texture_resolution` before creating textures.
+
 ## Preview Output (MCP Standard)
 `render_preview` responds with MCP `content` blocks:
 ```json
@@ -70,7 +78,6 @@ The plugin prefers an inline server. If unavailable, it can spawn a sidecar.
 ## Notes
 - The plugin is designed for the latest Blockbench desktop build.
 - Tool schemas are strict; use `list_capabilities` and tool definitions as the source of truth.
-- If you see `Resource not found` on tool paths, refetch tool resources and retry.
 
 ## License
 See `LICENSE`.

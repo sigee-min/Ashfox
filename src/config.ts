@@ -4,7 +4,7 @@ import { FormatOverrides, resolveFormatId } from './domain/format';
 
 export const PLUGIN_ID = 'bbmcp';
 export const PLUGIN_VERSION = '0.0.2';
-export const TOOL_SCHEMA_VERSION = '2025-03-23';
+export const TOOL_SCHEMA_VERSION = '2025-03-24';
 export const DEFAULT_SERVER_HOST = '127.0.0.1';
 export const DEFAULT_SERVER_PORT = 8787;
 export const DEFAULT_SERVER_PATH = '/mcp';
@@ -24,18 +24,14 @@ const BASE_FORMATS: Array<{ format: FormatKind; animations: boolean }> = [
 const CAPABILITIES_GUIDANCE = {
   toolPathStability: {
     cache: 'no' as const,
-    note:
-      'Tool paths like /bbmcp/link_... are session-bound and can change after reconnects. Never cache tool paths; re-discover tools when a request returns Resource not found.'
+    note: 'Tool paths like /bbmcp/link_... are session-bound and can change after reconnects.'
   },
-  retryPolicy: {
-    maxAttempts: 2,
-    onErrors: ['resource_not_found', 'invalid_state', 'invalid_state_revision_mismatch', 'tool_registry_empty'],
-    steps: ['tools_list', 'refresh_state', 'retry_once']
+  mutationPolicy: {
+    requiresRevision: true,
+    note: 'All mutating tools require ifRevision. Call get_project_state before mutations and retry with the latest revision.'
   },
-  rediscovery: {
-    refetchTools: true,
-    refreshState: true,
-    methods: ['tools/list', 'list_capabilities', 'get_project_state']
+  textureStrategy: {
+    note: 'Prefer splitting textures by material groups (e.g., pot/soil/plant) and assign by cubeNames. After assign_texture, use set_face_uv to map per-face UVs explicitly. Choose texture size to fit the UV layout: width >= 2*(w+d), height >= 2*(h+d), then round up to 32/64/128. Call set_project_texture_resolution before creating textures when increasing size.'
   }
 };
 

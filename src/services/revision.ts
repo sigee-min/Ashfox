@@ -62,7 +62,14 @@ const hashSnapshot = (snapshot: SessionState): string => {
       c.inflate ?? null,
       c.mirror ?? null
     ]),
-    textures: snapshot.textures.map((t) => [t.id ?? '', t.name, t.path ?? '', t.width ?? 0, t.height ?? 0]),
+    textures: snapshot.textures.map((t) => [
+      t.id ?? '',
+      t.name,
+      t.path ?? '',
+      t.width ?? 0,
+      t.height ?? 0,
+      t.contentHash ?? ''
+    ]),
     animations: snapshot.animations.map((a) => [
       a.id ?? '',
       a.name,
