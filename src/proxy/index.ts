@@ -10,15 +10,7 @@ import {
 import { ToolService } from '../usecases/ToolService';
 import { buildRenderPreviewContent, buildRenderPreviewStructured } from '../mcp/content';
 import { applyModelSpecSteps, applyTextureSpecSteps, createApplyReport } from './apply';
-import {
-  guardRevision,
-  MetaOptions,
-  resolveDiffDetail,
-  resolveIncludeDiff,
-  resolveIncludeState,
-  withErrorMeta,
-  withMeta
-} from './meta';
+import { withErrorMeta } from './meta';
 import { toToolResponse } from './response';
 import { validateEntitySpec, validateModelSpec, validateTextureSpec, validateUvSpec } from './validators';
 import { computeTextureUsageId } from '../domain/textureUsage';
@@ -26,6 +18,8 @@ import { guardUvOverlaps, guardUvScale, guardUvUsageId } from '../domain/uvGuard
 import { collectTextureTargets } from '../domain/uvTargets';
 import { toDomainCube, toDomainTextureUsage } from '../usecases/domainMappers';
 import { buildUvApplyPlan } from '../domain/uvApply';
+import { guardUvForTextureTargets } from './uvGuard';
+import { createProxyPipeline } from './pipeline';
 
 export class ProxyRouter {
   private readonly service: ToolService;
@@ -52,100 +46,78 @@ export class ProxyRouter {
   async applyModelSpec(payload: ApplyModelSpecPayload): Promise<ToolResponse<unknown>> {
     const v = validateModelSpec(payload, this.limits);
     if (!v.ok) return v;
-    const includeState = resolveIncludeState(payload.includeState, this.includeStateByDefault);
-    const meta: MetaOptions = {
-      includeState,
-      includeDiff: resolveIncludeDiff(payload.includeDiff, this.includeDiffByDefault),
-      diffDetail: resolveDiffDetail(payload.diffDetail),
-      ifRevision: payload.ifRevision
-    };
-    const revisionError = guardRevision(this.service, payload.ifRevision, meta);
+    const pipeline = createProxyPipeline({
+      service: this.service,
+      payload,
+      includeStateByDefault: this.includeStateByDefault,
+      includeDiffByDefault: this.includeDiffByDefault,
+      runWithoutRevisionGuard: (fn) => this.runWithoutRevisionGuard(fn)
+    });
+    const revisionError = pipeline.guardRevision();
     if (revisionError) return revisionError;
-    return this.runWithoutRevisionGuard(async () => {
+    return pipeline.run(() => {
       const report = createApplyReport();
-      const result = applyModelSpecSteps(this.service, this.log, payload, report, meta);
+      const result = applyModelSpecSteps(this.service, this.log, payload, report, pipeline.meta);
       if (!result.ok) return result;
-      return { ok: true, data: withMeta({ applied: true, report }, meta, this.service) };
+      return pipeline.ok({ applied: true, report });
     });
   }
 
   async applyTextureSpec(payload: ApplyTextureSpecPayload): Promise<ToolResponse<unknown>> {
     const v = validateTextureSpec(payload, this.limits);
     if (!v.ok) return v;
-    const includeState = resolveIncludeState(payload.includeState, this.includeStateByDefault);
-    const meta: MetaOptions = {
-      includeState,
-      includeDiff: resolveIncludeDiff(payload.includeDiff, this.includeDiffByDefault),
-      diffDetail: resolveDiffDetail(payload.diffDetail),
-      ifRevision: payload.ifRevision
-    };
-    const guard = guardRevision(this.service, payload.ifRevision, meta);
-    if (guard) return guard;
-    const usageRes = this.service.getTextureUsage({});
-    if (!usageRes.ok) return withErrorMeta(usageRes.error, meta, this.service);
-    const usage = toDomainTextureUsage(usageRes.value);
-    const usageIdError = guardUvUsageId(usage, payload.uvUsageId);
-    if (usageIdError) {
-      return withErrorMeta(usageIdError, meta, this.service);
-    }
-    const overlapTargets = collectTextureTargets(payload.textures);
-    const overlapError = guardUvOverlaps(usage, overlapTargets);
-    if (overlapError) {
-      return withErrorMeta(overlapError, meta, this.service);
-    }
-    const stateRes = this.service.getProjectState({ detail: 'full' });
-    if (!stateRes.ok) return withErrorMeta(stateRes.error, meta, this.service);
-    const project = stateRes.value.project;
-    const scaleTargets = collectTextureTargets(payload.textures);
-    const scaleError = guardUvScale({
-      usage,
-      cubes: (project.cubes ?? []).map((cube) => toDomainCube(cube)),
-      resolution: project.textureResolution,
-      policy: this.service.getUvPolicy(),
-      targets: scaleTargets
+    const pipeline = createProxyPipeline({
+      service: this.service,
+      payload,
+      includeStateByDefault: this.includeStateByDefault,
+      includeDiffByDefault: this.includeDiffByDefault,
+      runWithoutRevisionGuard: (fn) => this.runWithoutRevisionGuard(fn)
     });
-    if (scaleError) {
-      return withErrorMeta(scaleError, meta, this.service);
-    }
-    return this.runWithoutRevisionGuard(async () => {
+    const guard = pipeline.guardRevision();
+    if (guard) return guard;
+    const targets = collectTextureTargets(payload.textures);
+    const uvGuard = guardUvForTextureTargets(this.service, pipeline.meta, payload.uvUsageId, targets);
+    if (!uvGuard.ok) return uvGuard;
+    const usage = uvGuard.data.usage;
+    return pipeline.run(async () => {
       const report = createApplyReport();
       const result = await applyTextureSpecSteps(
         this.service,
         this.limits,
         payload.textures,
         report,
-        meta,
+        pipeline.meta,
         this.log,
         usage
       );
       if (!result.ok) return result;
       this.log.info('applyTextureSpec applied', { textures: payload.textures.length });
-      return { ok: true, data: withMeta({ applied: true, report }, meta, this.service) };
+      return pipeline.ok({ applied: true, report });
     });
   }
 
   async applyUvSpec(payload: ApplyUvSpecPayload): Promise<ToolResponse<unknown>> {
     const v = validateUvSpec(payload);
     if (!v.ok) return v;
-    const includeState = resolveIncludeState(payload.includeState, this.includeStateByDefault);
-    const meta: MetaOptions = {
-      includeState,
-      includeDiff: resolveIncludeDiff(payload.includeDiff, this.includeDiffByDefault),
-      diffDetail: resolveDiffDetail(payload.diffDetail),
-      ifRevision: payload.ifRevision
-    };
-    const guard = guardRevision(this.service, payload.ifRevision, meta);
+    const pipeline = createProxyPipeline({
+      service: this.service,
+      payload,
+      includeStateByDefault: this.includeStateByDefault,
+      includeDiffByDefault: this.includeDiffByDefault,
+      runWithoutRevisionGuard: (fn) => this.runWithoutRevisionGuard(fn)
+    });
+    const guard = pipeline.guardRevision();
     if (guard) return guard;
-    return this.runWithoutRevisionGuard(async () => {
+    return pipeline.run(async () => {
       const usageRes = this.service.getTextureUsage({});
-      if (!usageRes.ok) return withErrorMeta(usageRes.error, meta, this.service);
+      if (!usageRes.ok) return withErrorMeta(usageRes.error, pipeline.meta, this.service);
       const usage = toDomainTextureUsage(usageRes.value);
       const usageIdError = guardUvUsageId(usage, payload.uvUsageId);
       if (usageIdError) {
-        return withErrorMeta(usageIdError, meta, this.service);
+        return withErrorMeta(usageIdError, pipeline.meta, this.service);
       }
       const stateRes = this.service.getProjectState({ detail: 'full' });
-      if (!stateRes.ok) return withErrorMeta(stateRes.error, meta, this.service);
+      if (!stateRes.ok) return withErrorMeta(stateRes.error, pipeline.meta, this.service);
       const project = stateRes.value.project;
       const planRes = buildUvApplyPlan(
         usage,
@@ -153,11 +125,11 @@ export class ProxyRouter {
         payload.assignments,
         project.textureResolution
       );
-      if (!planRes.ok) return withErrorMeta(planRes.error, meta, this.service);
+      if (!planRes.ok) return withErrorMeta(planRes.error, pipeline.meta, this.service);
 
       const targets = collectTextureTargets(planRes.data.touchedTextures);
       const overlapError = guardUvOverlaps(planRes.data.usage, targets);
-      if (overlapError) return withErrorMeta(overlapError, meta, this.service);
+      if (overlapError) return withErrorMeta(overlapError, pipeline.meta, this.service);
 
       const scaleError = guardUvScale({
         usage: planRes.data.usage,
@@ -166,7 +138,7 @@ export class ProxyRouter {
         policy: this.service.getUvPolicy(),
         targets
       });
-      if (scaleError) return withErrorMeta(scaleError, meta, this.service);
+      if (scaleError) return withErrorMeta(scaleError, pipeline.meta, this.service);
 
       for (const update of planRes.data.updates) {
         const res = this.service.setFaceUv({
@@ -175,7 +147,7 @@ export class ProxyRouter {
           faces: update.faces,
           ifRevision: payload.ifRevision
         });
-        if (!res.ok) return withErrorMeta(res.error, meta, this.service);
+        if (!res.ok) return withErrorMeta(res.error, pipeline.meta, this.service);
       }
       const nextUsageId = computeTextureUsageId(planRes.data.usage);
       const result = {
@@ -184,7 +156,7 @@ export class ProxyRouter {
         faces: planRes.data.faceCount,
         uvUsageId: nextUsageId
       };
-      return { ok: true, data: withMeta(result, meta, this.service) };
+      return pipeline.ok(result);
     });
   }
 
@@ -194,16 +166,16 @@ export class ProxyRouter {
     if (payload.format !== 'geckolib') {
       return { ok: false, error: { code: 'not_implemented', message: `Format not implemented: ${payload.format}` } };
     }
-    const includeState = resolveIncludeState(payload.includeState, this.includeStateByDefault);
-    const meta: MetaOptions = {
-      includeState,
-      includeDiff: resolveIncludeDiff(payload.includeDiff, this.includeDiffByDefault),
-      diffDetail: resolveDiffDetail(payload.diffDetail),
-      ifRevision: payload.ifRevision
-    };
-    const guard = guardRevision(this.service, payload.ifRevision, meta);
+    const pipeline = createProxyPipeline({
+      service: this.service,
+      payload,
+      includeStateByDefault: this.includeStateByDefault,
+      includeDiffByDefault: this.includeDiffByDefault,
+      runWithoutRevisionGuard: (fn) => this.runWithoutRevisionGuard(fn)
+    });
+    const guard = pipeline.guardRevision();
     if (guard) return guard;
-    return this.runWithoutRevisionGuard(async () => {
+    return pipeline.run(async () => {
       const result: Record<string, unknown> = {
         format: payload.format,
         targetVersion: payload.targetVersion ?? 'v4'
@@ -221,11 +193,11 @@ export class ProxyRouter {
           dialog: options.dialog,
           ifRevision: payload.ifRevision
         });
-        if (!ensure.ok) return withErrorMeta(ensure.error, meta, this.service);
+        if (!ensure.ok) return withErrorMeta(ensure.error, pipeline.meta, this.service);
         result.project = ensure.value;
       }
       const stateCheck = this.service.getProjectState({ detail: 'summary' });
-      if (!stateCheck.ok) return withErrorMeta(stateCheck.error, meta, this.service);
+      if (!stateCheck.ok) return withErrorMeta(stateCheck.error, pipeline.meta, this.service);
       if (stateCheck.value.project.format !== 'geckolib') {
         return withErrorMeta(
           {
@@ -233,7 +205,7 @@ export class ProxyRouter {
             message: 'Active project format must be geckolib for apply_entity_spec.',
             fix: 'Call apply_entity_spec with ensureProject or switch to a geckolib project.'
           },
-          meta,
+          pipeline.meta,
           this.service
         );
       }
@@ -244,46 +216,30 @@ export class ProxyRouter {
           this.log,
           { model: payload.model, ifRevision: payload.ifRevision },
           report,
-          meta
+          pipeline.meta
         );
         if (!modelRes.ok) return modelRes;
         result.model = { applied: true, report };
       }
       if (payload.textures && payload.textures.length > 0) {
-        const usageRes = this.service.getTextureUsage({});
-        if (!usageRes.ok) return withErrorMeta(usageRes.error, meta, this.service);
-        const usage = toDomainTextureUsage(usageRes.value);
         if (!payload.uvUsageId) {
           return withErrorMeta(
             { code: 'invalid_payload', message: 'uvUsageId is required when textures are provided' },
-            meta,
+            pipeline.meta,
             this.service
           );
         }
-        const usageIdError = guardUvUsageId(usage, payload.uvUsageId);
-        if (usageIdError) return withErrorMeta(usageIdError, meta, this.service);
-
         const targets = collectTextureTargets(payload.textures);
-        const overlapError = guardUvOverlaps(usage, targets);
-        if (overlapError) return withErrorMeta(overlapError, meta, this.service);
-        const stateRes = this.service.getProjectState({ detail: 'full' });
-        if (!stateRes.ok) return withErrorMeta(stateRes.error, meta, this.service);
-        const project = stateRes.value.project;
-        const scaleError = guardUvScale({
-          usage,
-          cubes: (project.cubes ?? []).map((cube) => toDomainCube(cube)),
-          resolution: project.textureResolution,
-          policy: this.service.getUvPolicy(),
-          targets
-        });
-        if (scaleError) return withErrorMeta(scaleError, meta, this.service);
+        const uvGuard = guardUvForTextureTargets(this.service, pipeline.meta, payload.uvUsageId, targets);
+        if (!uvGuard.ok) return uvGuard;
+        const usage = uvGuard.data.usage;
         const report = createApplyReport();
         const textureRes = await applyTextureSpecSteps(
           this.service,
           this.limits,
           payload.textures,
           report,
-          meta,
+          pipeline.meta,
           this.log,
           usage
         );
@@ -292,7 +248,7 @@ export class ProxyRouter {
       }
       if (payload.animations && payload.animations.length > 0) {
         const stateRes = this.service.getProjectState({ detail: 'full' });
-        if (!stateRes.ok) return withErrorMeta(stateRes.error, meta, this.service);
+        if (!stateRes.ok) return withErrorMeta(stateRes.error, pipeline.meta, this.service);
         const existing = new Set((stateRes.value.project.animations ?? []).map((anim) => anim.name));
         const applied: string[] = [];
         let keyframeCount = 0;
@@ -306,7 +262,7 @@ export class ProxyRouter {
               fps: anim.fps ?? 20,
               ifRevision: payload.ifRevision
             });
-            if (!createRes.ok) return withErrorMeta(createRes.error, meta, this.service);
+            if (!createRes.ok) return withErrorMeta(createRes.error, pipeline.meta, this.service);
           } else {
             const updateRes = this.service.updateAnimationClip({
               name: anim.name,
@@ -315,7 +271,7 @@ export class ProxyRouter {
               fps: anim.fps,
               ifRevision: payload.ifRevision
             });
-            if (!updateRes.ok) return withErrorMeta(updateRes.error, meta, this.service);
+            if (!updateRes.ok) return withErrorMeta(updateRes.error, pipeline.meta, this.service);
           }
           applied.push(anim.name);
           if (anim.channels) {
@@ -328,7 +284,7 @@ export class ProxyRouter {
                 keys: channel.keys,
                 ifRevision: payload.ifRevision
               });
-              if (!keyRes.ok) return withErrorMeta(keyRes.error, meta, this.service);
+              if (!keyRes.ok) return withErrorMeta(keyRes.error, pipeline.meta, this.service);
             }
           }
           if (anim.triggers) {
@@ -340,13 +296,13 @@ export class ProxyRouter {
                 keys: trigger.keys,
                 ifRevision: payload.ifRevision
               });
-              if (!triggerRes.ok) return withErrorMeta(triggerRes.error, meta, this.service);
+              if (!triggerRes.ok) return withErrorMeta(triggerRes.error, pipeline.meta, this.service);
             }
           }
         }
         result.animations = { applied: true, clips: applied, keyframes: keyframeCount };
       }
-      return { ok: true, data: withMeta(result, meta, this.service) };
+      return pipeline.ok(result);
     });
   }
 
