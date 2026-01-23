@@ -19,6 +19,8 @@ import { collectSingleTarget } from '../domain/uvTargets';
 import { buildUvAtlasPlan } from '../domain/uvAtlas';
 import { UvPolicyConfig } from '../domain/uvPolicy';
 import { toDomainSnapshot, toDomainTextureUsage } from './domainMappers';
+import { checkDimensions } from '../domain/dimensions';
+import { requireUvUsageId } from '../domain/uvUsageId';
 
 export type TextureToolContext = {
   ensureActive: () => ToolError | null;
@@ -58,22 +60,23 @@ export const runGenerateTexturePreset = (
     return fail({ code: 'not_implemented', message: 'Texture renderer unavailable.' });
   }
   const label = payload.name ?? payload.targetName ?? payload.targetId ?? payload.preset;
-  if (!payload.uvUsageId || payload.uvUsageId.trim().length === 0) {
-    return fail({
-      code: 'invalid_payload',
-      message: 'uvUsageId is required. Call preflight_texture before generate_texture_preset.'
-    });
-  }
+  const usageIdRes = requireUvUsageId(
+    payload.uvUsageId,
+    'uvUsageId is required. Call preflight_texture before generate_texture_preset.'
+  );
+  if (!usageIdRes.ok) return fail(usageIdRes.error);
+  const uvUsageId = usageIdRes.data;
   const width = Number(payload.width);
   const height = Number(payload.height);
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
-    return fail({ code: 'invalid_payload', message: 'width and height must be positive numbers.' });
-  }
-  if (!Number.isInteger(width) || !Number.isInteger(height)) {
-    return fail({ code: 'invalid_payload', message: 'width and height must be integers.' });
-  }
   const maxSize = ctx.capabilities.limits.maxTextureSize;
-  if (width > maxSize || height > maxSize) {
+  const sizeCheck = checkDimensions(width, height, { requireInteger: true, maxSize });
+  if (!sizeCheck.ok) {
+    if (sizeCheck.reason === 'non_positive') {
+      return fail({ code: 'invalid_payload', message: 'width and height must be positive numbers.' });
+    }
+    if (sizeCheck.reason === 'non_integer') {
+      return fail({ code: 'invalid_payload', message: 'width and height must be integers.' });
+    }
     return fail({
       code: 'invalid_payload',
       message: `Texture size exceeds max ${maxSize}.`,
@@ -89,7 +92,7 @@ export const runGenerateTexturePreset = (
   const usageRaw = usageRes.result ?? { textures: [] };
   const usage = toDomainTextureUsage(usageRaw);
   const snapshot = ctx.getSnapshot();
-  const usageIdError = guardUvUsageId(usage, payload.uvUsageId);
+  const usageIdError = guardUvUsageId(usage, uvUsageId);
   if (usageIdError) return fail(usageIdError);
   const targets = collectSingleTarget({
     targetId: payload.targetId,
@@ -142,13 +145,14 @@ export const runGenerateTexturePreset = (
   if (!rectRes.ok) return fail(rectRes.error);
   const sourceWidth = Number(uvPaintSpec.source?.width ?? width);
   const sourceHeight = Number(uvPaintSpec.source?.height ?? height);
-  if (!Number.isFinite(sourceWidth) || !Number.isFinite(sourceHeight) || sourceWidth <= 0 || sourceHeight <= 0) {
-    return fail({ code: 'invalid_payload', message: 'uvPaint source width/height must be positive numbers.' });
-  }
-  if (!Number.isInteger(sourceWidth) || !Number.isInteger(sourceHeight)) {
-    return fail({ code: 'invalid_payload', message: 'uvPaint source width/height must be integers.' });
-  }
-  if (sourceWidth > maxSize || sourceHeight > maxSize) {
+  const sourceCheck = checkDimensions(sourceWidth, sourceHeight, { requireInteger: true, maxSize });
+  if (!sourceCheck.ok) {
+    if (sourceCheck.reason === 'non_positive') {
+      return fail({ code: 'invalid_payload', message: 'uvPaint source width/height must be positive numbers.' });
+    }
+    if (sourceCheck.reason === 'non_integer') {
+      return fail({ code: 'invalid_payload', message: 'uvPaint source width/height must be integers.' });
+    }
     return fail({
       code: 'invalid_payload',
       message: `uvPaint source size exceeds max ${maxSize}.`,

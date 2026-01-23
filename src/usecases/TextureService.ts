@@ -22,11 +22,14 @@ import {
 import { TextureMeta } from '../types/texture';
 import { computeTextureUsageId } from '../domain/textureUsage';
 import { findUvOverlapIssues, formatUvFaceRect } from '../domain/uvOverlap';
+import { checkDimensions } from '../domain/dimensions';
 import { runAutoUvAtlas, runGenerateTexturePreset, TextureToolContext } from './textureTools';
 import { ok, fail, UsecaseResult } from './result';
 import { resolveCubeTarget, resolveTextureTarget } from '../services/lookup';
 import { createId } from '../services/id';
 import { toDomainTextureUsage } from './domainMappers';
+import { validateUvBounds } from '../domain/uvBounds';
+import { validateUvAssignments } from '../domain/uvAssignments';
 import type { TextureRendererPort } from '../ports/textureRenderer';
 import type { TmpStorePort } from '../ports/tmpStore';
 import type { UvPolicyConfig } from '../domain/uvPolicy';
@@ -83,14 +86,15 @@ export class TextureService {
     const width = Number(payload.width);
     const height = Number(payload.height);
     const modifyUv = payload.modifyUv === true;
-    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
-      return fail({ code: 'invalid_payload', message: 'width and height must be positive numbers.' });
-    }
-    if (!Number.isInteger(width) || !Number.isInteger(height)) {
-      return fail({ code: 'invalid_payload', message: 'width and height must be integers.' });
-    }
     const maxSize = this.capabilities.limits.maxTextureSize;
-    if (width > maxSize || height > maxSize) {
+    const sizeCheck = checkDimensions(width, height, { requireInteger: true, maxSize });
+    if (!sizeCheck.ok) {
+      if (sizeCheck.reason === 'non_positive') {
+        return fail({ code: 'invalid_payload', message: 'width and height must be positive numbers.' });
+      }
+      if (sizeCheck.reason === 'non_integer') {
+        return fail({ code: 'invalid_payload', message: 'width and height must be integers.' });
+      }
       return fail({
         code: 'invalid_payload',
         message: `Texture resolution exceeds max size (${maxSize}).`,
@@ -489,12 +493,23 @@ export class TextureService {
     if (activeErr) return fail(activeErr);
     const revisionErr = this.ensureRevisionMatch(payload.ifRevision);
     if (revisionErr) return fail(revisionErr);
-    if (!payload.cubeId && !payload.cubeName) {
-      return fail({
-        code: 'invalid_payload',
-        message: 'cubeId or cubeName is required',
-        fix: 'Provide cubeId or cubeName from get_project_state.'
-      });
+    const assignmentRes = validateUvAssignments([
+      { cubeId: payload.cubeId, cubeName: payload.cubeName, faces: payload.faces }
+    ]);
+    if (!assignmentRes.ok) {
+      if (assignmentRes.error.message.includes('cubeId') || assignmentRes.error.message.includes('cubeName')) {
+        return fail({
+          ...assignmentRes.error,
+          fix: 'Provide cubeId or cubeName from get_project_state.'
+        });
+      }
+      if (assignmentRes.error.message.includes('faces must include at least one mapping')) {
+        return fail({
+          ...assignmentRes.error,
+          fix: 'Provide a faces map with at least one face (e.g., {"north":[0,0,4,4]}).'
+        });
+      }
+      return fail(assignmentRes.error);
     }
     const snapshot = this.getSnapshot();
     const target = resolveCubeTarget(snapshot.cubes, payload.cubeId, payload.cubeName);
@@ -502,37 +517,11 @@ export class TextureService {
       const label = payload.cubeId ?? payload.cubeName ?? 'unknown';
       return fail({ code: 'invalid_payload', message: `Cube not found: ${label}` });
     }
-    const faceEntries = Object.entries(payload.faces ?? {});
-    if (faceEntries.length === 0) {
-      return fail({
-        code: 'invalid_payload',
-        message: 'faces must include at least one face mapping',
-        fix: 'Provide a faces map with at least one face (e.g., {"north":[0,0,4,4]}).'
-      });
-    }
     const faces: CubeFaceDirection[] = [];
     const normalized: FaceUvMap = {};
+    const faceEntries = Object.entries(payload.faces ?? {});
     for (const [faceKey, uv] of faceEntries) {
-      if (!VALID_CUBE_FACES.has(faceKey as CubeFaceDirection)) {
-        return fail({
-          code: 'invalid_payload',
-          message: `Invalid face: ${faceKey}`,
-          fix: 'Use north, south, east, west, up, or down.'
-        });
-      }
-      if (!Array.isArray(uv) || uv.length !== 4) {
-        return fail({
-          code: 'invalid_payload',
-          message: `UV for ${faceKey} must be [x1,y1,x2,y2].`
-        });
-      }
-      const [x1, y1, x2, y2] = uv;
-      if (![x1, y1, x2, y2].every((value) => typeof value === 'number' && Number.isFinite(value))) {
-        return fail({
-          code: 'invalid_payload',
-          message: `UV for ${faceKey} must contain finite numbers.`
-        });
-      }
+      const [x1, y1, x2, y2] = uv as [number, number, number, number];
       const boundsErr = this.ensureFaceUvWithinResolution([x1, y1, x2, y2]);
       if (boundsErr) return fail(boundsErr);
       normalized[faceKey as CubeFaceDirection] = [x1, y1, x2, y2];
@@ -550,30 +539,17 @@ export class TextureService {
   private ensureFaceUvWithinResolution(uv: [number, number, number, number]): ToolError | null {
     const resolution = this.editor.getProjectTextureResolution();
     if (!resolution) return null;
-    const [x1, y1, x2, y2] = uv;
-    if (x1 < 0 || y1 < 0 || x2 < 0 || y2 < 0) {
+    const boundsErr = validateUvBounds(uv, resolution, { uv, textureResolution: resolution });
+    if (!boundsErr) return null;
+    if (boundsErr.ok) return null;
+    const reason = boundsErr.error.details?.reason;
+    if (reason === 'out_of_bounds') {
       return {
-        code: 'invalid_payload',
-        message: 'Face UV coordinates must be non-negative.',
-        details: { uv, textureResolution: resolution }
+        ...boundsErr.error,
+        fix: 'Use get_project_state to read textureResolution and adjust UVs or change the project texture resolution.'
       };
     }
-    if (x1 > resolution.width || x2 > resolution.width || y1 > resolution.height || y2 > resolution.height) {
-      return {
-        code: 'invalid_payload',
-        message: `Face UV is outside texture resolution ${resolution.width}x${resolution.height}.`,
-        fix: 'Use get_project_state to read textureResolution and adjust UVs or change the project texture resolution.',
-        details: { uv, textureResolution: resolution }
-      };
-    }
-    if (x2 < x1 || y2 < y1) {
-      return {
-        code: 'invalid_payload',
-        message: 'Face UV coordinates must satisfy x2 >= x1 and y2 >= y1.',
-        details: { uv }
-      };
-    }
-    return null;
+    return boundsErr.error;
   }
 
   private getTextureToolContext(): TextureToolContext {

@@ -1,12 +1,28 @@
-import { ToolResponse } from '../types';
+import type { ToolError, ToolErrorCode, ToolResponse } from '../types';
 import { UsecaseResult } from '../usecases/result';
+import { applyToolErrorPolicy } from '../services/toolError';
 
-export type ErrorCode = 'invalid_payload' | 'not_implemented' | 'no_change' | 'unknown';
+export type ErrorCode = ToolErrorCode;
 
-export const err = <T = never>(code: ErrorCode, message: string): ToolResponse<T> => ({
+export const err = <T = never>(
+  code: ErrorCode,
+  message: string,
+  details?: Record<string, unknown>
+): ToolResponse<T> => ({
   ok: false,
-  error: { code, message }
+  error: applyToolErrorPolicy({ code, message, ...(details ? { details } : {}) })
 });
+
+export const errFromDomain = <T = never>(error: ToolError): ToolResponse<T> => ({
+  ok: false,
+  error: applyToolErrorPolicy(error)
+});
+
+export const errWithCode = <T = never>(
+  code: ToolErrorCode,
+  message: string,
+  details?: Record<string, unknown>
+): ToolResponse<T> => err(code, message, details);
 
 export const toToolResponse = <T>(result: UsecaseResult<T>): ToolResponse<T> => {
   if (result.ok) return { ok: true, data: result.value };

@@ -1,5 +1,7 @@
 import type { Cube, CubeFaceDirection, TextureUsage } from './model';
 import type { DomainError, DomainResult } from './result';
+import { validateUvBounds } from './uvBounds';
+import { validateUvAssignments } from './uvAssignments';
 
 export type UvFaceMap = Partial<Record<CubeFaceDirection, [number, number, number, number]>>;
 
@@ -36,9 +38,8 @@ export const buildUvApplyPlan = (
   assignments: UvAssignmentSpec[],
   textureResolution?: { width: number; height: number }
 ): DomainResult<UvApplyPlan> => {
-  if (!Array.isArray(assignments) || assignments.length === 0) {
-    return fail('invalid_payload', 'assignments must be a non-empty array.');
-  }
+  const assignmentsRes = validateUvAssignments(assignments);
+  if (!assignmentsRes.ok) return assignmentsRes;
   const cubeById = new Map<string, Cube>();
   const cubeByName = new Map<string, Cube>();
   const duplicateNames = new Set<string>();
@@ -58,15 +59,9 @@ export const buildUvApplyPlan = (
   let faceCount = 0;
 
   for (const assignment of assignments) {
-    if (!assignment || typeof assignment !== 'object') {
-      return fail('invalid_payload', 'assignment must be an object.');
-    }
     const targets = resolveAssignmentTargets(assignment, cubeById, cubeByName, duplicateNames);
     if (!targets.ok) return targets;
     const faceEntries = Object.entries(assignment.faces ?? {});
-    if (faceEntries.length === 0) {
-      return fail('invalid_payload', 'faces must include at least one mapping.');
-    }
     for (const target of targets.data) {
       const cubeKey = target.id ? `id:${target.id}` : `name:${target.name}`;
       const update = updatesByCube.get(cubeKey) ?? {
@@ -76,12 +71,6 @@ export const buildUvApplyPlan = (
       };
       for (const [faceKey, uv] of faceEntries) {
         const faceDir = faceKey as CubeFaceDirection;
-        if (!VALID_FACES.has(faceDir)) {
-          return fail('invalid_payload', `Invalid face: ${faceKey}.`);
-        }
-        if (!Array.isArray(uv) || uv.length !== 4 || !uv.every((value) => Number.isFinite(value))) {
-          return fail('invalid_payload', `UV for ${faceKey} must be [x1,y1,x2,y2] with finite numbers.`);
-        }
         if (textureResolution) {
           const boundsErr = validateUvBounds(uv, textureResolution);
           if (boundsErr) return boundsErr;
@@ -240,29 +229,7 @@ const cloneUsage = (usage: TextureUsage): TextureUsage => ({
 
 const textureKey = (texture: { id?: string; name: string }): string => (texture.id ? `id:${texture.id}` : `name:${texture.name}`);
 
-const VALID_FACES = new Set<CubeFaceDirection>(['north', 'south', 'east', 'west', 'up', 'down']);
-
 const fail = (code: DomainError['code'], message: string): DomainResult<never> => ({
   ok: false,
   error: { code, message }
 });
-
-const validateUvBounds = (
-  uv: [number, number, number, number],
-  resolution: { width: number; height: number }
-): DomainResult<never> | null => {
-  const [x1, y1, x2, y2] = uv;
-  if (x1 < 0 || y1 < 0 || x2 < 0 || y2 < 0) {
-    return fail('invalid_payload', 'Face UV coordinates must be non-negative.');
-  }
-  if (x1 > resolution.width || x2 > resolution.width || y1 > resolution.height || y2 > resolution.height) {
-    return fail(
-      'invalid_payload',
-      `Face UV is outside texture resolution ${resolution.width}x${resolution.height}.`
-    );
-  }
-  if (x2 < x1 || y2 < y1) {
-    return fail('invalid_payload', 'Face UV coordinates must satisfy x2 >= x1 and y2 >= y1.');
-  }
-  return null;
-};

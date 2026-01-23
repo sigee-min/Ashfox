@@ -54,11 +54,11 @@ export const withMeta = <T extends Record<string, unknown>>(
   };
 };
 
-export const withErrorMeta = (
+export const withErrorMeta = <T = unknown>(
   error: ToolError,
   meta: MetaOptions,
   service: ToolService
-): ToolResponse<unknown> => {
+): ToolResponse<T> => {
   const extra = buildMeta(meta, service);
   if (Object.keys(extra).length === 0) return { ok: false, error };
   const details = { ...(error.details ?? {}), ...extra };

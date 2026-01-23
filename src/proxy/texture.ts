@@ -4,8 +4,10 @@ import { TextureSource } from '../ports/editor';
 import { readBlockbenchGlobals } from '../types/blockbench';
 import { err } from './response';
 import { UvPaintRect } from './uvPaint';
+import { checkDimensions } from '../domain/dimensions';
+import { MAX_TEXTURE_OPS } from '../domain/textureOps';
+import { normalizeTextureSpecSize } from '../domain/textureSpecValidation';
 
-const MAX_TEX_OPS = 4096;
 const IMAGE_LOAD_TIMEOUT_MS = 3000;
 
 export type UvPaintRenderConfig = {
@@ -35,9 +37,11 @@ export const resolveTextureSpecSize = (
   spec: TextureSpec,
   base?: { width?: number; height?: number }
 ): { width?: number; height?: number } => {
-  const width = pickFinite(spec.width, base?.width);
-  const height = pickFinite(spec.height, base?.height);
-  return { width, height };
+  const resolved = normalizeTextureSpecSize(spec, base);
+  if (!resolved.ok) {
+    return { width: undefined, height: undefined };
+  }
+  return { width: resolved.data.width, height: resolved.data.height };
 };
 
 export const renderTextureSpec = (
@@ -47,16 +51,22 @@ export const renderTextureSpec = (
   uvPaint?: UvPaintRenderConfig
 ): ToolResponse<RenderTextureResult> => {
   const label = spec?.name ?? spec?.targetName ?? spec?.targetId ?? 'texture';
-  const size = resolveTextureSpecSize(spec, base);
-  const width = size.width;
-  const height = size.height;
-  if (typeof width !== 'number' || !Number.isFinite(width) || width <= 0) {
-    return err('invalid_payload', `texture width must be > 0 (${label})`);
+  const sizeRes = normalizeTextureSpecSize(spec, base);
+  if (!sizeRes.ok) {
+    return err('invalid_payload', sizeRes.error.message);
   }
-  if (typeof height !== 'number' || !Number.isFinite(height) || height <= 0) {
-    return err('invalid_payload', `texture height must be > 0 (${label})`);
-  }
-  if (width > limits.maxTextureSize || height > limits.maxTextureSize) {
+  const width = Number(sizeRes.data.width);
+  const height = Number(sizeRes.data.height);
+  const sizeCheck = checkDimensions(width, height, { requireInteger: false, maxSize: limits.maxTextureSize });
+  if (!sizeCheck.ok) {
+    if (sizeCheck.reason === 'non_positive') {
+      const axis = sizeCheck.axis === 'height' ? 'height' : 'width';
+      return err('invalid_payload', `texture ${axis} must be > 0 (${label})`);
+    }
+    if (sizeCheck.reason === 'non_integer') {
+      const axis = sizeCheck.axis === 'height' ? 'height' : 'width';
+      return err('invalid_payload', `texture ${axis} must be > 0 (${label})`);
+    }
     return err('invalid_payload', `texture size exceeds max ${limits.maxTextureSize} (${label})`);
   }
   const doc = readBlockbenchGlobals().document;
@@ -79,20 +89,26 @@ export const renderTextureSpec = (
     ctx.drawImage(base.image, 0, 0, width, height);
   }
   const ops = Array.isArray(spec.ops) ? spec.ops : [];
-  if (ops.length > MAX_TEX_OPS) {
-    return err('invalid_payload', `too many texture ops (>${MAX_TEX_OPS}) (${label})`);
+  if (ops.length > MAX_TEXTURE_OPS) {
+    return err('invalid_payload', `too many texture ops (>${MAX_TEXTURE_OPS}) (${label})`);
   }
   let paintCoverage: TextureCoverage | undefined;
   if (uvPaint) {
-    const sourceWidth = uvPaint.source.width;
-    const sourceHeight = uvPaint.source.height;
-    if (typeof sourceWidth !== 'number' || !Number.isFinite(sourceWidth) || sourceWidth <= 0) {
-      return err('invalid_payload', `uvPaint source width must be > 0 (${label})`);
-    }
-    if (typeof sourceHeight !== 'number' || !Number.isFinite(sourceHeight) || sourceHeight <= 0) {
-      return err('invalid_payload', `uvPaint source height must be > 0 (${label})`);
-    }
-    if (sourceWidth > limits.maxTextureSize || sourceHeight > limits.maxTextureSize) {
+    const sourceWidth = Number(uvPaint.source.width);
+    const sourceHeight = Number(uvPaint.source.height);
+    const sourceCheck = checkDimensions(sourceWidth, sourceHeight, {
+      requireInteger: false,
+      maxSize: limits.maxTextureSize
+    });
+    if (!sourceCheck.ok) {
+      if (sourceCheck.reason === 'non_positive') {
+        const axis = sourceCheck.axis === 'height' ? 'height' : 'width';
+        return err('invalid_payload', `uvPaint source ${axis} must be > 0 (${label})`);
+      }
+      if (sourceCheck.reason === 'non_integer') {
+        const axis = sourceCheck.axis === 'height' ? 'height' : 'width';
+        return err('invalid_payload', `uvPaint source ${axis} must be > 0 (${label})`);
+      }
       return err('invalid_payload', `uvPaint source size exceeds max ${limits.maxTextureSize} (${label})`);
     }
     const patternCanvas = doc.createElement('canvas') as HTMLCanvasElement | null;
@@ -353,12 +369,6 @@ const resolveImageDim = (image: CanvasImageSource, key: 'width' | 'height'): num
 
 const isFiniteNumber = (value: unknown): value is number => Number.isFinite(value);
 
-const pickFinite = (...values: Array<number | undefined>) => {
-  for (const value of values) {
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
-  }
-  return undefined;
-};
 
 const analyzeTextureCoverage = (
   ctx: CanvasRenderingContext2D,

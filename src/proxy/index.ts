@@ -14,11 +14,10 @@ import { withErrorMeta } from './meta';
 import { toToolResponse } from './response';
 import { validateEntitySpec, validateModelSpec, validateTextureSpec, validateUvSpec } from './validators';
 import { computeTextureUsageId } from '../domain/textureUsage';
-import { guardUvOverlaps, guardUvScale, guardUvUsageId } from '../domain/uvGuards';
 import { collectTextureTargets } from '../domain/uvTargets';
 import { toDomainCube, toDomainTextureUsage } from '../usecases/domainMappers';
 import { buildUvApplyPlan } from '../domain/uvApply';
-import { guardUvForTextureTargets } from './uvGuard';
+import { guardUvForTextureTargets, guardUvForUsage } from './uvGuard';
 import { createProxyPipeline } from './pipeline';
 
 export class ProxyRouter {
@@ -112,10 +111,6 @@ export class ProxyRouter {
       const usageRes = this.service.getTextureUsage({});
       if (!usageRes.ok) return withErrorMeta(usageRes.error, pipeline.meta, this.service);
       const usage = toDomainTextureUsage(usageRes.value);
-      const usageIdError = guardUvUsageId(usage, payload.uvUsageId);
-      if (usageIdError) {
-        return withErrorMeta(usageIdError, pipeline.meta, this.service);
-      }
       const stateRes = this.service.getProjectState({ detail: 'full' });
       if (!stateRes.ok) return withErrorMeta(stateRes.error, pipeline.meta, this.service);
       const project = stateRes.value.project;
@@ -128,17 +123,16 @@ export class ProxyRouter {
       if (!planRes.ok) return withErrorMeta(planRes.error, pipeline.meta, this.service);
 
       const targets = collectTextureTargets(planRes.data.touchedTextures);
-      const overlapError = guardUvOverlaps(planRes.data.usage, targets);
-      if (overlapError) return withErrorMeta(overlapError, pipeline.meta, this.service);
-
-      const scaleError = guardUvScale({
+      const usageGuard = guardUvForTextureTargets(this.service, pipeline.meta, payload.uvUsageId, targets);
+      if (!usageGuard.ok) return usageGuard;
+      const guardRes = guardUvForUsage(this.service, pipeline.meta, {
         usage: planRes.data.usage,
+        targets,
         cubes: (project.cubes ?? []).map((cube) => toDomainCube(cube)),
         resolution: project.textureResolution,
-        policy: this.service.getUvPolicy(),
-        targets
+        policy: this.service.getUvPolicy()
       });
-      if (scaleError) return withErrorMeta(scaleError, pipeline.meta, this.service);
+      if (!guardRes.ok) return guardRes;
 
       for (const update of planRes.data.updates) {
         const res = this.service.setFaceUv({
@@ -222,13 +216,6 @@ export class ProxyRouter {
         result.model = { applied: true, report };
       }
       if (payload.textures && payload.textures.length > 0) {
-        if (!payload.uvUsageId) {
-          return withErrorMeta(
-            { code: 'invalid_payload', message: 'uvUsageId is required when textures are provided' },
-            pipeline.meta,
-            this.service
-          );
-        }
         const targets = collectTextureTargets(payload.textures);
         const uvGuard = guardUvForTextureTargets(this.service, pipeline.meta, payload.uvUsageId, targets);
         if (!uvGuard.ok) return uvGuard;
