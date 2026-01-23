@@ -44,6 +44,7 @@ import type { ToolPolicies } from './policies';
 import { PolicyContext } from './PolicyContext';
 import { RevisionContext } from './RevisionContext';
 import { SnapshotContext } from './SnapshotContext';
+import type { PolicyContextLike, RevisionContextLike, SnapshotContextLike } from './contextTypes';
 const REVISION_CACHE_LIMIT = 5;
 
 export interface ToolServiceDeps {
@@ -69,9 +70,9 @@ export class ToolService {
   private readonly host?: HostPort;
   private readonly resources?: ResourceStore;
   private readonly tmpStore?: TmpStorePort;
-  private readonly policyContext: PolicyContext;
-  private readonly snapshotContext: SnapshotContext;
-  private readonly revisionContext: RevisionContext;
+  private readonly policyContext: PolicyContextLike;
+  private readonly snapshotContext: SnapshotContextLike<ReturnType<ProjectSession['snapshot']>>;
+  private readonly revisionContext: RevisionContextLike;
   private readonly projectService: ProjectService;
   private readonly textureService: TextureService;
   private readonly animationService: AnimationService;

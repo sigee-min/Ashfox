@@ -1,21 +1,21 @@
 import type { ToolError } from '../types';
 import { RevisionStore } from '../services/revision';
 import { ProjectStateService } from '../services/projectState';
-import { PolicyContext } from './PolicyContext';
-import { SnapshotContext } from './SnapshotContext';
+import type { PolicyContextLike, RevisionContextLike, SnapshotContextLike } from './contextTypes';
+import type { ProjectSession } from '../session';
 
 export interface RevisionContextDeps {
   revisionStore: RevisionStore;
   projectState: ProjectStateService;
-  snapshotContext: SnapshotContext;
-  policyContext: PolicyContext;
+  snapshotContext: SnapshotContextLike<ReturnType<ProjectSession['snapshot']>>;
+  policyContext: PolicyContextLike;
 }
 
-export class RevisionContext {
+export class RevisionContext implements RevisionContextLike {
   private readonly revisionStore: RevisionStore;
   private readonly projectState: ProjectStateService;
-  private readonly snapshotContext: SnapshotContext;
-  private readonly policyContext: PolicyContext;
+  private readonly snapshotContext: SnapshotContextLike<ReturnType<ProjectSession['snapshot']>>;
+  private readonly policyContext: PolicyContextLike;
   private revisionBypassDepth = 0;
 
   constructor(deps: RevisionContextDeps) {

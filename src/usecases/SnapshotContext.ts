@@ -3,21 +3,21 @@ import { ProjectSession } from '../session';
 import type { SnapshotPort } from '../ports/snapshot';
 import { ProjectStateService } from '../services/projectState';
 import type { SnapshotPolicy } from './policies';
-import { PolicyContext } from './PolicyContext';
+import type { PolicyContextLike, SnapshotContextLike } from './contextTypes';
 import { mergeSnapshots } from '../services/snapshotMerge';
 
 export interface SnapshotContextDeps {
   session: ProjectSession;
   snapshotPort: SnapshotPort;
   projectState: ProjectStateService;
-  policyContext: PolicyContext;
+  policyContext: PolicyContextLike;
 }
 
-export class SnapshotContext {
+export class SnapshotContext implements SnapshotContextLike<ReturnType<ProjectSession['snapshot']>> {
   private readonly session: ProjectSession;
   private readonly snapshotPort: SnapshotPort;
   private readonly projectState: ProjectStateService;
-  private readonly policyContext: PolicyContext;
+  private readonly policyContext: PolicyContextLike;
 
   constructor(deps: SnapshotContextDeps) {
     this.session = deps.session;

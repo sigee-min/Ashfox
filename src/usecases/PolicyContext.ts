@@ -1,9 +1,11 @@
 import type { FormatOverrides } from '../services/format';
 import type { RigMergeStrategy } from '../domain/rig';
-import { DEFAULT_UV_POLICY, UvPolicyConfig } from '../domain/uvPolicy';
+import { DEFAULT_UV_POLICY } from '../domain/uvPolicy';
+import type { UvPolicyConfig } from '../domain/uvPolicy';
 import type { ExportPolicy, SnapshotPolicy, ToolPolicies } from './policies';
+import type { PolicyContextLike } from './contextTypes';
 
-export class PolicyContext {
+export class PolicyContext implements PolicyContextLike {
   private readonly policies: ToolPolicies;
 
   constructor(policies: ToolPolicies) {
