@@ -1,6 +1,7 @@
 import type { ToolError } from '../types';
 import { RevisionStore } from '../services/revision';
 import { ProjectStateService } from '../services/projectState';
+import { buildMissingRevisionError, buildRevisionMismatchError } from '../services/revisionErrors';
 import type { PolicyContextLike, RevisionContextLike, SnapshotContextLike } from './contextTypes';
 import type { ProjectSession } from '../session';
 
@@ -32,23 +33,10 @@ export class RevisionContext implements RevisionContextLike {
     const hasProject = Boolean(this.projectState.toProjectInfo(snapshot));
     const currentRevision = this.revisionStore.track(snapshot);
     if (!expected) {
-      return {
-        code: 'invalid_state',
-        message: 'ifRevision is required. Call get_project_state before mutating.',
-        fix: 'Call get_project_state and retry with ifRevision set to the returned revision.',
-        details: { reason: 'missing_ifRevision', currentRevision, active: hasProject }
-      };
+      return buildMissingRevisionError(currentRevision, hasProject);
     }
     if (currentRevision !== expected) {
-      if (this.policyContext.isAutoRetryRevisionEnabled()) {
-        return null;
-      }
-      return {
-        code: 'invalid_state',
-        message: 'Project revision mismatch. Refresh project state before retrying.',
-        fix: 'Call get_project_state and retry with the latest revision.',
-        details: { expected, currentRevision }
-      };
+      return buildRevisionMismatchError(expected, currentRevision);
     }
     return null;
   }

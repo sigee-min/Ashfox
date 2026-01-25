@@ -5,6 +5,7 @@ import { ok, fail, UsecaseResult } from './result';
 import { validateSnapshot } from '../domain/validation';
 import { toDomainSnapshot, toDomainTextureResolution, toDomainTextureStats, toDomainTextureUsage } from './domainMappers';
 import type { UvPolicyConfig } from '../domain/uvPolicy';
+import { ensureActiveOnly } from './guards';
 
 export interface ValidationServiceDeps {
   editor: EditorPort;
@@ -30,7 +31,7 @@ export class ValidationService {
   }
 
   validate(): UsecaseResult<{ findings: { code: string; message: string; severity: 'error' | 'warning' | 'info' }[] }> {
-    const activeErr = this.ensureActive();
+    const activeErr = ensureActiveOnly(this.ensureActive);
     if (activeErr) return fail(activeErr);
     const snapshot = toDomainSnapshot(this.getSnapshot());
     const textures = toDomainTextureStats(this.editor.listTextures());

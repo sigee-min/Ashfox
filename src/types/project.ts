@@ -1,4 +1,5 @@
 import type { TrackedAnimation, TrackedBone, TrackedCube, TrackedTexture } from '../session';
+import type { CubeFaceDirection } from '../shared/toolConstants';
 import { FormatKind, ProjectStateDetail } from './shared';
 
 export interface ProjectDiffCounts {
@@ -65,7 +66,7 @@ export interface ProjectState {
 }
 
 export type ProjectTextureUsageFace = {
-  face: 'north' | 'south' | 'east' | 'west' | 'up' | 'down';
+  face: CubeFaceDirection;
   uv?: [number, number, number, number];
 };
 
@@ -87,7 +88,7 @@ export type ProjectTextureUsageUnresolved = {
   textureRef: string;
   cubeId?: string;
   cubeName: string;
-  face: 'north' | 'south' | 'east' | 'west' | 'up' | 'down';
+  face: CubeFaceDirection;
 };
 
 export type ProjectTextureUsage = {

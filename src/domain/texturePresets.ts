@@ -1,15 +1,5 @@
-export type TexturePresetName =
-  | 'painted_metal'
-  | 'rubber'
-  | 'glass'
-  | 'wood'
-  | 'dirt'
-  | 'plant'
-  | 'stone'
-  | 'sand'
-  | 'leather'
-  | 'fabric'
-  | 'ceramic';
+import type { TexturePresetName } from '../shared/toolConstants';
+export type { TexturePresetName } from '../shared/toolConstants';
 
 export type TexturePresetSpec = {
   preset: TexturePresetName;
@@ -401,50 +391,28 @@ const generateCeramic = (spec: TexturePresetSpec, data: Uint8ClampedArray) => {
   }
 };
 
+const PRESET_GENERATORS: Record<TexturePresetName, (spec: TexturePresetSpec, data: Uint8ClampedArray) => void> = {
+  painted_metal: generatePaintedMetal,
+  rubber: generateRubber,
+  glass: generateGlass,
+  wood: generateWood,
+  dirt: generateDirt,
+  plant: generatePlant,
+  stone: generateStone,
+  sand: generateSand,
+  leather: generateLeather,
+  fabric: generateFabric,
+  ceramic: generateCeramic
+};
+
 export const generateTexturePreset = (spec: TexturePresetSpec): TexturePresetResult => {
   const width = Math.max(1, Math.floor(spec.width));
   const height = Math.max(1, Math.floor(spec.height));
   const seed = resolveSeed(spec.seed, `${spec.preset}:${width}x${height}`);
   const data = new Uint8ClampedArray(width * height * 4);
   const presetSpec = { ...spec, width, height, seed };
-  switch (spec.preset) {
-    case 'painted_metal':
-      generatePaintedMetal(presetSpec, data);
-      break;
-    case 'rubber':
-      generateRubber(presetSpec, data);
-      break;
-    case 'glass':
-      generateGlass(presetSpec, data);
-      break;
-    case 'wood':
-      generateWood(presetSpec, data);
-      break;
-    case 'dirt':
-      generateDirt(presetSpec, data);
-      break;
-    case 'plant':
-      generatePlant(presetSpec, data);
-      break;
-    case 'stone':
-      generateStone(presetSpec, data);
-      break;
-    case 'sand':
-      generateSand(presetSpec, data);
-      break;
-    case 'leather':
-      generateLeather(presetSpec, data);
-      break;
-    case 'fabric':
-      generateFabric(presetSpec, data);
-      break;
-    case 'ceramic':
-      generateCeramic(presetSpec, data);
-      break;
-    default:
-      generatePaintedMetal(presetSpec, data);
-      break;
-  }
+  const generator = PRESET_GENERATORS[spec.preset] ?? generatePaintedMetal;
+  generator(presetSpec, data);
   const coverage = computeCoverage(data, width, height);
   return { width, height, seed, data, coverage };
 };

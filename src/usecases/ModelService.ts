@@ -4,6 +4,7 @@ import { EditorPort } from '../ports/editor';
 import { ok, fail, UsecaseResult } from './result';
 import { buildRigTemplate } from '../templates';
 import { RigTemplateKind } from '../spec';
+import { RIG_TEMPLATE_KINDS } from '../shared/toolConstants';
 import { mergeRigParts, RigMergeStrategy } from '../domain/rig';
 import { isZeroSize } from '../domain/geometry';
 import {
@@ -14,6 +15,8 @@ import {
   resolveCubeTarget
 } from '../services/lookup';
 import { createId } from '../services/id';
+import { ensureIdNameMatch, ensureNonBlankString } from '../services/validation';
+import { ensureActiveAndRevision } from './guards';
 
 export interface ModelServiceDeps {
   session: ProjectSession;
@@ -54,10 +57,29 @@ export class ModelService {
     scale?: [number, number, number];
     ifRevision?: string;
   }): UsecaseResult<{ id: string; name: string }> {
-    const activeErr = this.ensureActive();
-    if (activeErr) return fail(activeErr);
-    const revisionErr = this.ensureRevisionMatch(payload.ifRevision);
-    if (revisionErr) return fail(revisionErr);
+    return this.addBoneInternal(payload);
+  }
+
+  private addBoneInternal(
+    payload: {
+      id?: string;
+      name: string;
+      parent?: string;
+      parentId?: string;
+      pivot: [number, number, number];
+      rotation?: [number, number, number];
+      scale?: [number, number, number];
+      ifRevision?: string;
+    },
+    options?: { skipRevisionCheck?: boolean }
+  ): UsecaseResult<{ id: string; name: string }> {
+    const guardErr = ensureActiveAndRevision(
+      this.ensureActive,
+      this.ensureRevisionMatch,
+      payload.ifRevision,
+      options
+    );
+    if (guardErr) return fail(guardErr);
     const snapshot = this.getSnapshot();
     if (!payload.name) {
       return fail({
@@ -66,6 +88,12 @@ export class ModelService {
         fix: 'Provide a non-empty bone name.'
       });
     }
+    const nameBlankErr = ensureNonBlankString(payload.name, 'Bone name');
+    if (nameBlankErr) return fail(nameBlankErr);
+    const parentBlankErr = ensureNonBlankString(payload.parent, 'Parent bone name');
+    if (parentBlankErr) return fail(parentBlankErr);
+    const parentIdBlankErr = ensureNonBlankString(payload.parentId, 'Parent bone id');
+    if (parentIdBlankErr) return fail(parentIdBlankErr);
     const parentName = payload.parentId
       ? resolveBoneNameById(snapshot.bones, payload.parentId)
       : payload.parent;
@@ -114,14 +142,27 @@ export class ModelService {
     scale?: [number, number, number];
     ifRevision?: string;
   }): UsecaseResult<{ id: string; name: string }> {
-    const activeErr = this.ensureActive();
-    if (activeErr) return fail(activeErr);
-    const revisionErr = this.ensureRevisionMatch(payload.ifRevision);
-    if (revisionErr) return fail(revisionErr);
+    const guardErr = ensureActiveAndRevision(this.ensureActive, this.ensureRevisionMatch, payload.ifRevision);
+    if (guardErr) return fail(guardErr);
     const snapshot = this.getSnapshot();
+    const idBlankErr = ensureNonBlankString(payload.id, 'Bone id');
+    if (idBlankErr) return fail(idBlankErr);
+    const nameBlankErr = ensureNonBlankString(payload.name, 'Bone name');
+    if (nameBlankErr) return fail(nameBlankErr);
+    const newNameBlankErr = ensureNonBlankString(payload.newName, 'Bone newName');
+    if (newNameBlankErr) return fail(newNameBlankErr);
+    const parentBlankErr = ensureNonBlankString(payload.parent, 'Parent bone name');
+    if (parentBlankErr) return fail(parentBlankErr);
+    const parentIdBlankErr = ensureNonBlankString(payload.parentId, 'Parent bone id');
+    if (parentIdBlankErr) return fail(parentIdBlankErr);
     if (!payload.id && !payload.name) {
       return fail({ code: 'invalid_payload', message: 'Bone id or name is required' });
     }
+    const mismatchErr = ensureIdNameMatch(snapshot.bones, payload.id, payload.name, {
+      kind: 'Bone',
+      plural: 'bones'
+    });
+    if (mismatchErr) return fail(mismatchErr);
     const target = resolveBoneTarget(snapshot.bones, payload.id, payload.name);
     if (!target) {
       const label = payload.id ?? payload.name ?? 'unknown';
@@ -186,14 +227,21 @@ export class ModelService {
     name?: string;
     ifRevision?: string;
   }): UsecaseResult<{ id: string; name: string; removedBones: number; removedCubes: number }> {
-    const activeErr = this.ensureActive();
-    if (activeErr) return fail(activeErr);
-    const revisionErr = this.ensureRevisionMatch(payload.ifRevision);
-    if (revisionErr) return fail(revisionErr);
+    const guardErr = ensureActiveAndRevision(this.ensureActive, this.ensureRevisionMatch, payload.ifRevision);
+    if (guardErr) return fail(guardErr);
     const snapshot = this.getSnapshot();
+    const idBlankErr = ensureNonBlankString(payload.id, 'Bone id');
+    if (idBlankErr) return fail(idBlankErr);
+    const nameBlankErr = ensureNonBlankString(payload.name, 'Bone name');
+    if (nameBlankErr) return fail(nameBlankErr);
     if (!payload.id && !payload.name) {
       return fail({ code: 'invalid_payload', message: 'Bone id or name is required' });
     }
+    const mismatchErr = ensureIdNameMatch(snapshot.bones, payload.id, payload.name, {
+      kind: 'Bone',
+      plural: 'bones'
+    });
+    if (mismatchErr) return fail(mismatchErr);
     const target = resolveBoneTarget(snapshot.bones, payload.id, payload.name);
     if (!target) {
       const label = payload.id ?? payload.name ?? 'unknown';
@@ -223,10 +271,30 @@ export class ModelService {
     mirror?: boolean;
     ifRevision?: string;
   }): UsecaseResult<{ id: string; name: string }> {
-    const activeErr = this.ensureActive();
-    if (activeErr) return fail(activeErr);
-    const revisionErr = this.ensureRevisionMatch(payload.ifRevision);
-    if (revisionErr) return fail(revisionErr);
+    return this.addCubeInternal(payload);
+  }
+
+  private addCubeInternal(
+    payload: {
+      id?: string;
+      name: string;
+      from: [number, number, number];
+      to: [number, number, number];
+      bone?: string;
+      boneId?: string;
+      inflate?: number;
+      mirror?: boolean;
+      ifRevision?: string;
+    },
+    options?: { skipRevisionCheck?: boolean }
+  ): UsecaseResult<{ id: string; name: string }> {
+    const guardErr = ensureActiveAndRevision(
+      this.ensureActive,
+      this.ensureRevisionMatch,
+      payload.ifRevision,
+      options
+    );
+    if (guardErr) return fail(guardErr);
     const snapshot = this.getSnapshot();
     if (!payload.name) {
       return fail({
@@ -235,6 +303,12 @@ export class ModelService {
         fix: 'Provide a non-empty cube name.'
       });
     }
+    const nameBlankErr = ensureNonBlankString(payload.name, 'Cube name');
+    if (nameBlankErr) return fail(nameBlankErr);
+    const boneBlankErr = ensureNonBlankString(payload.bone, 'Cube bone');
+    if (boneBlankErr) return fail(boneBlankErr);
+    const boneIdBlankErr = ensureNonBlankString(payload.boneId, 'Cube boneId');
+    if (boneIdBlankErr) return fail(boneIdBlankErr);
     if (!payload.bone && !payload.boneId) {
       return fail({
         code: 'invalid_payload',
@@ -298,14 +372,27 @@ export class ModelService {
     mirror?: boolean;
     ifRevision?: string;
   }): UsecaseResult<{ id: string; name: string }> {
-    const activeErr = this.ensureActive();
-    if (activeErr) return fail(activeErr);
-    const revisionErr = this.ensureRevisionMatch(payload.ifRevision);
-    if (revisionErr) return fail(revisionErr);
+    const guardErr = ensureActiveAndRevision(this.ensureActive, this.ensureRevisionMatch, payload.ifRevision);
+    if (guardErr) return fail(guardErr);
     const snapshot = this.getSnapshot();
+    const idBlankErr = ensureNonBlankString(payload.id, 'Cube id');
+    if (idBlankErr) return fail(idBlankErr);
+    const nameBlankErr = ensureNonBlankString(payload.name, 'Cube name');
+    if (nameBlankErr) return fail(nameBlankErr);
+    const newNameBlankErr = ensureNonBlankString(payload.newName, 'Cube newName');
+    if (newNameBlankErr) return fail(newNameBlankErr);
+    const boneBlankErr = ensureNonBlankString(payload.bone, 'Cube bone');
+    if (boneBlankErr) return fail(boneBlankErr);
+    const boneIdBlankErr = ensureNonBlankString(payload.boneId, 'Cube boneId');
+    if (boneIdBlankErr) return fail(boneIdBlankErr);
     if (!payload.id && !payload.name) {
       return fail({ code: 'invalid_payload', message: 'Cube id or name is required' });
     }
+    const mismatchErr = ensureIdNameMatch(snapshot.cubes, payload.id, payload.name, {
+      kind: 'Cube',
+      plural: 'cubes'
+    });
+    if (mismatchErr) return fail(mismatchErr);
     const target = resolveCubeTarget(snapshot.cubes, payload.id, payload.name);
     if (!target) {
       const label = payload.id ?? payload.name ?? 'unknown';
@@ -363,14 +450,21 @@ export class ModelService {
   }
 
   deleteCube(payload: { id?: string; name?: string; ifRevision?: string }): UsecaseResult<{ id: string; name: string }> {
-    const activeErr = this.ensureActive();
-    if (activeErr) return fail(activeErr);
-    const revisionErr = this.ensureRevisionMatch(payload.ifRevision);
-    if (revisionErr) return fail(revisionErr);
+    const guardErr = ensureActiveAndRevision(this.ensureActive, this.ensureRevisionMatch, payload.ifRevision);
+    if (guardErr) return fail(guardErr);
     const snapshot = this.getSnapshot();
+    const idBlankErr = ensureNonBlankString(payload.id, 'Cube id');
+    if (idBlankErr) return fail(idBlankErr);
+    const nameBlankErr = ensureNonBlankString(payload.name, 'Cube name');
+    if (nameBlankErr) return fail(nameBlankErr);
     if (!payload.id && !payload.name) {
       return fail({ code: 'invalid_payload', message: 'Cube id or name is required' });
     }
+    const mismatchErr = ensureIdNameMatch(snapshot.cubes, payload.id, payload.name, {
+      kind: 'Cube',
+      plural: 'cubes'
+    });
+    if (mismatchErr) return fail(mismatchErr);
     const target = resolveCubeTarget(snapshot.cubes, payload.id, payload.name);
     if (!target) {
       const label = payload.id ?? payload.name ?? 'unknown';
@@ -383,12 +477,10 @@ export class ModelService {
   }
 
   applyRigTemplate(payload: { templateId: string; ifRevision?: string }): UsecaseResult<{ templateId: string }> {
-    const activeErr = this.ensureActive();
-    if (activeErr) return fail(activeErr);
-    const revisionErr = this.ensureRevisionMatch(payload.ifRevision);
-    if (revisionErr) return fail(revisionErr);
+    const guardErr = ensureActiveAndRevision(this.ensureActive, this.ensureRevisionMatch, payload.ifRevision);
+    if (guardErr) return fail(guardErr);
     const templateId = payload.templateId;
-    if (!['empty', 'biped', 'quadruped', 'block_entity'].includes(templateId)) {
+    if (!RIG_TEMPLATE_KINDS.includes(templateId as (typeof RIG_TEMPLATE_KINDS)[number])) {
       return fail({ code: 'invalid_payload', message: `Unknown template: ${templateId}` });
     }
     const templateParts = buildRigTemplate(templateId as RigTemplateKind, []);
@@ -407,11 +499,14 @@ export class ModelService {
     }
 
     for (const part of partsToAdd) {
-      const boneRes = this.addBone({
+      const boneRes = this.addBoneInternal(
+        {
         name: part.id,
         parent: part.parent,
         pivot: part.pivot ?? [0, 0, 0]
-      });
+        },
+        { skipRevisionCheck: true }
+      );
       if (!boneRes.ok) return boneRes;
       if (!isZeroSize(part.size)) {
         const from: [number, number, number] = [...part.offset];
@@ -420,14 +515,17 @@ export class ModelService {
           part.offset[1] + part.size[1],
           part.offset[2] + part.size[2]
         ];
-        const cubeRes = this.addCube({
+        const cubeRes = this.addCubeInternal(
+          {
           name: part.id,
           from,
           to,
           bone: part.id,
           inflate: part.inflate,
           mirror: part.mirror
-        });
+          },
+          { skipRevisionCheck: true }
+        );
         if (!cubeRes.ok) return cubeRes;
       }
     }

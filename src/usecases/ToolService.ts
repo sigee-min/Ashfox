@@ -1,20 +1,16 @@
 import {
   Capabilities,
-  AutoUvAtlasPayload,
   AutoUvAtlasResult,
-  ExportPayload,
   FormatKind,
   GenerateBlockPipelineResult,
-  GenerateTexturePresetPayload,
   GenerateTexturePresetResult,
   PreflightTextureResult,
   ProjectDiff,
   ProjectState,
   ProjectStateDetail,
-  ReadTexturePayload,
   ReadTextureResult,
-  RenderPreviewPayload,
   RenderPreviewResult,
+  ToolPayloadMap,
   ToolError
 } from '../types';
 import { ProjectSession } from '../session';
@@ -212,7 +208,7 @@ export class ToolService {
     return await this.revisionContext.runWithoutRevisionGuardAsync(fn);
   }
 
-  reloadPlugins(payload: { confirm?: boolean; delayMs?: number }): UsecaseResult<{ scheduled: true; delayMs: number; method: 'devReload' }> {
+  reloadPlugins(payload: ToolPayloadMap['reload_plugins']): UsecaseResult<{ scheduled: true; delayMs: number; method: 'devReload' }> {
     if (payload.confirm !== true) {
       return fail({
         code: 'invalid_payload',
@@ -233,12 +229,9 @@ export class ToolService {
     return this.textureService.getProjectTextureResolution();
   }
 
-  setProjectTextureResolution(payload: {
-    width: number;
-    height: number;
-    ifRevision?: string;
-    modifyUv?: boolean;
-  }): UsecaseResult<{ width: number; height: number }> {
+  setProjectTextureResolution(
+    payload: ToolPayloadMap['set_project_texture_resolution']
+  ): UsecaseResult<{ width: number; height: number }> {
     return this.textureService.setProjectTextureResolution(payload);
   }
 
@@ -255,19 +248,19 @@ export class ToolService {
     return this.textureService.getTextureUsage(payload);
   }
 
-  preflightTexture(payload: { textureId?: string; textureName?: string; includeUsage?: boolean }): UsecaseResult<PreflightTextureResult> {
+  preflightTexture(payload: ToolPayloadMap['preflight_texture']): UsecaseResult<PreflightTextureResult> {
     return this.textureService.preflightTexture(payload);
   }
 
-  generateTexturePreset(payload: GenerateTexturePresetPayload): UsecaseResult<GenerateTexturePresetResult> {
+  generateTexturePreset(payload: ToolPayloadMap['generate_texture_preset']): UsecaseResult<GenerateTexturePresetResult> {
     return this.textureService.generateTexturePreset(payload);
   }
 
-  autoUvAtlas(payload: AutoUvAtlasPayload): UsecaseResult<AutoUvAtlasResult> {
+  autoUvAtlas(payload: ToolPayloadMap['auto_uv_atlas']): UsecaseResult<AutoUvAtlasResult> {
     return this.textureService.autoUvAtlas(payload);
   }
 
-  getProjectState(payload: { detail?: ProjectStateDetail }): UsecaseResult<{ project: ProjectState }> {
+  getProjectState(payload: ToolPayloadMap['get_project_state']): UsecaseResult<{ project: ProjectState }> {
     return this.projectService.getProjectState(payload);
   }
 
@@ -275,30 +268,13 @@ export class ToolService {
     return this.projectService.getProjectDiff(payload);
   }
 
-  ensureProject(payload: {
-    format?: Capabilities['formats'][number]['format'];
-    name?: string;
-    match?: 'none' | 'format' | 'name' | 'format_and_name';
-    onMismatch?: 'reuse' | 'error' | 'create';
-    onMissing?: 'create' | 'error';
-    confirmDiscard?: boolean;
-    dialog?: Record<string, unknown>;
-    confirmDialog?: boolean;
-    ifRevision?: string;
-  }): UsecaseResult<{ action: 'created' | 'reused'; project: { id: string; format: FormatKind; name: string | null; formatId?: string | null } }> {
+  ensureProject(
+    payload: ToolPayloadMap['ensure_project']
+  ): UsecaseResult<{ action: 'created' | 'reused'; project: { id: string; format: FormatKind; name: string | null; formatId?: string | null } }> {
     return this.projectService.ensureProject(payload);
   }
 
-  generateBlockPipeline(payload: {
-    name: string;
-    texture: string;
-    namespace?: string;
-    variants?: BlockVariant[];
-    textures?: BlockPipelineTextures;
-    onConflict?: BlockPipelineOnConflict;
-    mode?: BlockPipelineMode;
-    ifRevision?: string;
-  }): UsecaseResult<GenerateBlockPipelineResult> {
+  generateBlockPipeline(payload: ToolPayloadMap['generate_block_pipeline']): UsecaseResult<GenerateBlockPipelineResult> {
     return this.blockPipelineService.generateBlockPipeline(payload);
   }
 
@@ -333,109 +309,57 @@ export class ToolService {
     return this.textureService.updateTexture(payload);
   }
 
-  deleteTexture(payload: { id?: string; name?: string; ifRevision?: string }): UsecaseResult<{ id: string; name: string }> {
+  deleteTexture(payload: ToolPayloadMap['delete_texture']): UsecaseResult<{ id: string; name: string }> {
     return this.textureService.deleteTexture(payload);
   }
 
-  readTexture(payload: { id?: string; name?: string }): UsecaseResult<TextureSource> {
+  readTexture(payload: ToolPayloadMap['read_texture']): UsecaseResult<TextureSource> {
     return this.textureService.readTexture(payload);
   }
 
-  readTextureImage(payload: ReadTexturePayload): UsecaseResult<ReadTextureResult> {
+  readTextureImage(payload: ToolPayloadMap['read_texture']): UsecaseResult<ReadTextureResult> {
     return this.textureService.readTextureImage(payload);
   }
 
-  assignTexture(payload: {
-    textureId?: string;
-    textureName?: string;
-    cubeIds?: string[];
-    cubeNames?: string[];
-    faces?: CubeFaceDirection[];
-    ifRevision?: string;
-  }): UsecaseResult<{ textureId?: string; textureName: string; cubeCount: number; faces?: CubeFaceDirection[] }> {
+  assignTexture(
+    payload: ToolPayloadMap['assign_texture']
+  ): UsecaseResult<{ textureId?: string; textureName: string; cubeCount: number; faces?: CubeFaceDirection[] }> {
     return this.textureService.assignTexture(payload);
   }
 
-  setFaceUv(payload: {
-    cubeId?: string;
-    cubeName?: string;
-    faces: FaceUvMap;
-    ifRevision?: string;
-  }): UsecaseResult<{ cubeId?: string; cubeName: string; faces: CubeFaceDirection[] }> {
+  setFaceUv(
+    payload: ToolPayloadMap['set_face_uv']
+  ): UsecaseResult<{ cubeId?: string; cubeName: string; faces: CubeFaceDirection[] }> {
     return this.textureService.setFaceUv(payload);
   }
 
-  addBone(payload: {
-    id?: string;
-    name: string;
-    parent?: string;
-    parentId?: string;
-    pivot: [number, number, number];
-    rotation?: [number, number, number];
-    scale?: [number, number, number];
-    ifRevision?: string;
-  }): UsecaseResult<{ id: string; name: string }> {
+  addBone(payload: ToolPayloadMap['add_bone']): UsecaseResult<{ id: string; name: string }> {
     return this.modelService.addBone(payload);
   }
 
-  updateBone(payload: {
-    id?: string;
-    name?: string;
-    newName?: string;
-    parent?: string;
-    parentId?: string;
-    parentRoot?: boolean;
-    pivot?: [number, number, number];
-    rotation?: [number, number, number];
-    scale?: [number, number, number];
-    ifRevision?: string;
-  }): UsecaseResult<{ id: string; name: string }> {
+  updateBone(payload: ToolPayloadMap['update_bone']): UsecaseResult<{ id: string; name: string }> {
     return this.modelService.updateBone(payload);
   }
 
-  deleteBone(payload: {
-    id?: string;
-    name?: string;
-    ifRevision?: string;
-  }): UsecaseResult<{ id: string; name: string; removedBones: number; removedCubes: number }> {
+  deleteBone(
+    payload: ToolPayloadMap['delete_bone']
+  ): UsecaseResult<{ id: string; name: string; removedBones: number; removedCubes: number }> {
     return this.modelService.deleteBone(payload);
   }
 
-  addCube(payload: {
-    id?: string;
-    name: string;
-    from: [number, number, number];
-    to: [number, number, number];
-    bone?: string;
-    boneId?: string;
-    inflate?: number;
-    mirror?: boolean;
-    ifRevision?: string;
-  }): UsecaseResult<{ id: string; name: string }> {
+  addCube(payload: ToolPayloadMap['add_cube']): UsecaseResult<{ id: string; name: string }> {
     return this.modelService.addCube(payload);
   }
 
-  updateCube(payload: {
-    id?: string;
-    name?: string;
-    newName?: string;
-    bone?: string;
-    boneId?: string;
-    boneRoot?: boolean;
-    from?: [number, number, number];
-    to?: [number, number, number];
-    inflate?: number;
-    mirror?: boolean;
-    ifRevision?: string;
-  }): UsecaseResult<{ id: string; name: string }> {
+  updateCube(payload: ToolPayloadMap['update_cube']): UsecaseResult<{ id: string; name: string }> {
     return this.modelService.updateCube(payload);
   }
 
-  deleteCube(payload: { id?: string; name?: string; ifRevision?: string }): UsecaseResult<{ id: string; name: string }> {
+  deleteCube(payload: ToolPayloadMap['delete_cube']): UsecaseResult<{ id: string; name: string }> {
     return this.modelService.deleteCube(payload);
   }
 
-  applyRigTemplate(payload: { templateId: string; ifRevision?: string }): UsecaseResult<{ templateId: string }> {
+  applyRigTemplate(payload: ToolPayloadMap['apply_rig_template']): UsecaseResult<{ templateId: string }> {
     return this.modelService.applyRigTemplate(payload);
   }
 
@@ -487,15 +411,17 @@ export class ToolService {
     return this.animationService.setTriggerKeyframes(payload);
   }
 
-  exportModel(payload: ExportPayload): UsecaseResult<{ path: string }> {
+  exportModel(payload: ToolPayloadMap['export']): UsecaseResult<{ path: string }> {
     return this.exportService.exportModel(payload);
   }
 
-  renderPreview(payload: RenderPreviewPayload): UsecaseResult<RenderPreviewResult> {
+  renderPreview(payload: ToolPayloadMap['render_preview']): UsecaseResult<RenderPreviewResult> {
     return this.renderService.renderPreview(payload);
   }
 
-  validate(): UsecaseResult<{ findings: { code: string; message: string; severity: 'error' | 'warning' | 'info' }[] }> {
+  validate(
+    _payload: ToolPayloadMap['validate']
+  ): UsecaseResult<{ findings: { code: string; message: string; severity: 'error' | 'warning' | 'info' }[] }> {
     return this.validationService.validate();
   }
 

@@ -1,3 +1,4 @@
+import { CUBE_FACE_DIRECTIONS } from './model';
 import type { Limits, TextureUsage } from './model';
 import type { DomainResult } from './result';
 import type { UvPaintScope, UvPaintSpec } from './uvPaintSpec';
@@ -127,7 +128,7 @@ export const resolveUvPaintRects = (
   return { ok: true, data: { rects } };
 };
 
-const VALID_FACES = new Set(['north', 'south', 'east', 'west', 'up', 'down']);
+const VALID_FACES = new Set(CUBE_FACE_DIRECTIONS);
 
 export const validateUvPaintSpec = (value: unknown, limits: Limits, label: string): DomainResult<unknown> => {
   if (!isRecord(value)) {

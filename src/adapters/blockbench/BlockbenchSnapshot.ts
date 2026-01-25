@@ -1,6 +1,6 @@
 import { SnapshotPort } from '../../ports/snapshot';
 import { SessionState, TrackedAnimationChannel, TrackedAnimationTrigger } from '../../session';
-import { FormatKind } from '../../types';
+import { FormatKind, FORMAT_KINDS } from '../../types';
 import { matchesFormatKind } from '../../services/format';
 import { Logger } from '../../logging';
 import {
@@ -223,8 +223,7 @@ function getActiveFormatId(globals: BlockbenchGlobals): string | null {
 
 function guessFormatKind(formatId: string | null): FormatKind | null {
   if (!formatId) return null;
-  const kinds: FormatKind[] = ['animated_java', 'geckolib', 'Java Block/Item'];
-  return kinds.find((kind) => matchesFormatKind(kind, formatId)) ?? null;
+  return FORMAT_KINDS.find((kind) => matchesFormatKind(kind, formatId)) ?? null;
 }
 
 function normalizeLoop(loopValue: unknown): boolean {

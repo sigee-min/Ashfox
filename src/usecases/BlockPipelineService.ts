@@ -3,6 +3,7 @@ import { BlockPipelineMode, BlockPipelineOnConflict, BlockPipelineTextures, Bloc
 import { buildBlockPipeline, BlockPipelineSpec, BlockResource } from '../services/blockPipeline';
 import type { ResourceStore } from '../ports/resources';
 import { ok, fail, UsecaseResult } from './result';
+import { ensureNonBlankString } from '../services/validation';
 
 export interface BlockPipelineServiceDeps {
   resources?: ResourceStore;
@@ -46,14 +47,20 @@ export class BlockPipelineService {
     mode?: BlockPipelineMode;
     ifRevision?: string;
   }): UsecaseResult<GenerateBlockPipelineResult> {
+    const nameBlankErr = ensureNonBlankString(payload.name, 'name');
+    if (nameBlankErr) return fail(nameBlankErr);
     const name = String(payload.name ?? '').trim();
     if (!name) {
       return fail({ code: 'invalid_payload', message: 'name is required' });
     }
+    const textureBlankErr = ensureNonBlankString(payload.texture, 'texture');
+    if (textureBlankErr) return fail(textureBlankErr);
     const texture = String(payload.texture ?? '').trim();
     if (!texture) {
       return fail({ code: 'invalid_payload', message: 'texture is required' });
     }
+    const namespaceBlankErr = ensureNonBlankString(payload.namespace, 'namespace');
+    if (namespaceBlankErr) return fail(namespaceBlankErr);
     const namespace = normalizeBlockNamespace(payload.namespace);
     if (!isValidResourceToken(namespace)) {
       return fail({

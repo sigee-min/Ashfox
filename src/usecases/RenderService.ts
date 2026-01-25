@@ -2,6 +2,7 @@ import type { RenderPreviewPayload, RenderPreviewResult, ToolError } from '../ty
 import type { EditorPort } from '../ports/editor';
 import type { TmpStorePort } from '../ports/tmpStore';
 import { ok, fail, UsecaseResult } from './result';
+import { ensureActiveOnly } from './guards';
 
 export interface RenderServiceDeps {
   editor: EditorPort;
@@ -21,7 +22,7 @@ export class RenderService {
   }
 
   renderPreview(payload: RenderPreviewPayload): UsecaseResult<RenderPreviewResult> {
-    const activeErr = this.ensureActive();
+    const activeErr = ensureActiveOnly(this.ensureActive);
     if (activeErr) return fail(activeErr);
     const { saveToTmp, tmpName, tmpPrefix, ...previewPayload } = payload;
     const res = this.editor.renderPreview(previewPayload);

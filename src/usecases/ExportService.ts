@@ -9,6 +9,7 @@ import { resolveFormatId, FormatOverrides, matchesFormatKind } from '../services
 import { buildInternalExport } from '../services/exporters';
 import { withFormatOverrideHint } from './formatHints';
 import type { ExportPolicy } from './policies';
+import { ensureActiveOnly } from './guards';
 
 export interface ExportServiceDeps {
   capabilities: Capabilities;
@@ -46,7 +47,7 @@ export class ExportService {
   }
 
   exportModel(payload: ExportPayload): UsecaseResult<{ path: string }> {
-    const activeErr = this.ensureActive();
+    const activeErr = ensureActiveOnly(this.ensureActive);
     if (activeErr) return fail(activeErr);
     const exportPolicy = this.policies.exportPolicy ?? 'strict';
     const snapshot = this.getSnapshot();

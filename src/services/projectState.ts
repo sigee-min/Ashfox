@@ -1,4 +1,4 @@
-import { FormatKind, ProjectInfo, ProjectState, ProjectStateDetail } from '../types';
+import { FormatKind, FORMAT_KINDS, ProjectInfo, ProjectState, ProjectStateDetail } from '../types';
 import { FormatPort } from '../ports/formats';
 import { FormatOverrides, matchesFormatKind } from './format';
 import { SessionState } from '../session';
@@ -23,8 +23,7 @@ export class ProjectStateService {
         normalized.format = overrideKind;
         return normalized;
       }
-      const kinds: FormatKind[] = ['animated_java', 'geckolib', 'Java Block/Item'];
-      const match = kinds.find((kind) => matchesFormatKind(kind, normalized.formatId));
+      const match = FORMAT_KINDS.find((kind) => matchesFormatKind(kind, normalized.formatId));
       if (match) normalized.format = match;
     }
     return normalized;

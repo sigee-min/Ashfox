@@ -13,13 +13,11 @@ import {
   UpdateCubeCommand
 } from '../../ports/editor';
 import { Logger } from '../../logging';
+import { CUBE_FACE_DIRECTIONS } from '../../shared/toolConstants';
 import {
   CubeFaceDirection,
   CubeFace,
   CubeInstance,
-  GroupInstance,
-  OutlinerApi,
-  OutlinerNode,
   TextureInstance
 } from '../../types/blockbench';
 import {
@@ -35,6 +33,15 @@ import {
   removeOutlinerNode,
   withUndo
 } from './blockbenchUtils';
+import {
+  collectCubes,
+  findCubeRef,
+  findGroup,
+  findGroupRef,
+  findTextureRef,
+  resolveTargetCubes
+} from './outlinerLookup';
+import { withAdapterError } from './adapterErrors';
 
 export class BlockbenchGeometryAdapter {
   private readonly log: Logger;
@@ -44,7 +51,7 @@ export class BlockbenchGeometryAdapter {
   }
 
   addBone(params: BoneCommand): ToolError | null {
-    try {
+    return withAdapterError(this.log, 'bone add', 'bone add failed', () => {
       const globals = readGlobals();
       const GroupCtor = globals.Group;
       const outliner = globals.Outliner;
@@ -52,7 +59,7 @@ export class BlockbenchGeometryAdapter {
         return { code: 'not_implemented', message: 'Group API not available' };
       }
       withUndo({ elements: true, outliner: true }, 'Add bone', () => {
-        const parent = normalizeParent(this.findGroup(params.parent));
+        const parent = normalizeParent(findGroup(params.parent));
         const group = new GroupCtor({
           name: params.name,
           origin: params.pivot,
@@ -69,22 +76,18 @@ export class BlockbenchGeometryAdapter {
       });
       this.log.info('bone added', { name: params.name, parent: params.parent });
       return null;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'bone add failed';
-      this.log.error('bone add error', { message });
-      return { code: 'unknown', message };
-    }
+    });
   }
 
   updateBone(params: UpdateBoneCommand): ToolError | null {
-    try {
+    return withAdapterError(this.log, 'bone update', 'bone update failed', () => {
       const globals = readGlobals();
       const GroupCtor = globals.Group;
       const outliner = globals.Outliner;
       if (typeof GroupCtor === 'undefined') {
         return { code: 'not_implemented', message: 'Group API not available' };
       }
-      const target = this.findGroupRef(params.name, params.id);
+      const target = findGroupRef(params.name, params.id);
       if (!target) {
         const label = params.id ?? params.name ?? 'unknown';
         return { code: 'invalid_payload', message: `Bone not found: ${label}` };
@@ -92,7 +95,7 @@ export class BlockbenchGeometryAdapter {
       if (params.id) {
         target.bbmcpId = params.id;
       }
-      const parent = params.parentRoot ? null : params.parent ? this.findGroup(params.parent) : undefined;
+      const parent = params.parentRoot ? null : params.parent ? findGroup(params.parent) : undefined;
       if (params.parent && !parent) {
         return { code: 'invalid_payload', message: `Parent bone not found: ${params.parent}` };
       }
@@ -113,22 +116,18 @@ export class BlockbenchGeometryAdapter {
       });
       this.log.info('bone updated', { name: params.name, newName: params.newName, parent: params.parent });
       return null;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'bone update failed';
-      this.log.error('bone update error', { message });
-      return { code: 'unknown', message };
-    }
+    });
   }
 
   deleteBone(params: DeleteBoneCommand): ToolError | null {
-    try {
+    return withAdapterError(this.log, 'bone delete', 'bone delete failed', () => {
       const globals = readGlobals();
       const GroupCtor = globals.Group;
       const outliner = globals.Outliner;
       if (typeof GroupCtor === 'undefined') {
         return { code: 'not_implemented', message: 'Group API not available' };
       }
-      const target = this.findGroupRef(params.name, params.id);
+      const target = findGroupRef(params.name, params.id);
       if (!target) {
         const label = params.id ?? params.name ?? 'unknown';
         return { code: 'invalid_payload', message: `Bone not found: ${label}` };
@@ -138,15 +137,11 @@ export class BlockbenchGeometryAdapter {
       });
       this.log.info('bone deleted', { name: target?.name ?? params.name });
       return null;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'bone delete failed';
-      this.log.error('bone delete error', { message });
-      return { code: 'unknown', message };
-    }
+    });
   }
 
   addCube(params: CubeCommand): ToolError | null {
-    try {
+    return withAdapterError(this.log, 'cube add', 'cube add failed', () => {
       const globals = readGlobals();
       const CubeCtor = globals.Cube;
       const outliner = globals.Outliner;
@@ -154,7 +149,7 @@ export class BlockbenchGeometryAdapter {
         return { code: 'not_implemented', message: 'Cube API not available' };
       }
       withUndo({ elements: true, outliner: true }, 'Add cube', () => {
-        const parent = normalizeParent(this.findGroup(params.bone));
+        const parent = normalizeParent(findGroup(params.bone));
         const cube = new CubeCtor({
           name: params.name,
           from: params.from,
@@ -174,22 +169,18 @@ export class BlockbenchGeometryAdapter {
       });
       this.log.info('cube added', { name: params.name, bone: params.bone });
       return null;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'cube add failed';
-      this.log.error('cube add error', { message });
-      return { code: 'unknown', message };
-    }
+    });
   }
 
   updateCube(params: UpdateCubeCommand): ToolError | null {
-    try {
+    return withAdapterError(this.log, 'cube update', 'cube update failed', () => {
       const globals = readGlobals();
       const CubeCtor = globals.Cube;
       const outliner = globals.Outliner;
       if (typeof CubeCtor === 'undefined') {
         return { code: 'not_implemented', message: 'Cube API not available' };
       }
-      const target = this.findCubeRef(params.name, params.id);
+      const target = findCubeRef(params.name, params.id);
       if (!target) {
         const label = params.id ?? params.name ?? 'unknown';
         return { code: 'invalid_payload', message: `Cube not found: ${label}` };
@@ -197,7 +188,7 @@ export class BlockbenchGeometryAdapter {
       if (params.id) {
         target.bbmcpId = params.id;
       }
-      const parent = params.boneRoot ? null : params.bone ? this.findGroup(params.bone) : undefined;
+      const parent = params.boneRoot ? null : params.bone ? findGroup(params.bone) : undefined;
       if (params.bone && !parent) {
         return { code: 'invalid_payload', message: `Bone not found: ${params.bone}` };
       }
@@ -224,22 +215,18 @@ export class BlockbenchGeometryAdapter {
       });
       this.log.info('cube updated', { name: params.name, newName: params.newName, bone: params.bone });
       return null;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'cube update failed';
-      this.log.error('cube update error', { message });
-      return { code: 'unknown', message };
-    }
+    });
   }
 
   deleteCube(params: DeleteCubeCommand): ToolError | null {
-    try {
+    return withAdapterError(this.log, 'cube delete', 'cube delete failed', () => {
       const globals = readGlobals();
       const CubeCtor = globals.Cube;
       const outliner = globals.Outliner;
       if (typeof CubeCtor === 'undefined') {
         return { code: 'not_implemented', message: 'Cube API not available' };
       }
-      const target = this.findCubeRef(params.name, params.id);
+      const target = findCubeRef(params.name, params.id);
       if (!target) {
         const label = params.id ?? params.name ?? 'unknown';
         return { code: 'invalid_payload', message: `Cube not found: ${label}` };
@@ -249,27 +236,23 @@ export class BlockbenchGeometryAdapter {
       });
       this.log.info('cube deleted', { name: target?.name ?? params.name });
       return null;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'cube delete failed';
-      this.log.error('cube delete error', { message });
-      return { code: 'unknown', message };
-    }
+    });
   }
 
   assignTexture(params: AssignTextureCommand): ToolError | null {
-    try {
+    return withAdapterError(this.log, 'texture assign', 'texture assign failed', () => {
       const globals = readGlobals();
       const CubeCtor = globals.Cube;
       const TextureCtor = globals.Texture;
       if (typeof CubeCtor === 'undefined' || typeof TextureCtor === 'undefined') {
         return { code: 'not_implemented', message: 'Cube/Texture API not available' };
       }
-      const texture = this.findTextureRef(params.textureName, params.textureId);
+      const texture = findTextureRef(params.textureName, params.textureId);
       if (!texture) {
         const label = params.textureId ?? params.textureName ?? 'unknown';
         return { code: 'invalid_payload', message: `Texture not found: ${label}` };
       }
-      const cubes = this.resolveTargetCubes(params);
+      const cubes = resolveTargetCubes(params);
       if (cubes.length === 0) {
         return { code: 'invalid_payload', message: 'No target cubes found' };
       }
@@ -317,21 +300,17 @@ export class BlockbenchGeometryAdapter {
       });
       this.log.info('texture assigned', { texture: texture?.name, cubeCount: cubes.length, faces: faces ?? 'all' });
       return null;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'texture assign failed';
-      this.log.error('texture assign error', { message });
-      return { code: 'unknown', message };
-    }
+    });
   }
 
   setFaceUv(params: SetFaceUvCommand): ToolError | null {
-    try {
+    return withAdapterError(this.log, 'face UV update', 'face UV update failed', () => {
       const globals = readGlobals();
       const CubeCtor = globals.Cube;
       if (typeof CubeCtor === 'undefined') {
         return { code: 'not_implemented', message: 'Cube API not available' };
       }
-      const target = this.findCubeRef(params.cubeName, params.cubeId);
+      const target = findCubeRef(params.cubeName, params.cubeId);
       if (!target) {
         const label = params.cubeId ?? params.cubeName ?? 'unknown';
         return { code: 'invalid_payload', message: `Cube not found: ${label}` };
@@ -356,15 +335,15 @@ export class BlockbenchGeometryAdapter {
       });
       this.log.info('face UV updated', { cube: target?.name ?? params.cubeName, faces: faceEntries.length });
       return null;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'face UV update failed';
-      this.log.error('face UV update error', { message });
-      return { code: 'unknown', message };
-    }
+    });
   }
 
   getTextureUsage(params: TextureUsageQuery): { result?: TextureUsageResult; error?: ToolError } {
-    try {
+    return withAdapterError(
+      this.log,
+      'texture usage',
+      'texture usage failed',
+      () => {
       const globals = readGlobals();
       const CubeCtor = globals.Cube;
       const TextureCtor = globals.Texture;
@@ -422,7 +401,7 @@ export class BlockbenchGeometryAdapter {
       });
 
       const unresolved: TextureUsageUnresolved[] = [];
-      const cubes = this.collectCubes();
+      const cubes = collectCubes();
       cubes.forEach((cube) => {
         const cubeId = readNodeId(cube) ?? undefined;
         const cubeName = cube?.name ? String(cube.name) : 'cube';
@@ -475,16 +454,9 @@ export class BlockbenchGeometryAdapter {
         ...(unresolved.length > 0 ? { unresolved } : {})
       };
       return { result };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'texture usage failed';
-      this.log.error('texture usage error', { message });
-      return { error: { code: 'unknown', message } };
-    }
-  }
-
-  private findGroup(name?: string): GroupInstance | null {
-    if (!name) return null;
-    return this.findOutlinerNode((node) => isGroupNode(node) && node.name === name);
+      },
+      (error) => ({ error })
+    );
   }
 
   private enforceManualUvMode(cube: CubeInstance): void {
@@ -498,99 +470,10 @@ export class BlockbenchGeometryAdapter {
     }
   }
 
-  private findGroupRef(name?: string, id?: string): GroupInstance | null {
-    if (id) {
-      const byId = this.findOutlinerNode((node) => isGroupNode(node) && readNodeId(node) === id);
-      if (byId) return byId;
-    }
-    if (name) return this.findGroup(name);
-    return null;
-  }
-
-  private findCube(name?: string): CubeInstance | null {
-    if (!name) return null;
-    return this.findOutlinerNode((node) => isCubeNode(node) && node.name === name);
-  }
-
-  private findCubeRef(name?: string, id?: string): CubeInstance | null {
-    if (id) {
-      const byId = this.findOutlinerNode((node) => isCubeNode(node) && readNodeId(node) === id);
-      if (byId) return byId;
-    }
-    if (name) return this.findCube(name);
-    return null;
-  }
-
-  private findOutlinerNode(match: (node: OutlinerNode) => boolean): OutlinerNode | null {
-    const outliner = readGlobals().Outliner;
-    const toArray = (value: OutlinerNode[] | OutlinerNode | null | undefined): OutlinerNode[] => {
-      if (!value) return [];
-      return Array.isArray(value) ? value : [value];
-    };
-    const search = (nodes: OutlinerNode[] | OutlinerNode | null | undefined): OutlinerNode | null => {
-      for (const n of toArray(nodes)) {
-        if (match(n)) return n;
-        const children = Array.isArray(n?.children) ? n.children : [];
-        if (children.length > 0) {
-          const found = search(children);
-          if (found) return found;
-        }
-      }
-      return null;
-    };
-    return search(outliner?.root ?? []);
-  }
-
-  private resolveTargetCubes(params: AssignTextureCommand): CubeInstance[] {
-    const all = this.collectCubes();
-    const ids = new Set(params.cubeIds ?? []);
-    const names = new Set(params.cubeNames ?? []);
-    if (ids.size === 0 && names.size === 0) return all;
-    return all.filter((cube) => {
-      const id = readNodeId(cube) ?? undefined;
-      const name = cube?.name ? String(cube.name) : undefined;
-      return (id && ids.has(id)) || (name && names.has(name));
-    });
-  }
-
-  private collectCubes(): CubeInstance[] {
-    const outliner = readGlobals().Outliner;
-    const root = outliner?.root;
-    const nodes = Array.isArray(root) ? root : root?.children ?? [];
-    const cubes: CubeInstance[] = [];
-    const walk = (items: OutlinerNode[] | undefined) => {
-      if (!items) return;
-      for (const node of items) {
-        if (isCubeNode(node)) {
-          cubes.push(node);
-          continue;
-        }
-        const children = Array.isArray(node?.children) ? node.children : [];
-        if (children.length > 0) {
-          walk(children);
-        }
-      }
-    };
-    walk(nodes);
-    return cubes;
-  }
-
-  private findTextureRef(name?: string, id?: string): TextureInstance | null {
-    const { Texture: TextureCtor } = readGlobals();
-    const textures = Array.isArray(TextureCtor?.all) ? TextureCtor.all : [];
-    if (id) {
-      const byId = textures.find((tex) => readTextureId(tex) === id);
-      if (byId) return byId;
-    }
-    if (name) {
-      return textures.find((tex) => tex?.name === name || tex?.id === name) ?? null;
-    }
-    return null;
-  }
 }
 
-const VALID_FACE_KEYS = new Set<CubeFaceDirection>(['north', 'south', 'east', 'west', 'up', 'down']);
-const ALL_FACES: CubeFaceDirection[] = ['north', 'south', 'east', 'west', 'up', 'down'];
+const VALID_FACE_KEYS = new Set<CubeFaceDirection>(CUBE_FACE_DIRECTIONS);
+const ALL_FACES: CubeFaceDirection[] = [...CUBE_FACE_DIRECTIONS];
 
 const resolveTextureKey = (ref: string, byId: Map<string, string>, byName: Map<string, string>): string | null => {
   if (byId.has(ref)) return byId.get(ref) ?? null;
@@ -620,18 +503,6 @@ const normalizeFaceUv = (value: unknown): [number, number, number, number] | und
     }
   }
   return undefined;
-};
-
-const isGroupNode = (node: OutlinerNode): node is GroupInstance => {
-  const groupCtor = readGlobals().Group;
-  if (groupCtor && node instanceof groupCtor) return true;
-  return Array.isArray(node.children);
-};
-
-const isCubeNode = (node: OutlinerNode): node is CubeInstance => {
-  const cubeCtor = readGlobals().Cube;
-  if (cubeCtor && node instanceof cubeCtor) return true;
-  return node.from !== undefined && node.to !== undefined;
 };
 
 const normalizeFaces = (faces?: CubeFaceDirection[]): CubeFaceDirection[] | undefined => {

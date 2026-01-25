@@ -7,6 +7,7 @@ import { ok, fail, UsecaseResult } from './result';
 import { resolveFormatId, FormatOverrides } from '../services/format';
 import { diffSnapshots } from '../services/diff';
 import { withFormatOverrideHint } from './formatHints';
+import { ensureNonBlankString } from '../services/validation';
 
 export interface ProjectServiceDeps {
   session: ProjectSession;
@@ -73,6 +74,8 @@ export class ProjectService {
 
   getProjectDiff(payload: { sinceRevision: string; detail?: ProjectStateDetail }): UsecaseResult<{ diff: ProjectDiff }> {
     const detail: ProjectStateDetail = payload.detail ?? 'summary';
+    const revisionBlankErr = ensureNonBlankString(payload.sinceRevision, 'sinceRevision');
+    if (revisionBlankErr) return fail(revisionBlankErr);
     const snapshot = this.getSnapshot();
     const info = this.projectState.toProjectInfo(snapshot);
     if (!info) {
@@ -122,6 +125,10 @@ export class ProjectService {
     const onMismatch = payload.onMismatch ?? 'reuse';
     const requiresFormat = matchMode === 'format' || matchMode === 'format_and_name';
     const requiresName = matchMode === 'name' || matchMode === 'format_and_name';
+    const formatBlankErr = ensureNonBlankString(payload.format, 'format');
+    if (formatBlankErr) return fail(formatBlankErr);
+    const nameBlankErr = ensureNonBlankString(payload.name, 'name');
+    if (nameBlankErr) return fail(nameBlankErr);
     if (requiresFormat && !payload.format) {
       return fail({
         code: 'invalid_payload',
@@ -238,19 +245,19 @@ export class ProjectService {
     if (revisionErr) {
       return fail(revisionErr);
     }
+    const nameBlankErr = ensureNonBlankString(name, 'Project name');
+    if (nameBlankErr) {
+      return fail({
+        ...nameBlankErr,
+        fix: 'Provide a non-empty project name.'
+      });
+    }
     const capability = this.capabilities.formats.find((f) => f.format === format);
     if (!capability || !capability.enabled) {
       return fail({
         code: 'unsupported_format',
         message: `Unsupported format: ${format}`,
         fix: 'Use list_capabilities to pick an enabled format.'
-      });
-    }
-    if (!name) {
-      return fail({
-        code: 'invalid_payload',
-        message: 'Project name is required',
-        fix: 'Provide a non-empty project name.'
       });
     }
     const formatId = resolveFormatId(format, this.formats.listFormats(), this.policies.formatOverrides);

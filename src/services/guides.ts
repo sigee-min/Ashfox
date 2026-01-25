@@ -161,6 +161,9 @@ uv_scale_mismatch / uv_overlap
 → preflight_texture
 → repaint
 
+Tip: apply_texture_spec supports autoRecover=true to run the recovery loop once automatically.
+Tip: texture_pipeline can run the full workflow (assign → preflight → uv → paint → preview) in one call.
+
 See full guide in docs/llm-texture-strategy.md.
 `
   },

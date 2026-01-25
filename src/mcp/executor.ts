@@ -1,6 +1,7 @@
 import { Dispatcher, ToolName, ToolPayloadMap, ToolResponse } from '../types';
 import { ProxyRouter } from '../proxy';
 import { ProxyTool } from '../spec';
+import { PROXY_TOOL_NAMES } from '../shared/toolConstants';
 
 export interface ToolExecutor {
   callTool: (name: string, args: unknown) => Promise<ToolResponse<unknown>>;
@@ -34,8 +35,6 @@ const normalizeToolResponse = (response: ToolResponse<unknown>): ToolResponse<un
   return { ok: false, error: { ...response.error, details } };
 };
 
-const isProxyTool = (name: string): name is ProxyTool =>
-  name === 'apply_model_spec' ||
-  name === 'apply_texture_spec' ||
-  name === 'apply_uv_spec' ||
-  name === 'apply_entity_spec';
+const PROXY_TOOL_SET = new Set<string>(PROXY_TOOL_NAMES);
+
+const isProxyTool = (name: string): name is ProxyTool => PROXY_TOOL_SET.has(name);

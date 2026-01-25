@@ -8,12 +8,13 @@ import {
   ToolName,
   ToolPayloadMap,
   ToolResultMap,
+  WithState,
   ToolResponse,
   ToolErrorCode
 } from './types';
 import { ProjectSession } from './session';
 import { Capabilities } from './types';
-import { ConsoleLogger } from './logging';
+import { ConsoleLogger, Logger } from './logging';
 import { BlockbenchEditor } from './adapters/blockbench/BlockbenchEditor';
 import { BlockbenchHost } from './adapters/blockbench/BlockbenchHost';
 import { BlockbenchFormats } from './adapters/blockbench/BlockbenchFormats';
@@ -29,6 +30,7 @@ import {
   buildTextureContent,
   buildTextureStructured
 } from './mcp/content';
+import { decideRevision } from './services/revisionGuard';
 
 const respondOk = <T>(data: T): ToolResponse<T> => ({ ok: true, data });
 const respondError = <T>(error: ToolError): ToolResponse<T> => ({ ok: false, error });
@@ -38,21 +40,40 @@ const respondErrorSimple = (
   details?: Record<string, unknown>
 ): ToolResponse<unknown> => respondError({ code, message, details });
 
+type BaseResult<K extends ToolName> = ToolResultMap[K] extends WithState<infer R> ? R : ToolResultMap[K];
+
+type ToolHandlerMap = Partial<{
+  [K in ToolName]: (payload: ToolPayloadMap[K]) => UsecaseResult<BaseResult<K>>;
+}>;
+
+type ResponseHandlerMap = Partial<{
+  [K in ToolName]: (payload: ToolPayloadMap[K]) => ToolResponse<ToolResultMap[K]>;
+}>;
+
 export class ToolDispatcherImpl implements Dispatcher {
   private readonly service: ToolService;
   private readonly includeStateByDefault: () => boolean;
   private readonly includeDiffByDefault: () => boolean;
+  private readonly log: Logger;
+  private readonly statefulRetryHandlers: ToolHandlerMap;
+  private readonly statefulHandlers: ToolHandlerMap;
+  private readonly responseHandlers: ResponseHandlerMap;
 
   constructor(
     session: ProjectSession,
     capabilities: Capabilities,
     service?: ToolService,
-    options?: { includeStateByDefault?: boolean | (() => boolean); includeDiffByDefault?: boolean | (() => boolean) }
+    options?: {
+      includeStateByDefault?: boolean | (() => boolean);
+      includeDiffByDefault?: boolean | (() => boolean);
+      logger?: Logger;
+    }
   ) {
+    this.log = options?.logger ?? new ConsoleLogger('bbmcp-dispatcher', 'info');
     if (service) {
       this.service = service;
     } else {
-      const log = new ConsoleLogger('bbmcp-dispatcher', 'info');
+      const log = this.log;
       const editor = new BlockbenchEditor(log);
       const host = new BlockbenchHost();
       const formats = new BlockbenchFormats();
@@ -73,6 +94,52 @@ export class ToolDispatcherImpl implements Dispatcher {
         policies: { snapshotPolicy: 'hybrid', rigMergeStrategy: 'skip_existing', exportPolicy: 'strict' }
       });
     }
+    this.statefulRetryHandlers = {
+      generate_texture_preset: (payload) => this.service.generateTexturePreset(payload),
+      auto_uv_atlas: (payload) => this.service.autoUvAtlas(payload),
+      set_project_texture_resolution: (payload) => this.service.setProjectTextureResolution(payload),
+      ensure_project: (payload) => this.service.ensureProject(payload),
+      generate_block_pipeline: (payload) => this.service.generateBlockPipeline(payload),
+      delete_texture: (payload) => this.service.deleteTexture(payload),
+      assign_texture: (payload) => this.service.assignTexture(payload),
+      set_face_uv: (payload) => this.service.setFaceUv(payload),
+      add_bone: (payload) => this.service.addBone(payload),
+      update_bone: (payload) => this.service.updateBone(payload),
+      delete_bone: (payload) => this.service.deleteBone(payload),
+      add_cube: (payload) => this.service.addCube(payload),
+      update_cube: (payload) => this.service.updateCube(payload),
+      delete_cube: (payload) => this.service.deleteCube(payload),
+      apply_rig_template: (payload) => this.service.applyRigTemplate(payload)
+    } satisfies ToolHandlerMap;
+    this.statefulHandlers = {
+      export: (payload) => this.service.exportModel(payload),
+      validate: (payload) => this.service.validate(payload)
+    } satisfies ToolHandlerMap;
+    this.responseHandlers = {
+      list_capabilities: () => respondOk(this.service.listCapabilities()),
+      get_project_state: (payload) =>
+        this.logGuardFailure(
+          'get_project_state',
+          payload,
+          toToolResponse(this.service.getProjectState(payload))
+        ),
+      read_texture: (payload) =>
+        this.logGuardFailure(
+          'read_texture',
+          payload,
+          attachTextureContent(toToolResponse(this.service.readTextureImage(payload)))
+        ),
+      reload_plugins: (payload) =>
+        this.logGuardFailure('reload_plugins', payload, toToolResponse(this.service.reloadPlugins(payload))),
+      preflight_texture: (payload) =>
+        this.logGuardFailure('preflight_texture', payload, toToolResponse(this.service.preflightTexture(payload))),
+      render_preview: (payload) =>
+        this.logGuardFailure(
+          'render_preview',
+          payload,
+          attachRenderPreviewContent(this.attachState(payload, toToolResponse(this.service.renderPreview(payload))))
+        )
+    } satisfies ResponseHandlerMap;
     const flag = options?.includeStateByDefault;
     this.includeStateByDefault = typeof flag === 'function' ? flag : () => Boolean(flag);
     const diffFlag = options?.includeDiffByDefault;
@@ -84,122 +151,27 @@ export class ToolDispatcherImpl implements Dispatcher {
     payload: ToolPayloadMap[TName]
   ): ToolResponse<ToolResultMap[TName]> {
     try {
-      switch (name) {
-        case 'list_capabilities':
-          return respondOk(this.service.listCapabilities()) as ToolResponse<ToolResultMap[TName]>;
-        case 'get_project_state':
-          return toToolResponse(
-            this.service.getProjectState(payload as ToolPayloadMap['get_project_state'])
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'read_texture':
-          return attachTextureContent(
-            toToolResponse(this.service.readTextureImage(payload as ToolPayloadMap['read_texture']))
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'reload_plugins':
-          return toToolResponse(
-            this.service.reloadPlugins(payload as ToolPayloadMap['reload_plugins'])
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'generate_texture_preset':
-          return this.attachState(
-            payload as ToolPayloadMap['generate_texture_preset'],
-            toToolResponse(this.service.generateTexturePreset(payload as ToolPayloadMap['generate_texture_preset']))
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'auto_uv_atlas':
-          return this.attachState(
-            payload as ToolPayloadMap['auto_uv_atlas'],
-            toToolResponse(this.service.autoUvAtlas(payload as ToolPayloadMap['auto_uv_atlas']))
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'set_project_texture_resolution':
-          return this.attachState(
-            payload as ToolPayloadMap['set_project_texture_resolution'],
-            toToolResponse(
-              this.service.setProjectTextureResolution(payload as ToolPayloadMap['set_project_texture_resolution'])
-            )
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'preflight_texture':
-          return toToolResponse(
-            this.service.preflightTexture(payload as ToolPayloadMap['preflight_texture'])
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'ensure_project':
-          return this.attachState(
-            payload as ToolPayloadMap['ensure_project'],
-            toToolResponse(this.service.ensureProject(payload as ToolPayloadMap['ensure_project']))
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'generate_block_pipeline':
-          return this.attachState(
-            payload as ToolPayloadMap['generate_block_pipeline'],
-            toToolResponse(this.service.generateBlockPipeline(payload as ToolPayloadMap['generate_block_pipeline']))
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'delete_texture':
-          return this.attachState(
-            payload as ToolPayloadMap['delete_texture'],
-            toToolResponse(this.service.deleteTexture(payload as ToolPayloadMap['delete_texture']))
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'assign_texture':
-          return this.attachState(
-            payload as ToolPayloadMap['assign_texture'],
-            toToolResponse(this.service.assignTexture(payload as ToolPayloadMap['assign_texture']))
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'set_face_uv':
-          return this.attachState(
-            payload as ToolPayloadMap['set_face_uv'],
-            toToolResponse(this.service.setFaceUv(payload as ToolPayloadMap['set_face_uv']))
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'add_bone':
-          return this.attachState(
-            payload as ToolPayloadMap['add_bone'],
-            toToolResponse(this.service.addBone(payload as ToolPayloadMap['add_bone']))
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'update_bone':
-          return this.attachState(
-            payload as ToolPayloadMap['update_bone'],
-            toToolResponse(this.service.updateBone(payload as ToolPayloadMap['update_bone']))
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'delete_bone':
-          return this.attachState(
-            payload as ToolPayloadMap['delete_bone'],
-            toToolResponse(this.service.deleteBone(payload as ToolPayloadMap['delete_bone']))
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'add_cube':
-          return this.attachState(
-            payload as ToolPayloadMap['add_cube'],
-            toToolResponse(this.service.addCube(payload as ToolPayloadMap['add_cube']))
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'update_cube':
-          return this.attachState(
-            payload as ToolPayloadMap['update_cube'],
-            toToolResponse(this.service.updateCube(payload as ToolPayloadMap['update_cube']))
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'delete_cube':
-          return this.attachState(
-            payload as ToolPayloadMap['delete_cube'],
-            toToolResponse(this.service.deleteCube(payload as ToolPayloadMap['delete_cube']))
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'apply_rig_template':
-          return this.attachState(
-            payload as ToolPayloadMap['apply_rig_template'],
-            toToolResponse(this.service.applyRigTemplate(payload as ToolPayloadMap['apply_rig_template']))
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'export':
-          return this.attachState(
-            payload as ToolPayloadMap['export'],
-            toToolResponse(this.service.exportModel(payload as ToolPayloadMap['export']))
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'render_preview':
-          return attachRenderPreviewContent(
-            this.attachState(
-              payload as ToolPayloadMap['render_preview'],
-              toToolResponse(this.service.renderPreview(payload as ToolPayloadMap['render_preview']))
-            )
-          ) as ToolResponse<ToolResultMap[TName]>;
-        case 'validate':
-          return this.attachState(
-            payload as ToolPayloadMap['validate'],
-            toToolResponse(this.service.validate())
-          ) as ToolResponse<ToolResultMap[TName]>;
-        default:
-          return respondErrorSimple('unknown', `Unknown tool ${String(name)}`) as ToolResponse<ToolResultMap[TName]>;
+      const retryHandler = this.statefulRetryHandlers[name as keyof ToolHandlerMap];
+      if (retryHandler) {
+        return this.handleWithRetry(
+          name,
+          payload,
+          retryHandler as (payload: ToolPayloadMap[TName]) => UsecaseResult<BaseResult<TName>>
+        ) as ToolResponse<ToolResultMap[TName]>;
       }
+      const statefulHandler = this.statefulHandlers[name as keyof ToolHandlerMap];
+      if (statefulHandler) {
+        return this.handleStateful(
+          name,
+          payload,
+          statefulHandler as (payload: ToolPayloadMap[TName]) => UsecaseResult<BaseResult<TName>>
+        ) as ToolResponse<ToolResultMap[TName]>;
+      }
+      const responseHandler = this.responseHandlers[name as keyof ResponseHandlerMap];
+      if (responseHandler) {
+        return responseHandler(payload as ToolPayloadMap[TName]) as ToolResponse<ToolResultMap[TName]>;
+      }
+      return respondErrorSimple('unknown', `Unknown tool ${String(name)}`) as ToolResponse<ToolResultMap[TName]>;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'unknown error';
       return respondErrorSimple('unknown', message) as ToolResponse<ToolResultMap[TName]>;
@@ -264,7 +236,137 @@ export class ToolDispatcherImpl implements Dispatcher {
       error: { ...response.error, details }
     };
   }
+
+  private handleWithRetry<TName extends ToolName>(
+    tool: TName,
+    payload: ToolPayloadMap[TName],
+    call: (payload: ToolPayloadMap[TName]) => UsecaseResult<BaseResult<TName>>
+  ): ToolResponse<ToolResultMap[TName]> {
+    const { result, payload: retryPayload } = this.callWithAutoRetry(tool, payload, call);
+    return this.logGuardFailure(
+      tool,
+      retryPayload,
+      this.attachState(retryPayload, toToolResponse(result))
+    ) as ToolResponse<ToolResultMap[TName]>;
+  }
+
+  private handleStateful<TName extends ToolName>(
+    tool: TName,
+    payload: ToolPayloadMap[TName],
+    call: (payload: ToolPayloadMap[TName]) => UsecaseResult<BaseResult<TName>>
+  ): ToolResponse<ToolResultMap[TName]> {
+    return this.logGuardFailure(
+      tool,
+      payload,
+      this.attachState(payload, toToolResponse(call(payload)))
+    ) as ToolResponse<ToolResultMap[TName]>;
+  }
+
+  private logGuardFailure<T>(
+    tool: ToolName,
+    payload: ToolPayloadMap[ToolName],
+    response: ToolResponse<T>
+  ): ToolResponse<T> {
+    if (response.ok) return response;
+    const reason = resolveGuardReason(response.error);
+    if (!reason) return response;
+    const ifRevision = (payload as { ifRevision?: string }).ifRevision ?? null;
+    const detailMeta = extractGuardMeta(response.error);
+    this.log.debug('guard rejected request', {
+      tool,
+      reason,
+      code: response.error.code,
+      ifRevision,
+      ...detailMeta
+    });
+    return response;
+  }
+
+  private callWithAutoRetry<TPayload extends { ifRevision?: string }, TResult>(
+    tool: ToolName,
+    payload: TPayload,
+    call: (payload: TPayload) => UsecaseResult<TResult>
+  ): { result: UsecaseResult<TResult>; payload: TPayload } {
+    const first = call(payload);
+    if (first.ok) {
+      return { result: first, payload };
+    }
+    if (!this.service.isAutoRetryRevisionEnabled()) {
+      return { result: first, payload };
+    }
+    if (first.error.code !== 'invalid_state_revision_mismatch') {
+      return { result: first, payload };
+    }
+    const decision = decideRevision(payload.ifRevision, {
+      requiresRevision: this.service.isRevisionRequired(),
+      allowAutoRetry: true,
+      getProjectState: () => this.service.getProjectState({ detail: 'summary' })
+    });
+    if (!decision.ok) {
+      const reason = resolveGuardReason(decision.error) ?? 'state_unavailable';
+      this.log.debug('revision retry skipped', { tool, reason, code: decision.error.code });
+      return { result: first, payload };
+    }
+    if (decision.action !== 'retry') {
+      this.log.debug('revision retry skipped', {
+        tool,
+        reason: 'no_new_revision',
+        expected: payload.ifRevision ?? null,
+        current: decision.currentRevision ?? null
+      });
+      return { result: first, payload };
+    }
+    if (!decision.currentRevision || decision.currentRevision === payload.ifRevision) {
+      this.log.debug('revision retry skipped', {
+        tool,
+        reason: 'no_new_revision',
+        expected: payload.ifRevision ?? null,
+        current: decision.currentRevision ?? null
+      });
+      return { result: first, payload };
+    }
+    this.log.info('revision retrying with latest revision', {
+      tool,
+      reason: 'revision_mismatch',
+      expected: payload.ifRevision ?? null,
+      current: decision.currentRevision,
+      attempt: 1
+    });
+    const retryPayload = { ...payload, ifRevision: decision.currentRevision } as TPayload;
+    const retry = call(retryPayload);
+    if (retry.ok) {
+      this.log.info('revision retry succeeded', { tool, attempt: 1 });
+    } else {
+      this.log.warn('revision retry failed', {
+        tool,
+        attempt: 1,
+        code: retry.error.code,
+        message: retry.error.message
+      });
+    }
+    return { result: retry, payload: retryPayload };
+  }
 }
+
+const resolveGuardReason = (error: ToolError): string | null => {
+  if (error.code === 'invalid_state_revision_mismatch') return 'revision_mismatch';
+  const details = error.details as Record<string, unknown> | undefined;
+  const reason = details?.reason;
+  return typeof reason === 'string' ? reason : null;
+};
+
+const extractGuardMeta = (error: ToolError): Record<string, unknown> => {
+  const details = error.details;
+  if (!details || typeof details !== 'object') return {};
+  const record = details as Record<string, unknown>;
+  const meta: Record<string, unknown> = {};
+  if (typeof record.expected === 'string') meta.expected = record.expected;
+  if (typeof record.currentRevision === 'string') meta.currentRevision = record.currentRevision;
+  if (typeof record.current === 'string') meta.currentRevision = record.current;
+  if (typeof record.active === 'boolean') meta.active = record.active;
+  if (typeof record.reason === 'string') meta.reason = record.reason;
+  return meta;
+};
 
 function toToolResponse<T>(result: UsecaseResult<T>): ToolResponse<T> {
   if (result.ok) return respondOk(result.value);

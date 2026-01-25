@@ -16,10 +16,27 @@ If you see `uv_scale_mismatch` or `uv_overlap`:
 2) `preflight_texture` again (new `uvUsageId`)
 3) Repaint with `apply_texture_spec` or `generate_texture_preset`
 
+Tip: `apply_texture_spec` supports `autoRecover=true` to run the recovery loop once automatically and return the refreshed `uvUsageId`.
+
 ## Common Pitfalls
 - All faces mapped to full texture (e.g., [0,0,32,32]) causes scale mismatch.
 - Changing textureResolution after painting requires repainting.
 - UV overlap is only allowed if rectangles are identical.
+
+## Macro Tool (Optional)
+Use `texture_pipeline` to run the standard flow in one call:
+`assign_texture → preflight_texture → apply_uv_spec → preflight_texture → apply_texture_spec/generate_texture_preset → render_preview`.
+
+Example (textures + preview):
+```json
+{
+  "assign": [{ "textureName": "pot", "cubeNames": ["pot"] }],
+  "uv": { "assignments": [{ "cubeName": "pot", "faces": { "north": [0,0,16,16] } }] },
+  "textures": [{ "mode": "create", "name": "pot", "width": 16, "height": 16, "ops": [] }],
+  "preview": { "mode": "fixed", "output": "single", "angle": [30, 45, 0] },
+  "autoRecover": true
+}
+```
 
 ## Minimal Examples
 

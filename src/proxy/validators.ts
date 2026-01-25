@@ -3,6 +3,7 @@ import {
   ApplyModelSpecPayload,
   ApplyTextureSpecPayload,
   ApplyUvSpecPayload,
+  TexturePipelinePayload
 } from '../spec';
 import { Limits, ToolResponse } from '../types';
 import { buildRigTemplate } from '../templates';
@@ -10,6 +11,7 @@ import { isZeroSize } from '../domain/geometry';
 import { errFromDomain, errWithCode } from './response';
 import { validateTextureSpecs } from '../domain/textureSpecValidation';
 import { validateUvAssignments } from '../domain/uvAssignments';
+import { checkDimensions } from '../domain/dimensions';
 
 export const validateModelSpec = (payload: ApplyModelSpecPayload, limits: Limits): ToolResponse<unknown> => {
   if (!payload.model) return errWithCode('invalid_payload', 'model is required');
@@ -145,6 +147,102 @@ export const validateEntitySpec = (payload: ApplyEntitySpecPayload, limits: Limi
       }
     }
   }
+  return { ok: true, data: { valid: true } };
+};
+
+const TEXTURE_PRESET_NAMES = new Set<string>([
+  'painted_metal',
+  'rubber',
+  'glass',
+  'wood',
+  'dirt',
+  'plant',
+  'stone',
+  'sand',
+  'leather',
+  'fabric',
+  'ceramic'
+]);
+
+export const validateTexturePipeline = (payload: TexturePipelinePayload, limits: Limits): ToolResponse<unknown> => {
+  if (!payload || typeof payload !== 'object') return errWithCode('invalid_payload', 'payload is required');
+  const hasStep = Boolean(
+    (payload.assign && payload.assign.length > 0) ||
+      payload.uv ||
+      (payload.textures && payload.textures.length > 0) ||
+      (payload.presets && payload.presets.length > 0) ||
+      payload.preflight ||
+      payload.preview
+  );
+  if (!hasStep) {
+    return errWithCode(
+      'invalid_payload',
+      'texture_pipeline requires at least one step (assign, uv, textures, presets, preflight, preview).'
+    );
+  }
+
+  if (payload.assign) {
+    if (!Array.isArray(payload.assign)) return errWithCode('invalid_payload', 'assign must be an array');
+    for (const entry of payload.assign) {
+      if (!entry?.textureId && !entry?.textureName) {
+        return errWithCode('invalid_payload', 'assign entry requires textureId or textureName');
+      }
+      if (entry.cubeIds && !Array.isArray(entry.cubeIds)) {
+        return errWithCode('invalid_payload', 'assign cubeIds must be an array');
+      }
+      if (entry.cubeNames && !Array.isArray(entry.cubeNames)) {
+        return errWithCode('invalid_payload', 'assign cubeNames must be an array');
+      }
+    }
+  }
+
+  if (payload.uv) {
+    const assignmentsRes = validateUvAssignments(payload.uv.assignments);
+    if (!assignmentsRes.ok) return errFromDomain(assignmentsRes.error);
+  }
+
+  if (payload.textures) {
+    const textureRes = validateTextureSpecs(payload.textures, limits);
+    if (!textureRes.ok) return errFromDomain(textureRes.error);
+  }
+
+  if (payload.presets) {
+    if (!Array.isArray(payload.presets)) return errWithCode('invalid_payload', 'presets must be an array');
+    for (const preset of payload.presets) {
+      if (!preset?.preset || typeof preset.preset !== 'string') {
+        return errWithCode('invalid_payload', 'preset name is required');
+      }
+      if (!TEXTURE_PRESET_NAMES.has(preset.preset)) {
+        return errWithCode('invalid_payload', `unknown texture preset: ${preset.preset}`);
+      }
+      const width = Number(preset.width);
+      const height = Number(preset.height);
+      const dimCheck = checkDimensions(width, height, { requireInteger: true, maxSize: limits.maxTextureSize });
+      if (!dimCheck.ok) {
+        if (dimCheck.reason === 'non_positive') {
+          return errWithCode('invalid_payload', 'preset width/height must be positive numbers');
+        }
+        if (dimCheck.reason === 'non_integer') {
+          return errWithCode('invalid_payload', 'preset width/height must be integers');
+        }
+        return errWithCode('invalid_payload', `preset size exceeds max ${limits.maxTextureSize}`);
+      }
+      if (preset.mode && !['create', 'update'].includes(preset.mode)) {
+        return errWithCode('invalid_payload', `preset mode invalid (${preset.preset})`);
+      }
+      if ((preset.mode ?? 'create') === 'update' && !preset.targetId && !preset.targetName) {
+        return errWithCode('invalid_payload', `preset update requires targetId or targetName (${preset.preset})`);
+      }
+    }
+  }
+
+  if (payload.preview) {
+    const mode = payload.preview.mode;
+    if (mode && !['fixed', 'turntable'].includes(mode)) {
+      return errWithCode('invalid_payload', `preview mode invalid (${mode})`);
+    }
+  }
+
   return { ok: true, data: { valid: true } };
 };
 

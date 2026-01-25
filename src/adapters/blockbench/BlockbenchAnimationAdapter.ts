@@ -10,6 +10,21 @@ import { Logger } from '../../logging';
 import { AnimationClip } from '../../types/blockbench';
 import { assignAnimationLength, readAnimationId, readGlobals, withUndo } from './blockbenchUtils';
 
+type KeyframeLike = {
+  set?: (key: string, value: unknown) => void;
+  data_point?: unknown;
+  data_points?: unknown;
+  value?: unknown;
+  data?: unknown;
+  interpolation?: unknown;
+};
+
+type AnimatorLike = {
+  createKeyframe?: (channel: string, time: number) => KeyframeLike | undefined;
+};
+
+type AnimatorConstructor = new (name: string, clip: AnimationClip) => AnimatorLike;
+
 export class BlockbenchAnimationAdapter {
   private readonly log: Logger;
 
@@ -133,25 +148,13 @@ export class BlockbenchAnimationAdapter {
         if (clip) {
           const animators = (clip.animators ?? {}) as Record<string, unknown>;
           const existing = animators[params.bone] as unknown;
-          const animator =
-            (existing && typeof existing === 'object' ? existing : null) ??
-            new AnimatorCtor(params.bone, clip);
+          const animator = resolveAnimator(existing, AnimatorCtor, params.bone, clip);
           animators[params.bone] = animator;
           clip.animators = animators;
           params.keys.forEach((k) => {
-            const kf = (animator as { createKeyframe?: (channel: string, time: number) => unknown })
-              .createKeyframe?.(params.channel, k.time);
-            const keyframe = kf as
-              | { set?: (key: string, value: unknown) => void; data_points?: unknown; interpolation?: unknown }
-              | null
-              | undefined;
-            if (keyframe?.set) {
-              keyframe.set('data_points', k.value);
-              if (k.interp) keyframe.set('interpolation', k.interp);
-            } else if (keyframe) {
-              keyframe.data_points = k.value;
-              if (k.interp) keyframe.interpolation = k.interp;
-            }
+            const keyframe = animator.createKeyframe?.(params.channel, k.time);
+            if (!keyframe) return;
+            applyKeyframeValue(keyframe, k.value, k.interp);
           });
         }
       });
@@ -212,35 +215,55 @@ export class BlockbenchAnimationAdapter {
 
 const EFFECT_ANIMATOR_KEYS = ['effects', 'effect', 'timeline', 'events'];
 
-const resolveEffectAnimator = (clip: AnimationClip, AnimatorCtor: unknown): any => {
+const resolveEffectAnimator = (clip: AnimationClip, AnimatorCtor: unknown): AnimatorLike => {
   const animators = (clip.animators ?? {}) as Record<string, unknown>;
   const existingKey = Object.keys(animators).find((key) =>
     EFFECT_ANIMATOR_KEYS.some((candidate) => key.toLowerCase().includes(candidate))
   );
   if (existingKey) {
     const existing = animators[existingKey];
-    if (existing) return existing;
+    if (existing && typeof existing === 'object') return existing as AnimatorLike;
   }
-  const ctor = AnimatorCtor as new (name: string, clip: AnimationClip) => unknown;
+  const ctor = AnimatorCtor as AnimatorConstructor;
   const animator = new ctor('effects', clip);
   animators.effects = animator;
   clip.animators = animators;
   return animator;
 };
 
-const applyTriggerValue = (keyframe: unknown, value: unknown) => {
-  const target = keyframe as Record<string, unknown> & { set?: (key: string, val: unknown) => void };
-  if (typeof target.set === 'function') {
-    target.set('data_point', value);
-    target.set('data_points', value);
-    target.set('value', value);
-    target.set('data', value);
+const resolveAnimator = (
+  existing: unknown,
+  AnimatorCtor: unknown,
+  name: string,
+  clip: AnimationClip
+): AnimatorLike => {
+  if (existing && typeof existing === 'object') return existing as AnimatorLike;
+  const ctor = AnimatorCtor as AnimatorConstructor;
+  return new ctor(name, clip);
+};
+
+const applyKeyframeValue = (keyframe: KeyframeLike, value: unknown, interp?: string) => {
+  if (keyframe.set) {
+    keyframe.set('data_points', value);
+    if (interp) keyframe.set('interpolation', interp);
     return;
   }
-  target.data_point = value;
-  target.data_points = value;
-  target.value = value;
-  target.data = value;
+  keyframe.data_points = value;
+  if (interp) keyframe.interpolation = interp;
+};
+
+const applyTriggerValue = (keyframe: KeyframeLike, value: unknown) => {
+  if (keyframe.set) {
+    keyframe.set('data_point', value);
+    keyframe.set('data_points', value);
+    keyframe.set('value', value);
+    keyframe.set('data', value);
+    return;
+  }
+  keyframe.data_point = value;
+  keyframe.data_points = value;
+  keyframe.value = value;
+  keyframe.data = value;
 };
 
 export const getAnimations = (): AnimationClip[] => {

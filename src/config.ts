@@ -1,6 +1,7 @@
 import { Capabilities, Capability, Limits, FormatKind, PreviewCapability } from './types';
 import { FormatDescriptor } from './ports/formats';
 import { FormatOverrides, resolveFormatId } from './services/format';
+import { TEXTURE_WORKFLOW_INSTRUCTIONS } from './services/toolInstructions';
 
 export const PLUGIN_ID = 'bbmcp';
 export const PLUGIN_VERSION = '0.0.2';
@@ -41,8 +42,7 @@ const CAPABILITIES_GUIDANCE = {
     methods: ['tools/list', 'list_capabilities', 'get_project_state']
   },
   textureStrategy: {
-    note:
-      'Prefer high-level tools (generate_block_pipeline, apply_model_spec, apply_texture_spec, generate_texture_preset). Use low-level tools (add_bone/add_cube/set_face_uv) only when high-level tools cannot express the change; avoid mixing high- and low-level edits in the same task. Lock invariants before painting: textureResolution, UV policy (manual per-face), and texture count (single atlas vs per-material). For <=32px textures, set_pixel ops are fine; for 64px+ use generate_texture_preset to avoid large payloads. Build a mapping table first: call preflight_texture without texture filters, then paint only the UV rects it reports (uvPaint enforced); pass its uvUsageId to apply_texture_spec or generate_texture_preset. Full-texture painting is not supported; map UVs to the full texture if you want whole-texture coverage. If UV usage changes, apply_texture_spec/generate_texture_preset will fail with invalid_state and you must preflight again. UV rects must not overlap unless identical; overlapping rects block apply_texture_spec and are reported by preflight/validate. Start with a checker/label texture to verify orientation before final paint. If UVs change, repaint using the new mapping. Prefer splitting textures by material groups (e.g., pot/soil/plant) and assign by cubeNames. After assign_texture, use set_face_uv to map per-face UVs explicitly. Low opaque coverage is rejected to avoid transparent results; fill a larger area or tighten UVs. If UVs exceed the current textureResolution, increase project resolution (width >= 2*(w+d), height >= 2*(h+d), round up to 32/64/128) or split textures per material. Use set_project_texture_resolution before creating larger textures. apply_texture_spec uses ops-only; omit ops to create a blank texture (background can still fill). For visual inspection, render_preview/read_texture return image content; use saveToTmp to snapshot into .bbmcp/tmp when images cannot be attached. For entity workflows, prefer apply_entity_spec (geckolib v3/v4) and see bbmcp://guide/entity-workflow via resources/read.'
+    note: TEXTURE_WORKFLOW_INSTRUCTIONS
   }
 };
 

@@ -1,3 +1,4 @@
+import { CUBE_FACE_DIRECTIONS } from './model';
 import type { CubeFaceDirection } from './model';
 import type { DomainResult } from './result';
 import { fail, ok } from './result';
@@ -58,4 +59,4 @@ export const validateUvAssignments = (
   return ok({ valid: true });
 };
 
-const VALID_FACES = new Set<CubeFaceDirection>(['north', 'south', 'east', 'west', 'up', 'down']);
+const VALID_FACES = new Set<CubeFaceDirection>(CUBE_FACE_DIRECTIONS);

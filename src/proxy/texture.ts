@@ -5,6 +5,7 @@ import { readBlockbenchGlobals } from '../types/blockbench';
 import { err } from './response';
 import { UvPaintRect } from './uvPaint';
 import { checkDimensions } from '../domain/dimensions';
+import { validateUvPaintSourceSize } from '../domain/uvPaintSource';
 import { MAX_TEXTURE_OPS } from '../domain/textureOps';
 import { normalizeTextureSpecSize } from '../domain/textureSpecValidation';
 
@@ -94,23 +95,18 @@ export const renderTextureSpec = (
   }
   let paintCoverage: TextureCoverage | undefined;
   if (uvPaint) {
-    const sourceWidth = Number(uvPaint.source.width);
-    const sourceHeight = Number(uvPaint.source.height);
-    const sourceCheck = checkDimensions(sourceWidth, sourceHeight, {
-      requireInteger: false,
-      maxSize: limits.maxTextureSize
-    });
-    if (!sourceCheck.ok) {
-      if (sourceCheck.reason === 'non_positive') {
-        const axis = sourceCheck.axis === 'height' ? 'height' : 'width';
-        return err('invalid_payload', `uvPaint source ${axis} must be > 0 (${label})`);
-      }
-      if (sourceCheck.reason === 'non_integer') {
-        const axis = sourceCheck.axis === 'height' ? 'height' : 'width';
-        return err('invalid_payload', `uvPaint source ${axis} must be > 0 (${label})`);
-      }
-      return err('invalid_payload', `uvPaint source size exceeds max ${limits.maxTextureSize} (${label})`);
+    const sourceRes = validateUvPaintSourceSize(
+      Number(uvPaint.source.width),
+      Number(uvPaint.source.height),
+      limits,
+      label,
+      { requireInteger: false }
+    );
+    if (!sourceRes.ok) {
+      return err(sourceRes.error.code, sourceRes.error.message);
     }
+    const sourceWidth = sourceRes.data.width;
+    const sourceHeight = sourceRes.data.height;
     const patternCanvas = doc.createElement('canvas') as HTMLCanvasElement | null;
     if (!patternCanvas) return err('not_implemented', 'uvPaint canvas not available');
     patternCanvas.width = sourceWidth;

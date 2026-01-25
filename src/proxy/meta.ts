@@ -1,5 +1,6 @@
 import { ProjectStateDetail, ToolError, ToolResponse } from '../types';
 import { ToolService } from '../usecases/ToolService';
+import { decideRevision } from '../services/revisionGuard';
 
 export type MetaOptions = {
   includeState: boolean;
@@ -83,35 +84,15 @@ export const guardRevision = (
       ? service.isAutoRetryRevisionEnabled()
       : false;
   if (typeof serviceWithRevision.getProjectState !== 'function') return null;
-  const state = service.getProjectState({ detail: 'summary' });
-  if (!expected) {
-    if (!state.ok) return null;
-    return withErrorMeta(
-      {
-        code: 'invalid_state',
-        message: 'ifRevision is required. Call get_project_state before mutating.',
-        details: { reason: 'missing_ifRevision' }
-      },
-      meta,
-      service
-    );
-  }
-  if (!state.ok) return withErrorMeta(state.error, meta, service);
-  const currentRevision = state.value.project.revision;
-  if (currentRevision !== expected) {
-    if (allowAutoRetry) {
-      meta.ifRevision = currentRevision;
-      return null;
-    }
-    return withErrorMeta(
-      {
-        code: 'invalid_state',
-        message: 'Project revision mismatch. Refresh project state before retrying.',
-        details: { expected, currentRevision }
-      },
-      meta,
-      service
-    );
+  const decision = decideRevision(expected, {
+    requiresRevision,
+    allowAutoRetry,
+    getProjectState: () => service.getProjectState({ detail: 'summary' })
+  });
+  if (!decision.ok) return withErrorMeta(decision.error, meta, service);
+  if (decision.action === 'retry') {
+    meta.ifRevision = decision.currentRevision;
+    return null;
   }
   return null;
 };

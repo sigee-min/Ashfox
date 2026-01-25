@@ -1,6 +1,10 @@
-export type FormatKind = 'Java Block/Item' | 'geckolib' | 'animated_java';
+import { FORMAT_KINDS, PROJECT_STATE_DETAILS } from '../shared/toolConstants';
 
-export type ProjectStateDetail = 'summary' | 'full';
+export type FormatKind = typeof FORMAT_KINDS[number];
+
+export type ProjectStateDetail = typeof PROJECT_STATE_DETAILS[number];
+
+export { FORMAT_KINDS, PROJECT_STATE_DETAILS };
 
 export interface IncludeStateOption {
   includeState?: boolean;
@@ -19,6 +23,7 @@ export type ToolErrorCode =
   | 'unsupported_format'
   | 'not_implemented'
   | 'invalid_state'
+  | 'invalid_state_revision_mismatch'
   | 'invalid_payload'
   | 'no_change'
   | 'io_error'

@@ -4,6 +4,7 @@ import {
   EnsureProjectOnMissing,
   CubeFaceDirection,
   ProjectStateDetail,
+  TexturePresetName,
   UvPaintMapping,
   UvPaintScope,
   UvPaintSource,
@@ -11,8 +12,14 @@ import {
   UvPaintTarget
 } from './types';
 import type { FaceUvMap } from './domain/model';
+import type {
+  EntityFormat,
+  GeckoLibTargetVersion,
+  ProxyTool,
+  RigTemplateKind
+} from './shared/toolConstants';
 
-export type RigTemplateKind = 'empty' | 'biped' | 'quadruped' | 'block_entity';
+export type { RigTemplateKind, ProxyTool, EntityFormat, GeckoLibTargetVersion } from './shared/toolConstants';
 
 export interface ModelPart {
   id: string;
@@ -82,23 +89,12 @@ export interface ApplyUvSpecPayload {
 export interface ApplyTextureSpecPayload {
   textures: TextureSpec[];
   uvUsageId: string;
+  autoRecover?: boolean;
   includeState?: boolean;
   includeDiff?: boolean;
   diffDetail?: ProjectStateDetail;
   ifRevision?: string;
 }
-
-export type ProxyTool =
-  | 'apply_model_spec'
-  | 'apply_texture_spec'
-  | 'apply_uv_spec'
-  | 'apply_entity_spec'
-  | 'render_preview'
-  | 'validate';
-
-export type EntityFormat = 'geckolib' | 'modded_entity' | 'optifine_entity';
-
-export type GeckoLibTargetVersion = 'v3' | 'v4';
 
 export type EntityAnimationChannel = {
   bone: string;
@@ -140,7 +136,64 @@ export interface ApplyEntitySpecPayload {
   model?: ModelSpec;
   textures?: TextureSpec[];
   uvUsageId?: string;
+  autoRecover?: boolean;
   animations?: EntityAnimationSpec[];
+  includeState?: boolean;
+  includeDiff?: boolean;
+  diffDetail?: ProjectStateDetail;
+  ifRevision?: string;
+}
+
+export type TexturePipelineAssign = {
+  textureId?: string;
+  textureName?: string;
+  cubeIds?: string[];
+  cubeNames?: string[];
+  faces?: CubeFaceDirection[];
+};
+
+export type TexturePipelineUv = {
+  assignments: UvAssignmentSpec[];
+};
+
+export type TexturePipelinePreset = {
+  preset: TexturePresetName;
+  width: number;
+  height: number;
+  name?: string;
+  targetId?: string;
+  targetName?: string;
+  mode?: 'create' | 'update';
+  seed?: number;
+  palette?: string[];
+  uvPaint?: UvPaintSpec;
+};
+
+export type TexturePipelinePreflight = {
+  includeUsage?: boolean;
+};
+
+export type TexturePipelinePreview = {
+  mode: 'fixed' | 'turntable';
+  angle?: [number, number] | [number, number, number];
+  clip?: string;
+  timeSeconds?: number;
+  durationSeconds?: number;
+  fps?: number;
+  output?: 'single' | 'sequence';
+  saveToTmp?: boolean;
+  tmpName?: string;
+  tmpPrefix?: string;
+};
+
+export interface TexturePipelinePayload {
+  assign?: TexturePipelineAssign[];
+  uv?: TexturePipelineUv;
+  textures?: TextureSpec[];
+  presets?: TexturePipelinePreset[];
+  autoRecover?: boolean;
+  preflight?: TexturePipelinePreflight;
+  preview?: TexturePipelinePreview;
   includeState?: boolean;
   includeDiff?: boolean;
   diffDetail?: ProjectStateDetail;

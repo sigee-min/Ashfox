@@ -8,7 +8,7 @@ register({
   }
 });
 
-const tests = ['uvAtlas.test.ts', 'uvPaintPixels.test.ts'];
+const tests = ['uvAtlas.test.ts', 'uvPaintPixels.test.ts', 'revisionGuard.test.ts'];
 for (const test of tests) {
   require(path.join(__dirname, test));
 }

@@ -13,6 +13,7 @@ import { toToolResponse } from './response';
 import { isZeroSize } from '../domain/geometry';
 import { TextureUsage } from '../domain/model';
 import { resolveUvPaintRects } from './uvPaint';
+import { validateUvPaintSourceSize } from '../domain/uvPaintSource';
 
 type ApplyErrorEntry = {
   step: string;
@@ -114,34 +115,18 @@ export const applyTextureSpecSteps = async (
       }
       const rectRes = resolveUvPaintRects({ ...texture, uvPaint: uvPaintSpec }, usage);
       if (!rectRes.ok) return withReportError(rectRes.error, report, 'uv_paint', label, meta, service);
-      const sourceWidth = Number(uvPaintSpec.source?.width ?? size.width);
-      const sourceHeight = Number(uvPaintSpec.source?.height ?? size.height);
-      if (!Number.isFinite(sourceWidth) || sourceWidth <= 0 || !Number.isFinite(sourceHeight) || sourceHeight <= 0) {
-        return withReportError(
-          {
-            code: 'invalid_payload',
-            message: `uvPaint source size invalid (${label}).`
-          },
-          report,
-          'uv_paint',
-          label,
-          meta,
-          service
-        );
+      const sourceRes = validateUvPaintSourceSize(
+        Number(uvPaintSpec.source?.width ?? size.width),
+        Number(uvPaintSpec.source?.height ?? size.height),
+        limits,
+        label,
+        { requireInteger: false }
+      );
+      if (!sourceRes.ok) {
+        return withReportError(sourceRes.error, report, 'uv_paint', label, meta, service);
       }
-      if (sourceWidth > limits.maxTextureSize || sourceHeight > limits.maxTextureSize) {
-        return withReportError(
-          {
-            code: 'invalid_payload',
-            message: `uvPaint source size exceeds max ${limits.maxTextureSize} (${label}).`
-          },
-          report,
-          'uv_paint',
-          label,
-          meta,
-          service
-        );
-      }
+      const sourceWidth = sourceRes.data.width;
+      const sourceHeight = sourceRes.data.height;
       const anchor =
         Array.isArray(uvPaintSpec.anchor) && uvPaintSpec.anchor.length === 2
           ? ([uvPaintSpec.anchor[0], uvPaintSpec.anchor[1]] as [number, number])

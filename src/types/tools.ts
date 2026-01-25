@@ -12,40 +12,18 @@ import { ProjectState, WithState } from './project';
 import { RenderPreviewPayload, RenderPreviewResult } from './preview';
 import type { UvPaintMapping, UvPaintScope, UvPaintSource, UvPaintSpec, UvPaintTarget } from '../domain/uvPaintSpec';
 import type { CubeFaceDirection, FaceUvMap } from '../domain/model';
+import type {
+  EnsureProjectMatch,
+  EnsureProjectOnMismatch,
+  EnsureProjectOnMissing,
+  TexturePresetName,
+  ToolName
+} from '../shared/toolConstants';
 
 export type { UvPaintMapping, UvPaintScope, UvPaintSource, UvPaintSpec, UvPaintTarget } from '../domain/uvPaintSpec';
 export type { CubeFaceDirection } from '../domain/model';
 
-export type ToolName =
-  | 'list_capabilities'
-  | 'get_project_state'
-  | 'read_texture'
-  | 'reload_plugins'
-  | 'generate_texture_preset'
-  | 'auto_uv_atlas'
-  | 'set_project_texture_resolution'
-  | 'preflight_texture'
-  | 'ensure_project'
-  | 'generate_block_pipeline'
-  | 'delete_texture'
-  | 'assign_texture'
-  | 'set_face_uv'
-  | 'add_bone'
-  | 'update_bone'
-  | 'delete_bone'
-  | 'add_cube'
-  | 'update_cube'
-  | 'delete_cube'
-  | 'apply_rig_template'
-  | 'export'
-  | 'render_preview'
-  | 'validate';
-
-export type EnsureProjectMatch = 'none' | 'format' | 'name' | 'format_and_name';
-
-export type EnsureProjectOnMismatch = 'reuse' | 'error' | 'create';
-
-export type EnsureProjectOnMissing = 'create' | 'error';
+export type { ToolName, EnsureProjectMatch, EnsureProjectOnMismatch, EnsureProjectOnMissing, TexturePresetName };
 
 export interface EnsureProjectPayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
   format?: FormatKind;
@@ -68,19 +46,6 @@ export interface GenerateBlockPipelinePayload {
   mode?: BlockPipelineMode;
   ifRevision?: string;
 }
-
-export type TexturePresetName =
-  | 'painted_metal'
-  | 'rubber'
-  | 'glass'
-  | 'wood'
-  | 'dirt'
-  | 'plant'
-  | 'stone'
-  | 'sand'
-  | 'leather'
-  | 'fabric'
-  | 'ceramic';
 
 export interface GenerateTexturePresetPayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
   preset: TexturePresetName;

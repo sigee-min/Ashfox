@@ -4,6 +4,8 @@ import { EditorPort, TriggerChannel } from '../ports/editor';
 import { ok, fail, UsecaseResult } from './result';
 import { resolveAnimationTarget } from '../services/lookup';
 import { createId } from '../services/id';
+import { ensureIdNameMatch, ensureNonBlankString } from '../services/validation';
+import { ensureActiveAndRevision } from './guards';
 
 export interface AnimationServiceDeps {
   session: ProjectSession;
@@ -39,10 +41,8 @@ export class AnimationService {
     fps: number;
     ifRevision?: string;
   }): UsecaseResult<{ id: string; name: string }> {
-    const activeErr = this.ensureActive();
-    if (activeErr) return fail(activeErr);
-    const revisionErr = this.ensureRevisionMatch(payload.ifRevision);
-    if (revisionErr) return fail(revisionErr);
+    const guardErr = ensureActiveAndRevision(this.ensureActive, this.ensureRevisionMatch, payload.ifRevision);
+    if (guardErr) return fail(guardErr);
     const format = this.session.snapshot().format;
     const capability = this.capabilities.formats.find((f) => f.format === format);
     if (!capability || !capability.animations) {
@@ -51,6 +51,10 @@ export class AnimationService {
     if (!payload.name) {
       return fail({ code: 'invalid_payload', message: 'Animation name is required' });
     }
+    const nameBlankErr = ensureNonBlankString(payload.name, 'Animation name');
+    if (nameBlankErr) return fail(nameBlankErr);
+    const idBlankErr = ensureNonBlankString(payload.id, 'Animation id');
+    if (idBlankErr) return fail(idBlankErr);
     if (!Number.isFinite(payload.length) || payload.length <= 0) {
       return fail({ code: 'invalid_payload', message: 'Animation length must be > 0' });
     }
@@ -101,19 +105,28 @@ export class AnimationService {
     fps?: number;
     ifRevision?: string;
   }): UsecaseResult<{ id: string; name: string }> {
-    const activeErr = this.ensureActive();
-    if (activeErr) return fail(activeErr);
-    const revisionErr = this.ensureRevisionMatch(payload.ifRevision);
-    if (revisionErr) return fail(revisionErr);
+    const guardErr = ensureActiveAndRevision(this.ensureActive, this.ensureRevisionMatch, payload.ifRevision);
+    if (guardErr) return fail(guardErr);
     const format = this.session.snapshot().format;
     const capability = this.capabilities.formats.find((f) => f.format === format);
     if (!capability || !capability.animations) {
       return fail({ code: 'unsupported_format', message: 'Animations are not supported for this format' });
     }
     const snapshot = this.getSnapshot();
+    const idBlankErr = ensureNonBlankString(payload.id, 'Animation clip id');
+    if (idBlankErr) return fail(idBlankErr);
+    const nameBlankErr = ensureNonBlankString(payload.name, 'Animation clip name');
+    if (nameBlankErr) return fail(nameBlankErr);
+    const newNameBlankErr = ensureNonBlankString(payload.newName, 'Animation clip newName');
+    if (newNameBlankErr) return fail(newNameBlankErr);
     if (!payload.id && !payload.name) {
       return fail({ code: 'invalid_payload', message: 'Animation clip id or name is required' });
     }
+    const mismatchErr = ensureIdNameMatch(snapshot.animations, payload.id, payload.name, {
+      kind: 'Animation clip',
+      plural: 'clips'
+    });
+    if (mismatchErr) return fail(mismatchErr);
     const target = resolveAnimationTarget(snapshot.animations, payload.id, payload.name);
     if (!target) {
       const label = payload.id ?? payload.name ?? 'unknown';
@@ -161,19 +174,26 @@ export class AnimationService {
   }
 
   deleteAnimationClip(payload: { id?: string; name?: string; ifRevision?: string }): UsecaseResult<{ id: string; name: string }> {
-    const activeErr = this.ensureActive();
-    if (activeErr) return fail(activeErr);
-    const revisionErr = this.ensureRevisionMatch(payload.ifRevision);
-    if (revisionErr) return fail(revisionErr);
+    const guardErr = ensureActiveAndRevision(this.ensureActive, this.ensureRevisionMatch, payload.ifRevision);
+    if (guardErr) return fail(guardErr);
     const format = this.session.snapshot().format;
     const capability = this.capabilities.formats.find((f) => f.format === format);
     if (!capability || !capability.animations) {
       return fail({ code: 'unsupported_format', message: 'Animations are not supported for this format' });
     }
     const snapshot = this.getSnapshot();
+    const idBlankErr = ensureNonBlankString(payload.id, 'Animation clip id');
+    if (idBlankErr) return fail(idBlankErr);
+    const nameBlankErr = ensureNonBlankString(payload.name, 'Animation clip name');
+    if (nameBlankErr) return fail(nameBlankErr);
     if (!payload.id && !payload.name) {
       return fail({ code: 'invalid_payload', message: 'Animation clip id or name is required' });
     }
+    const mismatchErr = ensureIdNameMatch(snapshot.animations, payload.id, payload.name, {
+      kind: 'Animation clip',
+      plural: 'clips'
+    });
+    if (mismatchErr) return fail(mismatchErr);
     const target = resolveAnimationTarget(snapshot.animations, payload.id, payload.name);
     if (!target) {
       const label = payload.id ?? payload.name ?? 'unknown';
@@ -193,11 +213,20 @@ export class AnimationService {
     keys: { time: number; value: [number, number, number]; interp?: 'linear' | 'step' | 'catmullrom' }[];
     ifRevision?: string;
   }): UsecaseResult<{ clip: string; clipId?: string; bone: string }> {
-    const activeErr = this.ensureActive();
-    if (activeErr) return fail(activeErr);
-    const revisionErr = this.ensureRevisionMatch(payload.ifRevision);
-    if (revisionErr) return fail(revisionErr);
+    const guardErr = ensureActiveAndRevision(this.ensureActive, this.ensureRevisionMatch, payload.ifRevision);
+    if (guardErr) return fail(guardErr);
     const snapshot = this.getSnapshot();
+    const clipIdBlankErr = ensureNonBlankString(payload.clipId, 'Animation clip id');
+    if (clipIdBlankErr) return fail(clipIdBlankErr);
+    const clipBlankErr = ensureNonBlankString(payload.clip, 'Animation clip name');
+    if (clipBlankErr) return fail(clipBlankErr);
+    const boneBlankErr = ensureNonBlankString(payload.bone, 'Animation bone');
+    if (boneBlankErr) return fail(boneBlankErr);
+    const mismatchErr = ensureIdNameMatch(snapshot.animations, payload.clipId, payload.clip, {
+      kind: 'Animation clip',
+      plural: 'clips'
+    });
+    if (mismatchErr) return fail(mismatchErr);
     const anim = resolveAnimationTarget(snapshot.animations, payload.clipId, payload.clip);
     if (!anim) {
       const label = payload.clipId ?? payload.clip;
@@ -226,11 +255,18 @@ export class AnimationService {
     keys: { time: number; value: string | string[] | Record<string, unknown> }[];
     ifRevision?: string;
   }): UsecaseResult<{ clip: string; clipId?: string; channel: TriggerChannel }> {
-    const activeErr = this.ensureActive();
-    if (activeErr) return fail(activeErr);
-    const revisionErr = this.ensureRevisionMatch(payload.ifRevision);
-    if (revisionErr) return fail(revisionErr);
+    const guardErr = ensureActiveAndRevision(this.ensureActive, this.ensureRevisionMatch, payload.ifRevision);
+    if (guardErr) return fail(guardErr);
     const snapshot = this.getSnapshot();
+    const clipIdBlankErr = ensureNonBlankString(payload.clipId, 'Animation clip id');
+    if (clipIdBlankErr) return fail(clipIdBlankErr);
+    const clipBlankErr = ensureNonBlankString(payload.clip, 'Animation clip name');
+    if (clipBlankErr) return fail(clipBlankErr);
+    const mismatchErr = ensureIdNameMatch(snapshot.animations, payload.clipId, payload.clip, {
+      kind: 'Animation clip',
+      plural: 'clips'
+    });
+    if (mismatchErr) return fail(mismatchErr);
     const anim = resolveAnimationTarget(snapshot.animations, payload.clipId, payload.clip);
     if (!anim) {
       const label = payload.clipId ?? payload.clip;

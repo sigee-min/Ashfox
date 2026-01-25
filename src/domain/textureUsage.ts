@@ -1,10 +1,11 @@
+import { CUBE_FACE_DIRECTIONS } from './model';
 import type { CubeFaceDirection, TextureUsage } from './model';
 
 type NormalizedFace = { face: CubeFaceDirection; uv: [number, number, number, number] | null };
 type NormalizedCube = { id: string | null; name: string; faces: NormalizedFace[] };
 type NormalizedTexture = { id: string | null; name: string; cubes: NormalizedCube[] };
 
-const FACE_ORDER: CubeFaceDirection[] = ['north', 'south', 'east', 'west', 'up', 'down'];
+const FACE_ORDER: CubeFaceDirection[] = [...CUBE_FACE_DIRECTIONS];
 const FACE_INDEX = new Map<CubeFaceDirection, number>(FACE_ORDER.map((face, idx) => [face, idx]));
 
 const compareStrings = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
