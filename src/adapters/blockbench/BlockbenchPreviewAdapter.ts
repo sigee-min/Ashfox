@@ -191,7 +191,7 @@ export class BlockbenchPreviewAdapter {
     } catch (err) {
       const message = errorMessage(err, 'render preview failed');
       this.log.error('preview error', { message });
-      return { error: { code: 'unknown', message } };
+      return { error: toolError('unknown', message, { reason: 'adapter_exception', context: 'render_preview' }) };
     } finally {
       restoreCamera(camera, controls, state);
       restoreAnimation(animationState);

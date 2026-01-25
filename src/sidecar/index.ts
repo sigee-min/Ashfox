@@ -10,6 +10,8 @@ import { GUIDE_RESOURCE_TEMPLATES, GUIDE_RESOURCES } from '../services/guides';
 import { InMemoryResourceStore } from '../services/resources';
 import { SIDECAR_TOOL_INSTRUCTIONS } from '../services/toolInstructions';
 import { ToolResponse } from '../types';
+import { DEFAULT_TOOL_PROFILE } from '../mcp/tools';
+import { PROXY_TOOL_NAMES } from '../shared/toolConstants';
 
 const getArg = (args: string[], name: string, fallback?: string): string | undefined => {
   const index = args.indexOf(name);
@@ -23,7 +25,8 @@ const config = {
   host: getArg(args, '--host', '127.0.0.1') ?? '127.0.0.1',
   port: Number.isFinite(portValue) ? portValue : 8787,
   path: getArg(args, '--path', '/mcp') ?? '/mcp',
-  token: getArg(args, '--token')
+  token: getArg(args, '--token'),
+  toolProfile: (getArg(args, '--tool-profile') ?? DEFAULT_TOOL_PROFILE) as 'full' | 'texture_minimal'
 };
 
 const log = new StderrLogger('bbmcp-sidecar', 'info');
@@ -37,11 +40,7 @@ client.start();
 
 const executor = {
   callTool: async (name: string, args: unknown): Promise<ToolResponse<unknown>> => {
-    const mode =
-      name === 'apply_model_spec' ||
-      name === 'apply_texture_spec'
-        ? 'proxy'
-        : 'direct';
+    const mode = PROXY_TOOL_SET.has(name) ? 'proxy' : 'direct';
     const response = await client.request(name as Parameters<typeof client.request>[0], args, mode);
     if (name === 'generate_block_pipeline') {
       storePipelineResources(resourceStore, response);
@@ -50,12 +49,15 @@ const executor = {
   }
 };
 
+const PROXY_TOOL_SET = new Set<string>(PROXY_TOOL_NAMES);
+
 const router = new McpRouter(
   {
     path: config.path,
     token: config.token,
     serverInfo: { name: PLUGIN_ID, version: PLUGIN_VERSION },
-    instructions: SIDECAR_TOOL_INSTRUCTIONS
+    instructions: SIDECAR_TOOL_INSTRUCTIONS,
+    toolProfile: config.toolProfile
   },
   executor,
   log,

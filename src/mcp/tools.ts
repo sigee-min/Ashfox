@@ -1,8 +1,20 @@
 import { hashTextToHex } from '../shared/hash';
-import { JsonSchema, McpToolDefinition } from './types';
+import { JsonSchema, McpToolDefinition, McpToolProfile } from './types';
 import { toolSchemas } from './toolSchemas';
 
-export const MCP_TOOLS: McpToolDefinition[] = [
+export const DEFAULT_TOOL_PROFILE: McpToolProfile = 'texture_minimal';
+
+const TEXTURE_MINIMAL_TOOL_SET = new Set<string>([
+  'list_capabilities',
+  'ensure_project',
+  'get_project_state',
+  'texture_pipeline',
+  'render_preview',
+  'read_texture',
+  'validate'
+]);
+
+export const MCP_TOOLS_ALL: McpToolDefinition[] = [
   {
     name: 'list_capabilities',
     title: 'List Capabilities',
@@ -197,11 +209,28 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
 ];
 
-const toolRegistrySignature = () =>
-  JSON.stringify(MCP_TOOLS.map((tool) => ({ name: tool.name, inputSchema: tool.inputSchema })));
+export const getMcpTools = (profile: McpToolProfile = DEFAULT_TOOL_PROFILE): McpToolDefinition[] => {
+  if (profile === 'full') return MCP_TOOLS_ALL;
+  return MCP_TOOLS_ALL.filter((tool) => TEXTURE_MINIMAL_TOOL_SET.has(tool.name));
+};
 
-export const TOOL_REGISTRY_HASH = hashTextToHex(toolRegistrySignature());
+export const MCP_TOOLS = getMcpTools(DEFAULT_TOOL_PROFILE);
+
+export const isExposedTool = (name: string, profile: McpToolProfile = DEFAULT_TOOL_PROFILE): boolean => {
+  if (profile === 'full') return Boolean(toolSchemas[name]);
+  return TEXTURE_MINIMAL_TOOL_SET.has(name);
+};
+
+const toolRegistrySignature = (profile: McpToolProfile = DEFAULT_TOOL_PROFILE) =>
+  JSON.stringify(getMcpTools(profile).map((tool) => ({ name: tool.name, inputSchema: tool.inputSchema })));
+
+export const TOOL_REGISTRY_HASH = hashTextToHex(toolRegistrySignature(DEFAULT_TOOL_PROFILE));
 export const TOOL_REGISTRY_COUNT = MCP_TOOLS.length;
+
+export const getToolRegistry = (profile: McpToolProfile = DEFAULT_TOOL_PROFILE) => ({
+  hash: hashTextToHex(toolRegistrySignature(profile)),
+  count: getMcpTools(profile).length
+});
 
 export const getToolSchema = (name: string): JsonSchema | null => toolSchemas[name] ?? null;
 

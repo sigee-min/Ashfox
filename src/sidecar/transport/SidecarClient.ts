@@ -8,6 +8,7 @@ import {
 } from '../../transport/protocol';
 import { ToolError, ToolResponse, ToolName } from '../../types';
 import type { ProxyTool } from '../../spec';
+import { toolError } from '../../services/toolResponse';
 
 type Readable = {
   on(event: 'data', handler: (chunk: string | Uint8Array) => void): void;
@@ -160,7 +161,8 @@ export class SidecarClient {
       });
       return;
     }
-    const error: ToolError = message.error ?? { code: 'unknown', message: 'sidecar error' };
+    const error: ToolError =
+      message.error ?? toolError('unknown', 'sidecar error', { reason: 'sidecar_missing_error' });
     pending.resolve({
       ok: false,
       error,

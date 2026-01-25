@@ -7,6 +7,7 @@ import {
   UpdateAnimationCommand
 } from '../../ports/editor';
 import { errorMessage, Logger } from '../../logging';
+import { toolError } from '../../services/toolResponse';
 import { AnimationClip } from '../../types/blockbench';
 import {
   assignAnimationLength,
@@ -60,7 +61,7 @@ export class BlockbenchAnimationAdapter {
     } catch (err) {
       const message = errorMessage(err, 'animation create failed');
       this.log.error('animation create error', { message });
-      return { code: 'unknown', message };
+      return toolError('unknown', message, { reason: 'adapter_exception', context: 'animation_create' });
     }
   }
 
@@ -100,7 +101,7 @@ export class BlockbenchAnimationAdapter {
     } catch (err) {
       const message = errorMessage(err, 'animation update failed');
       this.log.error('animation update error', { message });
-      return { code: 'unknown', message };
+      return toolError('unknown', message, { reason: 'adapter_exception', context: 'animation_update' });
     }
   }
 
@@ -124,7 +125,7 @@ export class BlockbenchAnimationAdapter {
     } catch (err) {
       const message = errorMessage(err, 'animation delete failed');
       this.log.error('animation delete error', { message });
-      return { code: 'unknown', message };
+      return toolError('unknown', message, { reason: 'adapter_exception', context: 'animation_delete' });
     }
   }
 
@@ -159,7 +160,7 @@ export class BlockbenchAnimationAdapter {
     } catch (err) {
       const message = errorMessage(err, 'keyframe set failed');
       this.log.error('keyframe set error', { message });
-      return { code: 'unknown', message };
+      return toolError('unknown', message, { reason: 'adapter_exception', context: 'keyframe_set' });
     }
   }
 
@@ -188,7 +189,7 @@ export class BlockbenchAnimationAdapter {
     } catch (err) {
       const message = errorMessage(err, 'trigger keyframe set failed');
       this.log.error('trigger keyframe set error', { message });
-      return { code: 'unknown', message };
+      return toolError('unknown', message, { reason: 'adapter_exception', context: 'trigger_keyframe_set' });
     }
   }
 

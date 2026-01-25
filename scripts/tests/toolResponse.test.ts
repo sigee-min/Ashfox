@@ -12,6 +12,6 @@ import { toToolResponse } from '../../src/services/toolResponse';
   assert.equal(res.ok, false);
   if (!res.ok) {
     assert.equal(res.error.code, 'invalid_payload');
-    assert.equal(res.error.message, 'bad');
+    assert.equal(res.error.message, 'bad.');
   }
 }

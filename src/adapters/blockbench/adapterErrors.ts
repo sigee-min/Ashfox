@@ -1,5 +1,6 @@
 import type { ToolError } from '../../types';
 import { errorMessage, type Logger } from '../../logging';
+import { toolError } from '../../services/toolResponse';
 
 export const withToolErrorAdapterError = (
   log: Logger,
@@ -12,7 +13,7 @@ export const withToolErrorAdapterError = (
   } catch (err) {
     const message = errorMessage(err, fallbackMessage);
     log.error(`${context} error`, { message });
-    return { code: 'unknown', message };
+    return toolError('unknown', message, { reason: 'adapter_exception', context });
   }
 };
 
@@ -28,6 +29,6 @@ export const withAdapterError = <T>(
   } catch (err) {
     const message = errorMessage(err, fallbackMessage);
     log.error(`${context} error`, { message });
-    return onError({ code: 'unknown', message });
+    return onError(toolError('unknown', message, { reason: 'adapter_exception', context }));
   }
 };

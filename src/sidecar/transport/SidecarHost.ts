@@ -9,6 +9,7 @@ import {
   SidecarResponseMessage
 } from '../../transport/protocol';
 import { ProxyTool } from '../../spec';
+import { toolError } from '../../services/toolResponse';
 
 type Readable = {
   on(event: 'data', handler: (chunk: string | Uint8Array) => void): void;
@@ -94,7 +95,11 @@ export class SidecarHost {
         id: message.id,
         ts: Date.now(),
         ok: false,
-        error: { code: 'unknown', message: msg }
+        error: toolError('unknown', msg, {
+          reason: 'sidecar_handler_exception',
+          tool: message.tool,
+          mode
+        })
       };
       this.send(response);
       return;

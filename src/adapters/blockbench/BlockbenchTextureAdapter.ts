@@ -1,5 +1,6 @@
 import { ToolError } from '../../types';
 import { errorMessage, Logger } from '../../logging';
+import { toolError } from '../../services/toolResponse';
 import {
   ImportTextureCommand,
   ReadTextureCommand,
@@ -135,7 +136,7 @@ export class BlockbenchTextureAdapter {
     } catch (err) {
       const message = errorMessage(err, 'texture delete failed');
       this.log.error('texture delete error', { message });
-      return { code: 'unknown', message };
+      return toolError('unknown', message, { reason: 'adapter_exception', context: 'texture_delete' });
     }
   }
 
@@ -173,7 +174,7 @@ export class BlockbenchTextureAdapter {
     } catch (err) {
       const message = errorMessage(err, 'texture read failed');
       this.log.error('texture read error', { message });
-      return { error: { code: 'unknown', message } };
+      return { error: toolError('unknown', message, { reason: 'adapter_exception', context: 'texture_read' }) };
     }
   }
 

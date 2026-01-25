@@ -128,12 +128,12 @@ export class ProxyRouter {
             toToolResponse(this.service.validate(payload as ToolPayloadMap['validate']))
           );
         default:
-          return err('unknown', `Unknown proxy tool ${tool}`);
+          return err('invalid_payload', `Unknown proxy tool ${tool}`, { reason: 'unknown_proxy_tool', tool });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown error';
       this.log.error('proxy handle error', { tool, message });
-      return err('unknown', message);
+      return err('unknown', message, { reason: 'proxy_exception', tool });
     }
   }
 

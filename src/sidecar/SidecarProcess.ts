@@ -111,7 +111,9 @@ export class SidecarProcess {
       '--port',
       String(this.config.port),
       '--path',
-      this.config.path
+      this.config.path,
+      '--tool-profile',
+      this.config.toolProfile ?? 'texture_minimal'
     ];
 
     let child: ChildProcessHandle;

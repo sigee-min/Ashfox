@@ -1,6 +1,7 @@
 import { FormatKind, ToolError } from '../../types';
 import { errorMessage, Logger } from '../../logging';
 import { hasUnsavedChanges, markProjectSaved, readGlobals } from './blockbenchUtils';
+import { toolError } from '../../services/toolResponse';
 
 export class BlockbenchProjectAdapter {
   private readonly log: Logger;
@@ -63,7 +64,7 @@ export class BlockbenchProjectAdapter {
     } catch (err) {
       const message = errorMessage(err, 'project create failed');
       this.log.error('project create error', { message });
-      return { code: 'unknown', message };
+      return toolError('unknown', message, { reason: 'adapter_exception', context: 'project_create' });
     }
   }
 
@@ -126,7 +127,7 @@ export class BlockbenchProjectAdapter {
     } catch (err) {
       const message = errorMessage(err, 'project texture resolution update failed');
       this.log.error('project texture resolution update error', { message });
-      return { code: 'unknown', message };
+      return toolError('unknown', message, { reason: 'adapter_exception', context: 'project_texture_resolution' });
     }
   }
 }

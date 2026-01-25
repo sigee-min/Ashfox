@@ -26,5 +26,5 @@ export const errFromDomain = <T = never>(error: ToolError): ToolResponse<T> => (
 
 export const toToolResponse = <T>(result: UsecaseResult<T>): ToolResponse<T> => {
   if (result.ok) return { ok: true, data: result.value };
-  return { ok: false, error: result.error };
+  return errFromDomain(result.error);
 };

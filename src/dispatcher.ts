@@ -180,10 +180,16 @@ export class ToolDispatcherImpl implements Dispatcher {
           payload
         );
       }
-      return respondErrorSimple('unknown', `Unknown tool ${String(name)}`) as ToolResponse<ToolResultMap[TName]>;
+      return respondErrorSimple('invalid_payload', `Unknown tool ${String(name)}`, {
+        reason: 'unknown_tool',
+        tool: String(name)
+      }) as ToolResponse<ToolResultMap[TName]>;
     } catch (err) {
       const message = errorMessage(err, 'unknown error');
-      return respondErrorSimple('unknown', message) as ToolResponse<ToolResultMap[TName]>;
+      return respondErrorSimple('unknown', message, {
+        reason: 'dispatcher_exception',
+        tool: String(name)
+      }) as ToolResponse<ToolResultMap[TName]>;
     }
   }
 

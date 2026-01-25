@@ -8,15 +8,15 @@ export const RIGGING_WORKFLOW_INSTRUCTIONS = [
 ].join(' ');
 
 export const TEXTURE_WORKFLOW_INSTRUCTIONS = [
-  'Prefer high-level tools: texture_pipeline, apply_texture_spec, apply_uv_spec, generate_texture_preset, preflight_texture.',
-  'Use low-level tools (assign_texture, set_face_uv, set_pixel ops) only when high-level tools cannot express the change; avoid mixing high- and low-level edits in the same task.',
+  'This server may expose a minimal tool surface for texture/UV work. If only texture_pipeline is available, use it for the entire workflow.',
+  'Prefer the macro tool: texture_pipeline. Use autoRecover=true when UV overlap/scale or uvUsageId mismatch occurs.',
   'Before painting, lock invariants: project textureResolution, manual per-face UV policy, and intended texture count (single atlas vs per-material).',
-  'Always build a mapping table first: call preflight_texture without texture filters to get a stable uvUsageId and UV mapping.',
+  'If preflight_texture is available: call it without texture filters to get a stable uvUsageId and UV mapping.',
   'Paint only inside UV rects (uvPaint enforced). Whole-texture painting is not supported; map UVs to the full texture if you need full coverage.',
   'uvUsageId is a guard. If any UVs change, call preflight_texture again and repaint. If you hit invalid_state due to UV usage mismatch, refresh preflight and retry with the new uvUsageId.',
   'UV overlaps are errors unless the rects are identical. UV scale mismatches are errors. Recovery loop: auto_uv_atlas(apply=true) -> preflight_texture -> repaint.',
-  'Payload sizing: for <=32px textures, small ops are fine; for 64px+ prefer generate_texture_preset to avoid large payloads.',
-  'Texture creation does not bind textures to cubes. After painting, call assign_texture explicitly, then set_face_uv for manual per-face mapping when needed.',
+  'Payload sizing: for <=32px textures, small ops are fine; for 64px+ prefer procedural presets to avoid large payloads.',
+  'Texture creation does not bind textures to cubes. Ensure textures are assigned in the same workflow (texture_pipeline assign step) so they are visible.',
   'For visual verification, use render_preview/read_texture. If images cannot be attached, set saveToTmp=true and read bbmcp://guide/vision-fallback via resources/read.',
   'If unsure about the workflow or recovery, read bbmcp://guide/llm-texture-strategy via resources/read.'
 ].join(' ');

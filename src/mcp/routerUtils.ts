@@ -1,6 +1,7 @@
 import type { ToolResponse } from '../types';
 import type { JsonRpcMessage, JsonRpcResponse } from './types';
 export { isRecord } from '../domain/guards';
+import { toolError } from '../services/toolResponse';
 
 export const DEFAULT_PROTOCOL_VERSION = '2025-06-18';
 export const DEFAULT_SUPPORTED_PROTOCOLS = ['2025-11-25', '2025-06-18', '2024-11-05'];
@@ -85,7 +86,7 @@ export const toCallToolResult = (response: ToolResponse<unknown>) => {
     if (meta) result._meta = meta;
     return result;
   }
-  const error = response.error ?? { code: 'unknown', message: 'tool error' };
+  const error = response.error ?? toolError('unknown', 'tool error');
   if (response.content) {
     const result: Record<string, unknown> = { isError: true, content: response.content };
     if (response.structuredContent !== undefined) {
