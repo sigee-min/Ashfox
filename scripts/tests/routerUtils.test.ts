@@ -52,3 +52,32 @@ import type { ToolResponse } from '../../src/types';
     structuredContent: { code: 'unknown', message: 'boom' }
   });
 }
+
+{
+  const okWithNextActions: ToolResponse<unknown> = {
+    ok: true,
+    data: { a: 1 },
+    nextActions: [{ type: 'noop', reason: 'done' }]
+  };
+  assert.deepEqual(toCallToolResult(okWithNextActions), {
+    content: [{ type: 'text', text: JSON.stringify({ a: 1 }) }],
+    structuredContent: { a: 1 },
+    _meta: { nextActions: [{ type: 'noop', reason: 'done' }] }
+  });
+}
+
+{
+  const errWithNextActions: ToolResponse<unknown> = {
+    ok: false,
+    error: { code: 'invalid_state', message: 'bad state' },
+    nextActions: [{ type: 'call_tool', tool: 'get_project_state', arguments: { detail: 'summary' }, reason: 'Refresh state.' }]
+  };
+  assert.deepEqual(toCallToolResult(errWithNextActions), {
+    isError: true,
+    content: [{ type: 'text', text: 'bad state' }],
+    structuredContent: { code: 'invalid_state', message: 'bad state' },
+    _meta: {
+      nextActions: [{ type: 'call_tool', tool: 'get_project_state', arguments: { detail: 'summary' }, reason: 'Refresh state.' }]
+    }
+  });
+}

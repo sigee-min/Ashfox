@@ -11,7 +11,8 @@ import { toToolResponse } from '../../services/toolResponse';
 import { guardUvForTextureTargets, guardUvForUsage } from '../uvGuard';
 import { validateTexturePipeline } from '../validators';
 import type { TexturePipelinePayload } from '../../spec';
-import type { ToolResponse } from '../../types';
+import type { NextAction, ToolResponse } from '../../types';
+import { askUser, callTool, readResource, refTool } from '../../mcp/nextActions';
 import { tryRecoverUvForTextureSpec } from './recovery';
 import type { ProxyPipelineDeps } from './types';
 
@@ -231,9 +232,49 @@ export const texturePipelineProxy = async (
       steps,
       ...(currentUvUsageId ? { uvUsageId: currentUvUsageId } : {})
     });
-    if (content || structuredContent) {
-      return { ...response, ...(content ? { content } : {}), ...(structuredContent ? { structuredContent } : {}) };
+
+    const nextActions = [] as NextAction[];
+
+    const didPaint = Boolean(payload.textures?.length || payload.presets?.length);
+    const didAssign = Boolean(payload.assign && payload.assign.length > 0);
+    const didPreview = Boolean(payload.preview);
+
+    if (didPaint && !didAssign) {
+      nextActions.push(
+        readResource(
+          'bbmcp://guide/texture-workflow',
+          'Textures were generated/painted, but no assignment step was provided. Assign textures to cubes to make them visible.',
+          1
+        ),
+        callTool('get_project_state', { detail: 'full' }, 'Get cube names and latest ifRevision for assignment.', 2),
+        askUser(
+          'Which cubes should use each texture? Provide cubeNames per textureName, or confirm using a single texture for all cubes.',
+          'Avoid clobbering multi-texture models by assigning blindly.',
+          3
+        )
+      );
     }
-    return response;
+
+    if (!didPreview) {
+      nextActions.push(
+        callTool('get_project_state', { detail: 'summary' }, 'Get latest ifRevision for preview.', 10),
+        callTool(
+          'render_preview',
+          { mode: 'fixed', output: 'single', angle: [30, 45, 0], ifRevision: refTool('get_project_state', '/project/revision') },
+          'Render a quick preview to validate the result visually.',
+          11
+        )
+      );
+    }
+
+    if (content || structuredContent) {
+      return {
+        ...response,
+        ...(content ? { content } : {}),
+        ...(structuredContent ? { structuredContent } : {}),
+        ...(nextActions.length > 0 ? { nextActions } : {})
+      };
+    }
+    return { ...response, ...(nextActions.length > 0 ? { nextActions } : {}) };
   });
 };

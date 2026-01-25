@@ -1,5 +1,8 @@
 export type JsonSchema = {
   type?: 'object' | 'array' | 'string' | 'number' | 'boolean' | 'null';
+  description?: string;
+  title?: string;
+  examples?: unknown[];
   properties?: Record<string, JsonSchema>;
   items?: JsonSchema;
   required?: string[];

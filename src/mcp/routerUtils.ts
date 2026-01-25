@@ -65,16 +65,25 @@ export const normalizeSessionTtl = (value?: number): number => {
 };
 
 export const toCallToolResult = (response: ToolResponse<unknown>) => {
+  const nextActions = response.nextActions;
+  const meta = Array.isArray(nextActions) && nextActions.length > 0 ? { nextActions } : null;
   if (response.ok) {
     if (response.content) {
       const result: Record<string, unknown> = { content: response.content };
       if (response.structuredContent !== undefined) {
         result.structuredContent = response.structuredContent;
       }
+      if (meta) result._meta = meta;
       return result;
     }
-    const json = JSON.stringify(response.structuredContent ?? response.data);
-    return { content: makeTextContent(json), structuredContent: response.structuredContent ?? response.data };
+    const structured = response.structuredContent ?? response.data;
+    const json = JSON.stringify(structured);
+    const result: Record<string, unknown> = {
+      content: makeTextContent(json),
+      structuredContent: structured
+    };
+    if (meta) result._meta = meta;
+    return result;
   }
   const error = response.error ?? { code: 'unknown', message: 'tool error' };
   if (response.content) {
@@ -82,9 +91,12 @@ export const toCallToolResult = (response: ToolResponse<unknown>) => {
     if (response.structuredContent !== undefined) {
       result.structuredContent = response.structuredContent;
     }
+    if (meta) result._meta = meta;
     return result;
   }
-  return { isError: true, content: makeTextContent(error.message), structuredContent: error };
+  const result: Record<string, unknown> = { isError: true, content: makeTextContent(error.message), structuredContent: error };
+  if (meta) result._meta = meta;
+  return result;
 };
 
 export const randomId = () => {

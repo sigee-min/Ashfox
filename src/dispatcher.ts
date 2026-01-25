@@ -28,6 +28,7 @@ import {
   buildTextureContent,
   buildTextureStructured
 } from './mcp/content';
+import { callTool, readResource, refTool } from './mcp/nextActions';
 import { decideRevision } from './services/revisionGuard';
 import { attachStateToResponse } from './services/attachState';
 import { toToolResponse } from './services/toolResponse';
@@ -132,7 +133,11 @@ export class ToolDispatcherImpl implements Dispatcher {
       reload_plugins: (payload) =>
         this.logGuardFailure('reload_plugins', payload, toToolResponse(this.service.reloadPlugins(payload))),
       preflight_texture: (payload) =>
-        this.logGuardFailure('preflight_texture', payload, toToolResponse(this.service.preflightTexture(payload))),
+        this.logGuardFailure(
+          'preflight_texture',
+          payload,
+          attachPreflightNextActions(toToolResponse(this.service.preflightTexture(payload)))
+        ),
       render_preview: (payload) =>
         this.logGuardFailure(
           'render_preview',
@@ -364,4 +369,33 @@ function attachTextureContent(
     return { ...response, structuredContent };
   }
   return { ...response, content, structuredContent };
+}
+
+function attachPreflightNextActions(
+  response: ToolResponse<ToolResultMap['preflight_texture']>
+): ToolResponse<ToolResultMap['preflight_texture']> {
+  if (!response.ok) return response;
+
+  const warnings = response.data.warnings ?? [];
+  if (!Array.isArray(warnings) || warnings.length === 0) return response;
+
+  const joined = warnings.join(' ');
+  const actions = [
+    readResource('bbmcp://guide/llm-texture-strategy', 'Warnings present. Review the recovery playbook before painting.', 1)
+  ];
+
+  if (joined.includes('UV overlap') || joined.includes('UV scale mismatch')) {
+    actions.push(
+      callTool('get_project_state', { detail: 'summary' }, 'Get latest ifRevision for recovery tools.', 2),
+      callTool(
+        'auto_uv_atlas',
+        { apply: true, ifRevision: refTool('get_project_state', '/project/revision') },
+        'Recover from overlap/scale issues by repacking UVs (apply=true), then repaint.',
+        3
+      ),
+      callTool('preflight_texture', { includeUsage: false }, 'Refresh uvUsageId after recovery.', 4)
+    );
+  }
+
+  return { ...response, nextActions: actions };
 }

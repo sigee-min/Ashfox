@@ -41,9 +41,21 @@ Example (apply_model_spec):
 }
 \`\`\`
 
+Example (apply_rig_template):
+\`\`\`json
+{
+  "templateId": "empty",
+  "ifRevision": { "$ref": { "kind": "tool", "tool": "get_project_state", "pointer": "/project/revision" } }
+}
+\`\`\`
+
 Low-level add_bone:
 - Always set parent for non-root bones.
 - Keep names stable so animation channels remain valid.
+
+Common failures and fixes:
+- "Parent bone not found": ensure the parent part exists and that every non-root part sets a valid parent id. If unsure, rebuild the hierarchy using apply_model_spec.
+- "invalid_state_revision_mismatch": call get_project_state and retry with the latest ifRevision.
 `
   },
   {
@@ -76,8 +88,63 @@ Example (generate_texture_preset):
   "name": "pot_wood",
   "width": 64,
   "height": 64,
-  "uvUsageId": "<from preflight_texture>",
+  "uvUsageId": { "$ref": { "kind": "tool", "tool": "preflight_texture", "pointer": "/uvUsageId" } },
   "mode": "create"
+}
+\`\`\`
+
+Example (preflight_texture):
+\`\`\`json
+{
+  "includeUsage": true
+}
+\`\`\`
+
+Example (apply_uv_spec):
+\`\`\`json
+{
+  "uvUsageId": { "$ref": { "kind": "tool", "tool": "preflight_texture", "pointer": "/uvUsageId" } },
+  "assignments": [
+    {
+      "cubeName": "body",
+      "faces": {
+        "north": [0, 0, 8, 12],
+        "south": [8, 0, 16, 12]
+      }
+    }
+  ],
+  "ifRevision": { "$ref": { "kind": "tool", "tool": "get_project_state", "pointer": "/project/revision" } }
+}
+\`\`\`
+
+Example (apply_texture_spec, minimal create):
+\`\`\`json
+{
+  "uvUsageId": { "$ref": { "kind": "tool", "tool": "preflight_texture", "pointer": "/uvUsageId" } },
+  "textures": [
+    {
+      "mode": "create",
+      "name": "pot_wood",
+      "width": 64,
+      "height": 64,
+      "background": "#00000000",
+      "uvPaint": { "scope": "rects", "mapping": "stretch" },
+      "ops": []
+    }
+  ],
+  "ifRevision": { "$ref": { "kind": "tool", "tool": "get_project_state", "pointer": "/project/revision" } }
+}
+\`\`\`
+
+Example (texture_pipeline, minimal):
+\`\`\`json
+{
+  "preflight": { "includeUsage": false },
+  "textures": [
+    { "mode": "create", "name": "pot_wood", "width": 64, "height": 64, "background": "#00000000" }
+  ],
+  "preview": { "mode": "fixed", "output": "single", "angle": [30, 45, 0] },
+  "ifRevision": { "$ref": { "kind": "tool", "tool": "get_project_state", "pointer": "/project/revision" } }
 }
 \`\`\`
 `
@@ -163,6 +230,17 @@ uv_scale_mismatch / uv_overlap
 
 Tip: apply_texture_spec supports autoRecover=true to run the recovery loop once automatically.
 Tip: texture_pipeline can run the full workflow (assign → preflight → uv → paint → preview) in one call.
+
+Failure examples:
+
+1) uvUsageId mismatch (invalid_state):
+- Call preflight_texture WITHOUT texture filters.
+- Retry apply_uv_spec/apply_texture_spec with the new uvUsageId.
+
+2) UV overlap / UV scale mismatch (invalid_state):
+- Run auto_uv_atlas (apply=true).
+- Call preflight_texture again.
+- Repaint using the refreshed mapping.
 
 See full guide in docs/llm-texture-strategy.md.
 `

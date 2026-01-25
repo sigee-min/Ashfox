@@ -57,7 +57,7 @@ Generate preset:
   "name": "pot_wood",
   "width": 64,
   "height": 64,
-  "uvUsageId": "<from preflight_texture>",
+  "uvUsageId": { "$ref": { "kind": "tool", "tool": "preflight_texture", "pointer": "/uvUsageId" } },
   "mode": "create"
 }
 ```

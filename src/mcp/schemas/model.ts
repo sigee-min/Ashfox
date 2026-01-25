@@ -4,6 +4,8 @@ import { numberArray } from './common';
 
 export const faceUvSchema: JsonSchema = {
   type: 'object',
+  description:
+    'Per-face UV map. Keys are cube faces (north/south/east/west/up/down). Values are [x1,y1,x2,y2] in texture pixels. UVs must fit within the current project textureResolution.',
   minProperties: 1,
   additionalProperties: false,
   properties: {
@@ -21,13 +23,21 @@ export const modelPartSchema: JsonSchema = {
   required: ['id', 'size', 'offset'],
   additionalProperties: false,
   properties: {
-    id: { type: 'string' },
+    id: {
+      type: 'string',
+      description:
+        'Stable part id. Use "root" for the root bone. Must be unique. Prefer stable ids because renaming ids can break animation channels.'
+    },
     size: numberArray(3, 3),
     offset: numberArray(3, 3),
     inflate: { type: 'number' },
     mirror: { type: 'boolean' },
     pivot: numberArray(3, 3),
-    parent: { type: 'string' }
+    parent: {
+      type: 'string',
+      description:
+        'Parent part id. Required for every non-root part. Must refer to an existing part id. Avoid flat lists; always form a tree (root -> body -> limbs/head).'
+    }
   }
 };
 
@@ -36,9 +46,15 @@ export const modelSpecSchema: JsonSchema = {
   required: ['rigTemplate', 'parts'],
   additionalProperties: false,
   properties: {
-    rigTemplate: { type: 'string', enum: RIG_TEMPLATE_KINDS },
+    rigTemplate: {
+      type: 'string',
+      enum: RIG_TEMPLATE_KINDS,
+      description:
+        'Rig template kind. Use "empty" for manual rigs. Templates may inject extra bones/parts; ids should remain stable across updates.'
+    },
     parts: {
       type: 'array',
+      description: 'Model parts to apply. Include a root part and parent every non-root part.',
       items: modelPartSchema
     }
   }

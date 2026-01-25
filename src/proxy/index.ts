@@ -18,6 +18,7 @@ import {
 import { ToolService } from '../usecases/ToolService';
 import type { DomPort } from '../ports/dom';
 import { buildRenderPreviewContent, buildRenderPreviewStructured } from '../mcp/content';
+import { callTool } from '../mcp/nextActions';
 import { applyModelSpecSteps, createApplyReport } from './apply';
 import { toToolResponse } from '../services/toolResponse';
 import { validateModelSpec } from './validators';
@@ -67,7 +68,19 @@ export class ProxyRouter {
       const report = createApplyReport();
       const result = applyModelSpecSteps(this.service, this.log, payload, report, pipeline.meta);
       if (!result.ok) return result;
-      return pipeline.ok({ applied: true, report });
+      const response = pipeline.ok({ applied: true, report });
+      return {
+        ...response,
+        nextActions: [
+          callTool(
+            'render_preview',
+            { mode: 'fixed', output: 'single', angle: [30, 45, 0] },
+            'Render a quick preview to validate the rig visually.',
+            1
+          ),
+          callTool('preflight_texture', { includeUsage: false }, 'Build a UV mapping table before painting textures.', 2)
+        ]
+      };
     });
   }
 

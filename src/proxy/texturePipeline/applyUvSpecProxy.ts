@@ -4,6 +4,7 @@ import { collectTextureTargets } from '../../domain/uvTargets';
 import type { ApplyUvSpecPayload } from '../../spec';
 import type { ToolResponse } from '../../types';
 import { toDomainCube, toDomainTextureUsage } from '../../usecases/domainMappers';
+import { callTool } from '../../mcp/nextActions';
 import { withErrorMeta } from '../meta';
 import { createProxyPipeline } from '../pipeline';
 import { guardUvForTextureTargets, guardUvForUsage } from '../uvGuard';
@@ -68,6 +69,12 @@ export const applyUvSpecProxy = async (
       faces: planRes.data.faceCount,
       uvUsageId: nextUsageId
     };
-    return pipeline.ok(result);
+    const response = pipeline.ok(result);
+    return {
+      ...response,
+      nextActions: [
+        callTool('preflight_texture', { includeUsage: false }, 'UVs changed. Refresh uvUsageId before painting textures.', 1)
+      ]
+    };
   });
 };

@@ -30,7 +30,7 @@ Generate Minecraft block assets (blockstates + models + item models) with a sing
   "name": "adamantium_ore",
   "texture": "adamantium_ore",
   "mode": "with_blockbench",
-  "ifRevision": "<revision-from-get_project_state>"
+  "ifRevision": { "$ref": { "kind": "tool", "tool": "get_project_state", "pointer": "/project/revision" } }
 }
 ```
 Notes:

@@ -1,6 +1,7 @@
 import type { ToolError, ToolName, ToolPayloadMap } from '../types';
 import type { ProxyTool } from '../spec';
 import { isRecord } from '../domain/guards';
+import type { McpContentBlock, NextAction } from '../types/shared';
 
 export const PROTOCOL_VERSION = 1 as const;
 
@@ -36,6 +37,9 @@ export type SidecarResponseMessage = {
   ok: boolean;
   data?: unknown;
   error?: ToolError;
+  content?: McpContentBlock[];
+  structuredContent?: unknown;
+  nextActions?: NextAction[];
 };
 
 export type SidecarErrorMessage = {

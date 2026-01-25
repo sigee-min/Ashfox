@@ -151,10 +151,22 @@ export class SidecarClient {
     this.pending.delete(message.id);
 
     if (message.ok) {
-      pending.resolve({ ok: true, data: message.data });
+      pending.resolve({
+        ok: true,
+        data: message.data,
+        ...(message.content ? { content: message.content } : {}),
+        ...(message.structuredContent !== undefined ? { structuredContent: message.structuredContent } : {}),
+        ...(message.nextActions ? { nextActions: message.nextActions } : {})
+      });
       return;
     }
     const error: ToolError = message.error ?? { code: 'unknown', message: 'sidecar error' };
-    pending.resolve({ ok: false, error });
+    pending.resolve({
+      ok: false,
+      error,
+      ...(message.content ? { content: message.content } : {}),
+      ...(message.structuredContent !== undefined ? { structuredContent: message.structuredContent } : {}),
+      ...(message.nextActions ? { nextActions: message.nextActions } : {})
+    });
   }
 }

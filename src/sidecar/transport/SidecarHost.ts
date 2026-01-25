@@ -106,7 +106,10 @@ export class SidecarHost {
       ts: Date.now(),
       ok: result.ok,
       data: result.ok ? result.data : undefined,
-      error: result.ok ? undefined : result.error
+      error: result.ok ? undefined : result.error,
+      content: result.content,
+      structuredContent: result.structuredContent,
+      nextActions: result.nextActions
     };
     this.send(response);
   }

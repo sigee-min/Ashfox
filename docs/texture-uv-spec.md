@@ -84,7 +84,7 @@ If the actual UV size deviates beyond `uvPolicy.scaleTolerance` (default 0.1), t
   "name": "pot_wood",
   "width": 64,
   "height": 64,
-  "uvUsageId": "<from preflight_texture>",
+  "uvUsageId": { "$ref": { "kind": "tool", "tool": "preflight_texture", "pointer": "/uvUsageId" } },
   "mode": "create"
 }
 ```

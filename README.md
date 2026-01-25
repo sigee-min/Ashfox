@@ -79,7 +79,7 @@ Use `resources/list` to discover generated assets and `resources/read` to fetch 
 12) If UVs or resolution change after painting, repaint using the new mapping.
 
 ## Preview Output (MCP Standard)
-`render_preview` responds with MCP `content` blocks:
+`render_preview` responds with MCP `content` blocks plus `structuredContent` metadata:
 ```json
 {
   "content": [
@@ -89,14 +89,34 @@ Use `resources/list` to discover generated assets and `resources/read` to fetch 
       "data": "<base64>"
     }
   ],
-  "meta": {
+  "structuredContent": {
     "kind": "single",
-    "width": 766,
-    "height": 810,
-    "byteLength": 67336
+    "frameCount": 1,
+    "image": {
+      "mime": "image/png",
+      "width": 766,
+      "height": 810,
+      "byteLength": 67336
+    }
+  },
+  "_meta": {
+    "nextActions": [
+      {
+        "type": "call_tool",
+        "tool": "get_project_state",
+        "arguments": { "detail": "summary" },
+        "reason": "Refresh revision before follow-up mutations.",
+        "priority": 1
+      }
+    ]
   }
 }
 ```
+
+Notes:
+- `_meta` is MCP-standard metadata. This server uses `_meta.nextActions` to suggest follow-up calls.
+- `structuredContent` mirrors tool result data without embedding base64.
+- See `docs/next-actions.md` for the `nextActions` schema and `$ref` conventions.
 
 ## Guides (MCP Resources)
 Static guides are exposed via MCP resources. Use `resources/list` and `resources/read` to fetch them.

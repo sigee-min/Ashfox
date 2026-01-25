@@ -36,6 +36,56 @@ export interface ToolError {
   details?: Record<string, unknown>;
 }
 
+export type NextActionRef =
+  | {
+      kind: 'tool';
+      tool: string;
+      pointer: string;
+      note?: string;
+    }
+  | {
+      kind: 'user';
+      hint: string;
+    };
+
+export type NextActionValueRef = { $ref: NextActionRef };
+
+export type NextActionArgPrimitive = string | number | boolean | null;
+
+export type NextActionArgValue =
+  | NextActionArgPrimitive
+  | NextActionValueRef
+  | NextActionArgValue[]
+  | { [key: string]: NextActionArgValue };
+
+export type NextActionArgs = Record<string, NextActionArgValue>;
+
+export type NextAction =
+  | {
+      type: 'call_tool';
+      tool: string;
+      arguments: NextActionArgs;
+      reason: string;
+      priority?: number;
+    }
+  | {
+      type: 'read_resource';
+      uri: string;
+      reason: string;
+      priority?: number;
+    }
+  | {
+      type: 'ask_user';
+      question: string;
+      reason: string;
+      priority?: number;
+    }
+  | {
+      type: 'noop';
+      reason: string;
+      priority?: number;
+    };
+
 export type McpTextContent = { type: 'text'; text: string };
 
 export type McpImageContent = { type: 'image'; data: string; mimeType: string };
@@ -43,5 +93,5 @@ export type McpImageContent = { type: 'image'; data: string; mimeType: string };
 export type McpContentBlock = McpTextContent | McpImageContent;
 
 export type ToolResponse<T> =
-  | { ok: true; data: T; content?: McpContentBlock[]; structuredContent?: unknown }
-  | { ok: false; error: ToolError; content?: McpContentBlock[]; structuredContent?: unknown };
+  | { ok: true; data: T; content?: McpContentBlock[]; structuredContent?: unknown; nextActions?: NextAction[] }
+  | { ok: false; error: ToolError; content?: McpContentBlock[]; structuredContent?: unknown; nextActions?: NextAction[] };
