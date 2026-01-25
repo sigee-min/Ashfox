@@ -1,5 +1,6 @@
-import { ToolError, ToolName, ToolPayloadMap } from '../types';
-import { ProxyTool } from '../spec';
+import type { ToolError, ToolName, ToolPayloadMap } from '../types';
+import type { ProxyTool } from '../spec';
+import { isRecord } from '../domain/guards';
 
 export const PROTOCOL_VERSION = 1 as const;
 
@@ -51,3 +52,51 @@ export type SidecarMessage =
   | SidecarRequestMessage
   | SidecarResponseMessage
   | SidecarErrorMessage;
+
+const isToolError = (value: unknown): value is ToolError => {
+  if (!isRecord(value)) return false;
+  if (typeof value.code !== 'string') return false;
+  if (typeof value.message !== 'string') return false;
+  if ('fix' in value && typeof value.fix !== 'string' && typeof value.fix !== 'undefined') return false;
+  if ('details' in value && !isRecord(value.details) && typeof value.details !== 'undefined') return false;
+  return true;
+};
+
+export const isSidecarMessage = (value: unknown): value is SidecarMessage => {
+  if (!isRecord(value)) return false;
+  const type = value.type;
+  if (typeof type !== 'string') return false;
+
+  const ts = value.ts;
+  if (typeof ts !== 'number' || !Number.isFinite(ts)) return false;
+
+  if (type === 'hello') {
+    if (typeof value.version !== 'number' || !Number.isFinite(value.version)) return false;
+    return value.role === 'plugin' || value.role === 'sidecar';
+  }
+  if (type === 'ready') {
+    return typeof value.version === 'number' && Number.isFinite(value.version);
+  }
+  if (type === 'request') {
+    if (typeof value.id !== 'string' || !value.id) return false;
+    if (typeof value.tool !== 'string') return false;
+    if (typeof value.mode !== 'undefined' && value.mode !== 'direct' && value.mode !== 'proxy') return false;
+    return true;
+  }
+  if (type === 'response') {
+    if (typeof value.id !== 'string' || !value.id) return false;
+    if (typeof value.ok !== 'boolean') return false;
+    if (!value.ok) {
+      if (typeof value.error === 'undefined') return true;
+      return isToolError(value.error);
+    }
+    return true;
+  }
+  if (type === 'error') {
+    if (typeof value.message !== 'string') return false;
+    if ('id' in value && typeof value.id !== 'string' && typeof value.id !== 'undefined') return false;
+    if ('details' in value && !isRecord(value.details) && typeof value.details !== 'undefined') return false;
+    return true;
+  }
+  return false;
+};

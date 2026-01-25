@@ -1,4 +1,4 @@
-import { SidecarMessage } from './protocol';
+import { isSidecarMessage, SidecarMessage } from './protocol';
 
 const DEFAULT_MAX_BUFFER = 5_000_000;
 
@@ -40,7 +40,11 @@ export const createLineDecoder = (
       buffer = buffer.slice(newlineIndex + 1);
       if (line.length > 0) {
         try {
-          const parsed = JSON.parse(line) as SidecarMessage;
+          const parsed = JSON.parse(line) as unknown;
+          if (!isSidecarMessage(parsed)) {
+            onError?.(new Error('sidecar ipc invalid message'));
+            continue;
+          }
           onMessage(parsed);
         } catch (err) {
           onError?.(err instanceof Error ? err : new Error('sidecar ipc parse error'));
