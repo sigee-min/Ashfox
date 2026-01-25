@@ -17,8 +17,8 @@ import { findUvOverlapIssues, formatUvFaceRect } from '../domain/uvOverlap';
 import { checkDimensions } from '../domain/dimensions';
 import { runAutoUvAtlas, runGenerateTexturePreset, TextureToolContext } from './textureTools';
 import { ok, fail, UsecaseResult } from './result';
+import { TextureCrudService } from './TextureCrudService';
 import { resolveCubeTarget, resolveTextureTarget } from '../services/lookup';
-import { createId } from '../services/id';
 import { toDomainTextureUsage } from './domainMappers';
 import { validateUvBounds } from '../domain/uvBounds';
 import { validateUvAssignments } from '../domain/uvAssignments';
@@ -26,16 +26,12 @@ import { ensureActiveAndRevision, ensureActiveOnly } from './guards';
 import type { TextureRendererPort } from '../ports/textureRenderer';
 import type { TmpStorePort } from '../ports/tmpStore';
 import type { UvPolicyConfig } from '../domain/uvPolicy';
-import { ensureIdNameMatch, ensureNonBlankString } from '../services/validation';
+import { ensureNonBlankString } from '../services/validation';
 import {
   computeUvBounds,
-  hashCanvasImage,
   normalizeCubeFaces,
-  normalizeTextureDataUri,
-  parseDataUriMimeType,
   recommendResolution,
   resolveCubeTargets,
-  resolveTextureSize,
   summarizeTextureUsage
 } from '../services/textureUtils';
 
@@ -61,6 +57,7 @@ export class TextureService {
   private readonly ensureActive: () => ToolError | null;
   private readonly ensureRevisionMatch: (ifRevision?: string) => ToolError | null;
   private readonly getUvPolicyConfig: () => UvPolicyConfig;
+  private readonly textureCrud: TextureCrudService;
 
   constructor(deps: TextureServiceDeps) {
     this.session = deps.session;
@@ -72,6 +69,14 @@ export class TextureService {
     this.ensureActive = deps.ensureActive;
     this.ensureRevisionMatch = deps.ensureRevisionMatch;
     this.getUvPolicyConfig = deps.getUvPolicyConfig;
+    this.textureCrud = new TextureCrudService({
+      session: this.session,
+      editor: this.editor,
+      getSnapshot: this.getSnapshot,
+      ensureActive: this.ensureActive,
+      ensureRevisionMatch: this.ensureRevisionMatch,
+      tmpStore: this.tmpStore
+    });
   }
 
   getProjectTextureResolution(): { width: number; height: number } | null {
@@ -204,77 +209,7 @@ export class TextureService {
     height?: number;
     ifRevision?: string;
   } & TextureMeta): UsecaseResult<{ id: string; name: string }> {
-    const guardErr = ensureActiveAndRevision(this.ensureActive, this.ensureRevisionMatch, payload.ifRevision);
-    if (guardErr) return fail(guardErr);
-    if (!payload.name) {
-      return fail({ code: 'invalid_payload', message: 'Texture name is required' });
-    }
-    const nameBlankErr = ensureNonBlankString(payload.name, 'Texture name');
-    if (nameBlankErr) return fail(nameBlankErr);
-    const idBlankErr = ensureNonBlankString(payload.id, 'Texture id');
-    if (idBlankErr) return fail(idBlankErr);
-    const snapshot = this.getSnapshot();
-    const nameConflict = snapshot.textures.some((t) => t.name === payload.name);
-    if (nameConflict) {
-      return fail({ code: 'invalid_payload', message: `Texture already exists: ${payload.name}` });
-    }
-    const id = payload.id ?? createId('tex');
-    const idConflict = snapshot.textures.some((t) => t.id && t.id === id);
-    if (idConflict) {
-      return fail({ code: 'invalid_payload', message: `Texture id already exists: ${id}` });
-    }
-    const contentHash = hashCanvasImage(payload.image);
-    const err = this.editor.importTexture({
-      id,
-      name: payload.name,
-      image: payload.image,
-      width: payload.width,
-      height: payload.height,
-      namespace: payload.namespace,
-      folder: payload.folder,
-      particle: payload.particle,
-      visible: payload.visible,
-      renderMode: payload.renderMode,
-      renderSides: payload.renderSides,
-      pbrChannel: payload.pbrChannel,
-      group: payload.group,
-      frameTime: payload.frameTime,
-      frameOrderType: payload.frameOrderType,
-      frameOrder: payload.frameOrder,
-      frameInterpolate: payload.frameInterpolate,
-      internal: payload.internal,
-      keepSize: payload.keepSize
-    });
-    if (err) return fail(err);
-    const match = this.editor
-      .listTextures()
-      .find((t) => (t.id && t.id === id) || t.name === payload.name);
-    const resolvedSize = resolveTextureSize(
-      { width: match?.width, height: match?.height },
-      { width: payload.width, height: payload.height }
-    );
-    this.session.addTexture({
-      id,
-      name: payload.name,
-      width: resolvedSize.width,
-      height: resolvedSize.height,
-      contentHash: contentHash ?? undefined,
-      namespace: payload.namespace,
-      folder: payload.folder,
-      particle: payload.particle,
-      visible: payload.visible,
-      renderMode: payload.renderMode,
-      renderSides: payload.renderSides,
-      pbrChannel: payload.pbrChannel,
-      group: payload.group,
-      frameTime: payload.frameTime,
-      frameOrderType: payload.frameOrderType,
-      frameOrder: payload.frameOrder,
-      frameInterpolate: payload.frameInterpolate,
-      internal: payload.internal,
-      keepSize: payload.keepSize
-    });
-    return ok({ id, name: payload.name });
+    return this.textureCrud.importTexture(payload);
   }
 
   updateTexture(payload: {
@@ -286,188 +221,19 @@ export class TextureService {
     height?: number;
     ifRevision?: string;
   } & TextureMeta): UsecaseResult<{ id: string; name: string }> {
-    const guardErr = ensureActiveAndRevision(this.ensureActive, this.ensureRevisionMatch, payload.ifRevision);
-    if (guardErr) return fail(guardErr);
-    const snapshot = this.getSnapshot();
-    const idBlankErr = ensureNonBlankString(payload.id, 'Texture id');
-    if (idBlankErr) return fail(idBlankErr);
-    const nameBlankErr = ensureNonBlankString(payload.name, 'Texture name');
-    if (nameBlankErr) return fail(nameBlankErr);
-    const newNameBlankErr = ensureNonBlankString(payload.newName, 'Texture newName');
-    if (newNameBlankErr) return fail(newNameBlankErr);
-    if (!payload.id && !payload.name) {
-      return fail({
-        code: 'invalid_payload',
-        message: 'Texture id or name is required',
-        fix: 'Provide id or name for the texture.'
-      });
-    }
-    const mismatchErr = ensureIdNameMatch(snapshot.textures, payload.id, payload.name, {
-      kind: 'Texture',
-      plural: 'textures'
-    });
-    if (mismatchErr) return fail(mismatchErr);
-    const target = resolveTextureTarget(snapshot.textures, payload.id, payload.name);
-    if (!target) {
-      const label = payload.id ?? payload.name ?? 'unknown';
-      return fail({ code: 'invalid_payload', message: `Texture not found: ${label}` });
-    }
-    const contentHash = hashCanvasImage(payload.image);
-    const targetName = target.name;
-    const targetId = target.id ?? payload.id ?? createId('tex');
-    if (payload.newName && payload.newName !== targetName) {
-      const conflict = snapshot.textures.some((t) => t.name === payload.newName && t.name !== targetName);
-      if (conflict) {
-        return fail({ code: 'invalid_payload', message: `Texture already exists: ${payload.newName}` });
-      }
-    }
-    const renaming = Boolean(payload.newName && payload.newName !== targetName);
-    if (contentHash && target.contentHash && contentHash === target.contentHash && !renaming) {
-      return fail({
-        code: 'no_change',
-        message: 'Texture content is unchanged.',
-        fix: 'Adjust ops or include a rename before updating.'
-      });
-    }
-    const err = this.editor.updateTexture({
-      id: targetId,
-      name: targetName,
-      newName: payload.newName,
-      image: payload.image,
-      width: payload.width,
-      height: payload.height,
-      namespace: payload.namespace,
-      folder: payload.folder,
-      particle: payload.particle,
-      visible: payload.visible,
-      renderMode: payload.renderMode,
-      renderSides: payload.renderSides,
-      pbrChannel: payload.pbrChannel,
-      group: payload.group,
-      frameTime: payload.frameTime,
-      frameOrderType: payload.frameOrderType,
-      frameOrder: payload.frameOrder,
-      frameInterpolate: payload.frameInterpolate,
-      internal: payload.internal,
-      keepSize: payload.keepSize
-    });
-    if (err) return fail(err);
-    const effectiveName = payload.newName ?? targetName;
-    const match = this.editor
-      .listTextures()
-      .find((t) => (t.id && t.id === targetId) || t.name === effectiveName);
-    const resolvedSize = resolveTextureSize(
-      { width: match?.width, height: match?.height },
-      { width: payload.width, height: payload.height },
-      { width: target.width, height: target.height }
-    );
-    this.session.updateTexture(targetName, {
-      id: targetId,
-      newName: payload.newName,
-      width: resolvedSize.width,
-      height: resolvedSize.height,
-      contentHash: contentHash ?? undefined,
-      namespace: payload.namespace,
-      folder: payload.folder,
-      particle: payload.particle,
-      visible: payload.visible,
-      renderMode: payload.renderMode,
-      renderSides: payload.renderSides,
-      pbrChannel: payload.pbrChannel,
-      group: payload.group,
-      frameTime: payload.frameTime,
-      frameOrderType: payload.frameOrderType,
-      frameOrder: payload.frameOrder,
-      frameInterpolate: payload.frameInterpolate,
-      internal: payload.internal,
-      keepSize: payload.keepSize
-    });
-    return ok({ id: targetId, name: effectiveName });
+    return this.textureCrud.updateTexture(payload);
   }
 
   deleteTexture(payload: { id?: string; name?: string; ifRevision?: string }): UsecaseResult<{ id: string; name: string }> {
-    const guardErr = ensureActiveAndRevision(this.ensureActive, this.ensureRevisionMatch, payload.ifRevision);
-    if (guardErr) return fail(guardErr);
-    const snapshot = this.getSnapshot();
-    const idBlankErr = ensureNonBlankString(payload.id, 'Texture id');
-    if (idBlankErr) return fail(idBlankErr);
-    const nameBlankErr = ensureNonBlankString(payload.name, 'Texture name');
-    if (nameBlankErr) return fail(nameBlankErr);
-    if (!payload.id && !payload.name) {
-      return fail({ code: 'invalid_payload', message: 'Texture id or name is required' });
-    }
-    const mismatchErr = ensureIdNameMatch(snapshot.textures, payload.id, payload.name, {
-      kind: 'Texture',
-      plural: 'textures'
-    });
-    if (mismatchErr) return fail(mismatchErr);
-    const target = resolveTextureTarget(snapshot.textures, payload.id, payload.name);
-    if (!target) {
-      const label = payload.id ?? payload.name ?? 'unknown';
-      return fail({ code: 'invalid_payload', message: `Texture not found: ${label}` });
-    }
-    const err = this.editor.deleteTexture({ id: target.id ?? payload.id, name: target.name });
-    if (err) return fail(err);
-    this.session.removeTextures([target.name]);
-    return ok({ id: target.id ?? payload.id ?? target.name, name: target.name });
+    return this.textureCrud.deleteTexture(payload);
   }
 
   readTexture(payload: { id?: string; name?: string }): UsecaseResult<TextureSource> {
-    const activeErr = ensureActiveOnly(this.ensureActive);
-    if (activeErr) return fail(activeErr);
-    const idBlankErr = ensureNonBlankString(payload.id, 'Texture id');
-    if (idBlankErr) return fail(idBlankErr);
-    const nameBlankErr = ensureNonBlankString(payload.name, 'Texture name');
-    if (nameBlankErr) return fail(nameBlankErr);
-    if (!payload.id && !payload.name) {
-      return fail({ code: 'invalid_payload', message: 'Texture id or name is required' });
-    }
-    if (payload.id && payload.name) {
-      const snapshot = this.getSnapshot();
-      const mismatchErr = ensureIdNameMatch(snapshot.textures, payload.id, payload.name, {
-        kind: 'Texture',
-        plural: 'textures'
-      });
-      if (mismatchErr) return fail(mismatchErr);
-    }
-    const res = this.editor.readTexture({ id: payload.id, name: payload.name });
-    if (res.error) return fail(res.error);
-    return ok(res.result!);
+    return this.textureCrud.readTexture(payload);
   }
 
   readTextureImage(payload: ReadTexturePayload): UsecaseResult<ReadTextureResult> {
-    const { saveToTmp, tmpName, tmpPrefix, ...query } = payload;
-    const sourceRes = this.readTexture(query);
-    if (!sourceRes.ok) return sourceRes;
-    const source = sourceRes.value;
-    const dataUri = normalizeTextureDataUri(source.dataUri);
-    if (!dataUri) {
-      return fail({ code: 'not_implemented', message: 'Texture data unavailable.' });
-    }
-    const mimeType = parseDataUriMimeType(dataUri) ?? 'image/png';
-    const result: ReadTextureResult = {
-      texture: {
-        id: source.id,
-        name: source.name,
-        width: source.width,
-        height: source.height,
-        path: source.path,
-        dataUri,
-        mimeType
-      }
-    };
-    if (saveToTmp) {
-      if (!this.tmpStore) {
-        return fail({ code: 'not_implemented', message: 'Tmp store is not available.' });
-      }
-      const saved = this.tmpStore.saveDataUri(dataUri, {
-        nameHint: tmpName ?? source.name,
-        prefix: tmpPrefix ?? 'texture'
-      });
-      if (!saved.ok) return fail(saved.error);
-      result.saved = saved.data;
-    }
-    return ok(result);
+    return this.textureCrud.readTextureImage(payload);
   }
 
   assignTexture(payload: {

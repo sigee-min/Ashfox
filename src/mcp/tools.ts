@@ -1,3 +1,4 @@
+import { hashTextToHex } from '../shared/hash';
 import { JsonSchema, McpToolDefinition } from './types';
 import { toolSchemas } from './toolSchemas';
 
@@ -196,18 +197,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
 ];
 
-const hashText = (value: string): string => {
-  let hash = 5381;
-  for (let i = 0; i < value.length; i += 1) {
-    hash = ((hash << 5) + hash) ^ value.charCodeAt(i);
-  }
-  return (hash >>> 0).toString(16);
-};
-
 const toolRegistrySignature = () =>
   JSON.stringify(MCP_TOOLS.map((tool) => ({ name: tool.name, inputSchema: tool.inputSchema })));
 
-export const TOOL_REGISTRY_HASH = hashText(toolRegistrySignature());
+export const TOOL_REGISTRY_HASH = hashTextToHex(toolRegistrySignature());
 export const TOOL_REGISTRY_COUNT = MCP_TOOLS.length;
 
 export const getToolSchema = (name: string): JsonSchema | null => toolSchemas[name] ?? null;

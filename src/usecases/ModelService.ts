@@ -2,11 +2,7 @@ import type { Capabilities, ToolError } from '../types';
 import { ProjectSession, SessionState } from '../session';
 import { EditorPort } from '../ports/editor';
 import { ok, fail, UsecaseResult } from './result';
-import { buildRigTemplate } from '../templates';
-import { RigTemplateKind } from '../spec';
-import { RIG_TEMPLATE_KINDS } from '../shared/toolConstants';
-import { mergeRigParts, RigMergeStrategy } from '../domain/rig';
-import { isZeroSize } from '../domain/geometry';
+import { RigMergeStrategy } from '../domain/rig';
 import {
   collectDescendantBones,
   isDescendantBone,
@@ -17,6 +13,7 @@ import {
 import { createId } from '../services/id';
 import { ensureIdNameMatch, ensureNonBlankString } from '../services/validation';
 import { ensureActiveAndRevision } from './guards';
+import { applyRigTemplate } from './modelRigTemplate';
 
 export interface ModelServiceDeps {
   session: ProjectSession;
@@ -477,59 +474,18 @@ export class ModelService {
   }
 
   applyRigTemplate(payload: { templateId: string; ifRevision?: string }): UsecaseResult<{ templateId: string }> {
-    const guardErr = ensureActiveAndRevision(this.ensureActive, this.ensureRevisionMatch, payload.ifRevision);
-    if (guardErr) return fail(guardErr);
-    const templateId = payload.templateId;
-    if (!RIG_TEMPLATE_KINDS.includes(templateId as (typeof RIG_TEMPLATE_KINDS)[number])) {
-      return fail({ code: 'invalid_payload', message: `Unknown template: ${templateId}` });
-    }
-    const templateParts = buildRigTemplate(templateId as RigTemplateKind, []);
-    const cubeParts = templateParts.filter((part) => !isZeroSize(part.size));
-    const limitErr = this.ensureCubeLimit(cubeParts.length);
-    if (limitErr) return fail(limitErr);
-    const snapshot = this.getSnapshot();
-    const existing = new Set(snapshot.bones.map((b) => b.name));
-    let partsToAdd = templateParts;
-    try {
-      const merged = mergeRigParts(templateParts, existing, this.getRigMergeStrategy() ?? 'skip_existing');
-      partsToAdd = merged.parts;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'rig template merge failed';
-      return fail({ code: 'invalid_payload', message });
-    }
-
-    for (const part of partsToAdd) {
-      const boneRes = this.addBoneInternal(
-        {
-        name: part.id,
-        parent: part.parent,
-        pivot: part.pivot ?? [0, 0, 0]
-        },
-        { skipRevisionCheck: true }
-      );
-      if (!boneRes.ok) return boneRes;
-      if (!isZeroSize(part.size)) {
-        const from: [number, number, number] = [...part.offset];
-        const to: [number, number, number] = [
-          part.offset[0] + part.size[0],
-          part.offset[1] + part.size[1],
-          part.offset[2] + part.size[2]
-        ];
-        const cubeRes = this.addCubeInternal(
-          {
-          name: part.id,
-          from,
-          to,
-          bone: part.id,
-          inflate: part.inflate,
-          mirror: part.mirror
-          },
-          { skipRevisionCheck: true }
-        );
-        if (!cubeRes.ok) return cubeRes;
-      }
-    }
-    return ok({ templateId });
+    return applyRigTemplate(
+      {
+        ensureActive: () => this.ensureActive(),
+        ensureRevisionMatch: (ifRevision?: string) => this.ensureRevisionMatch(ifRevision),
+        getSnapshot: () => this.getSnapshot(),
+        getRigMergeStrategy: () => this.getRigMergeStrategy(),
+        ensureCubeLimit: (increment) => this.ensureCubeLimit(increment),
+        addBoneInternal: (payload, options) => this.addBoneInternal(payload, options),
+        addCubeInternal: (payload, options) => this.addCubeInternal(payload, options)
+      },
+      payload
+    );
   }
 
   private ensureCubeLimit(increment: number): ToolError | null {

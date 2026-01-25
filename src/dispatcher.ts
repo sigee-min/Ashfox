@@ -1,7 +1,5 @@
 import {
   Dispatcher,
-  ProjectDiff,
-  ProjectState,
   ProjectStateDetail,
   RenderPreviewResult,
   ToolError,
@@ -31,6 +29,7 @@ import {
   buildTextureStructured
 } from './mcp/content';
 import { decideRevision } from './services/revisionGuard';
+import { attachStateToResponse } from './services/attachState';
 
 const respondOk = <T>(data: T): ToolResponse<T> => ({ ok: true, data });
 const respondError = <T>(error: ToolError): ToolResponse<T> => ({ ok: false, error });
@@ -137,7 +136,9 @@ export class ToolDispatcherImpl implements Dispatcher {
         this.logGuardFailure(
           'render_preview',
           payload,
-          attachRenderPreviewContent(this.attachState(payload, toToolResponse(this.service.renderPreview(payload))))
+          attachRenderPreviewContent(
+            attachStateToResponse(this.getStateDeps(), payload, toToolResponse(this.service.renderPreview(payload)))
+          )
         )
     } satisfies ResponseHandlerMap;
     const flag = options?.includeStateByDefault;
@@ -178,62 +179,13 @@ export class ToolDispatcherImpl implements Dispatcher {
     }
   }
 
-  private attachState<
-    TPayload extends { includeState?: boolean; includeDiff?: boolean; diffDetail?: ProjectStateDetail; ifRevision?: string },
-    TResult
-  >(
-    payload: TPayload,
-    response: ToolResponse<TResult>
-  ): ToolResponse<TResult & { state?: ProjectState | null; diff?: ProjectDiff | null }> {
-    const shouldIncludeState = payload?.includeState ?? this.includeStateByDefault();
-    const shouldIncludeDiff = payload?.includeDiff ?? this.includeDiffByDefault();
-    const shouldIncludeRevision = true;
-    if (!shouldIncludeState && !shouldIncludeDiff && !shouldIncludeRevision) {
-      return response as ToolResponse<TResult & { state?: ProjectState | null; diff?: ProjectDiff | null }>;
-    }
-    const state = this.service.getProjectState({ detail: 'summary' });
-    const project = state.ok ? state.value.project : null;
-    const revision = project?.revision;
-    let diffValue: ProjectDiff | null | undefined;
-    if (shouldIncludeDiff) {
-      if (payload?.ifRevision) {
-        const diff = this.service.getProjectDiff({
-          sinceRevision: payload.ifRevision,
-          detail: payload.diffDetail ?? 'summary'
-        });
-        diffValue = diff.ok ? diff.value.diff : null;
-      } else {
-        diffValue = null;
-      }
-    }
-    if (response.ok) {
-      return {
-        ok: true,
-        ...(response.content ? { content: response.content } : {}),
-        ...(response.structuredContent ? { structuredContent: response.structuredContent } : {}),
-        data: {
-          ...(response.data as Record<string, unknown>),
-          ...(shouldIncludeRevision && revision ? { revision } : {}),
-          ...(shouldIncludeState ? { state: project } : {}),
-          ...(shouldIncludeDiff ? { diff: diffValue ?? null } : {})
-        } as TResult & { state?: ProjectState | null; diff?: ProjectDiff | null }
-      };
-    }
-    const details: Record<string, unknown> = { ...(response.error.details ?? {}) };
-    if (shouldIncludeRevision && revision) {
-      details.revision = revision;
-    }
-    if (shouldIncludeState) {
-      details.state = project;
-    }
-    if (shouldIncludeDiff) {
-      details.diff = diffValue ?? null;
-    }
+  private getStateDeps() {
     return {
-      ok: false,
-      ...(response.content ? { content: response.content } : {}),
-      ...(response.structuredContent ? { structuredContent: response.structuredContent } : {}),
-      error: { ...response.error, details }
+      includeStateByDefault: this.includeStateByDefault,
+      includeDiffByDefault: this.includeDiffByDefault,
+      getProjectState: (payload: { detail: ProjectStateDetail }) => this.service.getProjectState(payload),
+      getProjectDiff: (payload: { sinceRevision: string; detail?: ProjectStateDetail }) =>
+        this.service.getProjectDiff(payload)
     };
   }
 
@@ -246,7 +198,7 @@ export class ToolDispatcherImpl implements Dispatcher {
     return this.logGuardFailure(
       tool,
       retryPayload,
-      this.attachState(retryPayload, toToolResponse(result))
+      attachStateToResponse(this.getStateDeps(), retryPayload, toToolResponse(result))
     ) as ToolResponse<ToolResultMap[TName]>;
   }
 
@@ -258,7 +210,7 @@ export class ToolDispatcherImpl implements Dispatcher {
     return this.logGuardFailure(
       tool,
       payload,
-      this.attachState(payload, toToolResponse(call(payload)))
+      attachStateToResponse(this.getStateDeps(), payload, toToolResponse(call(payload)))
     ) as ToolResponse<ToolResultMap[TName]>;
   }
 

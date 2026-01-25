@@ -1,4 +1,5 @@
 import type { TexturePresetName } from '../shared/toolConstants';
+import { hashTextToInt } from '../shared/hash';
 export type { TexturePresetName } from '../shared/toolConstants';
 
 export type TexturePresetSpec = {
@@ -28,16 +29,8 @@ type Rgb = { r: number; g: number; b: number };
 
 const clampByte = (value: number) => Math.max(0, Math.min(255, Math.round(value)));
 
-const hashText = (value: string): number => {
-  let hash = 5381;
-  for (let i = 0; i < value.length; i += 1) {
-    hash = ((hash << 5) + hash) ^ value.charCodeAt(i);
-  }
-  return hash >>> 0;
-};
-
 const resolveSeed = (seed: number | undefined, fallback: string) =>
-  Number.isFinite(seed) ? (seed as number) : hashText(fallback);
+  Number.isFinite(seed) ? (seed as number) : hashTextToInt(fallback);
 
 const createRng = (seed: number) => {
   let value = seed >>> 0;

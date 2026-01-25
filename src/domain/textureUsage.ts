@@ -1,4 +1,5 @@
 import { CUBE_FACE_DIRECTIONS } from './model';
+import { hashTextToHex } from '../shared/hash';
 import type { CubeFaceDirection, TextureUsage } from './model';
 
 type NormalizedFace = { face: CubeFaceDirection; uv: [number, number, number, number] | null };
@@ -38,12 +39,4 @@ const normalizeUsage = (usage: TextureUsage): { textures: NormalizedTexture[] } 
 };
 
 export const computeTextureUsageId = (usage: TextureUsage): string =>
-  hashText(JSON.stringify(normalizeUsage(usage)));
-
-const hashText = (value: string): string => {
-  let hash = 5381;
-  for (let i = 0; i < value.length; i += 1) {
-    hash = ((hash << 5) + hash) ^ value.charCodeAt(i);
-  }
-  return (hash >>> 0).toString(16);
-};
+  hashTextToHex(JSON.stringify(normalizeUsage(usage)));

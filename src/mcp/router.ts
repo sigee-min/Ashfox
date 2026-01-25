@@ -1,5 +1,4 @@
 import { Logger } from '../logging';
-import { ToolResponse } from '../types';
 import { ToolExecutor } from './executor';
 import {
   HttpRequest,
@@ -13,103 +12,27 @@ import { validateSchema } from './validation';
 import { McpSession, SessionStore } from './session';
 import { encodeSseComment, encodeSseEvent } from './sse';
 import { ResourceStore } from '../ports/resources';
-
-const DEFAULT_PROTOCOL_VERSION = '2025-06-18';
-const DEFAULT_SUPPORTED_PROTOCOLS = ['2025-11-25', '2025-06-18', '2024-11-05'];
-const DEFAULT_SESSION_TTL_MS = 30 * 60_000;
-const SESSION_PRUNE_INTERVAL_MS = 60_000;
-const IMPLICIT_SESSION_METHODS = new Set([
-  'tools/list',
-  'tools/call',
-  'resources/list',
-  'resources/read',
-  'resources/templates/list',
-  'ping'
-]);
+import {
+  DEFAULT_PROTOCOL_VERSION,
+  DEFAULT_SESSION_TTL_MS,
+  DEFAULT_SUPPORTED_PROTOCOLS,
+  IMPLICIT_SESSION_METHODS,
+  SESSION_PRUNE_INTERVAL_MS,
+  isJsonRpcMessage,
+  isRecord,
+  jsonRpcError,
+  jsonRpcResult,
+  matchesPath,
+  normalizePath,
+  normalizeSessionTtl,
+  randomId,
+  supportsSse,
+  toCallToolResult
+} from './routerUtils';
 
 type RpcOutcome =
   | { type: 'notification' }
   | { type: 'response'; response: JsonRpcResponse; status: number };
-
-const jsonRpcError = (id: JsonRpcResponse['id'], code: number, message: string, data?: unknown): JsonRpcResponse => ({
-  jsonrpc: '2.0',
-  id,
-  error: { code, message, data }
-});
-
-const jsonRpcResult = (id: JsonRpcResponse['id'], result: unknown): JsonRpcResponse => ({
-  jsonrpc: '2.0',
-  id,
-  result
-});
-
-const isJsonRpcMessage = (value: unknown): value is JsonRpcMessage => {
-  if (typeof value !== 'object' || value === null) return false;
-  const obj = value as Record<string, unknown>;
-  return obj.jsonrpc === '2.0' && typeof obj.method === 'string';
-};
-
-const normalizePath = (value: string) => {
-  if (!value) return '/mcp';
-  const trimmed = value.startsWith('/') ? value : `/${value}`;
-  return trimmed.length > 1 && trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
-};
-
-const matchesPath = (url: string, basePath: string) => {
-  try {
-    const requestPath = new URL(url, 'http://localhost').pathname;
-    return requestPath === basePath || requestPath.startsWith(`${basePath}/`);
-  } catch {
-    return false;
-  }
-};
-
-const supportsSse = (acceptHeader: string | undefined) =>
-  typeof acceptHeader === 'string' && acceptHeader.toLowerCase().includes('text/event-stream');
-
-const makeTextContent = (text: string) => [{ type: 'text', text }];
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const normalizeSessionTtl = (value?: number): number => {
-  if (!Number.isFinite(value)) return DEFAULT_SESSION_TTL_MS;
-  if (!value || value <= 0) return 0;
-  return Math.trunc(value);
-};
-
-const toCallToolResult = (response: ToolResponse<unknown>) => {
-  if (response.ok) {
-    if (response.content) {
-      const result: Record<string, unknown> = { content: response.content };
-      if (response.structuredContent !== undefined) {
-        result.structuredContent = response.structuredContent;
-      }
-      return result;
-    }
-    const json = JSON.stringify(response.structuredContent ?? response.data);
-    return { content: makeTextContent(json), structuredContent: response.structuredContent ?? response.data };
-  }
-  const error = response.error ?? { code: 'unknown', message: 'tool error' };
-  if (response.content) {
-    const result: Record<string, unknown> = { isError: true, content: response.content };
-    if (response.structuredContent !== undefined) {
-      result.structuredContent = response.structuredContent;
-    }
-    return result;
-  }
-  return { isError: true, content: makeTextContent(error.message), structuredContent: error };
-};
-
-const randomId = () => {
-  const cryptoObj = globalThis.crypto;
-  if (cryptoObj?.getRandomValues) {
-    const bytes = new Uint8Array(16);
-    cryptoObj.getRandomValues(bytes);
-    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
-  }
-  return Math.random().toString(16).slice(2) + Date.now().toString(16);
-};
 
 export class McpRouter {
   private readonly config: McpServerConfig;

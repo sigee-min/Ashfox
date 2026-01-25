@@ -8,7 +8,6 @@ import {
   SetFaceUvCommand,
   TextureUsageQuery,
   TextureUsageResult,
-  TextureUsageUnresolved,
   UpdateBoneCommand,
   UpdateCubeCommand
 } from '../../ports/editor';
@@ -27,9 +26,6 @@ import {
   moveOutlinerNode,
   normalizeParent,
   readGlobals,
-  readNodeId,
-  readTextureAliases,
-  readTextureId,
   removeOutlinerNode,
   withUndo
 } from './blockbenchUtils';
@@ -42,6 +38,7 @@ import {
   resolveTargetCubes
 } from './outlinerLookup';
 import { withAdapterError } from './adapterErrors';
+import { buildTextureUsageResult } from './BlockbenchTextureUsage';
 
 export class BlockbenchGeometryAdapter {
   private readonly log: Logger;
@@ -344,116 +341,15 @@ export class BlockbenchGeometryAdapter {
       'texture usage',
       'texture usage failed',
       () => {
-      const globals = readGlobals();
-      const CubeCtor = globals.Cube;
-      const TextureCtor = globals.Texture;
-      if (typeof CubeCtor === 'undefined' || typeof TextureCtor === 'undefined') {
-        return { error: { code: 'not_implemented', message: 'Cube/Texture API not available' } };
-      }
-      const textures = Array.isArray(TextureCtor?.all) ? TextureCtor.all : [];
-      const usageMap = new Map<
-        string,
-        {
-          id?: string;
-          name: string;
-          cubes: Map<
-            string,
-            { id?: string; name: string; faces: Map<CubeFaceDirection, { face: CubeFaceDirection; uv?: [number, number, number, number] }> }
-          >;
-          faceCount: number;
+        const globals = readGlobals();
+        const CubeCtor = globals.Cube;
+        const TextureCtor = globals.Texture;
+        if (typeof CubeCtor === 'undefined' || typeof TextureCtor === 'undefined') {
+          return { error: { code: 'not_implemented', message: 'Cube/Texture API not available' } };
         }
-      >();
-      const byId = new Map<string, string>();
-      const byName = new Map<string, string>();
-      const metaByKey = new Map<string, { id?: string; name: string }>();
-      textures.forEach((tex) => {
-        const id = readTextureId(tex) ?? undefined;
-        const name = tex?.name ?? tex?.id ?? 'texture';
-        const key = id ? `id:${id}` : `name:${name}`;
-        metaByKey.set(key, { id, name });
-        const aliases = readTextureAliases(tex);
-        aliases.forEach((alias) => {
-          if (!byId.has(alias)) {
-            byId.set(alias, key);
-          }
-        });
-        if (name) byName.set(name, key);
-      });
-
-      const targetKeys = new Set<string>(metaByKey.keys());
-      if (params.textureId || params.textureName) {
-        const label = params.textureId ?? params.textureName ?? 'unknown';
-        const match =
-          (params.textureId && byId.get(params.textureId)) ||
-          (params.textureName && byName.get(params.textureName)) ||
-          null;
-        if (!match) {
-          return { error: { code: 'invalid_payload', message: `Texture not found: ${label}` } };
-        }
-        targetKeys.clear();
-        targetKeys.add(match);
-      }
-
-      targetKeys.forEach((key) => {
-        const meta = metaByKey.get(key);
-        if (!meta) return;
-        usageMap.set(key, { id: meta.id, name: meta.name, cubes: new Map(), faceCount: 0 });
-      });
-
-      const unresolved: TextureUsageUnresolved[] = [];
-      const cubes = collectCubes();
-      cubes.forEach((cube) => {
-        const cubeId = readNodeId(cube) ?? undefined;
-        const cubeName = cube?.name ? String(cube.name) : 'cube';
-        const faces = cube.faces ?? {};
-        Object.entries(faces).forEach(([faceKey, face]) => {
-          if (!VALID_FACE_KEYS.has(faceKey as CubeFaceDirection)) return;
-          const ref = face?.texture;
-          if (ref === false || ref === undefined || ref === null) return;
-          const refValue = typeof ref === 'string' ? ref : String(ref);
-          const key = resolveTextureKey(refValue, byId, byName);
-          if (!key) {
-            unresolved.push({ textureRef: refValue, cubeId, cubeName, face: faceKey as CubeFaceDirection });
-            return;
-          }
-          if (!targetKeys.has(key)) return;
-          const entry = usageMap.get(key);
-          if (!entry) return;
-          const cubeKey = cubeId ? `id:${cubeId}` : `name:${cubeName}`;
-          let cubeEntry = entry.cubes.get(cubeKey);
-          if (!cubeEntry) {
-            cubeEntry = { id: cubeId, name: cubeName, faces: new Map() };
-            entry.cubes.set(cubeKey, cubeEntry);
-          }
-          const faceDir = faceKey as CubeFaceDirection;
-          if (!cubeEntry.faces.has(faceDir)) {
-            cubeEntry.faces.set(faceDir, { face: faceDir, uv: normalizeFaceUv(face?.uv) });
-          } else {
-            const existing = cubeEntry.faces.get(faceDir);
-            if (existing && !existing.uv) {
-              existing.uv = normalizeFaceUv(face?.uv);
-            }
-          }
-          entry.faceCount += 1;
-        });
-      });
-
-      const texturesResult = Array.from(usageMap.values()).map((entry) => ({
-        id: entry.id,
-        name: entry.name,
-        cubeCount: entry.cubes.size,
-        faceCount: entry.faceCount,
-        cubes: Array.from(entry.cubes.values()).map((cube) => ({
-          id: cube.id,
-          name: cube.name,
-          faces: Array.from(cube.faces.values())
-        }))
-      }));
-      const result: TextureUsageResult = {
-        textures: texturesResult,
-        ...(unresolved.length > 0 ? { unresolved } : {})
-      };
-      return { result };
+        const textures = Array.isArray(TextureCtor?.all) ? TextureCtor.all : [];
+        const cubes = collectCubes();
+        return buildTextureUsageResult(params, { textures, cubes });
       },
       (error) => ({ error })
     );
@@ -475,12 +371,6 @@ export class BlockbenchGeometryAdapter {
 const VALID_FACE_KEYS = new Set<CubeFaceDirection>(CUBE_FACE_DIRECTIONS);
 const ALL_FACES: CubeFaceDirection[] = [...CUBE_FACE_DIRECTIONS];
 
-const resolveTextureKey = (ref: string, byId: Map<string, string>, byName: Map<string, string>): string | null => {
-  if (byId.has(ref)) return byId.get(ref) ?? null;
-  if (byName.has(ref)) return byName.get(ref) ?? null;
-  return null;
-};
-
 const resolveFaceTextureRef = (texture: TextureInstance | null | undefined): string | null => {
   if (!texture) return null;
   const raw = texture.uuid ?? texture.id ?? texture.bbmcpId ?? texture.name ?? null;
@@ -492,17 +382,6 @@ const ensureFaceMap = (cube: CubeInstance): Record<string, CubeFace> => {
     cube.faces = {};
   }
   return cube.faces as Record<string, CubeFace>;
-};
-
-const normalizeFaceUv = (value: unknown): [number, number, number, number] | undefined => {
-  if (!value) return undefined;
-  if (Array.isArray(value) && value.length >= 4) {
-    const [x1, y1, x2, y2] = value;
-    if ([x1, y1, x2, y2].every((v) => typeof v === 'number')) {
-      return [x1, y1, x2, y2];
-    }
-  }
-  return undefined;
 };
 
 const normalizeFaces = (faces?: CubeFaceDirection[]): CubeFaceDirection[] | undefined => {
