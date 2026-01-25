@@ -11,7 +11,7 @@ import { ProjectSession } from '../session';
 import { ToolDispatcherImpl } from '../dispatcher';
 import { Capabilities, Dispatcher, ExportPayload, FormatKind } from '../types';
 import { ProxyRouter } from '../proxy';
-import { ConsoleLogger, LogLevel } from '../logging';
+import { ConsoleLogger, errorMessage, LogLevel } from '../logging';
 import {
   ApplyEntitySpecPayload,
   ApplyModelSpecPayload,
@@ -29,6 +29,7 @@ import { BlockbenchFormats } from '../adapters/blockbench/BlockbenchFormats';
 import { BlockbenchSnapshot } from '../adapters/blockbench/BlockbenchSnapshot';
 import { BlockbenchExport } from '../adapters/blockbench/BlockbenchExport';
 import { BlockbenchTextureRenderer } from '../adapters/blockbench/BlockbenchTextureRenderer';
+import { BlockbenchDom } from '../adapters/blockbench/BlockbenchDom';
 import { FormatOverrides, resolveFormatId } from '../services/format';
 import { buildInternalExport } from '../services/exporters';
 import { DEFAULT_UV_POLICY } from '../domain/uvPolicy';
@@ -37,7 +38,9 @@ import { GUIDE_RESOURCE_TEMPLATES, GUIDE_RESOURCES } from '../services/guides';
 import { InMemoryResourceStore } from '../services/resources';
 import { LocalTmpStore } from '../services/tmpStore';
 import { startServer } from '../server';
-import { UnknownRecord, readBlockbenchGlobals } from '../types/blockbench';
+import { readGlobals } from '../adapters/blockbench/blockbenchUtils';
+import { UnknownRecord } from '../types/blockbench';
+import { deleteGlobalValue, readGlobalValue, writeGlobalValue } from '../services/globalState';
 import { TOOL_REGISTRY_COUNT, TOOL_REGISTRY_HASH } from '../mcp/tools';
 import { registerDebugMenu, registerDevReloadAction, registerInspectorAction, registerServerConfigAction } from './menus';
 import {
@@ -47,8 +50,6 @@ import {
   registerSettings
 } from './settings';
 import type { ServerSettings } from './types';
-
-const readGlobals = () => readBlockbenchGlobals();
 
 type BbmcpBridge = {
   invoke: Dispatcher['handle'];
@@ -96,8 +97,47 @@ const serverConfig: ServerSettings = {
 
 let sidecar: SidecarProcess | null = null;
 let inlineServerStop: (() => void) | null = null;
-let globalDispatcher: Dispatcher;
-let globalProxy: ProxyRouter;
+let globalDispatcher: Dispatcher | null = null;
+let globalProxy: ProxyRouter | null = null;
+
+const INSTANCE_KEY = '__bbmcp_instance__';
+type RuntimeInstance = { cleanup: () => void; version: string };
+
+const cleanupBridge = () => {
+  deleteGlobalValue('bbmcp');
+  deleteGlobalValue('bbmcpVersion');
+};
+
+const cleanupRuntime = () => {
+  if (inlineServerStop) {
+    inlineServerStop();
+    inlineServerStop = null;
+  }
+  if (sidecar) {
+    sidecar.stop();
+    sidecar = null;
+  }
+  globalDispatcher = null;
+  globalProxy = null;
+  cleanupBridge();
+};
+
+const claimSingleton = () => {
+  const existing = readGlobalValue(INSTANCE_KEY) as RuntimeInstance | undefined;
+  if (existing?.cleanup) {
+    try {
+      existing.cleanup();
+    } catch (err) {
+      const message = errorMessage(err, 'cleanup failed');
+      try {
+        new ConsoleLogger(PLUGIN_ID, () => logLevel).warn('previous instance cleanup failed', { message });
+      } catch (logErr) {
+        // Last resort: avoid crashing during startup.
+      }
+    }
+  }
+  writeGlobalValue(INSTANCE_KEY, { cleanup: cleanupRuntime, version: PLUGIN_VERSION } satisfies RuntimeInstance);
+};
 
 function registerCodecs(capabilities: Capabilities, session: ProjectSession, formats: BlockbenchFormats) {
   const globals = readGlobals();
@@ -193,8 +233,8 @@ function registerCodecs(capabilities: Capabilities, session: ProjectSession, for
 }
 
 function exposeBridge(bridge: BbmcpBridge) {
-  const globalObj = globalThis as UnknownRecord & { bbmcp?: BbmcpBridge };
-  globalObj.bbmcp = bridge;
+  writeGlobalValue('bbmcp', bridge);
+  writeGlobalValue('bbmcpVersion', PLUGIN_VERSION);
 }
 
 function restartServer() {
@@ -285,11 +325,12 @@ Notes:
 - support is limited to the latest Blockbench desktop release (older versions untested).`,
     variant: 'desktop',
     onload() {
-      console.log(`[bbmcp] loading... v${PLUGIN_VERSION} schema ${TOOL_SCHEMA_VERSION}`);
+      claimSingleton();
       const blockbench = readGlobals().Blockbench;
       const session = new ProjectSession();
       const logger = new ConsoleLogger(PLUGIN_ID, () => logLevel);
-    registerSettings({ readGlobals, serverConfig, policies, restartServer });
+      logger.info('plugin loading', { version: PLUGIN_VERSION, schema: TOOL_SCHEMA_VERSION });
+      registerSettings({ readGlobals, serverConfig, policies, restartServer });
     registerLogSettings({
       readGlobals,
       getLogLevel: () => logLevel,
@@ -305,6 +346,7 @@ Notes:
       const snapshot = new BlockbenchSnapshot(logger);
       const exporter = new BlockbenchExport(logger);
       const textureRenderer = new BlockbenchTextureRenderer();
+      const dom = new BlockbenchDom();
       const tmpStore = new LocalTmpStore();
       const previewCapability = {
         pngOnly: true,
@@ -337,7 +379,7 @@ Notes:
         includeDiffByDefault: () => policies.autoIncludeDiff,
         logger
       });
-      const proxy = new ProxyRouter(service, logger, capabilities.limits, {
+      const proxy = new ProxyRouter(service, dom, logger, capabilities.limits, {
         includeStateByDefault: () => policies.autoIncludeState,
         includeDiffByDefault: () => policies.autoIncludeDiff
       });
@@ -364,14 +406,8 @@ Notes:
     },
     onunload() {
       const blockbench = readGlobals().Blockbench;
-      if (inlineServerStop) {
-        inlineServerStop();
-        inlineServerStop = null;
-      }
-      if (sidecar) {
-        sidecar.stop();
-        sidecar = null;
-      }
+      cleanupRuntime();
+      deleteGlobalValue(INSTANCE_KEY);
       blockbench?.showQuickMessage?.('bbmcp unloaded', 1200);
     }
   });

@@ -8,6 +8,12 @@ import { mergeRigParts } from '../domain/rig';
 import { isZeroSize } from '../domain/geometry';
 import { ensureActiveAndRevision } from './guards';
 import { RIG_TEMPLATE_KINDS } from '../shared/toolConstants';
+import { fromDomainResult } from './fromDomain';
+
+type RigTemplateKind = (typeof RIG_TEMPLATE_KINDS)[number];
+
+const isRigTemplateKind = (value: string): value is RigTemplateKind =>
+  (RIG_TEMPLATE_KINDS as readonly string[]).includes(value);
 
 type AddBoneInternal = (
   payload: { name: string; parent?: string; pivot: [number, number, number] },
@@ -43,7 +49,7 @@ export const applyRigTemplate = (
   const guardErr = ensureActiveAndRevision(deps.ensureActive, deps.ensureRevisionMatch, payload.ifRevision);
   if (guardErr) return fail(guardErr);
   const templateId = payload.templateId;
-  if (!RIG_TEMPLATE_KINDS.includes(templateId as (typeof RIG_TEMPLATE_KINDS)[number])) {
+  if (!isRigTemplateKind(templateId)) {
     return fail({ code: 'invalid_payload', message: `Unknown template: ${templateId}` });
   }
   const templateParts = buildRigTemplate(templateId, []);
@@ -52,14 +58,9 @@ export const applyRigTemplate = (
   if (limitErr) return fail(limitErr);
   const snapshot = deps.getSnapshot();
   const existing = new Set(snapshot.bones.map((b) => b.name));
-  let partsToAdd = templateParts;
-  try {
-    const merged = mergeRigParts(templateParts, existing, deps.getRigMergeStrategy() ?? 'skip_existing');
-    partsToAdd = merged.parts;
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'rig template merge failed';
-    return fail({ code: 'invalid_payload', message });
-  }
+  const mergedRes = fromDomainResult(mergeRigParts(templateParts, existing, deps.getRigMergeStrategy() ?? 'skip_existing'));
+  if (!mergedRes.ok) return mergedRes;
+  const partsToAdd = mergedRes.value.parts;
 
   for (const part of partsToAdd) {
     const boneRes = deps.addBoneInternal(

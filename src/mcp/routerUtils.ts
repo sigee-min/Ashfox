@@ -1,5 +1,6 @@
 import type { ToolResponse } from '../types';
 import type { JsonRpcMessage, JsonRpcResponse } from './types';
+export { isRecord } from '../domain/guards';
 
 export const DEFAULT_PROTOCOL_VERSION = '2025-06-18';
 export const DEFAULT_SUPPORTED_PROTOCOLS = ['2025-11-25', '2025-06-18', '2024-11-05'];
@@ -47,7 +48,7 @@ export const matchesPath = (url: string, basePath: string) => {
   try {
     const requestPath = new URL(url, 'http://localhost').pathname;
     return requestPath === basePath || requestPath.startsWith(`${basePath}/`);
-  } catch {
+  } catch (err) {
     return false;
   }
 };
@@ -55,10 +56,7 @@ export const matchesPath = (url: string, basePath: string) => {
 export const supportsSse = (acceptHeader: string | undefined) =>
   typeof acceptHeader === 'string' && acceptHeader.toLowerCase().includes('text/event-stream');
 
-const makeTextContent = (text: string) => [{ type: 'text', text }];
-
-export const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
+export const makeTextContent = (text: string) => [{ type: 'text', text }];
 
 export const normalizeSessionTtl = (value?: number): number => {
   if (!Number.isFinite(value)) return DEFAULT_SESSION_TTL_MS;

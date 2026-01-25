@@ -1,6 +1,6 @@
 import { ExportPort, ExportNativeParams } from '../../ports/exporter';
 import { ToolError } from '../../types';
-import { Logger } from '../../logging';
+import { errorMessage, Logger } from '../../logging';
 import { FormatEntry, readBlockbenchGlobals } from '../../types/blockbench';
 
 export class BlockbenchExport implements ExportPort {
@@ -32,7 +32,7 @@ export class BlockbenchExport implements ExportPort {
       blockbench.writeFile(params.destPath, { content: serialized, savetype: 'text' });
       return null;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'native export failed';
+      const message = errorMessage(err, 'native export failed');
       this.log.error('native export error', { message });
       return { code: 'io_error', message };
     }

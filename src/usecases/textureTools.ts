@@ -24,6 +24,7 @@ import { requireUvUsageId } from '../domain/uvUsageId';
 import { ensureActiveAndRevision, ensureActiveOnly } from './guards';
 import { ensureIdNameMatch, ensureNonBlankString } from '../services/validation';
 import { validateUvPaintSourceSize } from '../domain/uvPaintSource';
+import { fromDomainResult } from './fromDomain';
 
 export type TextureToolContext = {
   ensureActive: () => ToolError | null;
@@ -59,19 +60,19 @@ export const runGenerateTexturePreset = (
   if (guardErr) return fail(guardErr);
   const ctxRes = validateTexturePresetContext(ctx, payload);
   if (!ctxRes.ok) return fail(ctxRes.error);
-  const paintRes = buildPaintedTexture(ctx, ctxRes.data);
+  const paintRes = buildPaintedTexture(ctx, ctxRes.value);
   if (!paintRes.ok) return fail(paintRes.error);
-  const { image, coverage } = paintRes.data;
-  const updateRes = upsertTextureFromPreset(ctx, payload, ctxRes.data, image);
+  const { image, coverage } = paintRes.value;
+  const updateRes = upsertTextureFromPreset(ctx, payload, ctxRes.value, image);
   if (!updateRes.ok) return fail(updateRes.error);
   return ok({
     textureId: updateRes.value.id,
     textureName: updateRes.value.name,
     preset: payload.preset,
-    mode: ctxRes.data.mode,
-    width: ctxRes.data.width,
-    height: ctxRes.data.height,
-    seed: ctxRes.data.preset.seed,
+    mode: ctxRes.value.mode,
+    width: ctxRes.value.width,
+    height: ctxRes.value.height,
+    seed: ctxRes.value.preset.seed,
     coverage
   });
 };
@@ -114,16 +115,18 @@ export const runAutoUvAtlas = (
       : 0;
   const snapshot = ctx.getSnapshot();
   const domainSnapshot = toDomainSnapshot(snapshot);
-  const planRes = buildUvAtlasPlan({
-    usage,
-    cubes: domainSnapshot.cubes,
-    resolution,
-    maxResolution: { width: ctx.capabilities.limits.maxTextureSize, height: ctx.capabilities.limits.maxTextureSize },
-    padding,
-    policy: ctx.getUvPolicyConfig()
-  });
+  const planRes = fromDomainResult(
+    buildUvAtlasPlan({
+      usage,
+      cubes: domainSnapshot.cubes,
+      resolution,
+      maxResolution: { width: ctx.capabilities.limits.maxTextureSize, height: ctx.capabilities.limits.maxTextureSize },
+      padding,
+      policy: ctx.getUvPolicyConfig()
+    })
+  );
   if (!planRes.ok) return fail(planRes.error);
-  const plan = planRes.data;
+  const plan = planRes.value;
   if (!apply) {
     return ok({
       applied: false,

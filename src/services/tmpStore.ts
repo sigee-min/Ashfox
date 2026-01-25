@@ -1,5 +1,6 @@
 import type { ToolError } from '../types';
 import type { TmpSaveResult, TmpStorePort } from '../ports/tmpStore';
+import { errorMessage } from '../logging';
 
 type FsModule = {
   mkdirSync: (path: string, options?: { recursive?: boolean }) => void;
@@ -24,14 +25,14 @@ const loadModule = <T>(name: string): T | null => {
         optional: true
       });
       if (mod) return mod as T;
-    } catch {
+    } catch (err) {
       // fall through
     }
   }
   if (typeof require === 'function') {
     try {
       return require(name) as T;
-    } catch {
+    } catch (err) {
       return null;
     }
   }
@@ -83,7 +84,7 @@ export const saveDataUriToTmp = (
   try {
     fs.mkdirSync(baseDir, { recursive: true });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to create tmp directory.';
+    const message = errorMessage(err, 'Failed to create tmp directory.');
     return { ok: false, error: { code: 'io_error', message } };
   }
   const prefix = sanitizeName(options?.prefix ?? 'image');
@@ -103,7 +104,7 @@ export const saveDataUriToTmp = (
   try {
     fs.writeFileSync(filePath, buffer);
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to write image snapshot.';
+    const message = errorMessage(err, 'Failed to write image snapshot.');
     return { ok: false, error: { code: 'io_error', message } };
   }
   return { ok: true, data: { path: filePath, mimeType: parsed.mimeType, byteLength: buffer.byteLength } };

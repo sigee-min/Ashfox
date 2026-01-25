@@ -92,6 +92,7 @@ export const applyEntitySpecProxy = async (
       const report = createApplyReport();
       const textureRes = await applyTextureSpecSteps(
         deps.service,
+        deps.dom,
         deps.limits,
         payload.textures,
         report,

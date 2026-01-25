@@ -1,4 +1,4 @@
-import { Logger } from '../../logging';
+import { errorMessage, Logger } from '../../logging';
 import { RenderPreviewOutputKind, RenderPreviewPayload, RenderPreviewResult, ToolError } from '../../types';
 import { PreviewItem } from '../../types/blockbench';
 import { readGlobals } from './blockbenchUtils';
@@ -71,7 +71,7 @@ export class BlockbenchPreviewAdapter {
     const preview = selectPreview(previewRegistry?.selected, previewRegistry?.all ?? []);
     const canvas = (preview?.canvas ??
       preview?.renderer?.domElement ??
-      document?.querySelector?.('canvas')) as HTMLCanvasElement | null;
+      readGlobals().document?.querySelector?.('canvas')) as HTMLCanvasElement | null;
     if (!canvas || !canvas.toDataURL) {
       return { error: { code: 'not_implemented', message: 'preview canvas not available' } };
     }
@@ -188,7 +188,7 @@ export class BlockbenchPreviewAdapter {
         }
       };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'render preview failed';
+      const message = errorMessage(err, 'render preview failed');
       this.log.error('preview error', { message });
       return { error: { code: 'unknown', message } };
     } finally {

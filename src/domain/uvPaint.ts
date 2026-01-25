@@ -2,6 +2,7 @@ import { CUBE_FACE_DIRECTIONS } from './model';
 import type { Limits, TextureUsage } from './model';
 import type { DomainResult } from './result';
 import type { UvPaintScope, UvPaintSpec } from './uvPaintSpec';
+import { isRecord } from './guards';
 
 export type UvPaintRect = { x1: number; y1: number; x2: number; y2: number };
 
@@ -128,7 +129,7 @@ export const resolveUvPaintRects = (
   return { ok: true, data: { rects } };
 };
 
-const VALID_FACES = new Set(CUBE_FACE_DIRECTIONS);
+const VALID_FACES: ReadonlySet<string> = new Set<string>(CUBE_FACE_DIRECTIONS);
 
 export const validateUvPaintSpec = (value: unknown, limits: Limits, label: string): DomainResult<unknown> => {
   if (!isRecord(value)) {
@@ -200,8 +201,6 @@ export const validateUvPaintSpec = (value: unknown, limits: Limits, label: strin
 };
 
 const isFiniteNumber = (value: unknown): value is number => Number.isFinite(value);
-
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 
 const err = <T = never>(code: 'invalid_payload' | 'invalid_state', message: string): DomainResult<T> => ({
   ok: false,

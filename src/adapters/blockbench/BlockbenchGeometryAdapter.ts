@@ -23,9 +23,11 @@ import {
   assignVec2,
   assignVec3,
   attachToOutliner,
+  extendEntity,
   moveOutlinerNode,
   normalizeParent,
   readGlobals,
+  renameEntity,
   removeOutlinerNode,
   withUndo
 } from './blockbenchUtils';
@@ -37,7 +39,7 @@ import {
   findTextureRef,
   resolveTargetCubes
 } from './outlinerLookup';
-import { withAdapterError } from './adapterErrors';
+import { withAdapterError, withToolErrorAdapterError } from './adapterErrors';
 import { buildTextureUsageResult } from './BlockbenchTextureUsage';
 
 export class BlockbenchGeometryAdapter {
@@ -48,7 +50,7 @@ export class BlockbenchGeometryAdapter {
   }
 
   addBone(params: BoneCommand): ToolError | null {
-    return withAdapterError(this.log, 'bone add', 'bone add failed', () => {
+    return withToolErrorAdapterError(this.log, 'bone add', 'bone add failed', () => {
       const globals = readGlobals();
       const GroupCtor = globals.Group;
       const outliner = globals.Outliner;
@@ -77,7 +79,7 @@ export class BlockbenchGeometryAdapter {
   }
 
   updateBone(params: UpdateBoneCommand): ToolError | null {
-    return withAdapterError(this.log, 'bone update', 'bone update failed', () => {
+    return withToolErrorAdapterError(this.log, 'bone update', 'bone update failed', () => {
       const globals = readGlobals();
       const GroupCtor = globals.Group;
       const outliner = globals.Outliner;
@@ -98,11 +100,7 @@ export class BlockbenchGeometryAdapter {
       }
       withUndo({ elements: true, outliner: true }, 'Update bone', () => {
         if (params.newName && params.newName !== target.name) {
-          if (typeof target.rename === 'function') {
-            target.rename(params.newName);
-          } else {
-            target.name = params.newName;
-          }
+          renameEntity(target, params.newName);
         }
         if (params.pivot) assignVec3(target, 'origin', params.pivot);
         if (params.rotation) assignVec3(target, 'rotation', params.rotation);
@@ -117,7 +115,7 @@ export class BlockbenchGeometryAdapter {
   }
 
   deleteBone(params: DeleteBoneCommand): ToolError | null {
-    return withAdapterError(this.log, 'bone delete', 'bone delete failed', () => {
+    return withToolErrorAdapterError(this.log, 'bone delete', 'bone delete failed', () => {
       const globals = readGlobals();
       const GroupCtor = globals.Group;
       const outliner = globals.Outliner;
@@ -138,7 +136,7 @@ export class BlockbenchGeometryAdapter {
   }
 
   addCube(params: CubeCommand): ToolError | null {
-    return withAdapterError(this.log, 'cube add', 'cube add failed', () => {
+    return withToolErrorAdapterError(this.log, 'cube add', 'cube add failed', () => {
       const globals = readGlobals();
       const CubeCtor = globals.Cube;
       const outliner = globals.Outliner;
@@ -170,7 +168,7 @@ export class BlockbenchGeometryAdapter {
   }
 
   updateCube(params: UpdateCubeCommand): ToolError | null {
-    return withAdapterError(this.log, 'cube update', 'cube update failed', () => {
+    return withToolErrorAdapterError(this.log, 'cube update', 'cube update failed', () => {
       const globals = readGlobals();
       const CubeCtor = globals.Cube;
       const outliner = globals.Outliner;
@@ -191,11 +189,7 @@ export class BlockbenchGeometryAdapter {
       }
       withUndo({ elements: true, outliner: true }, 'Update cube', () => {
         if (params.newName && params.newName !== target.name) {
-          if (typeof target.rename === 'function') {
-            target.rename(params.newName);
-          } else {
-            target.name = params.newName;
-          }
+          renameEntity(target, params.newName);
         }
         this.enforceManualUvMode(target);
         if (params.from) assignVec3(target, 'from', params.from);
@@ -216,7 +210,7 @@ export class BlockbenchGeometryAdapter {
   }
 
   deleteCube(params: DeleteCubeCommand): ToolError | null {
-    return withAdapterError(this.log, 'cube delete', 'cube delete failed', () => {
+    return withToolErrorAdapterError(this.log, 'cube delete', 'cube delete failed', () => {
       const globals = readGlobals();
       const CubeCtor = globals.Cube;
       const outliner = globals.Outliner;
@@ -237,7 +231,7 @@ export class BlockbenchGeometryAdapter {
   }
 
   assignTexture(params: AssignTextureCommand): ToolError | null {
-    return withAdapterError(this.log, 'texture assign', 'texture assign failed', () => {
+    return withToolErrorAdapterError(this.log, 'texture assign', 'texture assign failed', () => {
       const globals = readGlobals();
       const CubeCtor = globals.Cube;
       const TextureCtor = globals.Texture;
@@ -276,9 +270,7 @@ export class BlockbenchGeometryAdapter {
             targets.forEach((faceKey) => {
               const face = faceMap[faceKey] ?? {};
               if (!faceMap[faceKey]) faceMap[faceKey] = face;
-              if (typeof face.extend === 'function') {
-                face.extend({ texture: textureRef });
-              } else {
+              if (!extendEntity(face, { texture: textureRef })) {
                 face.texture = textureRef;
               }
             });
@@ -287,9 +279,7 @@ export class BlockbenchGeometryAdapter {
             if (!uv) return;
             const face = faceMap[faceKey];
             if (!face) return;
-            if (typeof face.extend === 'function') {
-              face.extend({ uv });
-            } else {
+            if (!extendEntity(face, { uv })) {
               face.uv = uv;
             }
           });
@@ -301,7 +291,7 @@ export class BlockbenchGeometryAdapter {
   }
 
   setFaceUv(params: SetFaceUvCommand): ToolError | null {
-    return withAdapterError(this.log, 'face UV update', 'face UV update failed', () => {
+    return withToolErrorAdapterError(this.log, 'face UV update', 'face UV update failed', () => {
       const globals = readGlobals();
       const CubeCtor = globals.Cube;
       if (typeof CubeCtor === 'undefined') {
@@ -323,9 +313,7 @@ export class BlockbenchGeometryAdapter {
           if (!VALID_FACE_KEYS.has(faceKey as CubeFaceDirection) || !uv) return;
           const face = faceMap[faceKey] ?? {};
           if (!faceMap[faceKey]) faceMap[faceKey] = face;
-          if (typeof face.extend === 'function') {
-            face.extend({ uv: uv as [number, number, number, number] });
-          } else {
+          if (!extendEntity(face, { uv: uv as [number, number, number, number] })) {
             face.uv = uv as [number, number, number, number];
           }
         });

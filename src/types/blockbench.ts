@@ -285,4 +285,4 @@ export interface BlockbenchGlobals {
 }
 
 export const readBlockbenchGlobals = (): BlockbenchGlobals =>
-  globalThis as unknown as BlockbenchGlobals;
+  globalThis as typeof globalThis & BlockbenchGlobals;

@@ -1,10 +1,10 @@
 import { Dispatcher } from '../types';
 import { ProxyRouter } from '../proxy';
-import { Logger } from '../logging';
+import { errorMessage, Logger } from '../logging';
 import { SidecarHost } from './transport/SidecarHost';
 import { SidecarLaunchConfig } from './types';
 import { PLUGIN_ID } from '../config';
-import { readBlockbenchGlobals } from '../types/blockbench';
+import { resolveRegisteredPluginPath } from '../adapters/blockbench/pluginRegistry';
 
 type NativeModuleLoader = (name: string, options?: { message?: string; optional?: boolean }) => unknown;
 declare const requireNativeModule: NativeModuleLoader | undefined;
@@ -155,8 +155,7 @@ export class SidecarProcess {
       }
     });
     child.on('error', (err: Error) => {
-      const message = err instanceof Error ? err.message : String(err);
-      this.log.error('sidecar process error', { message });
+      this.log.error('sidecar process error', { message: errorMessage(err) });
     });
 
     this.log.info('sidecar process spawned', { pid: child.pid });
@@ -207,9 +206,7 @@ export class SidecarProcess {
   }
 
   private resolveSidecarPath(pathModule: PathModule): string | null {
-    const registered = readBlockbenchGlobals().Plugins?.registered;
-    const pluginEntry = registered?.[PLUGIN_ID] as { path?: string } | undefined;
-    const pluginPath = pluginEntry?.path;
+    const pluginPath = resolveRegisteredPluginPath(PLUGIN_ID);
     if (!pluginPath || !pathModule?.dirname || !pathModule?.join) return null;
     return pathModule.join(pathModule.dirname(pluginPath), 'bbmcp-sidecar.js');
   }
@@ -221,7 +218,7 @@ export class SidecarProcess {
       if (typeof process !== 'undefined' && process?.execPath) {
         return process.execPath as string;
       }
-    } catch {
+    } catch (err) {
       /* ignore */
     }
     if (childProcess?.spawnSync) {

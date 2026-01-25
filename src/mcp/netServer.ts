@@ -2,6 +2,7 @@ import { Logger } from '../logging';
 import { McpRouter } from './router';
 import { ResponsePlan, SseConnection } from './types';
 import { openSseConnection } from './transport';
+import { errorMessage } from '../logging';
 import type { Server, Socket } from 'net';
 
 const MAX_BODY_BYTES = 5_000_000;
@@ -150,7 +151,7 @@ export const startMcpNetServer = (net: NetModule, config: NetServerConfig, route
       closed = true;
       try {
         socket.end();
-      } catch {
+      } catch (err) {
         socket.destroy?.();
       }
     };
@@ -215,8 +216,7 @@ export const startMcpNetServer = (net: NetModule, config: NetServerConfig, route
     });
 
     socket.on('error', (err: unknown) => {
-      const message = err instanceof Error ? err.message : String(err);
-      log.warn('MCP net socket error', { message });
+      log.warn('MCP net socket error', { message: errorMessage(err) });
       closeSocket();
     });
 
@@ -227,8 +227,7 @@ export const startMcpNetServer = (net: NetModule, config: NetServerConfig, route
   });
 
   server.on('error', (err: unknown) => {
-    const message = err instanceof Error ? err.message : String(err);
-    log.error('MCP net server error', { message });
+    log.error('MCP net server error', { message: errorMessage(err) });
   });
 
   server.listen(config.port, config.host, () => {

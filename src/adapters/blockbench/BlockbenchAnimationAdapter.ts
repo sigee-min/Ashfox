@@ -6,9 +6,16 @@ import {
   TriggerKeyframeCommand,
   UpdateAnimationCommand
 } from '../../ports/editor';
-import { Logger } from '../../logging';
+import { errorMessage, Logger } from '../../logging';
 import { AnimationClip } from '../../types/blockbench';
-import { assignAnimationLength, readAnimationId, readGlobals, withUndo } from './blockbenchUtils';
+import {
+  assignAnimationLength,
+  readAnimationId,
+  readGlobals,
+  removeEntity,
+  renameEntity,
+  withUndo
+} from './blockbenchUtils';
 
 type KeyframeLike = {
   set?: (key: string, value: unknown) => void;
@@ -51,7 +58,7 @@ export class BlockbenchAnimationAdapter {
       this.log.info('animation created', { name: params.name });
       return null;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'animation create failed';
+      const message = errorMessage(err, 'animation create failed');
       this.log.error('animation create error', { message });
       return { code: 'unknown', message };
     }
@@ -68,11 +75,7 @@ export class BlockbenchAnimationAdapter {
       if (params.id) target.bbmcpId = params.id;
       withUndo({ animations: true }, 'Update animation', () => {
         if (params.newName && params.newName !== target.name) {
-          if (typeof target.rename === 'function') {
-            target.rename(params.newName);
-          } else {
-            target.name = params.newName;
-          }
+          renameEntity(target, params.newName);
         }
         if (typeof params.length === 'number') {
           assignAnimationLength(target, params.length);
@@ -95,7 +98,7 @@ export class BlockbenchAnimationAdapter {
       this.log.info('animation updated', { name: params.name, newName: params.newName });
       return null;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'animation update failed';
+      const message = errorMessage(err, 'animation update failed');
       this.log.error('animation update error', { message });
       return { code: 'unknown', message };
     }
@@ -110,14 +113,7 @@ export class BlockbenchAnimationAdapter {
         return { code: 'invalid_payload', message: `Animation clip not found: ${label}` };
       }
       withUndo({ animations: true }, 'Delete animation', () => {
-        if (typeof target.remove === 'function') {
-          target.remove();
-          return;
-        }
-        if (typeof target.delete === 'function') {
-          target.delete();
-          return;
-        }
+        if (removeEntity(target)) return;
         if (Array.isArray(animations)) {
           const idx = animations.indexOf(target);
           if (idx >= 0) animations.splice(idx, 1);
@@ -126,7 +122,7 @@ export class BlockbenchAnimationAdapter {
       this.log.info('animation deleted', { name: target?.name ?? params.name });
       return null;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'animation delete failed';
+      const message = errorMessage(err, 'animation delete failed');
       this.log.error('animation delete error', { message });
       return { code: 'unknown', message };
     }
@@ -138,13 +134,13 @@ export class BlockbenchAnimationAdapter {
       if (typeof AnimatorCtor === 'undefined') {
         return { code: 'not_implemented', message: 'Animator API not available' };
       }
+      const animations = getAnimations();
+      const clip = this.findAnimationRef(params.clip, params.clipId, animations);
+      if (!clip) {
+        const label = params.clipId ?? params.clip;
+        return { code: 'invalid_payload', message: `Animation clip not found: ${label}` };
+      }
       withUndo({ animations: true, keyframes: [] }, 'Set keyframes', () => {
-        const animations = getAnimations();
-        const clip = this.findAnimationRef(params.clip, params.clipId, animations);
-        if (!clip) {
-          const label = params.clipId ?? params.clip;
-          throw new Error(`Animation clip not found: ${label}`);
-        }
         if (clip) {
           const animators = (clip.animators ?? {}) as Record<string, unknown>;
           const existing = animators[params.bone] as unknown;
@@ -161,11 +157,8 @@ export class BlockbenchAnimationAdapter {
       this.log.info('keyframes set', { clip: params.clip, bone: params.bone, count: params.keys.length });
       return null;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'keyframe set failed';
+      const message = errorMessage(err, 'keyframe set failed');
       this.log.error('keyframe set error', { message });
-      if (message.includes('Animation clip not found')) {
-        return { code: 'invalid_payload', message };
-      }
       return { code: 'unknown', message };
     }
   }
@@ -176,13 +169,13 @@ export class BlockbenchAnimationAdapter {
       if (typeof AnimatorCtor === 'undefined') {
         return { code: 'not_implemented', message: 'Animator API not available' };
       }
+      const animations = getAnimations();
+      const clip = this.findAnimationRef(params.clip, params.clipId, animations);
+      if (!clip) {
+        const label = params.clipId ?? params.clip;
+        return { code: 'invalid_payload', message: `Animation clip not found: ${label}` };
+      }
       withUndo({ animations: true, keyframes: [] }, 'Set trigger keyframes', () => {
-        const animations = getAnimations();
-        const clip = this.findAnimationRef(params.clip, params.clipId, animations);
-        if (!clip) {
-          const label = params.clipId ?? params.clip;
-          throw new Error(`Animation clip not found: ${label}`);
-        }
         const animator = resolveEffectAnimator(clip, AnimatorCtor);
         params.keys.forEach((k) => {
           const kf = animator?.createKeyframe?.(params.channel, k.time);
@@ -193,11 +186,8 @@ export class BlockbenchAnimationAdapter {
       this.log.info('trigger keyframes set', { clip: params.clip, channel: params.channel, count: params.keys.length });
       return null;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'trigger keyframe set failed';
+      const message = errorMessage(err, 'trigger keyframe set failed');
       this.log.error('trigger keyframe set error', { message });
-      if (message.includes('Animation clip not found')) {
-        return { code: 'invalid_payload', message };
-      }
       return { code: 'unknown', message };
     }
   }

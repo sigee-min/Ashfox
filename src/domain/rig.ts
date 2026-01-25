@@ -1,5 +1,7 @@
 import { ModelPart } from '../spec';
 
+import { fail, ok, type DomainResult } from './result';
+
 export type RigMergeStrategy = 'error' | 'skip_existing' | 'rename_on_conflict';
 
 export interface RigMergeResult {
@@ -11,19 +13,19 @@ export function mergeRigParts(
   parts: ModelPart[],
   existingIds: Set<string>,
   strategy: RigMergeStrategy
-): RigMergeResult {
+): DomainResult<RigMergeResult> {
   const renamed: Record<string, string> = {};
   const resolved: ModelPart[] = [];
 
-  parts.forEach((part) => {
+  for (const part of parts) {
     if (!existingIds.has(part.id)) {
       resolved.push(part);
       existingIds.add(part.id);
-      return;
+      continue;
     }
 
     if (strategy === 'skip_existing') {
-      return;
+      continue;
     }
 
     if (strategy === 'rename_on_conflict') {
@@ -31,15 +33,13 @@ export function mergeRigParts(
       renamed[part.id] = nextId;
       resolved.push({ ...part, id: nextId });
       existingIds.add(nextId);
-      return;
+      continue;
     }
 
-    if (strategy === 'error') {
-      throw new Error(`Rig template conflict: ${part.id}`);
-    }
-  });
+    return fail('invalid_payload', `Rig template conflict: ${part.id}`);
+  }
 
-  return { parts: resolved, renamed };
+  return ok({ parts: resolved, renamed });
 }
 
 function generateUniqueId(base: string, existing: Set<string>): string {

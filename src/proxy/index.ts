@@ -16,9 +16,10 @@ import {
   TexturePipelinePayload
 } from '../spec';
 import { ToolService } from '../usecases/ToolService';
+import type { DomPort } from '../ports/dom';
 import { buildRenderPreviewContent, buildRenderPreviewStructured } from '../mcp/content';
 import { applyModelSpecSteps, createApplyReport } from './apply';
-import { toToolResponse } from './response';
+import { toToolResponse } from '../services/toolResponse';
 import { validateModelSpec } from './validators';
 import { createProxyPipeline } from './pipeline';
 import { applyTextureSpecProxy, applyUvSpecProxy, texturePipelineProxy, type ProxyPipelineDeps } from './texturePipeline';
@@ -27,6 +28,7 @@ import { attachStateToResponse } from '../services/attachState';
 
 export class ProxyRouter {
   private readonly service: ToolService;
+  private readonly dom: DomPort;
   private readonly log: Logger;
   private readonly limits: Limits;
   private readonly includeStateByDefault: () => boolean;
@@ -34,11 +36,13 @@ export class ProxyRouter {
 
   constructor(
     service: ToolService,
+    dom: DomPort,
     log: Logger,
     limits: Limits,
     options?: { includeStateByDefault?: boolean | (() => boolean); includeDiffByDefault?: boolean | (() => boolean) }
   ) {
     this.service = service;
+    this.dom = dom;
     this.log = log;
     this.limits = limits;
     const flag = options?.includeStateByDefault;
@@ -123,20 +127,9 @@ export class ProxyRouter {
   private async runWithoutRevisionGuard<T>(fn: () => Promise<T> | T): Promise<T> {
     const service = this.service as {
       runWithoutRevisionGuardAsync?: (inner: () => Promise<T>) => Promise<T>;
-      runWithoutRevisionGuard?: (inner: () => T) => T;
     };
     if (typeof service.runWithoutRevisionGuardAsync === 'function') {
       return service.runWithoutRevisionGuardAsync(async () => await fn());
-    }
-    if (typeof service.runWithoutRevisionGuard === 'function') {
-      const result = service.runWithoutRevisionGuard(() => {
-        const value = fn();
-        if (value && typeof (value as Promise<T>).then === 'function') {
-          throw new Error('Async revision guard unavailable');
-        }
-        return value as T;
-      });
-      return result;
     }
     return await fn();
   }
@@ -144,6 +137,7 @@ export class ProxyRouter {
   private getPipelineDeps(): ProxyPipelineDeps {
     return {
       service: this.service,
+      dom: this.dom,
       log: this.log,
       limits: this.limits,
       includeStateByDefault: this.includeStateByDefault,

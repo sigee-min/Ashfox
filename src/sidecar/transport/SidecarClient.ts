@@ -1,4 +1,4 @@
-import { Logger } from '../../logging';
+import { errorMessage, Logger } from '../../logging';
 import { createLineDecoder, encodeMessage } from '../../transport/codec';
 import {
   PROTOCOL_VERSION,
@@ -63,8 +63,7 @@ export class SidecarClient {
     );
     this.readable.on('data', (chunk: string | Uint8Array) => decoder.push(chunk));
     this.readable.on('error', (err: Error) => {
-      const messageText = err instanceof Error ? err.message : String(err);
-      this.log.error('sidecar ipc stream error', { message: messageText });
+      this.log.error('sidecar ipc stream error', { message: errorMessage(err) });
     });
   }
 
@@ -124,8 +123,7 @@ export class SidecarClient {
     try {
       this.writable.write(encodeMessage(message));
     } catch (err) {
-      const messageText = err instanceof Error ? err.message : String(err);
-      this.log.error('sidecar ipc send failed', { message: messageText });
+      this.log.error('sidecar ipc send failed', { message: errorMessage(err) });
     }
   }
 

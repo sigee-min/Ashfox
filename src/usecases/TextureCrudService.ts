@@ -10,6 +10,7 @@ import { resolveTextureTarget } from '../services/lookup';
 import { ensureIdNameMatch, ensureNonBlankString } from '../services/validation';
 import {
   hashCanvasImage,
+  estimateDataUriByteLength,
   normalizeTextureDataUri,
   parseDataUriMimeType,
   resolveTextureSize
@@ -290,6 +291,8 @@ export class TextureCrudService {
       return fail({ code: 'not_implemented', message: 'Texture data unavailable.' });
     }
     const mimeType = parseDataUriMimeType(dataUri) ?? 'image/png';
+    const byteLength = estimateDataUriByteLength(dataUri) ?? undefined;
+    const hash = hashCanvasImage(source.image) ?? undefined;
     const result: ReadTextureResult = {
       texture: {
         id: source.id,
@@ -298,8 +301,8 @@ export class TextureCrudService {
         dataUri,
         width: source.width,
         height: source.height,
-        byteLength: source.byteLength ?? undefined,
-        hash: hashCanvasImage(source.image) ?? undefined
+        byteLength,
+        hash
       }
     };
     if (!saveToTmp) return ok(result);

@@ -9,14 +9,17 @@ import { ToolService } from '../usecases/ToolService';
 import { applyTextureSpecSteps, createApplyReport } from './apply';
 import { MetaOptions, withErrorMeta } from './meta';
 import { createProxyPipeline } from './pipeline';
-import { toToolResponse } from './response';
+import { toToolResponse } from '../services/toolResponse';
 import { guardUvForTextureTargets, guardUvForUsage } from './uvGuard';
 import { validateTexturePipeline, validateTextureSpec, validateUvSpec } from './validators';
 import { Limits, ToolError, ToolResponse } from '../types';
 import { ApplyTextureSpecPayload, ApplyUvSpecPayload, TexturePipelinePayload } from '../spec';
+import type { DomPort } from '../ports/dom';
+import { isRecord } from '../domain/guards';
 
 export type ProxyPipelineDeps = {
   service: ToolService;
+  dom: DomPort;
   log: Logger;
   limits: Limits;
   includeStateByDefault: () => boolean;
@@ -58,6 +61,7 @@ export const applyTextureSpecProxy = async (
     const report = createApplyReport();
     const result = await applyTextureSpecSteps(
       deps.service,
+      deps.dom,
       deps.limits,
       payload.textures,
       report,
@@ -287,6 +291,7 @@ export const texturePipelineProxy = async (
         const report = createApplyReport();
         const applyRes = await applyTextureSpecSteps(
           deps.service,
+          deps.dom,
           deps.limits,
           textures,
           report,
@@ -409,5 +414,3 @@ const classifyUvGuardFailure = (error: ToolError): UvGuardFailure => {
   if (typeof details.expected === 'string' && typeof details.current === 'string') return 'usage_mismatch';
   return 'unknown';
 };
-
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;

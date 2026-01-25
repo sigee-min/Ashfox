@@ -5,11 +5,12 @@ import {
   TextureSpec
 } from '../spec';
 import { Limits, ToolError, ToolResponse } from '../types';
+import type { DomPort } from '../ports/dom';
 import { ToolService } from '../usecases/ToolService';
 import { buildRigTemplate } from '../templates';
 import { buildMeta, MetaOptions } from './meta';
 import { renderTextureSpec, resolveTextureBase, resolveTextureSpecSize, TextureCoverage, UvPaintRenderConfig } from './texture';
-import { toToolResponse } from './response';
+import { toToolResponse } from '../services/toolResponse';
 import { isZeroSize } from '../domain/geometry';
 import { TextureUsage } from '../domain/model';
 import { resolveUvPaintRects } from './uvPaint';
@@ -83,6 +84,7 @@ export const applyModelSpecSteps = (
 
 export const applyTextureSpecSteps = async (
   service: ToolService,
+  dom: DomPort,
   limits: Limits,
   textures: TextureSpec[],
   report: ApplyReport,
@@ -145,7 +147,7 @@ export const applyTextureSpecSteps = async (
     }
     const uvPaintApplied = Boolean(uvPaintConfig);
     if (mode === 'create') {
-      const renderRes = renderTextureSpec(texture, limits, undefined, uvPaintConfig);
+      const renderRes = renderTextureSpec(dom, texture, limits, undefined, uvPaintConfig);
       if (!renderRes.ok) {
         return withReportError(renderRes.error, report, 'render_texture', label, meta, service);
       }
@@ -204,7 +206,7 @@ export const applyTextureSpecSteps = async (
         return withReportError(baseRes.error, report, 'read_texture', label, meta, service);
       }
       baseDataUri = baseRes.data.dataUri ?? null;
-      const resolved = await resolveTextureBase(baseRes.data);
+      const resolved = await resolveTextureBase(dom, baseRes.data);
       if (!resolved.ok) {
         log?.warn('applyTextureSpec base unresolved', { texture: label, code: resolved.error.code });
         return withReportError(resolved.error, report, 'read_texture', label, meta, service);
@@ -216,7 +218,7 @@ export const applyTextureSpecSteps = async (
         height: base.height
       });
     }
-    const renderRes = renderTextureSpec(texture, limits, base ?? undefined, uvPaintConfig);
+    const renderRes = renderTextureSpec(dom, texture, limits, base ?? undefined, uvPaintConfig);
     if (!renderRes.ok) {
       return withReportError(renderRes.error, report, 'render_texture', label, meta, service);
     }

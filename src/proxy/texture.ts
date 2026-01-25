@@ -1,13 +1,14 @@
 import { TextureOp, TextureSpec } from '../spec';
 import { Limits, ToolResponse } from '../types';
 import { TextureSource } from '../ports/editor';
-import { readBlockbenchGlobals } from '../types/blockbench';
+import type { DomPort } from '../ports/dom';
 import { err } from './response';
 import { UvPaintRect } from './uvPaint';
 import { checkDimensions } from '../domain/dimensions';
 import { validateUvPaintSourceSize } from '../domain/uvPaintSource';
 import { MAX_TEXTURE_OPS } from '../domain/textureOps';
 import { normalizeTextureSpecSize } from '../domain/textureSpecValidation';
+import { clamp } from '../domain/math';
 
 const IMAGE_LOAD_TIMEOUT_MS = 3000;
 
@@ -46,6 +47,7 @@ export const resolveTextureSpecSize = (
 };
 
 export const renderTextureSpec = (
+  dom: DomPort,
   spec: TextureSpec,
   limits: Limits,
   base?: { image: CanvasImageSource; width: number; height: number },
@@ -70,11 +72,7 @@ export const renderTextureSpec = (
     }
     return err('invalid_payload', `texture size exceeds max ${limits.maxTextureSize} (${label})`);
   }
-  const doc = readBlockbenchGlobals().document;
-  if (!doc?.createElement) {
-    return err('not_implemented', 'document unavailable for texture rendering');
-  }
-  const canvas = doc.createElement('canvas') as HTMLCanvasElement | null;
+  const canvas = dom.createCanvas();
   if (!canvas) return err('not_implemented', 'texture canvas not available');
   canvas.width = width;
   canvas.height = height;
@@ -107,7 +105,7 @@ export const renderTextureSpec = (
     }
     const sourceWidth = sourceRes.data.width;
     const sourceHeight = sourceRes.data.height;
-    const patternCanvas = doc.createElement('canvas') as HTMLCanvasElement | null;
+    const patternCanvas = dom.createCanvas();
     if (!patternCanvas) return err('not_implemented', 'uvPaint canvas not available');
     patternCanvas.width = sourceWidth;
     patternCanvas.height = sourceHeight;
@@ -145,6 +143,7 @@ export const renderTextureSpec = (
 };
 
 export const resolveTextureBase = async (
+  dom: DomPort,
   source: TextureSource
 ): Promise<ToolResponse<{ image: CanvasImageSource; width: number; height: number }>> => {
   let image = source.image ?? null;
@@ -155,7 +154,7 @@ export const resolveTextureBase = async (
     }
   }
   if (!image) {
-    image = await loadImageFromDataUri(source.dataUri);
+    image = await loadImageFromDataUri(dom, source.dataUri);
   }
   if (!image) return err('not_implemented', 'Texture base image unavailable');
   const width =
@@ -283,11 +282,9 @@ const normalizePaintRects = (
   return { ok: true, data: normalized };
 };
 
-const loadImageFromDataUri = async (dataUri?: string): Promise<CanvasImageSource | null> => {
+const loadImageFromDataUri = async (dom: DomPort, dataUri?: string): Promise<CanvasImageSource | null> => {
   if (!dataUri) return null;
-  const doc = readBlockbenchGlobals().document;
-  if (!doc?.createElement) return null;
-  const img = doc.createElement('img') as HTMLImageElement | null;
+  const img = dom.createImage();
   if (!img) return null;
   img.src = dataUri;
   const ready = await ensureImageReady(img, IMAGE_LOAD_TIMEOUT_MS);
@@ -304,7 +301,7 @@ const ensureImageReady = async (img: HTMLImageElement, timeoutMs: number): Promi
   if (typeof img.decode === 'function') {
     try {
       await withTimeout(img.decode(), timeoutMs);
-    } catch {
+    } catch (err) {
       return waitForImageLoad(img, timeoutMs);
     }
     return isImageReady(img);
@@ -399,7 +396,7 @@ const analyzeTextureCoverage = (
         ? { x1: minX, y1: minY, x2: maxX, y2: maxY }
         : undefined;
     return { opaquePixels, totalPixels, opaqueRatio, bounds };
-  } catch {
+  } catch (err) {
     return null;
   }
 };
@@ -454,13 +451,7 @@ const analyzeTextureCoverageInRects = (
         ? { x1: minX, y1: minY, x2: maxX, y2: maxY }
         : undefined;
     return { opaquePixels, totalPixels, opaqueRatio, bounds };
-  } catch {
+  } catch (err) {
     return null;
   }
-};
-
-const clamp = (value: number, min: number, max: number): number => {
-  if (value < min) return min;
-  if (value > max) return max;
-  return value;
 };

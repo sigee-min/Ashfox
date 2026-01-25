@@ -1,5 +1,5 @@
 import { ToolError } from '../../types';
-import { Logger } from '../../logging';
+import { errorMessage, Logger } from '../../logging';
 import {
   ImportTextureCommand,
   ReadTextureCommand,
@@ -9,7 +9,15 @@ import {
   DeleteTextureCommand
 } from '../../ports/editor';
 import { TextureInstance } from '../../types/blockbench';
-import { readGlobals, readTextureId, readTextureSize, withUndo } from './blockbenchUtils';
+import {
+  extendEntity,
+  readGlobals,
+  readTextureId,
+  readTextureSize,
+  removeEntity,
+  renameEntity,
+  withUndo
+} from './blockbenchUtils';
 
 export class BlockbenchTextureAdapter {
   private readonly log: Logger;
@@ -24,6 +32,7 @@ export class BlockbenchTextureAdapter {
       if (typeof TextureCtor === 'undefined') {
         return { code: 'not_implemented', message: 'Texture API not available' };
       }
+      let imageMissing = false;
       withUndo({ textures: true }, 'Import texture', () => {
         const tex = new TextureCtor({ name: params.name, width: params.width, height: params.height });
         if (params.id) tex.bbmcpId = params.id;
@@ -34,20 +43,25 @@ export class BlockbenchTextureAdapter {
         applyTextureDimensions(tex, params.width, params.height);
         applyTextureMeta(tex, params);
         if (!applyTextureImage(tex, params.image)) {
-          throw new Error('Texture canvas unavailable');
+          imageMissing = true;
+          return;
         }
         if (applyTextureDimensions(tex, params.width, params.height)) {
           if (!applyTextureImage(tex, params.image)) {
-            throw new Error('Texture canvas unavailable');
+            imageMissing = true;
+            return;
           }
         }
         finalizeTextureChange(tex);
         tex.select?.();
       });
+      if (imageMissing) {
+        return { code: 'not_implemented', message: 'Texture canvas unavailable' };
+      }
       this.log.info('texture imported', { name: params.name });
       return null;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'texture import failed';
+      const message = errorMessage(err, 'texture import failed');
       this.log.error('texture import error', { message });
       return { code: 'io_error', message };
     }
@@ -65,31 +79,33 @@ export class BlockbenchTextureAdapter {
         return { code: 'invalid_payload', message: `Texture not found: ${label}` };
       }
       if (params.id) target.bbmcpId = params.id;
+      let imageMissing = false;
       withUndo({ textures: true }, 'Update texture', () => {
         if (params.newName && params.newName !== target.name) {
-          if (typeof target.rename === 'function') {
-            target.rename(params.newName);
-          } else {
-            target.name = params.newName;
-          }
+          renameEntity(target, params.newName);
         }
         applyTextureDefaults(target);
         applyTextureDimensions(target, params.width, params.height);
         applyTextureMeta(target, params);
         if (!applyTextureImage(target, params.image)) {
-          throw new Error('Texture canvas unavailable');
+          imageMissing = true;
+          return;
         }
         if (applyTextureDimensions(target, params.width, params.height)) {
           if (!applyTextureImage(target, params.image)) {
-            throw new Error('Texture canvas unavailable');
+            imageMissing = true;
+            return;
           }
         }
         finalizeTextureChange(target);
       });
+      if (imageMissing) {
+        return { code: 'not_implemented', message: 'Texture canvas unavailable' };
+      }
       this.log.info('texture updated', { name: params.name, newName: params.newName });
       return null;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'texture update failed';
+      const message = errorMessage(err, 'texture update failed');
       this.log.error('texture update error', { message });
       return { code: 'io_error', message };
     }
@@ -107,18 +123,7 @@ export class BlockbenchTextureAdapter {
         return { code: 'invalid_payload', message: `Texture not found: ${label}` };
       }
       withUndo({ textures: true }, 'Delete texture', () => {
-        if (typeof target.remove === 'function') {
-          target.remove();
-          return;
-        }
-        if (typeof target.delete === 'function') {
-          target.delete();
-          return;
-        }
-        if (typeof target.dispose === 'function') {
-          target.dispose();
-          return;
-        }
+        if (removeEntity(target)) return;
         const list = TextureCtor?.all;
         if (Array.isArray(list)) {
           const idx = list.indexOf(target);
@@ -128,7 +133,7 @@ export class BlockbenchTextureAdapter {
       this.log.info('texture deleted', { name: target?.name ?? params.name });
       return null;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'texture delete failed';
+      const message = errorMessage(err, 'texture delete failed');
       this.log.error('texture delete error', { message });
       return { code: 'unknown', message };
     }
@@ -166,7 +171,7 @@ export class BlockbenchTextureAdapter {
         }
       };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'texture read failed';
+      const message = errorMessage(err, 'texture read failed');
       this.log.error('texture read error', { message });
       return { error: { code: 'unknown', message } };
     }
@@ -322,10 +327,7 @@ const applyTextureMeta = (
   if (params.internal !== undefined) patch.internal = params.internal;
   if (params.keepSize !== undefined) patch.keep_size = params.keepSize;
   if (Object.keys(patch).length === 0) return;
-  if (typeof tex.extend === 'function') {
-    tex.extend(patch);
-    return;
-  }
+  if (extendEntity(tex, patch)) return;
   Object.assign(tex, patch);
 };
 

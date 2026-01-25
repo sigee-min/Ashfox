@@ -1,5 +1,5 @@
 import { FormatKind, ToolError } from '../../types';
-import { Logger } from '../../logging';
+import { errorMessage, Logger } from '../../logging';
 import { hasUnsavedChanges, markProjectSaved, readGlobals } from './blockbenchUtils';
 
 export class BlockbenchProjectAdapter {
@@ -61,7 +61,7 @@ export class BlockbenchProjectAdapter {
       this.log.info('project created', { name, format: kind, formatId: resolvedId });
       return null;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'project create failed';
+      const message = errorMessage(err, 'project create failed');
       this.log.error('project create error', { message });
       return { code: 'unknown', message };
     }
@@ -76,7 +76,7 @@ export class BlockbenchProjectAdapter {
       blockbench.writeFile(path, { content: contents, savetype: 'text' });
       return null;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'write failed';
+      const message = errorMessage(err, 'write failed');
       this.log.error('write file error', { message });
       return { code: 'io_error', message };
     }
@@ -92,7 +92,7 @@ export class BlockbenchProjectAdapter {
         return null;
       }
       return { width, height };
-    } catch {
+    } catch (err) {
       return null;
     }
   }
@@ -124,7 +124,7 @@ export class BlockbenchProjectAdapter {
       this.log.info('project texture resolution set', { width, height, modifyUv: normalizeUv });
       return null;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'project texture resolution update failed';
+      const message = errorMessage(err, 'project texture resolution update failed');
       this.log.error('project texture resolution update error', { message });
       return { code: 'unknown', message };
     }

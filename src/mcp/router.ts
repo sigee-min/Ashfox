@@ -23,12 +23,14 @@ import {
   jsonRpcError,
   jsonRpcResult,
   matchesPath,
+  makeTextContent,
   normalizePath,
   normalizeSessionTtl,
   randomId,
   supportsSse,
   toCallToolResult
 } from './routerUtils';
+import { errorMessage } from '../logging';
 
 type RpcOutcome =
   | { type: 'notification' }
@@ -88,12 +90,19 @@ export class McpRouter {
     if (!session) {
       return this.jsonResponse(400, { error: { code: 'invalid_state', message: 'Mcp-Session-Id required' } });
     }
+
+    if (session.sseConnections.size >= MAX_SSE_CONNECTIONS_PER_SESSION) {
+      return this.jsonResponse(429, {
+        error: { code: 'too_many_requests', message: 'too many SSE connections' }
+      });
+    }
     this.sessions.touch(session);
 
     const headers = this.baseHeaders(session.protocolVersion);
     headers['Content-Type'] = 'text/event-stream';
     headers['Cache-Control'] = 'no-cache';
     headers.Connection = 'keep-alive';
+    headers['X-Accel-Buffering'] = 'no';
 
     return {
       kind: 'sse',
@@ -126,7 +135,7 @@ export class McpRouter {
     let parsed: unknown;
     try {
       parsed = JSON.parse(rawBody || '{}');
-    } catch {
+    } catch (err) {
       const error = jsonRpcError(null, -32700, 'Parse error');
       return this.jsonResponse(400, error);
     }
@@ -312,7 +321,7 @@ export class McpRouter {
       const result = toCallToolResult(response);
       return { type: 'response', response: jsonRpcResult(id, result), status: 200 };
     } catch (err) {
-      const messageText = err instanceof Error ? err.message : 'tool execution failed';
+      const messageText = errorMessage(err, 'tool execution failed');
       const result = { isError: true, content: makeTextContent(messageText) };
       return { type: 'response', response: jsonRpcResult(id, result), status: 200 };
     }
@@ -392,3 +401,5 @@ export class McpRouter {
     return { kind: 'empty', status, headers };
   }
 }
+
+const MAX_SSE_CONNECTIONS_PER_SESSION = 3;

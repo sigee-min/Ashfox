@@ -12,7 +12,7 @@ import {
 } from './types';
 import { ProjectSession } from './session';
 import { Capabilities } from './types';
-import { ConsoleLogger, Logger } from './logging';
+import { ConsoleLogger, errorMessage, Logger } from './logging';
 import { BlockbenchEditor } from './adapters/blockbench/BlockbenchEditor';
 import { BlockbenchHost } from './adapters/blockbench/BlockbenchHost';
 import { BlockbenchFormats } from './adapters/blockbench/BlockbenchFormats';
@@ -30,6 +30,7 @@ import {
 } from './mcp/content';
 import { decideRevision } from './services/revisionGuard';
 import { attachStateToResponse } from './services/attachState';
+import { toToolResponse } from './services/toolResponse';
 
 const respondOk = <T>(data: T): ToolResponse<T> => ({ ok: true, data });
 const respondError = <T>(error: ToolError): ToolResponse<T> => ({ ok: false, error });
@@ -170,11 +171,13 @@ export class ToolDispatcherImpl implements Dispatcher {
       }
       const responseHandler = this.responseHandlers[name as keyof ResponseHandlerMap];
       if (responseHandler) {
-        return responseHandler(payload as ToolPayloadMap[TName]) as ToolResponse<ToolResultMap[TName]>;
+        return (responseHandler as (payload: ToolPayloadMap[TName]) => ToolResponse<ToolResultMap[TName]>)(
+          payload
+        );
       }
       return respondErrorSimple('unknown', `Unknown tool ${String(name)}`) as ToolResponse<ToolResultMap[TName]>;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'unknown error';
+      const message = errorMessage(err, 'unknown error');
       return respondErrorSimple('unknown', message) as ToolResponse<ToolResultMap[TName]>;
     }
   }
@@ -198,7 +201,16 @@ export class ToolDispatcherImpl implements Dispatcher {
     return this.logGuardFailure(
       tool,
       retryPayload,
-      attachStateToResponse(this.getStateDeps(), retryPayload, toToolResponse(result))
+      attachStateToResponse(
+        this.getStateDeps(),
+        retryPayload as {
+          includeState?: boolean;
+          includeDiff?: boolean;
+          diffDetail?: ProjectStateDetail;
+          ifRevision?: string;
+        },
+        toToolResponse(result)
+      )
     ) as ToolResponse<ToolResultMap[TName]>;
   }
 
@@ -210,7 +222,16 @@ export class ToolDispatcherImpl implements Dispatcher {
     return this.logGuardFailure(
       tool,
       payload,
-      attachStateToResponse(this.getStateDeps(), payload, toToolResponse(call(payload)))
+      attachStateToResponse(
+        this.getStateDeps(),
+        payload as {
+          includeState?: boolean;
+          includeDiff?: boolean;
+          diffDetail?: ProjectStateDetail;
+          ifRevision?: string;
+        },
+        toToolResponse(call(payload))
+      )
     ) as ToolResponse<ToolResultMap[TName]>;
   }
 
@@ -234,7 +255,7 @@ export class ToolDispatcherImpl implements Dispatcher {
     return response;
   }
 
-  private callWithAutoRetry<TPayload extends { ifRevision?: string }, TResult>(
+  private callWithAutoRetry<TPayload extends object, TResult>(
     tool: ToolName,
     payload: TPayload,
     call: (payload: TPayload) => UsecaseResult<TResult>
@@ -249,7 +270,8 @@ export class ToolDispatcherImpl implements Dispatcher {
     if (first.error.code !== 'invalid_state_revision_mismatch') {
       return { result: first, payload };
     }
-    const decision = decideRevision(payload.ifRevision, {
+    const ifRevision = (payload as { ifRevision?: string }).ifRevision;
+    const decision = decideRevision(ifRevision, {
       requiresRevision: this.service.isRevisionRequired(),
       allowAutoRetry: true,
       getProjectState: () => this.service.getProjectState({ detail: 'summary' })
@@ -263,16 +285,16 @@ export class ToolDispatcherImpl implements Dispatcher {
       this.log.debug('revision retry skipped', {
         tool,
         reason: 'no_new_revision',
-        expected: payload.ifRevision ?? null,
+        expected: ifRevision ?? null,
         current: decision.currentRevision ?? null
       });
       return { result: first, payload };
     }
-    if (!decision.currentRevision || decision.currentRevision === payload.ifRevision) {
+    if (!decision.currentRevision || decision.currentRevision === ifRevision) {
       this.log.debug('revision retry skipped', {
         tool,
         reason: 'no_new_revision',
-        expected: payload.ifRevision ?? null,
+        expected: ifRevision ?? null,
         current: decision.currentRevision ?? null
       });
       return { result: first, payload };
@@ -280,7 +302,7 @@ export class ToolDispatcherImpl implements Dispatcher {
     this.log.info('revision retrying with latest revision', {
       tool,
       reason: 'revision_mismatch',
-      expected: payload.ifRevision ?? null,
+      expected: ifRevision ?? null,
       current: decision.currentRevision,
       attempt: 1
     });
@@ -319,11 +341,6 @@ const extractGuardMeta = (error: ToolError): Record<string, unknown> => {
   if (typeof record.reason === 'string') meta.reason = record.reason;
   return meta;
 };
-
-function toToolResponse<T>(result: UsecaseResult<T>): ToolResponse<T> {
-  if (result.ok) return respondOk(result.value);
-  return respondError(result.error);
-}
 
 function attachRenderPreviewContent(
   response: ToolResponse<RenderPreviewResult>

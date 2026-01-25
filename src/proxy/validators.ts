@@ -9,16 +9,39 @@ import { Limits, ToolResponse } from '../types';
 import { buildRigTemplate } from '../templates';
 import { isZeroSize } from '../domain/geometry';
 import { errFromDomain, errWithCode } from './response';
+import {
+  ENTITY_ANIMATION_CHANNELS,
+  ENTITY_ANIMATION_TRIGGER_TYPES,
+  ENTITY_FORMATS,
+  GECKOLIB_TARGET_VERSIONS,
+  PREVIEW_MODES,
+  RIG_TEMPLATE_KINDS,
+  TEXTURE_PRESET_NAMES
+} from '../shared/toolConstants';
 import { validateTextureSpecs } from '../domain/textureSpecValidation';
 import { validateUvAssignments } from '../domain/uvAssignments';
 import { checkDimensions } from '../domain/dimensions';
+import { isRecord } from '../domain/guards';
+
+const RIG_TEMPLATE_KIND_SET = new Set<string>(RIG_TEMPLATE_KINDS);
+const ENTITY_FORMAT_SET = new Set<string>(ENTITY_FORMATS);
+const GECKOLIB_TARGET_VERSION_SET = new Set<string>(GECKOLIB_TARGET_VERSIONS);
+const ENTITY_ANIMATION_CHANNEL_SET = new Set<string>(ENTITY_ANIMATION_CHANNELS);
+const ENTITY_ANIMATION_TRIGGER_TYPE_SET = new Set<string>(ENTITY_ANIMATION_TRIGGER_TYPES);
+const TEXTURE_PRESET_NAME_SET = new Set<string>(TEXTURE_PRESET_NAMES);
+const PREVIEW_MODE_SET = new Set<string>(PREVIEW_MODES);
+
+const requirePayloadObject = (payload: unknown): ToolResponse<unknown> | null => {
+  if (!payload || typeof payload !== 'object') return errWithCode('invalid_payload', 'payload is required');
+  return null;
+};
 
 export const validateModelSpec = (payload: ApplyModelSpecPayload, limits: Limits): ToolResponse<unknown> => {
   if (!payload.model) return errWithCode('invalid_payload', 'model is required');
   const inputParts = payload.model.parts ?? [];
   if (!Array.isArray(inputParts)) return errWithCode('invalid_payload', 'parts must be an array');
   const rigTemplate = payload.model.rigTemplate ?? 'empty';
-  if (!['empty', 'biped', 'quadruped', 'block_entity'].includes(rigTemplate)) {
+  if (!RIG_TEMPLATE_KIND_SET.has(rigTemplate)) {
     return errWithCode('invalid_payload', `unknown rigTemplate: ${rigTemplate}`);
   }
   const templatedParts = buildRigTemplate(rigTemplate, inputParts);
@@ -60,19 +83,21 @@ export const validateTextureSpec = (payload: ApplyTextureSpecPayload, limits: Li
 };
 
 export const validateUvSpec = (payload: ApplyUvSpecPayload): ToolResponse<unknown> => {
-  if (!payload || typeof payload !== 'object') return errWithCode('invalid_payload', 'payload is required');
+  const payloadErr = requirePayloadObject(payload);
+  if (payloadErr) return payloadErr;
   const assignmentsRes = validateUvAssignments(payload.assignments);
   if (!assignmentsRes.ok) return errFromDomain(assignmentsRes.error);
   return { ok: true, data: { valid: true } };
 };
 
 export const validateEntitySpec = (payload: ApplyEntitySpecPayload, limits: Limits): ToolResponse<unknown> => {
-  if (!payload || typeof payload !== 'object') return errWithCode('invalid_payload', 'payload is required');
+  const payloadErr = requirePayloadObject(payload);
+  if (payloadErr) return payloadErr;
   if (!payload.format) return errWithCode('invalid_payload', 'format is required');
-  if (!['geckolib', 'modded_entity', 'optifine_entity'].includes(payload.format)) {
+  if (!ENTITY_FORMAT_SET.has(payload.format)) {
     return errWithCode('invalid_payload', `unsupported format: ${payload.format}`);
   }
-  if (payload.targetVersion && !['v3', 'v4'].includes(payload.targetVersion)) {
+  if (payload.targetVersion && !GECKOLIB_TARGET_VERSION_SET.has(payload.targetVersion)) {
     return errWithCode('invalid_payload', `unsupported targetVersion: ${payload.targetVersion}`);
   }
   if (payload.format !== 'geckolib' && payload.targetVersion) {
@@ -108,7 +133,7 @@ export const validateEntitySpec = (payload: ApplyEntitySpecPayload, limits: Limi
         }
         for (const channel of anim.channels) {
           if (!channel?.bone) return errWithCode('invalid_payload', `channel bone required (${anim.name})`);
-          if (!['rot', 'pos', 'scale'].includes(channel.channel)) {
+          if (!ENTITY_ANIMATION_CHANNEL_SET.has(channel.channel)) {
             return errWithCode('invalid_payload', `channel type invalid (${anim.name})`);
           }
           if (!Array.isArray(channel.keys)) {
@@ -129,7 +154,7 @@ export const validateEntitySpec = (payload: ApplyEntitySpecPayload, limits: Limi
           return errWithCode('invalid_payload', `triggers must be array (${anim.name})`);
         }
         for (const trigger of anim.triggers) {
-          if (!['sound', 'particle', 'timeline'].includes(trigger.type)) {
+          if (!ENTITY_ANIMATION_TRIGGER_TYPE_SET.has(trigger.type)) {
             return errWithCode('invalid_payload', `trigger type invalid (${anim.name})`);
           }
           if (!Array.isArray(trigger.keys)) {
@@ -150,22 +175,9 @@ export const validateEntitySpec = (payload: ApplyEntitySpecPayload, limits: Limi
   return { ok: true, data: { valid: true } };
 };
 
-const TEXTURE_PRESET_NAMES = new Set<string>([
-  'painted_metal',
-  'rubber',
-  'glass',
-  'wood',
-  'dirt',
-  'plant',
-  'stone',
-  'sand',
-  'leather',
-  'fabric',
-  'ceramic'
-]);
-
 export const validateTexturePipeline = (payload: TexturePipelinePayload, limits: Limits): ToolResponse<unknown> => {
-  if (!payload || typeof payload !== 'object') return errWithCode('invalid_payload', 'payload is required');
+  const payloadErr = requirePayloadObject(payload);
+  if (payloadErr) return payloadErr;
   const hasStep = Boolean(
     (payload.assign && payload.assign.length > 0) ||
       payload.uv ||
@@ -212,7 +224,7 @@ export const validateTexturePipeline = (payload: TexturePipelinePayload, limits:
       if (!preset?.preset || typeof preset.preset !== 'string') {
         return errWithCode('invalid_payload', 'preset name is required');
       }
-      if (!TEXTURE_PRESET_NAMES.has(preset.preset)) {
+      if (!TEXTURE_PRESET_NAME_SET.has(preset.preset)) {
         return errWithCode('invalid_payload', `unknown texture preset: ${preset.preset}`);
       }
       const width = Number(preset.width);
@@ -238,15 +250,13 @@ export const validateTexturePipeline = (payload: TexturePipelinePayload, limits:
 
   if (payload.preview) {
     const mode = payload.preview.mode;
-    if (mode && !['fixed', 'turntable'].includes(mode)) {
+    if (mode && !PREVIEW_MODE_SET.has(mode)) {
       return errWithCode('invalid_payload', `preview mode invalid (${mode})`);
     }
   }
 
   return { ok: true, data: { valid: true } };
 };
-
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 
 const isTriggerValue = (value: unknown): boolean => {
   if (typeof value === 'string') return true;

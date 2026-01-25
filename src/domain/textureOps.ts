@@ -1,5 +1,7 @@
 export const MAX_TEXTURE_OPS = 4096;
 
+import { isRecord } from './guards';
+
 export type TextureOpLike =
   | { op: 'set_pixel'; x: number; y: number; color: string }
   | { op: 'fill_rect'; x: number; y: number; width: number; height: number; color: string }
@@ -34,5 +36,3 @@ export const isTextureOp = (op: unknown): op is TextureOpLike => {
 };
 
 const isFiniteNumber = (value: unknown): value is number => Number.isFinite(value);
-
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;

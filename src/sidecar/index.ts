@@ -1,6 +1,7 @@
 import http from 'http';
 import { SidecarClient } from './transport/SidecarClient';
 import { StderrLogger } from './logger';
+import { errorMessage } from '../logging';
 import { McpRouter } from '../mcp/router';
 import { createMcpHttpServer } from '../mcp/httpServer';
 import { PLUGIN_ID, PLUGIN_VERSION } from '../config';
@@ -106,7 +107,7 @@ server.listen(config.port, config.host, () => {
   log.info('sidecar listening', { host: config.host, port: config.port, path: config.path });
 });
 server.on('error', (err) => {
-  const message = err instanceof Error ? err.message : String(err);
+  const message = errorMessage(err);
   log.error('sidecar server error', { message });
   process.exit(1);
 });

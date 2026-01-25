@@ -249,11 +249,17 @@ export interface ReadTextureResult {
     path?: string;
     dataUri: string;
     mimeType: string;
+    byteLength?: number;
+    hash?: string;
   };
   saved?: {
-    path: string;
-    mimeType: string;
-    byteLength: number;
+    texture: {
+      path: string;
+      mime: string;
+      byteLength: number;
+      width?: number;
+      height?: number;
+    };
   };
 }
 

@@ -1,9 +1,9 @@
-﻿export type JsonSchema = {
+export type JsonSchema = {
   type?: 'object' | 'array' | 'string' | 'number' | 'boolean' | 'null';
   properties?: Record<string, JsonSchema>;
   items?: JsonSchema;
   required?: string[];
-  enum?: Array<string | number | boolean | null>;
+  enum?: ReadonlyArray<string | number | boolean | null>;
   additionalProperties?: boolean;
   minProperties?: number;
   minItems?: number;

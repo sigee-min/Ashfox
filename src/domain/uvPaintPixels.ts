@@ -1,5 +1,6 @@
 import type { DomainResult } from './result';
 import { UvPaintRect } from './uvPaint';
+import { clamp } from './math';
 
 export type UvPaintPixelConfig = {
   rects: UvPaintRect[];
@@ -116,12 +117,6 @@ const copyPixel = (
   target[tIdx + 1] = source[sIdx + 1];
   target[tIdx + 2] = source[sIdx + 2];
   target[tIdx + 3] = source[sIdx + 3];
-};
-
-const clamp = (value: number, min: number, max: number): number => {
-  if (value < min) return min;
-  if (value > max) return max;
-  return value;
 };
 
 const mod = (value: number, modulus: number): number => {

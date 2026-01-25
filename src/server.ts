@@ -1,12 +1,13 @@
 import { Dispatcher } from './types';
 import { ProxyRouter } from './proxy';
-import { Logger } from './logging';
+import { errorMessage, Logger } from './logging';
 import { PLUGIN_ID, PLUGIN_VERSION } from './config';
 import { SERVER_TOOL_INSTRUCTIONS } from './services/toolInstructions';
 import { McpRouter } from './mcp/router';
 import { LocalToolExecutor } from './mcp/executor';
 import { createMcpHttpServer } from './mcp/httpServer';
 import { startMcpNetServer } from './mcp/netServer';
+import { normalizePath } from './mcp/routerUtils';
 import { ResourceStore } from './ports/resources';
 import type { IncomingMessage, Server as HttpServer, ServerResponse } from 'http';
 import type { Server as NetServer, Socket } from 'net';
@@ -26,12 +27,6 @@ export interface ServerConfig {
 }
 
 type StopFn = () => void;
-
-const normalizePath = (value: string) => {
-  if (!value) return '/mcp';
-  if (value.startsWith('/')) return value;
-  return `/${value}`;
-};
 
 const validateConfig = (config: ServerConfig): { ok: true } | { ok: false; message: string } => {
   if (!config.host || typeof config.host !== 'string') {
@@ -68,8 +63,7 @@ const startHttpServer = (http: HttpModule, config: ServerConfig, router: McpRout
       log.info('MCP server started (http)', { host: config.host, port: config.port, path: config.path });
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    log.error('MCP server failed to start (http)', { message });
+    log.error('MCP server failed to start (http)', { message: errorMessage(err) });
     return null;
   }
   return () => {
@@ -112,7 +106,7 @@ export function startServer(
       optional: true
     });
     http = isHttpModule(loaded) ? loaded : null;
-  } catch {
+  } catch (err) {
     http = null;
   }
   if (http) {
@@ -128,7 +122,7 @@ export function startServer(
       optional: false
     });
     net = isNetModule(loaded) ? loaded : null;
-  } catch {
+  } catch (err) {
     net = null;
   }
   if (net) {

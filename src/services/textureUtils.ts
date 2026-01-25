@@ -21,6 +21,20 @@ export const normalizeTextureDataUri = (value?: string): string | null => {
   return value.startsWith('data:') ? value : `data:image/png;base64,${value}`;
 };
 
+export const estimateDataUriByteLength = (dataUri: string): number | null => {
+  const raw = String(dataUri ?? '');
+  const comma = raw.indexOf(',');
+  if (comma === -1) return null;
+  const meta = raw.slice(0, comma);
+  if (!meta.toLowerCase().includes('base64')) return null;
+  const payload = raw.slice(comma + 1).trim().replace(/\s/g, '');
+  if (!payload) return null;
+  let padding = 0;
+  if (payload.endsWith('==')) padding = 2;
+  else if (payload.endsWith('=')) padding = 1;
+  return Math.max(0, Math.floor((payload.length * 3) / 4) - padding);
+};
+
 export const resolveTextureSize = (
   primary: { width?: number; height?: number },
   ...fallbacks: Array<{ width?: number; height?: number } | undefined>

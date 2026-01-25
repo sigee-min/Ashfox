@@ -53,9 +53,11 @@ export const registerInspectorAction = (deps: { readGlobals: ReadGlobals }) => {
       const plugins = deps.readGlobals().Plugins;
       const path = plugins?.path;
       const registered = plugins?.registered;
-      console.log('[bbmcp] Plugins.path', path);
-      console.log('[bbmcp] Plugins.registered keys', registered ? Object.keys(registered) : 'n/a');
-      blockbench.showQuickMessage?.('Logged plugin state to console.', 1200);
+      const payload = {
+        path: path ?? null,
+        registeredKeys: registered ? Object.keys(registered) : null
+      };
+      blockbench.textPrompt?.('bbmcp plugin state', JSON.stringify(payload, null, 2), () => {});
     }
   };
   menuBar.addAction(action, 'help');

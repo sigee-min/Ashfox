@@ -1,6 +1,6 @@
 import { Dispatcher, ToolName, ToolPayloadMap, ToolResponse } from '../../types';
 import { ProxyRouter } from '../../proxy';
-import { Logger } from '../../logging';
+import { errorMessage, Logger } from '../../logging';
 import { createLineDecoder, encodeMessage } from '../../transport/codec';
 import {
   PROTOCOL_VERSION,
@@ -47,8 +47,7 @@ export class SidecarHost {
 
     this.readable.on('data', this.onData);
     this.readable.on('error', (err: Error) => {
-      const messageText = err instanceof Error ? err.message : String(err);
-      this.log.error('sidecar ipc stream error', { message: messageText });
+      this.log.error('sidecar ipc stream error', { message: errorMessage(err) });
     });
     this.readable.on('end', () => this.log.warn('sidecar ipc stream ended'));
   }
@@ -57,8 +56,7 @@ export class SidecarHost {
     try {
       this.writable.write(encodeMessage(message));
     } catch (err) {
-      const messageText = err instanceof Error ? err.message : String(err);
-      this.log.error('sidecar ipc send failed', { message: messageText });
+      this.log.error('sidecar ipc send failed', { message: errorMessage(err) });
     }
   }
 
@@ -90,7 +88,7 @@ export class SidecarHost {
           ? await this.proxy.handle(message.tool as ProxyTool, message.payload)
           : this.dispatcher.handle(message.tool as DispatcherToolName, message.payload as DispatcherPayload);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'handler error';
+      const msg = errorMessage(err, 'handler error');
       const response: SidecarResponseMessage = {
         type: 'response',
         id: message.id,

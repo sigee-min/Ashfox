@@ -47,6 +47,13 @@ export class SessionStore {
     const cutoff = now - ttlMs;
     let removed = 0;
     for (const session of Array.from(this.sessions.values())) {
+      if (session.sseConnections.size > 0) {
+        for (const conn of Array.from(session.sseConnections)) {
+          if (conn.isClosed()) {
+            session.sseConnections.delete(conn);
+          }
+        }
+      }
       if (session.sseConnections.size > 0) continue;
       if (session.lastSeenAt >= cutoff) continue;
       this.close(session);

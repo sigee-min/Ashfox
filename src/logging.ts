@@ -9,6 +9,12 @@ export interface Logger {
   error(message: string, meta?: Record<string, unknown>): void;
 }
 
+export const errorMessage = (err: unknown, fallback?: string): string => {
+  if (err instanceof Error) return err.message;
+  if (fallback !== undefined) return fallback;
+  return String(err);
+};
+
 export class ConsoleLogger implements Logger {
   private readonly prefix: string;
   private readonly minLevel: LogLevelProvider;

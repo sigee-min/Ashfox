@@ -2,7 +2,8 @@ import { SnapshotPort } from '../../ports/snapshot';
 import { SessionState, TrackedAnimationChannel, TrackedAnimationTrigger } from '../../session';
 import { FormatKind, FORMAT_KINDS } from '../../types';
 import { matchesFormatKind } from '../../services/format';
-import { Logger } from '../../logging';
+import { errorMessage, Logger } from '../../logging';
+import { isRecord } from '../../domain/guards';
 import {
   AnimationClip,
   BlockbenchGlobals,
@@ -13,7 +14,12 @@ import {
   UnknownRecord,
   readBlockbenchGlobals
 } from '../../types/blockbench';
-import { readTextureSize } from './blockbenchUtils';
+import {
+  readAnimationId as readAnimationIdNullable,
+  readNodeId as readNodeIdNullable,
+  readTextureId as readTextureIdNullable,
+  readTextureSize
+} from './blockbenchUtils';
 
 type Vec3Like = { x: number; y: number; z: number } | [number, number, number];
 
@@ -85,7 +91,7 @@ export class BlockbenchSnapshot implements SnapshotPort {
         animationsStatus: animState.status
       };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'snapshot read failed';
+      const message = errorMessage(err, 'snapshot read failed');
       this.log?.error('snapshot read failed', { message });
       return null;
     }
@@ -162,21 +168,18 @@ function toOptionalVec2(value: unknown): [number, number] | undefined {
 }
 
 function readNodeId(node: OutlinerNode | null | undefined): string | undefined {
-  if (!node) return undefined;
-  const raw = node.bbmcpId ?? node.uuid ?? node.id ?? node.uid ?? node._uuid ?? null;
-  return raw ? String(raw) : undefined;
+  const id = readNodeIdNullable(node);
+  return id ?? undefined;
 }
 
 function readTextureId(tex: TextureInstance | null | undefined): string | undefined {
-  if (!tex) return undefined;
-  const raw = tex.bbmcpId ?? tex.uuid ?? tex.id ?? tex.uid ?? tex._uuid ?? null;
-  return raw ? String(raw) : undefined;
+  const id = readTextureIdNullable(tex);
+  return id ?? undefined;
 }
 
 function readAnimationId(anim: AnimationClip | null | undefined): string | undefined {
-  if (!anim) return undefined;
-  const raw = anim.bbmcpId ?? anim.uuid ?? anim.id ?? anim.uid ?? anim._uuid ?? null;
-  return raw ? String(raw) : undefined;
+  const id = readAnimationIdNullable(anim);
+  return id ?? undefined;
 }
 
 function getProjectName(): string | null {
@@ -210,7 +213,7 @@ function getProjectDirty(): boolean | undefined {
     if (typeof project.hasUnsavedChanges === 'function') {
       return Boolean(project.hasUnsavedChanges());
     }
-  } catch {
+  } catch (err) {
     return undefined;
   }
   return undefined;
@@ -370,8 +373,4 @@ function ensureRootBone(bones: SessionState['bones'], cubes: SessionState['cubes
   const hasRoot = bones.some((bone) => bone.name === 'root');
   if (hasRoot) return;
   bones.unshift({ id: 'root', name: 'root', pivot: [0, 0, 0] });
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
 }

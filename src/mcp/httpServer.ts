@@ -2,11 +2,13 @@ import { Logger } from '../logging';
 import { McpRouter } from './router';
 import { HttpRequest, ResponsePlan } from './types';
 import { openSseConnection } from './transport';
+import { errorMessage } from '../logging';
 import type { IncomingMessage, Server, ServerResponse } from 'http';
 
 const MAX_BODY_BYTES = 5_000_000;
+const BODY_READ_TIMEOUT_MS = 30_000;
 
-type BodyErrorCode = 'payload_too_large' | 'request_aborted' | 'invalid_payload';
+type BodyErrorCode = 'payload_too_large' | 'request_aborted' | 'request_timeout' | 'invalid_payload';
 
 class BodyReadError extends Error {
   readonly code: BodyErrorCode;
@@ -19,11 +21,11 @@ class BodyReadError extends Error {
   }
 }
 
-const normalizeBodyError = (err: unknown): { status: number; code: BodyErrorCode; message: string } => {
+  const normalizeBodyError = (err: unknown): { status: number; code: BodyErrorCode; message: string } => {
   if (err instanceof BodyReadError) {
     return { status: err.status, code: err.code, message: err.message };
   }
-  const message = err instanceof Error ? err.message : 'payload read failed';
+  const message = errorMessage(err, 'payload read failed');
   return { status: 400, code: 'invalid_payload', message };
 };
 
@@ -42,6 +44,7 @@ const readBody = (req: IncomingMessage): Promise<string> =>
     let total = 0;
     let body = '';
     let done = false;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
 
     const cleanup = () => {
       req.removeListener('data', onData);
@@ -49,6 +52,10 @@ const readBody = (req: IncomingMessage): Promise<string> =>
       req.removeListener('error', onError);
       req.removeListener('aborted', onAborted);
       req.removeListener('close', onClose);
+      if (timeout) {
+        clearTimeout(timeout);
+        timeout = null;
+      }
     };
 
     const finish = (fn: () => void) => {
@@ -74,7 +81,7 @@ const readBody = (req: IncomingMessage): Promise<string> =>
     const onEnd = () => finish(() => resolve(body));
 
     const onError = (err: Error) => {
-      const message = err instanceof Error ? err.message : 'request error';
+      const message = errorMessage(err, 'request error');
       fail(new BodyReadError('invalid_payload', 400, message));
     };
 
@@ -94,6 +101,11 @@ const readBody = (req: IncomingMessage): Promise<string> =>
     req.on('error', onError);
     req.on('aborted', onAborted);
     req.on('close', onClose);
+
+    timeout = setTimeout(() => {
+      fail(new BodyReadError('request_timeout', 408, 'request timeout'));
+      req.destroy();
+    }, BODY_READ_TIMEOUT_MS);
   });
 
 const applyHeaders = (res: ServerResponse, headers: Record<string, string>) => {
@@ -116,7 +128,7 @@ const writePlan = (plan: ResponsePlan, res: ServerResponse, log: Logger) => {
           close: () => {
             try {
               res.end();
-            } catch {
+            } catch (err) {
               res.destroy?.();
             }
           },
@@ -166,7 +178,7 @@ export const createMcpHttpServer = (http: HttpModule, router: McpRouter, log: Lo
         res.setHeader('Content-Type', 'application/json');
         try {
           res.end(JSON.stringify({ error: { code: info.code, message: info.message } }));
-        } catch {
+        } catch (err) {
           res.destroy?.();
         }
         return;
