@@ -7,7 +7,7 @@ import {
   McpServerConfig,
   ResponsePlan
 } from './types';
-import { DEFAULT_TOOL_PROFILE, getMcpTools, getToolSchema, isExposedTool, isKnownTool } from './tools';
+import { MCP_TOOLS, getToolSchema, isKnownTool } from './tools';
 import { validateSchema } from './validation';
 import { McpSession, SessionStore } from './session';
 import { encodeSseComment, encodeSseEvent } from './sse';
@@ -235,8 +235,7 @@ export class McpRouter {
     }
 
     if (message.method === 'tools/list') {
-      const profile = this.config.toolProfile ?? DEFAULT_TOOL_PROFILE;
-      const result = { tools: getMcpTools(profile) };
+      const result = { tools: MCP_TOOLS };
       return { type: 'response', response: jsonRpcResult(id, result), status: 200 };
     }
 
@@ -304,10 +303,6 @@ export class McpRouter {
       return { type: 'response', response: jsonRpcError(id, -32602, 'Tool name is required'), status: 400 };
     }
     if (!isKnownTool(name)) {
-      return { type: 'response', response: jsonRpcError(id, -32602, `Unknown tool: ${name}`), status: 400 };
-    }
-    const profile = this.config.toolProfile ?? DEFAULT_TOOL_PROFILE;
-    if (!isExposedTool(name, profile)) {
       return { type: 'response', response: jsonRpcError(id, -32602, `Unknown tool: ${name}`), status: 400 };
     }
     const args = isRecord(params.arguments) ? params.arguments : {};

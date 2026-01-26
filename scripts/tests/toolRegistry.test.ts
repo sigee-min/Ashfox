@@ -7,4 +7,4 @@ assert.equal(TOOL_SCHEMA_VERSION, '2025-04-06');
 assert.equal(TOOL_REGISTRY_COUNT, MCP_TOOLS.length);
 
 // Contract test: tool registry signature must be stable unless intentionally changed.
-assert.equal(TOOL_REGISTRY_HASH, '335b9700');
+assert.equal(TOOL_REGISTRY_HASH, '784db000');

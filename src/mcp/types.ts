@@ -20,8 +20,6 @@ export type McpToolDefinition = {
   inputSchema: JsonSchema;
 };
 
-export type McpToolProfile = 'full' | 'texture_minimal';
-
 export type HttpRequest = {
   method: string;
   url: string;
@@ -83,5 +81,4 @@ export type McpServerConfig = {
   instructions?: string;
   supportedProtocols?: string[];
   sessionTtlMs?: number;
-  toolProfile?: McpToolProfile;
 };

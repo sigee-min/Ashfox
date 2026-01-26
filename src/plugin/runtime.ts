@@ -257,7 +257,7 @@ function restartServer() {
   }
   if (globalDispatcher && globalProxy) {
     const inlineStop = startServer(
-      { host: serverConfig.host, port: serverConfig.port, path: serverConfig.path, toolProfile: 'texture_minimal' },
+      { host: serverConfig.host, port: serverConfig.port, path: serverConfig.path },
       globalDispatcher,
       globalProxy,
       logger,
@@ -272,8 +272,7 @@ function restartServer() {
       host: serverConfig.host,
       port: serverConfig.port,
       path: serverConfig.path,
-      execPath: serverConfig.execPath,
-      toolProfile: 'texture_minimal'
+      execPath: serverConfig.execPath
     };
     sidecar = new SidecarProcess(endpoint, globalDispatcher, globalProxy, logger);
     if (!sidecar.start()) {

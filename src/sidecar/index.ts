@@ -10,7 +10,6 @@ import { GUIDE_RESOURCE_TEMPLATES, GUIDE_RESOURCES } from '../services/guides';
 import { InMemoryResourceStore } from '../services/resources';
 import { SIDECAR_TOOL_INSTRUCTIONS } from '../services/toolInstructions';
 import { ToolResponse } from '../types';
-import { DEFAULT_TOOL_PROFILE } from '../mcp/tools';
 import { PROXY_TOOL_NAMES } from '../shared/toolConstants';
 
 const getArg = (args: string[], name: string, fallback?: string): string | undefined => {
@@ -19,10 +18,6 @@ const getArg = (args: string[], name: string, fallback?: string): string | undef
   return args[index + 1] ?? fallback;
 };
 
-const parseToolProfile = (value: string | undefined): 'full' | 'texture_minimal' => {
-  if (value === 'full' || value === 'texture_minimal') return value;
-  return DEFAULT_TOOL_PROFILE;
-};
 
 const args = process.argv.slice(2);
 const portValue = parseInt(getArg(args, '--port', '8787') ?? '8787', 10);
@@ -30,8 +25,7 @@ const config = {
   host: getArg(args, '--host', '127.0.0.1') ?? '127.0.0.1',
   port: Number.isFinite(portValue) ? portValue : 8787,
   path: getArg(args, '--path', '/mcp') ?? '/mcp',
-  token: getArg(args, '--token'),
-  toolProfile: parseToolProfile(getArg(args, '--tool-profile'))
+  token: getArg(args, '--token')
 };
 
 const log = new StderrLogger('bbmcp-sidecar', 'info');
@@ -61,8 +55,7 @@ const router = new McpRouter(
     path: config.path,
     token: config.token,
     serverInfo: { name: PLUGIN_ID, version: PLUGIN_VERSION },
-    instructions: SIDECAR_TOOL_INSTRUCTIONS,
-    toolProfile: config.toolProfile
+    instructions: SIDECAR_TOOL_INSTRUCTIONS
   },
   executor,
   log,

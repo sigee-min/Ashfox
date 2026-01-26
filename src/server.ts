@@ -8,7 +8,6 @@ import { LocalToolExecutor } from './mcp/executor';
 import { createMcpHttpServer } from './mcp/httpServer';
 import { startMcpNetServer } from './mcp/netServer';
 import { normalizePath } from './mcp/routerUtils';
-import type { McpToolProfile } from './mcp/types';
 import { ResourceStore } from './ports/resources';
 import type { IncomingMessage, Server as HttpServer, ServerResponse } from 'http';
 import type { Server as NetServer, Socket } from 'net';
@@ -25,7 +24,6 @@ export interface ServerConfig {
   port: number;
   path: string;
   token?: string;
-  toolProfile?: McpToolProfile;
 }
 
 type StopFn = () => void;
@@ -94,8 +92,7 @@ export function startServer(
       path: config.path,
       token: config.token,
       serverInfo: { name: PLUGIN_ID, version: PLUGIN_VERSION },
-      instructions: SERVER_TOOL_INSTRUCTIONS,
-      toolProfile: config.toolProfile
+      instructions: SERVER_TOOL_INSTRUCTIONS
     },
     executor,
     log,
