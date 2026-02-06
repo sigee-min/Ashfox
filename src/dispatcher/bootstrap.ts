@@ -7,6 +7,7 @@ import { BlockbenchFormats } from '../adapters/blockbench/BlockbenchFormats';
 import { BlockbenchSnapshot } from '../adapters/blockbench/BlockbenchSnapshot';
 import { BlockbenchExport } from '../adapters/blockbench/BlockbenchExport';
 import { BlockbenchTextureRenderer } from '../adapters/blockbench/BlockbenchTextureRenderer';
+import { BlockbenchViewportRefresher } from '../adapters/blockbench/BlockbenchViewportRefresher';
 import { LocalTmpStore } from '../adapters/tmp/LocalTmpStore';
 import { ToolService } from '../usecases/ToolService';
 
@@ -21,6 +22,7 @@ export const buildDefaultToolService = (
   const snapshot = new BlockbenchSnapshot(log);
   const exporter = new BlockbenchExport(log);
   const textureRenderer = new BlockbenchTextureRenderer();
+  const viewportRefresher = new BlockbenchViewportRefresher(log);
   const tmpStore = new LocalTmpStore();
   return new ToolService({
     session,
@@ -31,6 +33,7 @@ export const buildDefaultToolService = (
     snapshot,
     exporter,
     textureRenderer,
+    viewportRefresher,
     tmpStore,
     policies: { snapshotPolicy: 'hybrid', exportPolicy: 'strict' }
   });

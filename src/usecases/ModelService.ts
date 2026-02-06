@@ -1,4 +1,4 @@
-import type { Capabilities, ToolError } from '../types';
+import type { AutoUvAtlasPayload, AutoUvAtlasResult, Capabilities, ToolError } from '../types';
 import { ProjectSession, SessionState } from '../session';
 import { EditorPort } from '../ports/editor';
 import { BoneService } from './model/BoneService';
@@ -12,6 +12,8 @@ export interface ModelServiceDeps {
   getSnapshot: () => SessionState;
   ensureActive: () => ToolError | null;
   ensureRevisionMatch: (ifRevision?: string) => ToolError | null;
+  autoUvAtlas?: (payload: AutoUvAtlasPayload) => UsecaseResult<AutoUvAtlasResult>;
+  runWithoutRevisionGuard?: <T>(fn: () => T) => T;
 }
 
 export class ModelService {
@@ -32,7 +34,9 @@ export class ModelService {
       capabilities: deps.capabilities,
       getSnapshot: deps.getSnapshot,
       ensureActive: deps.ensureActive,
-      ensureRevisionMatch: deps.ensureRevisionMatch
+      ensureRevisionMatch: deps.ensureRevisionMatch,
+      autoUvAtlas: deps.autoUvAtlas,
+      runWithoutRevisionGuard: deps.runWithoutRevisionGuard
     });
   }
 

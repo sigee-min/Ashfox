@@ -1,25 +1,26 @@
 # Texture + UV Spec (Summary)
 
 Core rules:
-1) Manual per-face UVs only.
-2) Paint only inside UV rects (uvPaint enforced).
-3) UV overlaps are errors unless identical.
+1) Per-face UVs only (managed internally; no manual UV tools).
+2) paint_faces maps into each face rect; mapping controls stretch/tile.
+3) UV overlaps are errors.
 4) UV scale mismatch is an error.
+5) Per-face UV density is controlled by project `uvPixelsPerBlock` (default 16).
 
 Workflow:
 - assign_texture
-- preflight_texture (uvUsageId)
-- set_face_uv
-- preflight_texture again
-- generate_texture_preset
-- auto_uv_atlas (apply=true) when UVs are crowded or invalid
+- paint_faces
+- internal auto-UV runs automatically on cube add/scale
 
 Notes:
-- preflight_texture computes uvUsageId; required by generate_texture_preset.
+- UV tools are internal and not exposed over MCP.
+- `ensure_project.uvPixelsPerBlock` sets face density; reused projects infer a median from existing UVs.
 - validate reports uv_overlap/uv_scale_mismatch; mutation guards return invalid_state on overlap/scale/usage mismatch.
-- Small or non-square UV rects can distort stretch-mapped patterns; consider tile mapping or higher resolutions for detailed patterns.
-- If you see uv_scale_mismatch repeatedly, increase resolution (64+), reduce cube count, or allow split textures.
-- auto_uv_atlas may raise texture resolution to resolve uv_scale_mismatch.
-- If you provide both cubeIds and cubeNames in targets, both must match. Use one for broader matching.
+- internal auto-UV may raise texture resolution for atlas capacity; face size comes from `uvPixelsPerBlock`.
+- If you provide both cubeId and cubeName in target, both must match. Use one for broader matching.
+- `paint_faces` is strict single-write: one target (`cubeId`/`cubeName` + `face`) and one op.
+- `paint_faces` defaults to `coordSpace="face"` and auto-fits source size to target face UV when `width/height` is omitted.
+- `coordSpace="texture"` requires explicit `width/height` matching texture size.
+- `background` is not part of the `paint_faces` payload.
 
 See full spec in docs/texture-uv-spec.md.

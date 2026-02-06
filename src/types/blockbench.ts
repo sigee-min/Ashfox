@@ -12,6 +12,8 @@ export interface BlockbenchProject {
   export_path?: string;
   texture_width?: number;
   texture_height?: number;
+  bbmcpUvPixelsPerBlock?: number;
+  bbmcp?: { uvPixelsPerBlock?: number; uv_pixels_per_block?: number };
   setTextureSize?: (width: number, height: number) => void;
   saved?: boolean;
   isSaved?: boolean;
@@ -207,10 +209,17 @@ export interface AnimationClip {
   add?: (select?: boolean) => void;
   remove?: () => void;
   delete?: () => void;
+  getBoneAnimator?: (group: OutlinerNode | GroupInstance | unknown) => AnimatorInstance | undefined;
 }
 
 export interface AnimatorInstance extends UnknownRecord {
-  createKeyframe?: (channel: string, time: number) => UnknownRecord | null | undefined;
+  createKeyframe?: (
+    value: unknown,
+    time?: number,
+    channel?: string,
+    undo?: boolean,
+    select?: boolean
+  ) => UnknownRecord | null | undefined;
 }
 
 export interface AnimatorApi {
@@ -237,6 +246,37 @@ export interface PreviewItem {
 export interface PreviewRegistry {
   selected?: PreviewItem | null;
   all?: PreviewItem[];
+}
+
+export interface CanvasUpdateViewOptions {
+  element_aspects?: {
+    faces?: boolean;
+    geometry?: boolean;
+    painting_grid?: boolean;
+    transform?: boolean;
+    uv?: boolean;
+    visibility?: boolean;
+  };
+  elements?: unknown[];
+  group_aspects?: {
+    transform?: boolean;
+    visibility?: boolean;
+  };
+  groups?: unknown[];
+  selection?: boolean;
+}
+
+export interface BlockbenchCanvasApi {
+  updateView?: (options: CanvasUpdateViewOptions) => void;
+  updateAll?: () => void;
+  updateAllBones?: (bones?: unknown[]) => void;
+  updateAllFaces?: (texture?: unknown) => void;
+  updateAllPositions?: () => void;
+  updateAllUVs?: () => void;
+  updateLayeredTextures?: () => void;
+  updateSelected?: (arr?: unknown) => void;
+  updateSelectedFaces?: () => void;
+  updateVisibility?: () => void;
 }
 
 export interface DialogApi {
@@ -270,10 +310,12 @@ export interface CodecConstructor {
 
 export interface BlockbenchGlobals {
   Blockbench?: BlockbenchApi;
+  Canvas?: BlockbenchCanvasApi;
   Texture?: TextureConstructor;
   Group?: GroupConstructor;
   Cube?: CubeConstructor;
   Animator?: AnimatorApi;
+  EffectAnimator?: new (clip: AnimationClip) => AnimatorInstance;
   Animation?: AnimationApi;
   Animations?: AnimationClip[];
   Outliner?: OutlinerApi;

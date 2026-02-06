@@ -22,11 +22,16 @@ export const formatScaleExample = (example?: {
   actual: { width: number; height: number };
   expected: { width: number; height: number };
   ratio?: { width: number; height: number };
-  reason?: 'tiny' | 'ratio';
+  reason?: 'tiny' | 'ratio' | 'exceeds';
 }): string => {
   if (!example) return '';
   const ratio = example.ratio ? ` (scale ${formatRatio(example.ratio)})` : '';
-  const reason = example.reason === 'tiny' ? ' (tiny face)' : '';
+  const reason =
+    example.reason === 'tiny'
+      ? ' (tiny face)'
+      : example.reason === 'exceeds'
+        ? ' (expected exceeds texture)'
+        : '';
   return `${example.cubeName} (${example.face}) actual ${example.actual.width}x${example.actual.height} vs expected ${example.expected.width}x${example.expected.height}${ratio}${reason}`;
 };
 

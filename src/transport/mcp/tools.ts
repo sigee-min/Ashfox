@@ -74,28 +74,11 @@ export const MCP_LOW_LEVEL_TOOLS: McpToolDefinition[] = [
     inputSchema: toolSchemas.reload_plugins
   }),
   defineTool({
-    name: 'generate_texture_preset',
-    title: 'Generate Texture Preset',
-    description: 'Procedural texture preset painting with uvPaint mapping.',
-    inputSchema: toolSchemas.generate_texture_preset
-  }),
-  defineTool({
-    name: 'auto_uv_atlas',
-    title: 'Auto UV Atlas',
-    description: 'Plans or applies UV atlas packing; may grow texture resolution.',
-    inputSchema: toolSchemas.auto_uv_atlas
-  }),
-  defineTool({
-    name: 'set_project_texture_resolution',
-    title: 'Set Project Texture Resolution',
-    description: 'Updates project texture resolution (optionally scaling UVs).',
-    inputSchema: toolSchemas.set_project_texture_resolution
-  }),
-  defineTool({
-    name: 'preflight_texture',
-    title: 'Preflight Texture',
-    description: 'Computes uvUsageId + mapping and reports UV warnings.',
-    inputSchema: toolSchemas.preflight_texture
+    name: 'paint_faces',
+    title: 'Paint Faces',
+    description:
+      'Paints one cube face with one drawing op (UV handled internally). Default coordSpace=face; use coordSpace=texture with width/height for texture-space coordinates.',
+    inputSchema: toolSchemas.paint_faces
   }),
   defineTool({
     name: 'delete_texture',
@@ -108,12 +91,6 @@ export const MCP_LOW_LEVEL_TOOLS: McpToolDefinition[] = [
     title: 'Assign Texture',
     description: 'Binds a texture to cubes/faces (no UV edits).',
     inputSchema: toolSchemas.assign_texture
-  }),
-  defineTool({
-    name: 'set_face_uv',
-    title: 'Set Face UV',
-    description: 'Sets per-face UV coordinates for a cube.',
-    inputSchema: toolSchemas.set_face_uv
   }),
   defineTool({
     name: 'add_bone',
@@ -170,10 +147,10 @@ export const MCP_LOW_LEVEL_TOOLS: McpToolDefinition[] = [
     inputSchema: toolSchemas.delete_animation_clip
   }),
   defineTool({
-    name: 'set_keyframes',
-    title: 'Set Keyframes',
-    description: 'Sets keyframes for a single bone + channel (one key per call).',
-    inputSchema: toolSchemas.set_keyframes
+    name: 'set_frame_pose',
+    title: 'Set Pose Frame',
+    description: 'Sets a pose frame for multiple bones at a single frame (rot/pos/scale).',
+    inputSchema: toolSchemas.set_frame_pose
   }),
   defineTool({
     name: 'set_trigger_keyframes',
@@ -184,9 +161,7 @@ export const MCP_LOW_LEVEL_TOOLS: McpToolDefinition[] = [
 ];
 
 export const buildToolRegistry = (options?: { includeLowLevel?: boolean }): ToolRegistry => {
-  const tools = options?.includeLowLevel
-    ? [...MCP_HIGH_LEVEL_TOOLS, ...MCP_LOW_LEVEL_TOOLS]
-    : MCP_HIGH_LEVEL_TOOLS;
+  const tools = options?.includeLowLevel ? [...MCP_HIGH_LEVEL_TOOLS, ...MCP_LOW_LEVEL_TOOLS] : MCP_HIGH_LEVEL_TOOLS;
   const map = new Map<string, McpToolDefinition>(tools.map((tool) => [tool.name, tool]));
   const signature = JSON.stringify(tools.map((tool) => ({ name: tool.name, inputSchema: tool.inputSchema })));
   return {

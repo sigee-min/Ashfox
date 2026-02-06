@@ -43,12 +43,14 @@ const policies = createDefaultPolicies(formatOverrides) as {
   snapshotPolicy: 'hybrid';
   exportPolicy: ExportPolicy;
   uvPolicy: ReturnType<typeof createDefaultPolicies>['uvPolicy'];
+  paintFaces: ReturnType<typeof createDefaultPolicies>['paintFaces'];
   autoDiscardUnsaved: boolean;
   autoAttachActiveProject: boolean;
   autoIncludeState: boolean;
   autoIncludeDiff: boolean;
   requireRevision: boolean;
   autoRetryRevision: boolean;
+  autoCreateProjectTexture: boolean;
 };
 
 let logLevel: LogLevel = 'info';
@@ -152,7 +154,7 @@ export const registerPlugin = () => {
 bbmcp exposes a clean MCP-facing tool surface for AI/agents:
 
 - Modeling is low-level only: add_bone/add_cube (one item per call).
-- UV + texture flow is explicit: assign_texture -> preflight_texture -> set_face_uv (as needed) -> generate_texture_preset.
+- UVs are fully internal: assign_texture -> paint_faces (no manual UV tools).
 - Deterministic low-level tools only; no high-level pipelines.
   - Formats: Java Block/Item enabled by default; GeckoLib/Animated Java gated by capability flags.
 - MCP endpoint: set in Settings (bbmcp: Server) or read from user/project .bbmcp/endpoint.json, or BBMCP_HOST/PORT/PATH env vars (default 0.0.0.0:8787/mcp).

@@ -16,6 +16,7 @@ export const createDefaultPolicies = (formatOverrides: FormatOverrides) => ({
   autoIncludeDiff: false,
   requireRevision: true,
   autoRetryRevision: true,
+  autoCreateProjectTexture: true,
   animationTimePolicy: {
     timeEpsilon: 1e-9,
     triggerDedupeByValue: true

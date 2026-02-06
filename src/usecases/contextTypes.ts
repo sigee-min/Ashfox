@@ -9,6 +9,7 @@ export interface PolicyContextLike {
   getExportPolicy(): ExportPolicy | undefined;
   getAutoDiscardUnsaved(): boolean | undefined;
   getAutoAttachActiveProject(): boolean | undefined;
+  getAutoCreateProjectTexture(): boolean | undefined;
   isRevisionRequired(): boolean;
   isAutoRetryRevisionEnabled(): boolean;
   getUvPolicyConfig(): UvPolicyConfig;

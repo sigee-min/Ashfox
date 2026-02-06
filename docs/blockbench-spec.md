@@ -39,3 +39,8 @@ The simulator uses the snapshot to decide:
 
 When running **inside Blockbench**, the real Format API is still the source of truth.
 The simulator only aims to approximate it well enough for reliable tests.
+
+## bbmcp format enum
+The tool schema exposes a fixed list of format kinds:
+- Java Block/Item, geckolib, animated_java
+- Planned (TODO): Image (`image`), Generic Model (`free`)

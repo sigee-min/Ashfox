@@ -172,6 +172,19 @@ const preflightRes = service.preflightTexture({ includeUsage: true });
 assert.equal(preflightRes.ok, true);
 assert.ok(preflightRes.ok && preflightRes.value.warnings.length > 0);
 
+const paintRes = service.paintTexture({
+  targetName: 'tex2',
+  width: 16,
+  height: 16,
+  ops: [{ op: 'fill_rect', x: 0, y: 0, width: 16, height: 16, color: '#ff0000' }],
+  mode: 'update'
+});
+if (!paintRes.ok) {
+  assert.equal(paintRes.error.code, 'no_change');
+} else {
+  assert.equal(paintRes.ok, true);
+}
+
 const usageId = computeTextureUsageId(usage);
 assert.ok(typeof usageId === 'string' && usageId.length > 0);
 const autoUvRes = service.autoUvAtlas({ apply: false });
@@ -181,25 +194,22 @@ const animRes = service.createAnimationClip({ name: 'idle', length: 1, loop: tru
 assert.equal(animRes.ok, true);
 const animUpdateRes = service.updateAnimationClip({ name: 'idle', newName: 'idle2', length: 2, loop: false, fps: 12 });
 assert.equal(animUpdateRes.ok, true);
-const keyRes = service.setKeyframes({
+const keyRes = service.setFramePose({
   clip: 'idle2',
-  bone: 'arm2',
-  channel: 'rot',
-  keys: [{ time: 0, value: [0, 0, 0] }]
+  frame: 0,
+  bones: [{ name: 'arm2', rot: [0, 0, 0] }]
 });
 assert.equal(keyRes.ok, true);
-const keyResOverwrite = service.setKeyframes({
+const keyResOverwrite = service.setFramePose({
   clip: 'idle2',
-  bone: 'arm2',
-  channel: 'rot',
-  keys: [{ time: 0, value: [0, 10, 0] }]
+  frame: 0,
+  bones: [{ name: 'arm2', rot: [0, 10, 0] }]
 });
 assert.equal(keyResOverwrite.ok, true);
-const keyRes2 = service.setKeyframes({
+const keyRes2 = service.setFramePose({
   clip: 'idle2',
-  bone: 'arm2',
-  channel: 'rot',
-  keys: [{ time: 0.75, value: [0, 20, 0] }]
+  frame: 9,
+  bones: [{ name: 'arm2', rot: [0, 20, 0], interp: 'step' }]
 });
 assert.equal(keyRes2.ok, true);
 const triggerRes = service.setTriggerKeyframes({
@@ -223,6 +233,7 @@ const channel = anim?.channels?.find((entry) => entry.bone === 'arm2' && entry.c
 assert.equal(channel?.keys.length, 2);
 assert.equal(channel?.keys[0].time, 0);
 assert.equal(channel?.keys[0].value[1], 10);
+assert.equal(channel?.keys[1].interp, 'step');
 const trigger = anim?.triggers?.find((entry) => entry.type === 'sound');
 assert.equal(trigger?.keys.length, 2);
 const animDeleteRes = service.deleteAnimationClip({ name: 'idle2' });

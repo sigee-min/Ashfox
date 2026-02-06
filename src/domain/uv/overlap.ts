@@ -54,19 +54,21 @@ export const formatUvFaceRect = (face: UvFaceRect): string =>
   `${face.cubeName} (${face.face}) ${formatUvRect(face.rect)}`;
 
 const collectRectGroups = (entry: TextureUsage['textures'][number]): RectGroup[] => {
-  const groups = new Map<string, RectGroup>();
+  const groups: RectGroup[] = [];
   entry.cubes.forEach((cube) => {
     cube.faces.forEach((face) => {
       if (!face.uv) return;
       const rect = toRect(face.uv);
       if (!rect) return;
-      const key = rectKey(rect);
-      const group = groups.get(key) ?? { key, rect, faces: [] };
-      group.faces.push({ cubeName: cube.name, face: face.face, rect });
-      groups.set(key, group);
+      const key = `${cube.name}:${face.face}`;
+      groups.push({
+        key,
+        rect,
+        faces: [{ cubeName: cube.name, face: face.face, rect }]
+      });
     });
   });
-  return Array.from(groups.values());
+  return groups;
 };
 
 const findRectConflicts = (groups: RectGroup[]): { count: number; example?: UvOverlapExample } => {
@@ -102,17 +104,7 @@ const toRect = (uv: [number, number, number, number]): UvRect | null => {
 const rectsOverlap = (a: UvRect, b: UvRect): boolean =>
   a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
 
-const rectKey = (rect: UvRect): string =>
-  `${formatKeyCoord(rect.x1)},${formatKeyCoord(rect.y1)},${formatKeyCoord(rect.x2)},${formatKeyCoord(rect.y2)}`;
-
 const normalizeCoord = (value: number): number => (Object.is(value, -0) ? 0 : value);
-
-const formatKeyCoord = (value: number): string => {
-  if (!Number.isFinite(value)) return 'NaN';
-  if (Number.isInteger(value)) return String(value);
-  const rounded = Math.round(value * 1000000) / 1000000;
-  return String(rounded);
-};
 
 const formatCoord = (value: number): string => {
   if (!Number.isFinite(value)) return String(value);

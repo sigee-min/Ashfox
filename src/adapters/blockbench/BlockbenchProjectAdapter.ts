@@ -175,6 +175,32 @@ export class BlockbenchProjectAdapter {
       return toolError('unknown', message, { reason: 'adapter_exception', context: 'project_texture_resolution' });
     }
   }
+
+  setProjectUvPixelsPerBlock(pixelsPerBlock: number): ToolError | null {
+    try {
+      const globals = readGlobals();
+      const project = globals.Project ?? globals.Blockbench?.project ?? null;
+      if (!project) {
+        return { code: 'invalid_state', message: PROJECT_NO_ACTIVE };
+      }
+      const projectRecord = project as Record<string, unknown>;
+      projectRecord.bbmcpUvPixelsPerBlock = pixelsPerBlock;
+      const bbmcpRaw = projectRecord.bbmcp;
+      const bbmcp =
+        bbmcpRaw && typeof bbmcpRaw === 'object'
+          ? (bbmcpRaw as Record<string, unknown>)
+          : ({}) as Record<string, unknown>;
+      bbmcp.uvPixelsPerBlock = pixelsPerBlock;
+      bbmcp.uv_pixels_per_block = pixelsPerBlock;
+      projectRecord.bbmcp = bbmcp;
+      this.log.info('project uv pixels per block set', { pixelsPerBlock });
+      return null;
+    } catch (err) {
+      const message = errorMessage(err, 'project uv pixels per block update failed');
+      this.log.error('project uv pixels per block update error', { message });
+      return toolError('unknown', message, { reason: 'adapter_exception', context: 'project_uv_pixels_per_block' });
+    }
+  }
 }
 
 const tryAutoConfirmProjectDialog = (

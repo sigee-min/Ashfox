@@ -135,6 +135,7 @@ export interface SessionState {
   formatId?: string | null;
   name: string | null;
   dirty?: boolean;
+  uvPixelsPerBlock?: number;
   bones: TrackedBone[];
   cubes: TrackedCube[];
   textures: TrackedTexture[];

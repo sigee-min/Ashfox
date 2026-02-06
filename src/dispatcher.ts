@@ -99,6 +99,7 @@ export class ToolDispatcherImpl implements Dispatcher {
       const handler = this.getHandler(name);
       if (handler) {
         const response = handler(payload);
+        this.refreshViewportAfterMutation(name, response);
         const withRevision = appendMissingRevisionNextActions(name, payload, response);
         recordTrace(this.traceRecorder, this.log, name, payload, withRevision);
         return withRevision;
@@ -230,6 +231,18 @@ export class ToolDispatcherImpl implements Dispatcher {
       return err('not_implemented', 'Trace log export is unavailable.', { reason: 'trace_log_service_missing' });
     }
     return toToolResponse(this.traceLogService.exportTraceLog(payload));
+  }
+
+  private refreshViewportAfterMutation<T>(tool: ToolName, response: ToolResponse<T>): void {
+    if (!response.ok) return;
+    try {
+      this.service.notifyViewportRefresh(tool);
+    } catch (err) {
+      this.log.warn('viewport refresh dispatch failed', {
+        tool,
+        message: errorMessage(err, 'viewport refresh dispatch failed')
+      });
+    }
   }
 
 }

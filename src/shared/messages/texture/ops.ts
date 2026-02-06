@@ -33,7 +33,7 @@ export const TEXTURE_PREFLIGHT_BOUNDS_EXCEED = (
 ) => `UV bounds exceed textureResolution (${uvWidth}x${uvHeight} > ${texWidth}x${texHeight}).`;
 export const TEXTURE_PREFLIGHT_OVERLAP_WARNING = (name: string, count: number, example: string) =>
   `UV overlap detected for texture "${name}" (${count} conflict${count === 1 ? '' : 's'}).` +
-  ` Only identical UV rects may overlap.` +
+  ` UV rects must not overlap.` +
   example;
 export const TEXTURE_PREFLIGHT_SMALL_UV_RECTS = (name: string, count: number, minArea: number, example: string) =>
   `UV rects are very small for texture "${name}" (${count} rect${count === 1 ? '' : 's'}). ` +

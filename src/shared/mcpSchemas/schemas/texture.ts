@@ -1,12 +1,6 @@
 import type { JsonSchema } from '../types';
-import { TEXTURE_PRESET_NAMES, UV_PAINT_MAPPINGS, UV_PAINT_SCOPES } from '../../texturePolicy';
+import { UV_PAINT_MAPPINGS, UV_PAINT_SCOPES } from '../../texturePolicy';
 import { cubeFaceSchema, numberArray } from './common';
-
-export const texturePresetSchema: JsonSchema = {
-  type: 'string',
-  description: 'Texture preset id. Use generate_texture_preset for 64x64+ to avoid large payloads.',
-  enum: TEXTURE_PRESET_NAMES
-};
 
 export const textureOpSchema: JsonSchema = {
   type: 'object',
@@ -16,7 +10,7 @@ export const textureOpSchema: JsonSchema = {
     op: {
       type: 'string',
       enum: ['set_pixel', 'fill_rect', 'draw_rect', 'draw_line'],
-      description: 'Drawing operation. Coordinates are in source-canvas pixels (not UV pixels). Prefer presets for large textures.'
+      description: 'Drawing operation. Coordinates are in source-canvas pixels (not UV pixels).'
     },
     x: { type: 'number', description: 'X coordinate (pixels).' },
     y: { type: 'number', description: 'Y coordinate (pixels).' },
@@ -34,7 +28,7 @@ export const textureOpSchema: JsonSchema = {
 export const uvPaintSchema: JsonSchema = {
   type: 'object',
   description:
-    'UV-first painting config. A source canvas is painted using ops/background, then stretched/tiled into target UV rects. Full-texture painting is not supported; map UVs to the full texture for whole-coverage results.',
+    'UV-first painting config. A source canvas is painted using ops/background, then stretched/tiled into target UV rects. Omit uvPaint to paint the full texture.',
   additionalProperties: false,
   properties: {
     scope: {

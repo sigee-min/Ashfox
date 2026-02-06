@@ -52,6 +52,7 @@ export interface ProjectState {
   dirty?: boolean;
   revision: string;
   textureResolution?: { width: number; height: number };
+  uvPixelsPerBlock?: number;
   textureUsage?: ProjectTextureUsage;
   counts: {
     bones: number;

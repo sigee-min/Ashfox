@@ -12,6 +12,7 @@ export const ensureProjectBaseProperties: Record<string, JsonSchema> = {
   onMismatch: { type: 'string', enum: ENSURE_PROJECT_ON_MISMATCH },
   onMissing: { type: 'string', enum: ENSURE_PROJECT_ON_MISSING },
   confirmDiscard: { type: 'boolean' },
+  uvPixelsPerBlock: { type: 'number' },
   dialog: { type: 'object', additionalProperties: true }
 };
 

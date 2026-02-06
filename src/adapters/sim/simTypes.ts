@@ -10,6 +10,7 @@ export type BlockbenchSimProject = {
   format: FormatKind | null;
   formatId?: string | null;
   textureResolution: TextureResolution | null;
+  uvPixelsPerBlock?: number;
 };
 
 export type BlockbenchSimState = {

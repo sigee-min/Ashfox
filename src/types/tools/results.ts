@@ -47,19 +47,35 @@ export interface ReloadPluginsResult {
   method: 'devReload';
 }
 
-export interface GenerateTexturePresetResult {
+export interface PaintTextureResult {
   width: number;
   height: number;
-  seed: number;
-  coverage: {
-    opaquePixels: number;
-    totalPixels: number;
-    opaqueRatio: number;
-    bounds?: { x1: number; y1: number; x2: number; y2: number };
-  };
   uvUsageId?: string;
-  note?: string;
-  textures?: Array<{ name: string; width: number; height: number }>;
+  opsApplied?: number;
+}
+
+export interface PaintFacesResult {
+  textureName: string;
+  width: number;
+  height: number;
+  targets: number;
+  opsApplied?: number;
+  changedPixels?: number;
+  resolvedSource?: {
+    coordSpace: 'face' | 'texture';
+    width: number;
+    height: number;
+    faceUv?: [number, number, number, number];
+  };
+  recovery?: {
+    applied: boolean;
+    attempts: Array<{
+      reason: string;
+      steps: number;
+      before?: { width: number; height: number };
+      after?: { width: number; height: number };
+    }>;
+  };
 }
 
 export interface AutoUvAtlasResult {
@@ -139,10 +155,13 @@ export interface DeletedTarget {
   name: string;
 }
 
-export interface AnimationKeyframeResult {
+export interface AnimationFramePoseResult {
   clip: string;
   clipId?: string;
-  bone: string;
+  frame: number;
+  time: number;
+  bones: number;
+  channels: number;
 }
 
 export interface AnimationTriggerResult {
@@ -157,20 +176,10 @@ export interface ToolResultMap {
   read_texture: ReadTextureResult;
   export_trace_log: ExportTraceLogResult;
   reload_plugins: ReloadPluginsResult;
-  generate_texture_preset: WithState<GenerateTexturePresetResult>;
-  auto_uv_atlas: WithState<AutoUvAtlasResult>;
-  set_project_texture_resolution: WithState<SetProjectTextureResolutionResult>;
-  preflight_texture: PreflightTextureResult;
+  paint_faces: WithState<PaintFacesResult>;
   ensure_project: WithState<EnsureProjectResult>;
   delete_texture: WithState<{ id: string; name: string }>;
   assign_texture: WithState<{ textureId?: string; textureName: string; cubeCount: number; faces?: CubeFaceDirection[] }>;
-  set_face_uv: WithState<{
-    cubeId?: string;
-    cubeName: string;
-    faces: CubeFaceDirection[];
-    warnings?: string[];
-    warningCodes?: string[];
-  }>;
   add_bone: WithState<{ id: string; name: string }>;
   update_bone: WithState<{ id: string; name: string }>;
   delete_bone: WithState<{ id: string; name: string; removedBones: number; removedCubes: number; deleted: DeletedTarget[] }>;
@@ -180,7 +189,7 @@ export interface ToolResultMap {
   create_animation_clip: WithState<AnimationClipResult>;
   update_animation_clip: WithState<AnimationClipResult>;
   delete_animation_clip: WithState<AnimationClipResult & { deleted: DeletedTarget[] }>;
-  set_keyframes: WithState<AnimationKeyframeResult>;
+  set_frame_pose: WithState<AnimationFramePoseResult>;
   set_trigger_keyframes: WithState<AnimationTriggerResult>;
   export: WithState<ExportResult>;
   render_preview: WithState<RenderPreviewResult>;

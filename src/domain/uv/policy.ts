@@ -2,14 +2,20 @@ import type { Cube, CubeFaceDirection } from '../model';
 
 export type UvPolicyConfig = {
   modelUnitsPerBlock: number;
+  pixelsPerBlock?: number;
   scaleTolerance: number;
   tinyThreshold: number;
+  autoMaxResolution?: number;
+  autoMaxRetries?: number;
 };
 
 export const DEFAULT_UV_POLICY: UvPolicyConfig = {
   modelUnitsPerBlock: 16,
+  pixelsPerBlock: 16,
   scaleTolerance: 0.1,
-  tinyThreshold: 2
+  tinyThreshold: 2,
+  autoMaxResolution: 0,
+  autoMaxRetries: 2
 };
 
 type FaceDimensions = {
@@ -17,7 +23,24 @@ type FaceDimensions = {
   height: number;
 };
 
+export type ExpectedUvSize = {
+  width: number;
+  height: number;
+  exceedsTexture: boolean;
+};
+
 const abs = (value: number) => Math.abs(value);
+
+export const normalizePixelsPerBlock = (value: unknown, fallback?: number): number | undefined => {
+  const numeric = typeof value === 'number' ? value : Number(value);
+  if (Number.isFinite(numeric) && numeric > 0) {
+    return Math.trunc(numeric);
+  }
+  if (Number.isFinite(fallback) && (fallback ?? 0) > 0) {
+    return Math.trunc(fallback as number);
+  }
+  return undefined;
+};
 
 export const getFaceDimensions = (cube: Cube, face: CubeFaceDirection): FaceDimensions => {
   const sizeX = abs(cube.to[0] - cube.from[0]);
@@ -36,22 +59,43 @@ export const getFaceDimensions = (cube: Cube, face: CubeFaceDirection): FaceDime
   }
 };
 
+const computeExpectedUvSizeInternal = (
+  face: FaceDimensions,
+  texture: { width: number; height: number },
+  policy: UvPolicyConfig,
+  options?: { allowOverflow?: boolean }
+): ExpectedUvSize | null => {
+  if (policy.modelUnitsPerBlock <= 0) return null;
+  if (texture.width <= 0 || texture.height <= 0) return null;
+  const pixelsPerBlock = normalizePixelsPerBlock(policy.pixelsPerBlock);
+  const baseWidth = pixelsPerBlock ?? texture.width;
+  const baseHeight = pixelsPerBlock ?? texture.height;
+  const ppuX = baseWidth / policy.modelUnitsPerBlock;
+  const ppuY = baseHeight / policy.modelUnitsPerBlock;
+  const width = Math.round(face.width * ppuX);
+  const height = Math.round(face.height * ppuY);
+  if (!Number.isFinite(width) || !Number.isFinite(height)) return null;
+  if (width <= 0 || height <= 0) return null;
+  const exceedsTexture = width > texture.width || height > texture.height;
+  if (exceedsTexture && !options?.allowOverflow) return null;
+  return { width, height, exceedsTexture };
+};
+
 export const computeExpectedUvSize = (
   face: FaceDimensions,
   texture: { width: number; height: number },
   policy: UvPolicyConfig
 ): { width: number; height: number } | null => {
-  if (policy.modelUnitsPerBlock <= 0) return null;
-  if (texture.width <= 0 || texture.height <= 0) return null;
-  const ppuX = texture.width / policy.modelUnitsPerBlock;
-  const ppuY = texture.height / policy.modelUnitsPerBlock;
-  const width = Math.round(face.width * ppuX);
-  const height = Math.round(face.height * ppuY);
-  if (!Number.isFinite(width) || !Number.isFinite(height)) return null;
-  if (width <= 0 || height <= 0) return null;
-  if (width > texture.width || height > texture.height) return null;
-  return { width, height };
+  const result = computeExpectedUvSizeInternal(face, texture, policy, { allowOverflow: false });
+  if (!result) return null;
+  return { width: result.width, height: result.height };
 };
+
+export const computeExpectedUvSizeWithOverflow = (
+  face: FaceDimensions,
+  texture: { width: number; height: number },
+  policy: UvPolicyConfig
+): ExpectedUvSize | null => computeExpectedUvSizeInternal(face, texture, policy, { allowOverflow: true });
 
 export const shouldAutoFixUv = (
   actualUv: [number, number, number, number] | undefined,

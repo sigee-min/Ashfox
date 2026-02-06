@@ -22,7 +22,8 @@ const createDispatcher = () => {
     reloadPlugins: (_payload: unknown) => ok({ ok: true }),
     renderPreview: (_payload: unknown) => ok({ kind: 'single', frameCount: 1, images: [] }),
     validate: (_payload: unknown) => ok({ findings: [] }),
-    exportModel: (_payload: unknown) => ok({ path: 'out' })
+    exportModel: (_payload: unknown) => ok({ path: 'out' }),
+    notifyViewportRefresh: (_tool: unknown) => undefined
   };
   const session = unsafePayload({});
   const capabilities = unsafePayload(service.listCapabilities());

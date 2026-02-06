@@ -16,13 +16,10 @@ export type BaseResult<K extends ToolName> = K extends ToolName
   : never;
 
 export const STATEFUL_TOOL_NAMES = [
-  'generate_texture_preset',
-  'auto_uv_atlas',
-  'set_project_texture_resolution',
+  'paint_faces',
   'ensure_project',
   'delete_texture',
   'assign_texture',
-  'set_face_uv',
   'add_bone',
   'update_bone',
   'delete_bone',
@@ -32,7 +29,7 @@ export const STATEFUL_TOOL_NAMES = [
   'create_animation_clip',
   'update_animation_clip',
   'delete_animation_clip',
-  'set_keyframes',
+  'set_frame_pose',
   'set_trigger_keyframes',
   'export',
   'validate',
@@ -60,13 +57,10 @@ export const createHandlerMaps = (args: {
   handleRenderPreview: (payload: ToolPayloadMap['render_preview']) => ToolResponse<ToolResultMap['render_preview']>;
 }) => {
   const statefulRetryHandlers: StatefulHandlerMap = {
-    generate_texture_preset: (payload) => args.service.generateTexturePreset(payload),
-    auto_uv_atlas: (payload) => args.service.autoUvAtlas(payload),
-    set_project_texture_resolution: (payload) => args.service.setProjectTextureResolution(payload),
+    paint_faces: (payload) => args.service.paintFaces(payload),
     ensure_project: (payload) => args.service.ensureProject(payload),
     delete_texture: (payload) => args.service.deleteTexture(payload),
     assign_texture: (payload) => args.service.assignTexture(payload),
-    set_face_uv: (payload) => args.service.setFaceUv(payload),
     add_bone: (payload) => args.service.addBone(payload),
     update_bone: (payload) => args.service.updateBone(payload),
     delete_bone: (payload) => args.service.deleteBone(payload),
@@ -76,7 +70,7 @@ export const createHandlerMaps = (args: {
     create_animation_clip: (payload) => args.service.createAnimationClip(payload),
     update_animation_clip: (payload) => args.service.updateAnimationClip(payload),
     delete_animation_clip: (payload) => args.service.deleteAnimationClip(payload),
-    set_keyframes: (payload) => args.service.setKeyframes(payload),
+    set_frame_pose: (payload) => args.service.setFramePose(payload),
     set_trigger_keyframes: (payload) => args.service.setTriggerKeyframes(payload)
   };
 
@@ -103,12 +97,6 @@ export const createHandlerMaps = (args: {
       args.logGuardFailure('export_trace_log', payload, args.handleTraceLogExport(payload)),
     reload_plugins: (payload) =>
       args.logGuardFailure('reload_plugins', payload, toToolResponse(args.service.reloadPlugins(payload))),
-    preflight_texture: (payload) =>
-      args.logGuardFailure(
-        'preflight_texture',
-        payload,
-        toToolResponse(args.service.preflightTexture(payload))
-      ),
     render_preview: (payload) => args.logGuardFailure('render_preview', payload, args.handleRenderPreview(payload))
   };
 

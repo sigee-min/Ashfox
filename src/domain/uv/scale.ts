@@ -1,5 +1,5 @@
 import type { Cube, CubeFaceDirection, TextureUsage } from '../model';
-import { UvPolicyConfig, computeExpectedUvSize, getFaceDimensions } from './policy';
+import { UvPolicyConfig, computeExpectedUvSizeWithOverflow, getFaceDimensions } from './policy';
 
 export type UvScaleIssue = {
   textureId?: string;
@@ -12,7 +12,7 @@ export type UvScaleIssue = {
     actual: { width: number; height: number };
     expected: { width: number; height: number };
     ratio?: { width: number; height: number };
-    reason?: 'tiny' | 'ratio';
+    reason?: 'tiny' | 'ratio' | 'exceeds';
     uv: [number, number, number, number];
   };
 };
@@ -52,11 +52,18 @@ export const findUvScaleIssues = (
         const uv = face.uv;
         if (!uv) return;
         totalFaces += 1;
-        const expected = computeExpectedUvSize(getFaceDimensions(target, face.face), entryResolution, policy);
-        if (!expected) return;
+        const expectedRes = computeExpectedUvSizeWithOverflow(
+          getFaceDimensions(target, face.face),
+          entryResolution,
+          policy
+        );
+        if (!expectedRes) return;
+        const expected = { width: expectedRes.width, height: expectedRes.height };
         const actualWidth = Math.abs(uv[2] - uv[0]);
         const actualHeight = Math.abs(uv[3] - uv[1]);
-        const mismatch = getScaleMismatchReason(actualWidth, actualHeight, expected, policy, scaleTarget);
+        const mismatch = expectedRes.exceedsTexture
+          ? 'exceeds'
+          : getScaleMismatchReason(actualWidth, actualHeight, expected, policy, scaleTarget);
         if (!mismatch) return;
         mismatchCount += 1;
         mismatchedFaces += 1;
@@ -128,8 +135,9 @@ const resolveScaleTarget = (
     cube.faces.forEach((face) => {
       const uv = face.uv;
       if (!uv) return;
-      const expected = computeExpectedUvSize(getFaceDimensions(target, face.face), resolution, policy);
-      if (!expected) return;
+      const expectedRes = computeExpectedUvSizeWithOverflow(getFaceDimensions(target, face.face), resolution, policy);
+      if (!expectedRes || expectedRes.exceedsTexture) return;
+      const expected = { width: expectedRes.width, height: expectedRes.height };
       const actualWidth = Math.abs(uv[2] - uv[0]);
       const actualHeight = Math.abs(uv[3] - uv[1]);
       if (actualWidth <= policy.tinyThreshold || actualHeight <= policy.tinyThreshold) return;

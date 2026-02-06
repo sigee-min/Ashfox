@@ -4,6 +4,7 @@ import type { FormatKind } from '../../src/types';
 import { BlockbenchSimEngine } from '../../src/adapters/sim/BlockbenchSimEngine';
 import { ProjectSession } from '../../src/session';
 import { ToolService } from '../../src/usecases/ToolService';
+import type { ToolPolicies } from '../../src/usecases/policies';
 import { ToolDispatcherImpl } from '../../src/dispatcher';
 import { DEFAULT_LIMITS, noopLog } from './helpers';
 import {
@@ -20,6 +21,7 @@ export type SimHarnessProject = {
   name?: string | null;
   formatId?: string | null;
   textureResolution?: { width: number; height: number } | null;
+  uvPixelsPerBlock?: number;
   cubes?: Array<{
     id?: string;
     name: string;
@@ -30,13 +32,17 @@ export type SimHarnessProject = {
   textures?: Array<{ id?: string; name: string; width?: number; height?: number }>;
 };
 
-export const createBlockbenchSimHarness = (project: SimHarnessProject) => {
+export const createBlockbenchSimHarness = (
+  project: SimHarnessProject,
+  options?: { policies?: ToolPolicies }
+) => {
   const engine = new BlockbenchSimEngine({
     project: {
       format: project.format,
       name: project.name ?? null,
       formatId: project.formatId ?? null,
-      textureResolution: project.textureResolution ?? null
+      textureResolution: project.textureResolution ?? null,
+      ...(project.uvPixelsPerBlock !== undefined ? { uvPixelsPerBlock: project.uvPixelsPerBlock } : {})
     }
   });
 
@@ -68,7 +74,7 @@ export const createBlockbenchSimHarness = (project: SimHarnessProject) => {
     textureRenderer: createTextureRendererStub(),
     tmpStore: createTmpStoreStub(),
     resources: createResourceStoreStub(),
-    policies: { autoAttachActiveProject: true }
+    policies: { autoAttachActiveProject: true, ...(options?.policies ?? {}) }
   });
 
   const dispatcher = new ToolDispatcherImpl(session, capabilities, service, {
@@ -90,6 +96,7 @@ export const createBlockbenchSimHarness = (project: SimHarnessProject) => {
     name: project.name ?? null,
     formatId: project.formatId ?? null,
     textureResolution: project.textureResolution ?? null,
+    uvPixelsPerBlock: project.uvPixelsPerBlock,
     cubes: project.cubes ?? [],
     textures: project.textures ?? []
   });

@@ -96,4 +96,62 @@ const usageTiny: TextureUsage = {
 const tinyResult = findUvScaleIssues(usageTiny, [tinyCube], { width: 16, height: 16 }, DEFAULT_UV_POLICY);
 assert.equal(tinyResult.mismatchedFaces, 0);
 
+const oversizePolicy = { ...DEFAULT_UV_POLICY, pixelsPerBlock: 64 };
+const oversizeCube: Cube = {
+  id: 'oversize',
+  name: 'oversize',
+  from: [0, 0, 0],
+  to: [16, 16, 1],
+  bone: 'root'
+};
+
+const usageOversize: TextureUsage = {
+  textures: [
+    {
+      name: 'oversize-tex',
+      cubeCount: 1,
+      faceCount: 1,
+      cubes: [{ id: oversizeCube.id, name: oversizeCube.name, faces: [{ face: 'north', uv: [0, 0, 16, 16] }] }]
+    }
+  ]
+};
+
+const oversizeResult = findUvScaleIssues(usageOversize, [oversizeCube], { width: 16, height: 16 }, oversizePolicy);
+assert.equal(oversizeResult.issues.length, 1);
+assert.equal(oversizeResult.issues[0].example?.reason, 'exceeds');
+
+const normalCube: Cube = {
+  id: 'normal',
+  name: 'normal',
+  from: [0, 0, 0],
+  to: [8, 8, 1],
+  bone: 'root'
+};
+
+const largeCube: Cube = {
+  id: 'large',
+  name: 'large',
+  from: [0, 0, 0],
+  to: [64, 64, 1],
+  bone: 'root'
+};
+
+const usageMixed: TextureUsage = {
+  textures: [
+    {
+      name: 'mixed',
+      cubeCount: 2,
+      faceCount: 2,
+      cubes: [
+        { id: normalCube.id, name: normalCube.name, faces: [{ face: 'north', uv: [0, 0, 8, 8] }] },
+        { id: largeCube.id, name: largeCube.name, faces: [{ face: 'north', uv: [0, 0, 16, 16] }] }
+      ]
+    }
+  ]
+};
+
+const mixedResult = findUvScaleIssues(usageMixed, [normalCube, largeCube], { width: 32, height: 32 }, DEFAULT_UV_POLICY);
+assert.equal(mixedResult.mismatchedFaces, 1);
+assert.equal(mixedResult.issues[0].example?.reason, 'exceeds');
+
 

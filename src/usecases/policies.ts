@@ -14,14 +14,18 @@ export interface ToolPolicies {
   autoIncludeDiff?: boolean;
   requireRevision?: boolean;
   autoRetryRevision?: boolean;
+  autoCreateProjectTexture?: boolean;
   animationTimePolicy?: {
     timeEpsilon?: number;
     triggerDedupeByValue?: boolean;
   };
   uvPolicy?: {
     modelUnitsPerBlock?: number;
+    pixelsPerBlock?: number;
     scaleTolerance?: number;
     tinyThreshold?: number;
+    autoMaxResolution?: number;
+    autoMaxRetries?: number;
   };
 }
 

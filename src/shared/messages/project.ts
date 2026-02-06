@@ -17,6 +17,7 @@ export const PROJECT_FORMAT_ID_MISSING = (format: string) => `No matching format
 export const PROJECT_FORMAT_ID_MISSING_FIX = 'Set a format ID override in settings or choose another format.';
 export const PROJECT_NAME_REQUIRED_FIX = 'Provide a non-empty project name.';
 export const PROJECT_FORMAT_UNSUPPORTED_FIX = 'Use list_capabilities to pick an enabled format.';
+export const PROJECT_UV_PIXELS_PER_BLOCK_INVALID = 'uvPixelsPerBlock must be a positive number.';
 
 export const EXPORT_FORMAT_NOT_ENABLED = (format: string) => `Export format not enabled: ${format}`;
 export const EXPORT_FORMAT_MISMATCH = 'Export format does not match active format';

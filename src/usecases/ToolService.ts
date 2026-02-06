@@ -1,18 +1,27 @@
 import {
   Capabilities,
   AutoUvAtlasResult,
+  AutoUvAtlasPayload,
   FormatKind,
-  GenerateTexturePresetResult,
+  PaintTextureResult,
+  PaintTexturePayload,
+  PaintFacesResult,
+  PaintFacesPayload,
   PreflightTextureResult,
+  PreflightTexturePayload,
   ProjectDiff,
   ProjectState,
   ProjectStateDetail,
   ReadTextureResult,
   RenderPreviewResult,
+  SetFaceUvPayload,
+  SetProjectTextureResolutionPayload,
+  ToolName,
   ToolError,
   ToolPayloadMap
 } from '../types';
 import { CubeFaceDirection, TextureSource, TriggerChannel } from '../ports/editor';
+import { NOOP_VIEWPORT_REFRESHER, type ViewportRefresherPort } from '../ports/viewportRefresher';
 import { TextureMeta } from '../types/texture';
 import { UsecaseResult } from './result';
 import { UvPolicyConfig } from '../domain/uv/policy';
@@ -21,6 +30,7 @@ import type { PolicyContextLike, RevisionContextLike } from './contextTypes';
 import { runReloadPlugins } from './toolService/reloadPlugins';
 import { createToolServiceContext, ToolServiceDeps } from './toolServiceContext';
 import { createToolServiceFacades, ToolServiceFacades } from './toolServiceFacades';
+import { getViewportEffectForTool } from '../shared/tooling/viewportEffects';
 
 export class ToolService {
   private readonly capabilities: Capabilities;
@@ -28,6 +38,7 @@ export class ToolService {
   private readonly policyContext: PolicyContextLike;
   private readonly revisionContext: RevisionContextLike;
   private readonly facades: ToolServiceFacades;
+  private readonly viewportRefresher: ViewportRefresherPort;
 
   constructor(deps: ToolServiceDeps) {
     this.capabilities = deps.capabilities;
@@ -36,6 +47,7 @@ export class ToolService {
     this.policyContext = context.policyContext;
     this.revisionContext = context.revisionContext;
     this.facades = createToolServiceFacades(context);
+    this.viewportRefresher = deps.viewportRefresher ?? NOOP_VIEWPORT_REFRESHER;
   }
 
   listCapabilities(): Capabilities {
@@ -73,12 +85,18 @@ export class ToolService {
     return runReloadPlugins(this.host, payload);
   }
 
+  notifyViewportRefresh(tool: ToolName): void {
+    const effect = getViewportEffectForTool(tool);
+    if (effect === 'none') return;
+    this.viewportRefresher.refresh({ effect, source: tool });
+  }
+
   getProjectTextureResolution(): { width: number; height: number } | null {
     return this.facades.texture.getProjectTextureResolution();
   }
 
   setProjectTextureResolution(
-    payload: ToolPayloadMap['set_project_texture_resolution']
+    payload: SetProjectTextureResolutionPayload
   ): UsecaseResult<{ width: number; height: number }> {
     return this.facades.texture.setProjectTextureResolution(payload);
   }
@@ -96,15 +114,19 @@ export class ToolService {
     return this.facades.texture.getTextureUsage(payload);
   }
 
-  preflightTexture(payload: ToolPayloadMap['preflight_texture']): UsecaseResult<PreflightTextureResult> {
+  preflightTexture(payload: PreflightTexturePayload): UsecaseResult<PreflightTextureResult> {
     return this.facades.texture.preflightTexture(payload);
   }
 
-  generateTexturePreset(payload: ToolPayloadMap['generate_texture_preset']): UsecaseResult<GenerateTexturePresetResult> {
-    return this.facades.texture.generateTexturePreset(payload);
+  paintTexture(payload: PaintTexturePayload): UsecaseResult<PaintTextureResult> {
+    return this.facades.texture.paintTexture(payload);
   }
 
-  autoUvAtlas(payload: ToolPayloadMap['auto_uv_atlas']): UsecaseResult<AutoUvAtlasResult> {
+  paintFaces(payload: PaintFacesPayload): UsecaseResult<PaintFacesResult> {
+    return this.facades.texture.paintFaces(payload);
+  }
+
+  autoUvAtlas(payload: AutoUvAtlasPayload): UsecaseResult<AutoUvAtlasResult> {
     return this.facades.texture.autoUvAtlas(payload);
   }
 
@@ -125,7 +147,7 @@ export class ToolService {
   createProject(
     format: Capabilities['formats'][number]['format'],
     name: string,
-    options?: { confirmDiscard?: boolean; dialog?: Record<string, unknown>; ifRevision?: string }
+    options?: { confirmDiscard?: boolean; dialog?: Record<string, unknown>; ifRevision?: string; uvPixelsPerBlock?: number }
   ): UsecaseResult<{ id: string; format: FormatKind; name: string }> {
     return this.facades.project.createProject(format, name, options);
   }
@@ -172,7 +194,7 @@ export class ToolService {
   }
 
   setFaceUv(
-    payload: ToolPayloadMap['set_face_uv']
+    payload: SetFaceUvPayload
   ): UsecaseResult<{ cubeId?: string; cubeName: string; faces: CubeFaceDirection[] }> {
     return this.facades.texture.setFaceUv(payload);
   }
@@ -227,8 +249,10 @@ export class ToolService {
     return this.facades.animation.deleteAnimationClip(payload);
   }
 
-  setKeyframes(payload: ToolPayloadMap['set_keyframes']): UsecaseResult<{ clip: string; clipId?: string; bone: string }> {
-    return this.facades.animation.setKeyframes(payload);
+  setFramePose(
+    payload: ToolPayloadMap['set_frame_pose']
+  ): UsecaseResult<{ clip: string; clipId?: string; frame: number; time: number; bones: number; channels: number }> {
+    return this.facades.animation.setFramePose(payload);
   }
 
   setTriggerKeyframes(

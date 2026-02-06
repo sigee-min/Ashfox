@@ -44,6 +44,10 @@ export class ProjectSession {
     this.store.setAnimationTimePolicy(policy);
   }
 
+  setUvPixelsPerBlock(value?: number) {
+    this.store.setUvPixelsPerBlock(value);
+  }
+
   ensureActive(): ToolError | null {
     return this.store.ensureActive();
   }

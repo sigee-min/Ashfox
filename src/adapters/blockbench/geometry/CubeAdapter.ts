@@ -82,6 +82,7 @@ export class BlockbenchCubeAdapter {
       if (params.bone && !parent) {
         return { code: 'invalid_payload', message: MODEL_BONE_NOT_FOUND(params.bone) };
       }
+      let applyError: ToolError | null = null;
       withUndo({ elements: true, outliner: true }, 'Update cube', () => {
         if (params.newName && params.newName !== target.name) {
           renameEntity(target, params.newName);
@@ -90,10 +91,34 @@ export class BlockbenchCubeAdapter {
         if (wantsManualUv) {
           enforceManualUvMode(target, { preserve: true });
         }
-        if (params.from) assignVec3(target, 'from', params.from);
-        if (params.to) assignVec3(target, 'to', params.to);
-        if (params.origin) assignVec3(target, 'origin', params.origin);
-        if (params.rotation) assignVec3(target, 'rotation', params.rotation);
+        if (params.from) {
+          assignVec3(target, 'from', params.from);
+          if (!matchesVec3(readVec3(target.from), params.from)) {
+            applyError = buildVecMismatchError('from', params.from, readVec3(target.from));
+            return;
+          }
+        }
+        if (params.to) {
+          assignVec3(target, 'to', params.to);
+          if (!matchesVec3(readVec3(target.to), params.to)) {
+            applyError = buildVecMismatchError('to', params.to, readVec3(target.to));
+            return;
+          }
+        }
+        if (params.origin) {
+          assignVec3(target, 'origin', params.origin);
+          if (!matchesVec3(readVec3(target.origin), params.origin)) {
+            applyError = buildVecMismatchError('origin', params.origin, readVec3(target.origin));
+            return;
+          }
+        }
+        if (params.rotation) {
+          assignVec3(target, 'rotation', params.rotation);
+          if (!matchesVec3(readVec3(target.rotation), params.rotation)) {
+            applyError = buildVecMismatchError('rotation', params.rotation, readVec3(target.rotation));
+            return;
+          }
+        }
         if (params.uv) assignVec2(target, 'uv_offset', params.uv);
         if (params.uvOffset) assignVec2(target, 'uv_offset', params.uvOffset);
         if (typeof params.inflate === 'number') target.inflate = params.inflate;
@@ -112,6 +137,7 @@ export class BlockbenchCubeAdapter {
           moveOutlinerNode(target, parent ?? null, outliner, this.log, 'cube');
         }
       });
+      if (applyError) return applyError;
       this.log.info('cube updated', { name: params.name, newName: params.newName, bone: params.bone });
       return null;
     });
@@ -135,3 +161,43 @@ export class BlockbenchCubeAdapter {
     });
   }
 }
+
+type Vec3 = [number, number, number];
+type Vec3Like = Vec3 | { x?: number; y?: number; z?: number } | null | undefined;
+
+const readVec3 = (value: Vec3Like): Vec3 | null => {
+  if (!value) return null;
+  if (Array.isArray(value)) {
+    const x = Number(value[0]);
+    const y = Number(value[1]);
+    const z = Number(value[2]);
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return null;
+    return [x, y, z];
+  }
+  const x = Number(value.x);
+  const y = Number(value.y);
+  const z = Number(value.z);
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return null;
+  return [x, y, z];
+};
+
+const matchesVec3 = (actual: Vec3 | null, expected: Vec3): boolean => {
+  if (!actual) return false;
+  const epsilon = 1e-6;
+  return (
+    Math.abs(actual[0] - expected[0]) <= epsilon &&
+    Math.abs(actual[1] - expected[1]) <= epsilon &&
+    Math.abs(actual[2] - expected[2]) <= epsilon
+  );
+};
+
+const buildVecMismatchError = (field: string, expected: Vec3, actual: Vec3 | null): ToolError => ({
+  code: 'invalid_state',
+  message: `Cube update verification failed for ${field}.`,
+  details: {
+    reason: 'cube_vector_mismatch',
+    field,
+    expected,
+    actual
+  }
+});

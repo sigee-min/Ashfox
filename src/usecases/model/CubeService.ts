@@ -1,5 +1,4 @@
-import type { ToolError } from '../../types';
-import type { Capabilities } from '../../types';
+import type { AutoUvAtlasPayload, AutoUvAtlasResult, Capabilities, ToolError } from '../../types';
 import type { EditorPort } from '../../ports/editor';
 import type { ProjectSession, SessionState } from '../../session';
 import { ok, fail, type UsecaseResult } from '../result';
@@ -28,6 +27,8 @@ export interface CubeServiceDeps {
   getSnapshot: () => SessionState;
   ensureActive: () => ToolError | null;
   ensureRevisionMatch: (ifRevision?: string) => ToolError | null;
+  autoUvAtlas?: (payload: AutoUvAtlasPayload) => UsecaseResult<AutoUvAtlasResult>;
+  runWithoutRevisionGuard?: <T>(fn: () => T) => T;
 }
 
 export class CubeService {
@@ -37,6 +38,8 @@ export class CubeService {
   private readonly getSnapshot: () => SessionState;
   private readonly ensureActive: () => ToolError | null;
   private readonly ensureRevisionMatch: (ifRevision?: string) => ToolError | null;
+  private readonly autoUvAtlas?: (payload: AutoUvAtlasPayload) => UsecaseResult<AutoUvAtlasResult>;
+  private readonly runWithoutRevisionGuard?: <T>(fn: () => T) => T;
 
   constructor(deps: CubeServiceDeps) {
     this.session = deps.session;
@@ -45,6 +48,8 @@ export class CubeService {
     this.getSnapshot = deps.getSnapshot;
     this.ensureActive = deps.ensureActive;
     this.ensureRevisionMatch = deps.ensureRevisionMatch;
+    this.autoUvAtlas = deps.autoUvAtlas;
+    this.runWithoutRevisionGuard = deps.runWithoutRevisionGuard;
   }
 
   addCube(payload: {
@@ -123,6 +128,7 @@ export class CubeService {
           boxUv: payload.boxUv,
           uvOffset: payload.uvOffset
         });
+        this.maybeAutoUvAtlas(true);
         return ok({ id, name: payload.name });
       }
     );
@@ -195,6 +201,7 @@ export class CubeService {
           uvOffset: payload.uvOffset
         });
         if (err) return fail(err);
+        const geometryChanged = this.isGeometryChanged(target, payload);
         this.session.updateCube(targetName, {
           id: targetId,
           newName: payload.newName,
@@ -209,6 +216,7 @@ export class CubeService {
           boxUv: payload.boxUv,
           uvOffset: payload.uvOffset
         });
+        this.maybeAutoUvAtlas(geometryChanged);
         return ok({ id: targetId, name: payload.newName ?? targetName });
       }
     );
@@ -308,6 +316,27 @@ export class CubeService {
     return ok(boneUpdate);
   }
 
+  private isGeometryChanged(
+    target: { from: [number, number, number]; to: [number, number, number]; inflate?: number },
+    payload: { from?: [number, number, number]; to?: [number, number, number]; inflate?: number }
+  ): boolean {
+    if (payload.from && !vecEqual(payload.from, target.from)) return true;
+    if (payload.to && !vecEqual(payload.to, target.to)) return true;
+    if (payload.inflate !== undefined && payload.inflate !== target.inflate) return true;
+    return false;
+  }
+
+  private maybeAutoUvAtlas(shouldRun: boolean) {
+    if (!shouldRun) return;
+    if (!this.autoUvAtlas || !this.runWithoutRevisionGuard) return;
+    const textures = this.editor.listTextures();
+    if (!textures || textures.length === 0) return;
+    this.runWithoutRevisionGuard(() => {
+      const res = this.autoUvAtlas!({ apply: true });
+      return res;
+    });
+  }
+
   private ensureRootBone(snapshot: SessionState): ToolError | null {
     if (snapshot.bones.some((bone) => bone.name === 'root')) return null;
     const err = this.editor.addBone({ name: 'root', pivot: [0, 0, 0] });
@@ -316,3 +345,6 @@ export class CubeService {
     return null;
   }
 }
+
+const vecEqual = (a: [number, number, number], b: [number, number, number]) =>
+  a[0] === b[0] && a[1] === b[1] && a[2] === b[2];

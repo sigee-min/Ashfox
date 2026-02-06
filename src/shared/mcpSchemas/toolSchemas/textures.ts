@@ -1,47 +1,45 @@
 import type { JsonSchema } from '../types';
 import { cubeFaceSchema, metaProps, revisionProp } from '../schemas/common';
-import { faceUvSchema } from '../schemas/model';
-import { texturePresetSchema, uvPaintSchema } from '../schemas/texture';
+import { textureOpSchema } from '../schemas/texture';
 
 export const textureToolSchemas: Record<string, JsonSchema> = {
-  generate_texture_preset: {
+  paint_faces: {
     type: 'object',
-    required: ['preset', 'width', 'height', 'uvUsageId'],
+    required: ['target', 'op'],
     additionalProperties: false,
+    anyOf: [
+      {
+        type: 'object',
+        properties: {
+          coordSpace: { type: 'string', enum: ['face'] }
+        }
+      },
+      {
+        type: 'object',
+        required: ['coordSpace', 'width', 'height'],
+        properties: {
+          coordSpace: { type: 'string', enum: ['texture'] }
+        }
+      }
+    ],
     properties: {
-      preset: texturePresetSchema,
+      textureId: { type: 'string' },
+      textureName: { type: 'string' },
+      target: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['face'],
+        properties: {
+          cubeId: { type: 'string' },
+          cubeName: { type: 'string' },
+          face: cubeFaceSchema
+        }
+      },
+      coordSpace: { type: 'string', enum: ['face', 'texture'] },
       width: { type: 'number' },
       height: { type: 'number' },
-      uvUsageId: { type: 'string' },
-      name: { type: 'string' },
-      targetId: { type: 'string' },
-      targetName: { type: 'string' },
-      mode: { type: 'string', enum: ['create', 'update'] },
-      seed: { type: 'number' },
-      palette: { type: 'array', items: { type: 'string' } },
-      uvPaint: uvPaintSchema,
-      ifRevision: revisionProp,
-      ...metaProps
-    }
-  },
-  auto_uv_atlas: {
-    type: 'object',
-    additionalProperties: false,
-    properties: {
-      padding: { type: 'number' },
-      apply: { type: 'boolean' },
-      ifRevision: revisionProp,
-      ...metaProps
-    }
-  },
-  set_project_texture_resolution: {
-    type: 'object',
-    required: ['width', 'height'],
-    additionalProperties: false,
-    properties: {
-      width: { type: 'number' },
-      height: { type: 'number' },
-      modifyUv: { type: 'boolean' },
+      op: textureOpSchema,
+      mapping: { type: 'string', enum: ['stretch', 'tile'] },
       ifRevision: revisionProp,
       ...metaProps
     }
@@ -73,18 +71,6 @@ export const textureToolSchemas: Record<string, JsonSchema> = {
         description: 'Limit to these cube names. If cubeIds is also provided, both must match.'
       },
       faces: { type: 'array', minItems: 1, items: cubeFaceSchema },
-      ifRevision: revisionProp,
-      ...metaProps
-    }
-  },
-  set_face_uv: {
-    type: 'object',
-    required: ['faces'],
-    additionalProperties: false,
-    properties: {
-      cubeId: { type: 'string' },
-      cubeName: { type: 'string' },
-      faces: faceUvSchema,
       ifRevision: revisionProp,
       ...metaProps
     }

@@ -11,6 +11,7 @@ const createEmptyState = (policy = resolveAnimationTimePolicy()): SessionState =
   formatId: null,
   name: null,
   dirty: undefined,
+  uvPixelsPerBlock: undefined,
   bones: [],
   cubes: [],
   textures: [],
@@ -31,6 +32,7 @@ export class SessionStateStore {
       formatId: formatId ?? null,
       name,
       dirty: undefined,
+      uvPixelsPerBlock: undefined,
       bones: [],
       cubes: [],
       textures: [],
@@ -55,6 +57,7 @@ export class SessionStateStore {
       formatId: snapshot.formatId ?? null,
       name,
       dirty: snapshot.dirty,
+      uvPixelsPerBlock: snapshot.uvPixelsPerBlock,
       bones: [...snapshot.bones],
       cubes: [...snapshot.cubes],
       textures: [...snapshot.textures],
@@ -99,5 +102,9 @@ export class SessionStateStore {
       ...this.state.animationTimePolicy,
       ...policy
     });
+  }
+
+  setUvPixelsPerBlock(value?: number) {
+    this.state.uvPixelsPerBlock = value;
   }
 }

@@ -241,6 +241,7 @@ export interface EditorPort {
   listTextures: () => TextureStat[];
   getProjectTextureResolution: () => TextureResolution | null;
   setProjectTextureResolution: (width: number, height: number, modifyUv?: boolean) => ToolError | null;
+  setProjectUvPixelsPerBlock: (pixelsPerBlock: number) => ToolError | null;
   getTextureUsage: (params: TextureUsageQuery) => { result?: TextureUsageResult; error?: ToolError };
 }
 

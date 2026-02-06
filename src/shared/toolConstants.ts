@@ -1,6 +1,10 @@
-import { TEXTURE_PRESET_NAMES } from './texturePolicy';
-
-export const FORMAT_KINDS = ['Java Block/Item', 'geckolib', 'animated_java'] as const;
+export const FORMAT_KINDS = [
+  'Java Block/Item',
+  'geckolib',
+  'animated_java',
+  'Image',
+  'Generic Model'
+] as const;
 export type FormatKind = typeof FORMAT_KINDS[number];
 
 export const PROJECT_STATE_DETAILS = ['summary', 'full'] as const;
@@ -12,14 +16,10 @@ export const TOOL_NAMES = [
   'read_texture',
   'export_trace_log',
   'reload_plugins',
-  'generate_texture_preset',
-  'auto_uv_atlas',
-  'set_project_texture_resolution',
-  'preflight_texture',
+  'paint_faces',
   'ensure_project',
   'delete_texture',
   'assign_texture',
-  'set_face_uv',
   'add_bone',
   'update_bone',
   'delete_bone',
@@ -29,7 +29,7 @@ export const TOOL_NAMES = [
   'create_animation_clip',
   'update_animation_clip',
   'delete_animation_clip',
-  'set_keyframes',
+  'set_frame_pose',
   'set_trigger_keyframes',
   'export',
   'render_preview',
@@ -48,9 +48,6 @@ export type EnsureProjectOnMissing = typeof ENSURE_PROJECT_ON_MISSING[number];
 
 export const ENSURE_PROJECT_ACTIONS = ['ensure', 'delete'] as const;
 export type EnsureProjectAction = typeof ENSURE_PROJECT_ACTIONS[number];
-
-export { TEXTURE_PRESET_NAMES } from './texturePolicy';
-export type TexturePresetName = typeof TEXTURE_PRESET_NAMES[number];
 
 export const CUBE_FACE_DIRECTIONS = ['north', 'south', 'east', 'west', 'up', 'down'] as const;
 export type CubeFaceDirection = typeof CUBE_FACE_DIRECTIONS[number];

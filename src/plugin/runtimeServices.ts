@@ -10,6 +10,7 @@ import { BlockbenchFormats } from '../adapters/blockbench/BlockbenchFormats';
 import { BlockbenchSnapshot } from '../adapters/blockbench/BlockbenchSnapshot';
 import { BlockbenchExport } from '../adapters/blockbench/BlockbenchExport';
 import { BlockbenchTextureRenderer } from '../adapters/blockbench/BlockbenchTextureRenderer';
+import { BlockbenchViewportRefresher } from '../adapters/blockbench/BlockbenchViewportRefresher';
 import { BlockbenchTraceLogWriter } from '../adapters/blockbench/BlockbenchTraceLogWriter';
 import type { FormatOverrides } from '../domain/formats';
 import { InMemoryResourceStore } from '../adapters/resources/resourceStore';
@@ -57,14 +58,7 @@ type BuildRuntimeServicesOptions = {
   };
 };
 
-const DEFAULT_DETAIL_OPS = [
-  'auto_uv_atlas',
-  'preflight_texture',
-  'generate_texture_preset',
-  'set_project_texture_resolution',
-  'assign_texture',
-  'set_face_uv'
-];
+const DEFAULT_DETAIL_OPS = ['paint_faces', 'assign_texture', 'add_cube', 'update_cube'];
 
 export const buildRuntimeServices = (options: BuildRuntimeServicesOptions): RuntimeServices => {
   const session = new ProjectSession();
@@ -74,6 +68,7 @@ export const buildRuntimeServices = (options: BuildRuntimeServicesOptions): Runt
   const snapshot = new BlockbenchSnapshot(options.logger);
   const exporter = new BlockbenchExport(options.logger);
   const textureRenderer = new BlockbenchTextureRenderer();
+  const viewportRefresher = new BlockbenchViewportRefresher(options.logger);
   const tmpStore = new LocalTmpStore();
   const previewCapability = {
     pngOnly: true,
@@ -98,6 +93,7 @@ export const buildRuntimeServices = (options: BuildRuntimeServicesOptions): Runt
     snapshot,
     exporter,
     textureRenderer,
+    viewportRefresher,
     tmpStore,
     resources: options.resourceStore,
     policies: options.policies

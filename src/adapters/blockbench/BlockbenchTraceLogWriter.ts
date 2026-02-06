@@ -1,6 +1,8 @@
 import type { TraceLogWriteMode, TraceLogWriter } from '../../ports/traceLog';
 import type { ToolError } from '../../types';
+import { errorMessage } from '../../logging';
 import { toolError } from '../../shared/tooling/toolResponse';
+import { loadNativeModule } from '../../shared/nativeModules';
 import { readBlockbenchGlobals } from '../../types/blockbench';
 
 export type BlockbenchTraceLogWriterOptions = {
@@ -10,6 +12,14 @@ export type BlockbenchTraceLogWriterOptions = {
 };
 
 const DEFAULT_FILE_NAME = 'bbmcp-trace.ndjson';
+
+type FsModule = {
+  statSync?: (path: string) => { isDirectory?: () => boolean };
+};
+
+type PathModule = {
+  join?: (...parts: string[]) => string;
+};
 
 export class BlockbenchTraceLogWriter implements TraceLogWriter {
   private readonly mode: TraceLogWriteMode;
@@ -31,7 +41,15 @@ export class BlockbenchTraceLogWriter implements TraceLogWriter {
       });
     }
 
-    const resolvedPath = resolveTraceLogPath(this.destPath, this.fileName, globals.Project ?? blockbench.project ?? null);
+    const fs = loadNativeModule<FsModule>('fs', { optional: true });
+    const path = loadNativeModule<PathModule>('path', { optional: true });
+    const resolvedPath = resolveTraceLogPath(
+      this.destPath,
+      this.fileName,
+      globals.Project ?? blockbench.project ?? null,
+      fs,
+      path
+    );
     const writeFile = blockbench.writeFile;
     const exportFile = blockbench.exportFile;
     const canWriteFile = typeof writeFile === 'function';
@@ -39,8 +57,9 @@ export class BlockbenchTraceLogWriter implements TraceLogWriter {
 
     if (this.mode === 'writeFile' || this.mode === 'auto') {
       if (canWriteFile && resolvedPath) {
-        writeFile(resolvedPath, { content: text, savetype: 'text' });
-        return null;
+        const writeErr = writeTraceLogFile(writeFile, resolvedPath, text, this.fileName, path);
+        if (!writeErr) return null;
+        if (this.mode === 'writeFile') return writeErr;
       }
       if (this.mode === 'writeFile') {
         return toolError('not_implemented', 'Blockbench writeFile unavailable or path not resolved.', {
@@ -64,15 +83,78 @@ export class BlockbenchTraceLogWriter implements TraceLogWriter {
 const resolveTraceLogPath = (
   destPath: string | undefined,
   fileName: string,
-  project: { save_path?: string; export_path?: string } | null
+  project: { save_path?: string; export_path?: string } | null,
+  fs?: FsModule | null,
+  path?: PathModule | null
 ): string | null => {
-  if (destPath && destPath.trim().length > 0) return destPath;
+  const trimmed = String(destPath ?? '').trim();
+  if (trimmed.length > 0) {
+    if (isDirectoryPath(trimmed, fs)) return joinPath(trimmed, fileName, path);
+    return trimmed;
+  }
   const savePath = project?.save_path ?? project?.export_path ?? '';
   if (!savePath) return null;
   const normalized = savePath.replace(/\\/g, '/');
   const dir = normalized.includes('/') ? normalized.slice(0, normalized.lastIndexOf('/')) : '';
   if (!dir) return null;
-  return `${dir}/${fileName}`;
+  return joinPath(dir, fileName, path);
+};
+
+const isDirectoryPath = (value: string, fs?: FsModule | null): boolean => {
+  if (/[\\/]$/.test(value)) return true;
+  const statSync = fs?.statSync;
+  if (typeof statSync !== 'function') return false;
+  try {
+    const stat = statSync(value);
+    return typeof stat?.isDirectory === 'function' && Boolean(stat.isDirectory());
+  } catch (_err) {
+    return false;
+  }
+};
+
+const joinPath = (base: string, fileName: string, path?: PathModule | null): string => {
+  const join = path?.join;
+  if (typeof join === 'function') return join(base, fileName);
+  return `${base.replace(/[\\/]+$/, '')}/${fileName}`;
+};
+
+const isEisdirError = (err: unknown): boolean => {
+  const code = (err as { code?: unknown })?.code;
+  if (code === 'EISDIR') return true;
+  const message = errorMessage(err, '').toLowerCase();
+  return message.includes('eisdir') || message.includes('is a directory');
+};
+
+const writeTraceLogFile = (
+  writeFile: (path: string, options: { content: string; savetype: 'text' | 'image' }) => void,
+  resolvedPath: string,
+  text: string,
+  fileName: string,
+  path?: PathModule | null
+): ToolError | null => {
+  try {
+    writeFile(resolvedPath, { content: text, savetype: 'text' });
+    return null;
+  } catch (err) {
+    if (isEisdirError(err)) {
+      const fallbackPath = joinPath(resolvedPath, fileName, path);
+      if (fallbackPath !== resolvedPath) {
+        try {
+          writeFile(fallbackPath, { content: text, savetype: 'text' });
+          return null;
+        } catch (retryErr) {
+          return toolError('io_error', errorMessage(retryErr, 'Trace log write failed.'), {
+            reason: 'trace_log_write_failed',
+            path: fallbackPath
+          });
+        }
+      }
+    }
+    return toolError('io_error', errorMessage(err, 'Trace log write failed.'), {
+      reason: 'trace_log_write_failed',
+      path: resolvedPath
+    });
+  }
 };
 
 

@@ -8,13 +8,14 @@ import type {
 } from '../../../ports/editor';
 import { errorMessage, type Logger } from '../../../logging';
 import { toolError } from '../../../shared/tooling/toolResponse';
-import type { AnimationClip } from '../../../types/blockbench';
+import type { AnimationClip, AnimatorInstance, GroupInstance, PreviewItem } from '../../../types/blockbench';
 import { keyframeTimeBucket } from '../../../domain/animation/keyframes';
 import { normalizeAnimationChannel, normalizeTriggerChannel } from '../../../domain/animation/channels';
 import {
   ADAPTER_ANIMATION_API_UNAVAILABLE,
   ADAPTER_ANIMATOR_API_UNAVAILABLE,
-  ANIMATION_CLIP_NOT_FOUND
+  ANIMATION_CLIP_NOT_FOUND,
+  MODEL_BONE_NOT_FOUND
 } from '../../../shared/messages';
 import {
   assignAnimationLength,
@@ -24,6 +25,7 @@ import {
   renameEntity,
   withUndo
 } from '../blockbenchUtils';
+import { findGroup } from '../outlinerLookup';
 
 type KeyframeLike = {
   set?: (key: string, value: unknown) => void;
@@ -35,11 +37,19 @@ type KeyframeLike = {
 };
 
 type AnimatorLike = {
-  createKeyframe?: (channel: string, time: number) => KeyframeLike | undefined;
+  createKeyframe?: (
+    value: unknown,
+    time?: number,
+    channel?: string,
+    undo?: boolean,
+    select?: boolean
+  ) => KeyframeLike | undefined;
+  addKeyframe?: (data: unknown, uuid?: string) => KeyframeLike | undefined;
   keyframes?: unknown[];
 };
 
-type AnimatorConstructor = new (name: string, clip: AnimationClip) => AnimatorLike;
+type BoneAnimatorConstructor = new (uuid: string, clip: AnimationClip) => AnimatorLike;
+type EffectAnimatorConstructor = new (clip: AnimationClip) => AnimatorLike;
 
 export const runCreateAnimation = (log: Logger, params: AnimationCommand): ToolError | null => {
   try {
@@ -132,35 +142,56 @@ export const runDeleteAnimation = (log: Logger, params: DeleteAnimationCommand):
 
 export const runSetKeyframes = (log: Logger, params: KeyframeCommand): ToolError | null => {
   try {
-    const { Animator: AnimatorCtor } = readGlobals();
-    if (typeof AnimatorCtor === 'undefined') {
-      return { code: 'not_implemented', message: ADAPTER_ANIMATOR_API_UNAVAILABLE };
-    }
     const animations = getAnimations();
     const clip = findAnimationRef(params.clip, params.clipId, animations);
     if (!clip) {
       const label = params.clipId ?? params.clip;
       return { code: 'invalid_payload', message: ANIMATION_CLIP_NOT_FOUND(label) };
     }
+    const group = findGroup(params.bone);
+    if (!group) {
+      return { code: 'invalid_payload', message: MODEL_BONE_NOT_FOUND(params.bone) };
+    }
+    const canResolve =
+      typeof clip.getBoneAnimator === 'function' ||
+      typeof (group as { constructor?: { animator?: unknown } }).constructor?.animator === 'function';
+    if (!canResolve) {
+      return { code: 'not_implemented', message: ADAPTER_ANIMATOR_API_UNAVAILABLE };
+    }
+    let resolveError: ToolError | null = null;
     withUndo({ animations: true, keyframes: [] }, 'Set keyframes', () => {
       if (clip) {
-        const animators = (clip.animators ?? {}) as Record<string, unknown>;
-        const existing = animators[params.bone] as unknown;
-        const animator = resolveAnimator(existing, AnimatorCtor, params.bone, clip);
-        animators[params.bone] = animator;
-        clip.animators = animators;
-        params.keys.forEach((k) => {
+        clip.select?.();
+        const animator = resolveBoneAnimator(clip, group);
+        if (!animator) {
+          resolveError = { code: 'not_implemented', message: ADAPTER_ANIMATOR_API_UNAVAILABLE };
+          return;
+        }
+        const channelKey = resolveAnimationChannelKey(params.channel);
+        sanitizeClipKeyframes(clip);
+        sanitizeAnimatorKeyframes(animator);
+        sanitizeAnimatorChannels(animator, ['rotation', 'position', 'scale']);
+        for (const k of params.keys) {
           const matches = findExistingKeyframes(animator, params.channel, k.time, params.timePolicy);
           if (matches.length > 0) {
             matches.forEach((keyframe) => applyKeyframeValue(keyframe, k.value, k.interp));
-            return;
+            continue;
           }
-          const keyframe = animator.createKeyframe?.(params.channel, k.time);
-          if (!keyframe) return;
-          applyKeyframeValue(keyframe, k.value, k.interp);
-        });
+          const result = createTransformKeyframe(animator, channelKey, k.time, k.value, k.interp);
+          if (result.error) {
+            resolveError = toolError('unknown', errorMessage(result.error, 'keyframe create failed'), {
+              reason: 'adapter_exception',
+              context: 'keyframe_set'
+            });
+            break;
+          }
+          if (!result.keyframe) continue;
+          applyKeyframeValue(result.keyframe, k.value, k.interp);
+        }
       }
     });
+    if (resolveError) return resolveError;
+    refreshAnimationViewport(log, clip, lastKeyframeTime(params.keys));
     log.info('keyframes set', { clip: params.clip, bone: params.bone, count: params.keys.length });
     return null;
   } catch (err) {
@@ -172,29 +203,42 @@ export const runSetKeyframes = (log: Logger, params: KeyframeCommand): ToolError
 
 export const runSetTriggerKeyframes = (log: Logger, params: TriggerKeyframeCommand): ToolError | null => {
   try {
-    const { Animator: AnimatorCtor } = readGlobals();
-    if (typeof AnimatorCtor === 'undefined') {
-      return { code: 'not_implemented', message: ADAPTER_ANIMATOR_API_UNAVAILABLE };
-    }
+    const globals = readGlobals();
     const animations = getAnimations();
     const clip = findAnimationRef(params.clip, params.clipId, animations);
     if (!clip) {
       const label = params.clipId ?? params.clip;
       return { code: 'invalid_payload', message: ANIMATION_CLIP_NOT_FOUND(label) };
     }
+    const canResolve =
+      hasEffectAnimator(clip) || typeof globals.EffectAnimator === 'function';
+    if (!canResolve) {
+      return { code: 'not_implemented', message: ADAPTER_ANIMATOR_API_UNAVAILABLE };
+    }
+    let resolveError: ToolError | null = null;
     withUndo({ animations: true, keyframes: [] }, 'Set trigger keyframes', () => {
-      const animator = resolveEffectAnimator(clip, AnimatorCtor);
+      clip.select?.();
+      const animator = resolveEffectAnimator(clip, globals);
+      if (!animator) {
+        resolveError = { code: 'not_implemented', message: ADAPTER_ANIMATOR_API_UNAVAILABLE };
+        return;
+      }
+      sanitizeClipKeyframes(clip);
+      sanitizeAnimatorKeyframes(animator);
+      sanitizeAnimatorChannel(animator, params.channel);
       params.keys.forEach((k) => {
         const matches = findExistingKeyframes(animator, params.channel, k.time, params.timePolicy);
         if (matches.length > 0) {
           matches.forEach((keyframe) => applyTriggerValue(keyframe, k.value));
           return;
         }
-        const kf = animator?.createKeyframe?.(params.channel, k.time);
+        const kf = animator?.createKeyframe?.(undefined, k.time, params.channel, false, false);
         if (!kf) return;
         applyTriggerValue(kf, k.value);
       });
     });
+    if (resolveError) return resolveError;
+    refreshAnimationViewport(log, clip, lastTriggerKeyframeTime(params.keys));
     log.info('trigger keyframes set', { clip: params.clip, channel: params.channel, count: params.keys.length });
     return null;
   } catch (err) {
@@ -216,7 +260,7 @@ const findAnimationRef = (name?: string, id?: string, list?: AnimationClip[]): A
 
 const EFFECT_ANIMATOR_KEYS = ['effects', 'effect', 'timeline', 'events'];
 
-const resolveEffectAnimator = (clip: AnimationClip, AnimatorCtor: unknown): AnimatorLike => {
+const resolveEffectAnimator = (clip: AnimationClip, globals: ReturnType<typeof readGlobals>): AnimatorLike | null => {
   const animators = (clip.animators ?? {}) as Record<string, unknown>;
   const existingKey = Object.keys(animators).find((key) =>
     EFFECT_ANIMATOR_KEYS.some((candidate) => key.toLowerCase().includes(candidate))
@@ -225,22 +269,182 @@ const resolveEffectAnimator = (clip: AnimationClip, AnimatorCtor: unknown): Anim
     const existing = animators[existingKey];
     if (existing && typeof existing === 'object') return existing as AnimatorLike;
   }
-  const ctor = AnimatorCtor as AnimatorConstructor;
-  const animator = new ctor('effects', clip);
+  const ctor = globals.EffectAnimator as EffectAnimatorConstructor | undefined;
+  if (typeof ctor !== 'function') return null;
+  const animator = new ctor(clip);
   animators.effects = animator;
   clip.animators = animators;
   return animator;
 };
 
-const resolveAnimator = (
-  existing: unknown,
-  AnimatorCtor: unknown,
-  name: string,
-  clip: AnimationClip
-): AnimatorLike => {
-  if (existing && typeof existing === 'object') return existing as AnimatorLike;
-  const ctor = AnimatorCtor as AnimatorConstructor;
-  return new ctor(name, clip);
+const resolveBoneAnimator = (clip: AnimationClip, group: GroupInstance): AnimatorLike | null => {
+  if (typeof clip.getBoneAnimator === 'function') {
+    const animator = clip.getBoneAnimator(group) as AnimatorInstance | undefined;
+    if (animator && typeof animator === 'object') return animator as AnimatorLike;
+  }
+  const ctor = (group as { constructor?: { animator?: unknown } }).constructor?.animator;
+  if (typeof ctor !== 'function') return null;
+  const uuid = group.uuid ?? group.id ?? group.name ?? 'bone';
+  const animator = new (ctor as BoneAnimatorConstructor)(uuid, clip);
+  const animators = (clip.animators ?? {}) as Record<string, unknown>;
+  animators[String(uuid)] = animator;
+  clip.animators = animators;
+  return animator as AnimatorLike;
+};
+
+const hasEffectAnimator = (clip: AnimationClip): boolean => {
+  const animators = (clip.animators ?? {}) as Record<string, unknown>;
+  return Object.keys(animators).some((key) =>
+    EFFECT_ANIMATOR_KEYS.some((candidate) => key.toLowerCase().includes(candidate))
+  );
+};
+
+const resolveAnimationChannelKey = (channel: KeyframeCommand['channel']): string => {
+  switch (channel) {
+    case 'rot':
+      return 'rotation';
+    case 'pos':
+      return 'position';
+    case 'scale':
+      return 'scale';
+  }
+};
+
+const sanitizeKeyframeList = (list: unknown[] | undefined) => {
+  if (!Array.isArray(list)) return;
+  for (let i = list.length - 1; i >= 0; i -= 1) {
+    const entry = list[i];
+    if (!entry || typeof entry !== 'object') {
+      try {
+        list.splice(i, 1);
+      } catch (err) {
+        void err;
+        break;
+      }
+    }
+  }
+};
+
+const sanitizeAnimatorChannel = (animator: AnimatorLike, channel: string) => {
+  const record = animator as Record<string, unknown>;
+  sanitizeKeyframeList(record[channel] as unknown[] | undefined);
+};
+
+const sanitizeAnimatorChannels = (animator: AnimatorLike, channels: string[]) => {
+  channels.forEach((channel) => sanitizeAnimatorChannel(animator, channel));
+};
+
+const sanitizeAnimatorKeyframes = (animator: AnimatorLike) => {
+  sanitizeKeyframeList(animator.keyframes);
+};
+
+const sanitizeClipKeyframes = (clip: AnimationClip) => {
+  sanitizeKeyframeList(clip.keyframes);
+};
+
+const buildKeyframeValueData = (value: unknown, interp?: string): Record<string, unknown> => {
+  const data: Record<string, unknown> = {};
+  if (Array.isArray(value)) {
+    const normalized = value.map((entry) =>
+      typeof entry === 'number' && Number.isFinite(entry) ? entry : 0
+    );
+    data.data_points = [{ x: normalized[0], y: normalized[1], z: normalized[2] }];
+  }
+  if (interp) data.interpolation = interp;
+  return data;
+};
+
+const lastKeyframeTime = (keys: Array<{ time: number }>): number | undefined => {
+  if (!Array.isArray(keys) || keys.length === 0) return undefined;
+  const last = keys[keys.length - 1];
+  const time = Number(last?.time);
+  return Number.isFinite(time) ? time : undefined;
+};
+
+const lastTriggerKeyframeTime = (
+  keys: Array<{ time: number; value: string | string[] | Record<string, unknown> }>
+): number | undefined => {
+  if (!Array.isArray(keys) || keys.length === 0) return undefined;
+  const last = keys[keys.length - 1];
+  const time = Number(last?.time);
+  return Number.isFinite(time) ? time : undefined;
+};
+
+const createTransformKeyframe = (
+  animator: AnimatorLike,
+  channel: string,
+  time: number,
+  value: unknown,
+  interp?: string
+): { keyframe?: KeyframeLike; error?: unknown } => {
+  const valueData = buildKeyframeValueData(value, interp);
+  const numericTime = Number(time);
+  const resolvedTime = Number.isFinite(numericTime) ? numericTime : 0;
+  let lastError: unknown = null;
+
+  if (typeof animator.createKeyframe === 'function') {
+    const createValue = Array.isArray(value) ? value : valueData;
+    try {
+      const created = animator.createKeyframe(createValue, resolvedTime, channel, false, false);
+      if (created) return { keyframe: created };
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  if (typeof animator.addKeyframe === 'function') {
+    try {
+      const created = animator.addKeyframe({ channel, time: resolvedTime, ...valueData });
+      if (created) return { keyframe: created };
+    } catch (err) {
+      if (!lastError) lastError = err;
+    }
+  }
+
+  if (lastError) return { error: lastError };
+  return {};
+};
+
+const refreshAnimationViewport = (log: Logger, clip: AnimationClip | null, time?: number) => {
+  if (!clip) return;
+  const globals = readGlobals();
+  try {
+    if (typeof clip.select === 'function') {
+      clip.select();
+    } else if (globals.Animation?.selected) {
+      globals.Animation.selected = clip;
+    }
+    if (Number.isFinite(Number(time))) {
+      const resolvedTime = Number(time);
+      if (typeof clip.setTime === 'function') {
+        clip.setTime(resolvedTime);
+      } else if (typeof globals.Animator?.setTime === 'function') {
+        globals.Animator.setTime(resolvedTime);
+      } else if (typeof globals.Animator?.preview === 'function') {
+        globals.Animator.preview(resolvedTime);
+      } else if (typeof clip.time === 'number') {
+        clip.time = resolvedTime;
+      }
+    }
+    renderViewportPreview(globals);
+  } catch (err) {
+    log.warn('animation viewport refresh failed', { message: errorMessage(err, 'viewport refresh failed') });
+  }
+};
+
+const renderViewportPreview = (globals: ReturnType<typeof readGlobals>): void => {
+  const registry = globals.Preview;
+  const selected = registry?.selected;
+  const all = registry?.all ?? [];
+  const candidates = [selected, ...all].filter((entry): entry is PreviewItem => Boolean(entry));
+  const rendered = new Set<PreviewItem>();
+  for (const preview of candidates) {
+    if (rendered.has(preview)) continue;
+    if (typeof preview.render === 'function') {
+      preview.render();
+      rendered.add(preview);
+    }
+  }
 };
 
 const readKeyframeTime = (keyframe: KeyframeLike): number => {
@@ -285,15 +489,20 @@ const findExistingKeyframes = (
 };
 
 const applyKeyframeValue = (keyframe: KeyframeLike, value: unknown, interp?: string) => {
-  const normalized = Array.isArray(value)
-    ? value.map((entry) => (typeof entry === 'number' && Number.isFinite(entry) ? entry : 0))
-    : value;
+  if (!Array.isArray(value)) return;
+  const normalized = value.map((entry) => (typeof entry === 'number' && Number.isFinite(entry) ? entry : 0));
   if (keyframe.set) {
-    keyframe.set('data_points', normalized);
-    if (interp) keyframe.set('interpolation', interp);
-    return;
+    keyframe.set('x', normalized[0]);
+    keyframe.set('y', normalized[1]);
+    keyframe.set('z', normalized[2]);
+  } else if (Array.isArray(keyframe.data_points) && keyframe.data_points[0]) {
+    const point = keyframe.data_points[0] as Record<string, unknown>;
+    point.x = normalized[0];
+    point.y = normalized[1];
+    point.z = normalized[2];
+  } else {
+    keyframe.data_points = [{ x: normalized[0], y: normalized[1], z: normalized[2] }];
   }
-  keyframe.data_points = normalized;
   if (interp) keyframe.interpolation = interp;
 };
 

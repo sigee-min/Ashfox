@@ -31,6 +31,10 @@ export class PolicyContext implements PolicyContextLike {
     return this.policies.autoAttachActiveProject;
   }
 
+  getAutoCreateProjectTexture(): boolean | undefined {
+    return this.policies.autoCreateProjectTexture ?? true;
+  }
+
   isRevisionRequired(): boolean {
     return Boolean(this.policies.requireRevision);
   }
@@ -43,10 +47,14 @@ export class PolicyContext implements PolicyContextLike {
     const policy = this.policies.uvPolicy;
     return {
       modelUnitsPerBlock: policy?.modelUnitsPerBlock ?? DEFAULT_UV_POLICY.modelUnitsPerBlock,
+      pixelsPerBlock: policy?.pixelsPerBlock ?? DEFAULT_UV_POLICY.pixelsPerBlock,
       scaleTolerance: policy?.scaleTolerance ?? DEFAULT_UV_POLICY.scaleTolerance,
-      tinyThreshold: policy?.tinyThreshold ?? DEFAULT_UV_POLICY.tinyThreshold
+      tinyThreshold: policy?.tinyThreshold ?? DEFAULT_UV_POLICY.tinyThreshold,
+      autoMaxResolution: policy?.autoMaxResolution ?? DEFAULT_UV_POLICY.autoMaxResolution,
+      autoMaxRetries: policy?.autoMaxRetries ?? DEFAULT_UV_POLICY.autoMaxRetries
     };
   }
+
 }
 
 

@@ -12,7 +12,7 @@ export const TEXTURE_SIZE_MISMATCH_MESSAGE = (
   actualHeight: number
 ) => `Texture size mismatch for "${name}": expected ${expectedWidth}x${expectedHeight}, got ${actualWidth}x${actualHeight}.`;
 export const TEXTURE_SIZE_MISMATCH_FIX =
-  'Call set_project_texture_resolution to match the target size, then recreate the texture.';
+  'Adjust the project texture resolution to match the target size, then recreate the texture.';
 
 export const TEXTURE_SPECS_REQUIRED = 'textures array is required';
 export const TEXTURE_SPEC_MODE_UNSUPPORTED = (mode: string, label: string) =>
@@ -31,28 +31,57 @@ export const TEXTURE_OP_INVALID = (label: string) => `invalid texture op (${labe
 export const TEXTURE_DETECT_NO_CHANGE_REQUIRES_EXISTING = (label: string) =>
   `detectNoChange requires useExisting=true (${label})`;
 
-export const TEXTURE_PRESET_MODE_INVALID = (mode: string) => `texture preset mode invalid (${mode})`;
-export const TEXTURE_PRESET_NAME_REQUIRED = 'texture preset name is required';
-export const TEXTURE_PRESET_TARGET_REQUIRED = 'texture preset targetId or targetName is required';
-export const TEXTURE_PRESET_UV_USAGE_REQUIRED = 'uvUsageId is required for texture presets';
-export const TEXTURE_PRESET_SIZE_EXCEEDS_MAX = (maxSize: number) =>
-  `texture preset size exceeds max ${maxSize}`;
-export const TEXTURE_PRESET_SIZE_EXCEEDS_MAX_FIX = (maxSize: number) =>
+export const TEXTURE_PAINT_MODE_INVALID = (mode: string) => `texture paint mode invalid (${mode})`;
+export const TEXTURE_PAINT_NAME_REQUIRED = 'texture name is required for paint_texture';
+export const TEXTURE_PAINT_TARGET_REQUIRED = 'paint_texture requires targetId or targetName for update';
+export const TEXTURE_PAINT_UV_USAGE_REQUIRED = 'uvUsageId is required when uvPaint is provided';
+export const TEXTURE_PAINT_SIZE_EXCEEDS_MAX = (maxSize: number) =>
+  `texture paint size exceeds max ${maxSize}`;
+export const TEXTURE_PAINT_SIZE_EXCEEDS_MAX_FIX = (maxSize: number) =>
   `Use width/height <= ${maxSize}.`;
+export const TEXTURE_OP_COLOR_INVALID = (label: string) => `invalid texture op color (${label})`;
+export const TEXTURE_OP_LINEWIDTH_INVALID = (label: string) => `invalid texture op lineWidth (${label})`;
 export const TEXTURE_RENDERER_UNAVAILABLE = 'texture renderer unavailable';
 export const TEXTURE_RENDERER_NO_IMAGE = 'texture renderer did not return an image';
+export const TEXTURE_FACES_TARGET_REQUIRED = 'paint_faces requires a target object.';
+export const TEXTURE_FACES_TARGET_SELECTOR_REQUIRED = 'paint_faces target must include cubeId or cubeName.';
+export const TEXTURE_FACES_FACE_REQUIRED = 'paint_faces target.face is required.';
+export const TEXTURE_FACES_TEXTURE_REQUIRED =
+  'paint_faces requires textureName or textureId when project name is unavailable.';
+export const TEXTURE_FACES_SIZE_REQUIRED =
+  'paint_faces requires width/height when texture size is unavailable.';
+export const TEXTURE_FACES_OP_REQUIRED = 'paint_faces requires a single op object.';
+export const TEXTURE_FACES_COORD_SPACE_INVALID =
+  'paint_faces coordSpace must be "face" or "texture".';
+export const TEXTURE_FACES_TEXTURE_COORDS_SIZE_REQUIRED =
+  'paint_faces with coordSpace="texture" requires width and height.';
+export const TEXTURE_FACES_TEXTURE_COORDS_SIZE_MISMATCH = (
+  expectedWidth: number,
+  expectedHeight: number,
+  width: number,
+  height: number
+) =>
+  `paint_faces coordSpace="texture" requires width/height to match texture size (${expectedWidth}x${expectedHeight}); got ${width}x${height}.`;
+export const TEXTURE_FACES_OP_OUTSIDE_SOURCE = (
+  coordSpace: 'face' | 'texture',
+  width: number,
+  height: number
+) =>
+  `paint_faces op is outside the ${coordSpace} source bounds (${width}x${height}); adjust op coordinates or source size.`;
+export const TEXTURE_FACES_OP_OUTSIDE_TARGET =
+  'paint_faces op does not overlap the target face UV bounds in texture coordinate space.';
 
 export const UV_PAINT_USAGE_MISSING = (label: string) =>
-  `No UV usage found for texture "${label}". Assign the texture and set per-face UVs before uvPaint.`;
+  `No UV usage found for texture "${label}". Assign the texture and retry after UV refresh.`;
 export const UV_PAINT_TARGET_CUBES_NOT_FOUND = (label: string) =>
   `uvPaint target cubes not found for texture "${label}".`;
 export const UV_PAINT_TARGET_FACES_NOT_FOUND = (label: string) =>
   `uvPaint target faces not found for texture "${label}".`;
 export const UV_PAINT_NO_RECTS = (label: string) =>
-  `No UV rects found for texture "${label}". Set per-face UVs before uvPaint.`;
+  `No UV rects found for texture "${label}". Assign the texture and retry after UV refresh.`;
 export const UV_PAINT_NO_BOUNDS = (label: string) => `No UV bounds found for texture "${label}".`;
 export const UV_PAINT_MAPPING_REQUIRED =
-  'UV mapping is required before painting. Assign the texture and set per-face UVs, then call preflight_texture.';
+  'UV mapping is required before painting. Assign the texture and retry after UV refresh.';
 export const UV_PAINT_OBJECT_REQUIRED = (label: string) => `uvPaint must be an object (${label})`;
 export const UV_PAINT_SCOPE_INVALID = (label: string) => `uvPaint scope invalid (${label})`;
 export const UV_PAINT_MAPPING_INVALID = (label: string) => `uvPaint mapping invalid (${label})`;

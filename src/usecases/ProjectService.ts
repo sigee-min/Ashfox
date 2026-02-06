@@ -33,6 +33,7 @@ export class ProjectService {
     onMissing?: 'create' | 'error';
     confirmDiscard?: boolean;
     force?: boolean;
+    uvPixelsPerBlock?: number;
     dialog?: Record<string, unknown>;
     ifRevision?: string;
   }): UsecaseResult<{ action: 'created' | 'reused' | 'deleted'; project: { id: string; format: FormatKind; name: string | null; formatId?: string | null } }> {
@@ -42,7 +43,7 @@ export class ProjectService {
   createProject(
     format: Capabilities['formats'][number]['format'],
     name: string,
-    options?: { confirmDiscard?: boolean; dialog?: Record<string, unknown>; ifRevision?: string }
+    options?: { confirmDiscard?: boolean; dialog?: Record<string, unknown>; ifRevision?: string; uvPixelsPerBlock?: number }
   ): UsecaseResult<{ id: string; format: FormatKind; name: string }> {
     return this.lifecycle.createProject(format, name, options);
   }

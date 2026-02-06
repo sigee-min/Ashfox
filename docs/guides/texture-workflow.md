@@ -1,54 +1,45 @@
-# Texture Workflow (UV-first)
+# Texture Workflow (Auto UV)
 
-Goal: paint only within UV rects so patterns scale correctly.
+Goal: paint textures without managing UVs manually.
 
 Steps:
 1) ensure_project / get_project_state (capture revision)
 2) assign_texture (bind texture to cubes)
-3) preflight_texture (get uvUsageId + mapping)
-4) set_face_uv (low-level UV edits)
-5) preflight_texture again (UVs changed -> new uvUsageId)
-6) generate_texture_preset using uvUsageId
-7) render_preview to validate
+3) paint_faces (direct ops)
+4) render_preview to validate
 
 Notes:
-- uvPaint is enforced; only UV rects are painted.
-- Small or highly non-square UV rects can make `uvPaint.mapping:"stretch"` look distorted. Consider `mapping:"tile"`, a higher texture resolution (32/64), or re-pack UVs.
-- If you see uv_scale_mismatch, your UVs are too small for the model at the current resolution. Increase resolution (64+), reduce cube count, or allow split textures.
-- Use auto_uv_atlas (apply=true) to recover from overlap/scale issues.
-- Call preflight_texture without texture filters for a stable uvUsageId.
-- If UVs change, preflight again and repaint.
-- For >=64px textures, use generate_texture_preset.
-- set_face_uv may return warnings when UV rects are tiny or skewed; thresholds adapt to texture resolution. Follow nextActions to run preflight_texture.
-- When specifying both cubeIds and cubeNames in targets, both must match. Use only one to avoid overly narrow matches.
+- UVs are managed internally; UV tools are not exposed to clients.
+- `ensure_project.uvPixelsPerBlock` sets the per-face UV density (default 16).
+- When reusing an existing project, bbmcp infers UV density from existing UVs using the median face density.
+- ensure_project auto-creates a texture named after the project when none exists.
+- Cube add/scale triggers an automatic internal UV atlas pass; existing pixels are reprojected to the new UV layout.
+- paint_faces may return a recovery summary when auto-UV fixes were applied.
+- paint_faces is strict single-write: exactly one `target` (`cubeId`/`cubeName` + one `face`) and one `op`.
+- Default `coordSpace` is `face`; if `width/height` is omitted, source size follows the target face UV size.
+- Use `coordSpace: "texture"` only for texture-space coordinates; this requires explicit `width`/`height` matching texture size.
+- `background` is not part of the paint_faces payload.
+- For >=64px textures, keep ops minimal and use tiling patterns.
+- When specifying both cubeId and cubeName in target, both must match. Use only one to avoid overly narrow matches.
+- Support limit: models that still exceed atlas capacity after auto density reduction are not supported.
 
-Example (generate_texture_preset):
+Example (paint_faces):
 ```json
 {
-  "preset": "wood",
-  "name": "pot_wood",
-  "width": 64,
-  "height": 64,
-  "uvUsageId": { "$ref": { "kind": "tool", "tool": "preflight_texture", "pointer": "/uvUsageId" } },
-  "mode": "create"
+  "textureName": "pot_tex",
+  "target": { "cubeName": "body", "face": "north" },
+  "op": { "op": "fill_rect", "x": 0, "y": 0, "width": 16, "height": 16, "color": "#c96f3b" }
 }
 ```
 
-Example (preflight_texture):
+Failure example (invalid multi-write payload):
 ```json
 {
-  "includeUsage": true
-}
-```
-
-Example (set_face_uv):
-```json
-{
-  "cubeName": "body",
-  "faces": {
-    "north": [0, 0, 8, 12],
-    "south": [8, 0, 16, 12]
-  },
-  "ifRevision": { "$ref": { "kind": "tool", "tool": "get_project_state", "pointer": "/project/revision" } }
+  "textureName": "pot_tex",
+  "targets": [{ "cubeName": "body", "faces": ["north", "south"] }],
+  "ops": [
+    { "op": "fill_rect", "x": 0, "y": 0, "width": 16, "height": 16, "color": "#c96f3b" },
+    { "op": "fill_rect", "x": 2, "y": 2, "width": 2, "height": 2, "color": "#8b4a22" }
+  ]
 }
 ```

@@ -7,12 +7,12 @@ import {
 } from '../shared';
 import type { UvPaintSpec } from '../../domain/uv/paintSpec';
 import type { CubeFaceDirection, FaceUvMap } from '../../domain/model';
+import type { TextureOpLike } from '../../domain/textureOps';
 import type {
   EnsureProjectMatch,
   EnsureProjectOnMismatch,
   EnsureProjectOnMissing,
-  EnsureProjectAction,
-  TexturePresetName
+  EnsureProjectAction
 } from '../../shared/toolConstants';
 
 export interface EnsureProjectPayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
@@ -25,21 +25,38 @@ export interface EnsureProjectPayload extends IncludeStateOption, IncludeDiffOpt
   onMissing?: EnsureProjectOnMissing;
   confirmDiscard?: boolean;
   force?: boolean;
+  uvPixelsPerBlock?: number;
   dialog?: Record<string, unknown>;
 }
 
-export interface GenerateTexturePresetPayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
-  preset: TexturePresetName;
+export interface PaintTexturePayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
   width: number;
   height: number;
-  uvUsageId: string;
   name?: string;
   targetId?: string;
   targetName?: string;
   mode?: 'create' | 'update';
-  seed?: number;
-  palette?: string[];
+  background?: string;
+  ops?: TextureOpLike[];
   uvPaint?: UvPaintSpec;
+  uvUsageId?: string;
+}
+
+export interface PaintFaceTarget {
+  cubeId?: string;
+  cubeName?: string;
+  face: CubeFaceDirection;
+}
+
+export interface PaintFacesPayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
+  textureId?: string;
+  textureName?: string;
+  target: PaintFaceTarget;
+  coordSpace?: 'face' | 'texture';
+  width?: number;
+  height?: number;
+  op: TextureOpLike;
+  mapping?: 'stretch' | 'tile';
 }
 
 export interface AutoUvAtlasPayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
@@ -200,12 +217,18 @@ export interface DeleteAnimationClipPayload extends IncludeStateOption, IncludeD
   names?: string[];
 }
 
-export interface SetKeyframesPayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
+export interface SetFramePosePayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
   clipId?: string;
   clip: string;
-  bone: string;
-  channel: 'rot' | 'pos' | 'scale';
-  keys: [{ time: number; value: [number, number, number]; interp?: 'linear' | 'step' | 'catmullrom' }];
+  frame: number;
+  bones: Array<{
+    name: string;
+    rot?: [number, number, number];
+    pos?: [number, number, number];
+    scale?: [number, number, number];
+    interp?: 'linear' | 'step' | 'catmullrom';
+  }>;
+  interp?: 'linear' | 'step' | 'catmullrom';
 }
 
 export interface SetTriggerKeyframesPayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {

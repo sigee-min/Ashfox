@@ -5,7 +5,7 @@ This repo supports trace-driven testing by running the same MCP steps against:
 2) the BlockbenchSim engine (spec-backed simulator).
 
 The trace runner uses:
-- `ToolDispatcherImpl` for tool calls (`list_capabilities`, `preflight_texture`, etc.)
+- `ToolDispatcherImpl` for tool calls (`list_capabilities`, `paint_faces`, etc.)
 
 ## Why this exists
 We want to validate MCP workflows using the same API surface that production uses,

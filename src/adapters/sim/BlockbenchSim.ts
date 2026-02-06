@@ -53,6 +53,7 @@ export class BlockbenchSim {
       format: null,
       formatId: null,
       textureResolution: options.project?.textureResolution ?? { width: DEFAULT_TEXTURE_SIZE, height: DEFAULT_TEXTURE_SIZE },
+      uvPixelsPerBlock: options.project?.uvPixelsPerBlock,
       ...(options.project ?? {})
     };
     this.state = {
@@ -97,7 +98,8 @@ export class BlockbenchSim {
           name,
           format: kind,
           formatId,
-          textureResolution: { width: DEFAULT_TEXTURE_SIZE, height: DEFAULT_TEXTURE_SIZE }
+          textureResolution: { width: DEFAULT_TEXTURE_SIZE, height: DEFAULT_TEXTURE_SIZE },
+          uvPixelsPerBlock: undefined
         };
         this.resetCollections();
         this.updateFormatCaps(formatId, kind);
@@ -109,7 +111,8 @@ export class BlockbenchSim {
           name: null,
           format: null,
           formatId: null,
-          textureResolution: null
+          textureResolution: null,
+          uvPixelsPerBlock: undefined
         };
         this.resetCollections();
         this.formatCaps = null;
@@ -141,6 +144,10 @@ export class BlockbenchSim {
       getProjectTextureResolution: () => this.state.project.textureResolution,
       setProjectTextureResolution: (width: number, height: number, modifyUv?: boolean) =>
         this.uvOps.applyProjectTextureResolution(width, height, modifyUv),
+      setProjectUvPixelsPerBlock: (pixelsPerBlock: number) => {
+        this.state.project.uvPixelsPerBlock = pixelsPerBlock;
+        return null;
+      },
       getTextureUsage: (params) =>
         buildTextureUsageResult(params, { cubes: this.state.cubes, textures: this.state.textures })
     };
@@ -157,6 +164,7 @@ export class BlockbenchSim {
     name?: string | null;
     formatId?: string | null;
     textureResolution?: TextureResolution | null;
+    uvPixelsPerBlock?: number;
     cubes?: Array<
       Pick<
         CubeInstance,
@@ -170,7 +178,8 @@ export class BlockbenchSim {
       format: data.format ?? this.state.project.format,
       name: data.name ?? this.state.project.name,
       formatId: data.formatId ?? this.state.project.formatId,
-      textureResolution: data.textureResolution ?? this.state.project.textureResolution
+      textureResolution: data.textureResolution ?? this.state.project.textureResolution,
+      uvPixelsPerBlock: data.uvPixelsPerBlock ?? this.state.project.uvPixelsPerBlock
     };
     this.updateFormatCaps(this.state.project.formatId ?? null, this.state.project.format ?? null);
     if (data.textures) {

@@ -37,7 +37,10 @@ export class BlockbenchSimEngine {
       name: options.project?.name ?? null,
       format,
       formatId: formatId ?? formatDescriptor?.id ?? options.project?.formatId ?? null,
-      textureResolution
+      textureResolution,
+      ...(options.project?.uvPixelsPerBlock !== undefined
+        ? { uvPixelsPerBlock: options.project.uvPixelsPerBlock }
+        : {})
     };
 
     this.formatDescriptor = formatDescriptor;

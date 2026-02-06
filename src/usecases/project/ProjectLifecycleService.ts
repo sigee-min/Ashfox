@@ -1,4 +1,4 @@
-import type { Capabilities, EnsureProjectAction, FormatKind } from '../../types';
+import type { Capabilities, EnsureProjectAction, FormatKind, ToolError } from '../../types';
 import { ok, fail, type UsecaseResult } from '../result';
 import { ensureNonBlankString } from '../../shared/payloadValidation';
 import {
@@ -10,7 +10,11 @@ import {
   PROJECT_MATCH_NAME_REQUIRED,
   PROJECT_MISMATCH,
   PROJECT_NO_ACTIVE,
+  PROJECT_UV_PIXELS_PER_BLOCK_INVALID,
 } from '../../shared/messages';
+import { DEFAULT_UV_POLICY } from '../../domain/uv/policy';
+import { estimateUvPixelsPerBlock } from '../../domain/uv/density';
+import { toDomainSnapshot, toDomainTextureUsage } from '../domainMappers';
 import type { ProjectServiceDeps } from './projectServiceTypes';
 import { runCreateProject } from './projectCreation';
 import { runDeleteProject } from './projectDeletion';
@@ -23,6 +27,8 @@ export class ProjectLifecycleService {
   private readonly projectState: ProjectServiceDeps['projectState'];
   private readonly getSnapshot: ProjectServiceDeps['getSnapshot'];
   private readonly ensureRevisionMatch: ProjectServiceDeps['ensureRevisionMatch'];
+  private readonly runWithoutRevisionGuard?: ProjectServiceDeps['runWithoutRevisionGuard'];
+  private readonly texture?: ProjectServiceDeps['texture'];
   private readonly policies: ProjectServiceDeps['policies'];
 
   constructor(deps: ProjectServiceDeps) {
@@ -33,6 +39,8 @@ export class ProjectLifecycleService {
     this.projectState = deps.projectState;
     this.getSnapshot = deps.getSnapshot;
     this.ensureRevisionMatch = deps.ensureRevisionMatch;
+    this.runWithoutRevisionGuard = deps.runWithoutRevisionGuard;
+    this.texture = deps.texture;
     this.policies = deps.policies;
   }
 
@@ -46,6 +54,7 @@ export class ProjectLifecycleService {
     onMissing?: 'create' | 'error';
     confirmDiscard?: boolean;
     force?: boolean;
+    uvPixelsPerBlock?: number;
     dialog?: Record<string, unknown>;
     ifRevision?: string;
   }): UsecaseResult<{ action: 'created' | 'reused' | 'deleted'; project: { id: string; format: FormatKind; name: string | null; formatId?: string | null } }> {
@@ -80,6 +89,11 @@ export class ProjectLifecycleService {
     const info = this.projectState.toProjectInfo(normalized);
     const hasActive = Boolean(info && normalized.format);
 
+    const normalizedUv = this.normalizeUvPixelsPerBlock(payload.uvPixelsPerBlock);
+    if (payload.uvPixelsPerBlock !== undefined && normalizedUv === null) {
+      return fail({ code: 'invalid_payload', message: PROJECT_UV_PIXELS_PER_BLOCK_INVALID });
+    }
+
     if (!hasActive) {
       if (onMissing === 'error') {
         return fail({ code: 'invalid_state', message: PROJECT_NO_ACTIVE });
@@ -97,6 +111,9 @@ export class ProjectLifecycleService {
         ifRevision: payload.ifRevision
       });
       if (!created.ok) return created;
+      const uvErr = this.applyUvPixelsPerBlock(normalizedUv);
+      if (uvErr) return fail(uvErr);
+      this.maybeCreateProjectTexture(created.value.name);
       const sessionState = this.session.snapshot();
       return ok({
         action: 'created',
@@ -142,6 +159,9 @@ export class ProjectLifecycleService {
         ifRevision: payload.ifRevision
       });
       if (!created.ok) return created;
+      const uvErr = this.applyUvPixelsPerBlock(normalizedUv);
+      if (uvErr) return fail(uvErr);
+      this.maybeCreateProjectTexture(created.value.name);
       const sessionState = this.session.snapshot();
       return ok({
         action: 'created',
@@ -156,6 +176,9 @@ export class ProjectLifecycleService {
 
     const attachRes = this.session.attach(normalized);
     if (!attachRes.ok) return fail(attachRes.error);
+    const inferredUv = this.inferUvPixelsPerBlock(normalizedUv);
+    const uvErr = this.applyUvPixelsPerBlock(normalizedUv ?? inferredUv);
+    if (uvErr) return fail(uvErr);
     return ok({
       action: 'reused',
       project: {
@@ -170,9 +193,62 @@ export class ProjectLifecycleService {
   createProject(
     format: Capabilities['formats'][number]['format'],
     name: string,
-    options?: { confirmDiscard?: boolean; dialog?: Record<string, unknown>; ifRevision?: string }
+    options?: { confirmDiscard?: boolean; dialog?: Record<string, unknown>; ifRevision?: string; uvPixelsPerBlock?: number }
   ): UsecaseResult<{ id: string; format: FormatKind; name: string }> {
-    return runCreateProject(this.buildCreateContext(), format, name, options);
+    const created = runCreateProject(this.buildCreateContext(), format, name, options);
+    if (created.ok) {
+      const normalizedUv = this.normalizeUvPixelsPerBlock(options?.uvPixelsPerBlock);
+      if (options?.uvPixelsPerBlock !== undefined && normalizedUv === null) {
+        return fail({ code: 'invalid_payload', message: PROJECT_UV_PIXELS_PER_BLOCK_INVALID });
+      }
+      const uvErr = this.applyUvPixelsPerBlock(normalizedUv);
+      if (uvErr) return fail(uvErr);
+      this.maybeCreateProjectTexture(created.value.name);
+    }
+    return created;
+  }
+
+  private maybeCreateProjectTexture(name: string | null) {
+    if (!this.policies.autoCreateProjectTexture) return;
+    if (!this.texture) return;
+    const textureName = String(name ?? '').trim() || 'texture';
+    const runner = this.runWithoutRevisionGuard ?? ((fn: () => unknown) => fn());
+    runner(() => {
+      const result = this.texture!.createBlankTexture({
+        name: textureName,
+        allowExisting: true
+      });
+      return result;
+    });
+  }
+
+  private normalizeUvPixelsPerBlock(value?: number): number | null | undefined {
+    if (value === undefined) return undefined;
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric <= 0) return null;
+    return Math.trunc(numeric);
+  }
+
+  private applyUvPixelsPerBlock(value?: number | null): ToolError | null {
+    if (value === undefined || value === null) return null;
+    const err = this.editor.setProjectUvPixelsPerBlock(value);
+    if (err) return err;
+    this.session.setUvPixelsPerBlock(value);
+    return null;
+  }
+
+  private inferUvPixelsPerBlock(explicit?: number | null): number | undefined {
+    if (explicit !== undefined && explicit !== null) return undefined;
+    if (this.session.snapshot().uvPixelsPerBlock !== undefined) return undefined;
+    const usageRes = this.editor.getTextureUsage({});
+    if (usageRes.error) return undefined;
+    const usageRaw = usageRes.result ?? { textures: [] };
+    if (!usageRaw.textures.length) return undefined;
+    const usage = toDomainTextureUsage(usageRaw);
+    const snapshot = toDomainSnapshot(this.getSnapshot());
+    const policy = this.policies.uvPolicy ?? DEFAULT_UV_POLICY;
+    const inferred = estimateUvPixelsPerBlock(usage, snapshot.cubes, policy);
+    return inferred ?? undefined;
   }
 
   private buildCreateContext() {

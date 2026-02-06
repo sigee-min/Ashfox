@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import type { FormatKind } from '../../src/types';
+import type { ToolPolicies } from '../../src/usecases/policies';
 import type { TraceStep } from '../../src/trace/traceRunner';
 import { runTrace } from '../../src/trace/traceRunner';
 import { registerAsync } from './helpers';
@@ -40,6 +41,7 @@ type FixtureProject = {
 type Fixture = {
   name: string;
   project: FixtureProject;
+  policies?: ToolPolicies;
   steps: FixtureStep[];
 };
 
@@ -86,7 +88,7 @@ const assertExpectations = (result: unknown, expects: FixtureExpect[] | undefine
 };
 
 const createServiceHarness = (fixture: Fixture) => {
-  const { dispatcher } = createBlockbenchSimHarness(fixture.project);
+  const { dispatcher } = createBlockbenchSimHarness(fixture.project, { policies: fixture.policies });
   return { dispatcher };
 };
 

@@ -1,15 +1,18 @@
 import type { JsonSchema } from '../types';
 import { metaProps, numberArray, revisionProp } from '../schemas/common';
 
-const keyframeSchema: JsonSchema = {
+const poseBoneSchema: JsonSchema = {
   type: 'object',
-  required: ['time', 'value'],
+  required: ['name'],
   additionalProperties: false,
   properties: {
-    time: { type: 'number' },
-    value: numberArray(3, 3),
+    name: { type: 'string' },
+    rot: numberArray(3, 3),
+    pos: numberArray(3, 3),
+    scale: numberArray(3, 3),
     interp: { type: 'string', enum: ['linear', 'step', 'catmullrom'] }
-  }
+  },
+  anyOf: [{ required: ['rot'] }, { required: ['pos'] }, { required: ['scale'] }]
 };
 
 export const animationToolSchemas: Record<string, JsonSchema> = {
@@ -53,16 +56,16 @@ export const animationToolSchemas: Record<string, JsonSchema> = {
       ...metaProps
     }
   },
-  set_keyframes: {
+  set_frame_pose: {
     type: 'object',
-    required: ['clip', 'bone', 'channel', 'keys'],
+    required: ['clip', 'frame', 'bones'],
     additionalProperties: false,
     properties: {
       clipId: { type: 'string' },
       clip: { type: 'string' },
-      bone: { type: 'string' },
-      channel: { type: 'string', enum: ['rot', 'pos', 'scale'] },
-      keys: { type: 'array', minItems: 1, maxItems: 1, items: keyframeSchema },
+      frame: { type: 'number' },
+      bones: { type: 'array', minItems: 1, items: poseBoneSchema },
+      interp: { type: 'string', enum: ['linear', 'step', 'catmullrom'] },
       ifRevision: revisionProp,
       ...metaProps
     }

@@ -37,28 +37,28 @@ export const GUIDE_RESOURCES: ResourceContent[] = [
     uri: 'bbmcp://guide/texture-workflow',
     name: 'Texture Workflow Guide',
     mimeType: 'text/markdown',
-    description: 'UV-first texture workflow with uvPaint and presets.',
+    description: 'Auto-UV texture workflow with direct ops painting.',
     text: loadGuideMarkdown('texture-workflow', GUIDE_FALLBACKS['texture-workflow'])
   },
   {
     uri: 'bbmcp://guide/uv-atlas',
     name: 'UV Atlas Guide',
     mimeType: 'text/markdown',
-    description: 'Auto atlas packing and resolution growth strategy.',
+    description: 'Internal auto UV atlas packing and resolution growth strategy.',
     text: loadGuideMarkdown('uv-atlas', GUIDE_FALLBACKS['uv-atlas'])
   },
   {
     uri: 'bbmcp://guide/texture-spec',
     name: 'Texture + UV Spec',
     mimeType: 'text/markdown',
-    description: 'Canonical UV and texturing invariants.',
+    description: 'Canonical UV and texturing invariants (internal UV tools).',
     text: loadGuideMarkdown('texture-spec', GUIDE_FALLBACKS['texture-spec'])
   },
   {
     uri: 'bbmcp://guide/llm-texture-strategy',
     name: 'LLM Texture Strategy',
     mimeType: 'text/markdown',
-    description: 'LLM-oriented workflow and recovery loop.',
+    description: 'LLM-oriented workflow with internal UV management.',
     text: loadGuideMarkdown('llm-texture-strategy', GUIDE_FALLBACKS['llm-texture-strategy'])
   },
   {

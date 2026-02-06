@@ -74,7 +74,7 @@ This server can include suggested follow-up actions in tool responses.
 
 ## Argument References (`$ref`)
 
-Some nextActions require values that are not yet known at the time the server emits the suggestion (for example `ifRevision`, `uvUsageId`, or a list of cube names).
+Some nextActions require values that are not yet known at the time the server emits the suggestion (for example `ifRevision` or a list of cube names).
 
 Historically this project used placeholder strings like `"<from get_project_state>"`. This project now uses a structured reference form:
 
@@ -104,19 +104,3 @@ Historically this project used placeholder strings like `"<from get_project_stat
 }
 ```
 
-## Example: Revision-gated follow-up
-
-```json
-{
-  "type": "call_tool",
-  "tool": "auto_uv_atlas",
-  "arguments": {
-    "apply": true,
-    "ifRevision": {
-      "$ref": { "kind": "tool", "tool": "get_project_state", "pointer": "/project/revision" }
-    }
-  },
-  "reason": "Recover by re-packing UVs, then preflight and repaint.",
-  "priority": 3
-}
-```

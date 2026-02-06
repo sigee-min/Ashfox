@@ -62,13 +62,13 @@ export const resolveUvPaintRects = (
   }
   const entry = resolveUsageEntry(texture, usage);
   if (!entry) {
-    return err('invalid_state', messages.usageMissing(label));
+    return err('invalid_state', messages.usageMissing(label), { reason: 'usage_missing' });
   }
   const cubeFilters = buildTargetFilters(uvPaint.target?.cubeIds, uvPaint.target?.cubeNames);
   const faces = uvPaint.target?.faces ? new Set(uvPaint.target.faces) : null;
   const filteredCubes = filterByTargetFilters(entry.cubes, cubeFilters);
   if (cubeFilters.hasFilters && filteredCubes.length === 0) {
-    return err('invalid_state', messages.targetCubesNotFound(label));
+    return err('invalid_state', messages.targetCubesNotFound(label), { reason: 'target_cubes_not_found' });
   }
   const rects: UvPaintRect[] = [];
   let matchedFaces = 0;
@@ -81,10 +81,10 @@ export const resolveUvPaintRects = (
     });
   });
   if (faces && matchedFaces === 0) {
-    return err('invalid_state', messages.targetFacesNotFound(label));
+    return err('invalid_state', messages.targetFacesNotFound(label), { reason: 'target_faces_not_found' });
   }
   if (rects.length === 0) {
-    return err('invalid_state', messages.noRects(label));
+    return err('invalid_state', messages.noRects(label), { reason: 'no_rects' });
   }
   const scope = resolveScope(uvPaint.scope);
   if (scope === 'bounds') {
@@ -100,7 +100,7 @@ export const resolveUvPaintRects = (
     if (!Number.isFinite(bounds.x1) || !Number.isFinite(bounds.y1)) {
       return {
         ok: false,
-        error: { code: 'invalid_state', message: messages.noBounds(label) }
+        error: { code: 'invalid_state', message: messages.noBounds(label), details: { reason: 'no_bounds' } }
       };
     }
     return { ok: true, data: { rects: [bounds] } };
@@ -111,9 +111,13 @@ export const resolveUvPaintRects = (
   return { ok: true, data: { rects } };
 };
 
-const err = <T = never>(code: 'invalid_payload' | 'invalid_state', message: string): DomainResult<T> => ({
+const err = <T = never>(
+  code: 'invalid_payload' | 'invalid_state',
+  message: string,
+  details?: Record<string, unknown>
+): DomainResult<T> => ({
   ok: false,
-  error: { code, message }
+  error: { code, message, details }
 });
 
 

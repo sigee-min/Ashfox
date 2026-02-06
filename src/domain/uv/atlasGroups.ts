@@ -1,6 +1,6 @@
 import type { DomainError, DomainResult } from '../result';
 import type { Cube, CubeFaceDirection, TextureUsage } from '../model';
-import { UvPolicyConfig, computeExpectedUvSize, getFaceDimensions } from './policy';
+import { UvPolicyConfig, computeExpectedUvSizeWithOverflow, getFaceDimensions } from './policy';
 import type { UvAtlasMessages } from './atlas';
 
 export type FaceRef = {
@@ -30,7 +30,7 @@ export const buildGroups = (
   }
 ): DomainResult<Group[]> => {
   const messages = config.messages;
-  const groups = new Map<string, Group>();
+  const groups: Group[] = [];
   for (const cube of entry.cubes) {
     const target = cube.id ? cubeById.get(cube.id) : undefined;
     const resolved = target ?? cubeByName.get(cube.name);
@@ -42,7 +42,7 @@ export const buildGroups = (
     }
     for (const face of cube.faces) {
       const dims = getFaceDimensions(resolved, face.face);
-      const expected = computeExpectedUvSize(dims, config.baseResolution, config.policy);
+      const expected = computeExpectedUvSizeWithOverflow(dims, config.baseResolution, config.policy);
       if (!expected) {
         return fail('invalid_state', messages.deriveSizeFailed(cube.name, face.face), {
           textureName: entry.name,
@@ -64,13 +64,16 @@ export const buildGroups = (
           resolution: { width: config.width, height: config.height }
         });
       }
-      const key = `${width}x${height}`;
-      const group = groups.get(key) ?? { key, width, height, faces: [] };
-      group.faces.push({ cubeId: cube.id, cubeName: cube.name, face: face.face });
-      groups.set(key, group);
+      const key = `${cube.id ? `id:${cube.id}` : `name:${cube.name}`}:${face.face}`;
+      groups.push({
+        key,
+        width,
+        height,
+        faces: [{ cubeId: cube.id, cubeName: cube.name, face: face.face }]
+      });
     }
   }
-  return { ok: true, data: Array.from(groups.values()) };
+  return { ok: true, data: groups };
 };
 
 const fail = (code: DomainError['code'], message: string, details?: Record<string, unknown>): DomainResult<never> => ({

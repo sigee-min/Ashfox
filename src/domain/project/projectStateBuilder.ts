@@ -67,6 +67,7 @@ export class ProjectStateBuilder {
       formatId: snapshot.formatId ?? null,
       dirty: snapshot.dirty,
       revision,
+      uvPixelsPerBlock: snapshot.uvPixelsPerBlock,
       counts
     };
     if (snapshot.textures.length > 0) {

@@ -36,6 +36,26 @@ export type TextureToolContext = {
     height?: number;
     ifRevision?: string;
   }) => UsecaseResult<{ id: string; name: string }>;
+  setProjectUvPixelsPerBlock?: (value: number) => ToolError | null;
+  assignTexture?: (payload: {
+    textureId?: string;
+    textureName?: string;
+    cubeIds?: string[];
+    cubeNames?: string[];
+    faces?: import('../../ports/editor').CubeFaceDirection[];
+    ifRevision?: string;
+  }) => UsecaseResult<{ textureId?: string; textureName: string; cubeCount: number; faces?: import('../../ports/editor').CubeFaceDirection[] }>;
+  createBlankTexture?: (payload: {
+    name: string;
+    width?: number;
+    height?: number;
+    background?: string;
+    ifRevision?: string;
+    allowExisting?: boolean;
+  }) => UsecaseResult<{ id: string; name: string; created: boolean }>;
+  preflightTexture?: (payload: { textureId?: string; textureName?: string; includeUsage?: boolean }) => UsecaseResult<import('../../types').PreflightTextureResult>;
+  autoUvAtlas?: (payload: import('../../types').AutoUvAtlasPayload) => UsecaseResult<import('../../types').AutoUvAtlasResult>;
+  runWithoutRevisionGuard?: <T>(fn: () => T) => T;
 };
 
 export const uvAtlasMessages = buildUvAtlasMessages();

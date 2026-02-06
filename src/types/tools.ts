@@ -5,7 +5,6 @@ import type {
   AddBonePayload,
   AddCubePayload,
   AssignTexturePayload,
-  AutoUvAtlasPayload,
   CreateAnimationClipPayload,
   DeleteAnimationClipPayload,
   DeleteBonePayload,
@@ -14,14 +13,11 @@ import type {
   EnsureProjectPayload,
   ExportPayload,
   ExportTraceLogPayload,
-  GenerateTexturePresetPayload,
   GetProjectStatePayload,
-  PreflightTexturePayload,
+  PaintFacesPayload,
   ReadTexturePayload,
   ReloadPluginsPayload,
-  SetKeyframesPayload,
-  SetFaceUvPayload,
-  SetProjectTextureResolutionPayload,
+  SetFramePosePayload,
   SetTriggerKeyframesPayload,
   UpdateBonePayload,
   UpdateCubePayload,
@@ -30,7 +26,7 @@ import type {
 } from './tools/payloads';
 import type { ToolResultMap } from './tools/results';
 
-export type { ToolName, EnsureProjectMatch, EnsureProjectOnMismatch, EnsureProjectOnMissing, EnsureProjectAction, TexturePresetName } from '../shared/toolConstants';
+export type { ToolName, EnsureProjectMatch, EnsureProjectOnMismatch, EnsureProjectOnMissing, EnsureProjectAction } from '../shared/toolConstants';
 export type { UvPaintMapping, UvPaintScope, UvPaintSource, UvPaintSpec, UvPaintTarget } from '../domain/uv/paintSpec';
 export type { CubeFaceDirection } from '../domain/model';
 
@@ -48,12 +44,13 @@ export type {
   ExportPayload,
   ExportTraceLogPayload,
   ExportTraceLogMode,
-  GenerateTexturePresetPayload,
   GetProjectStatePayload,
+  PaintTexturePayload,
+  PaintFacesPayload,
   PreflightTexturePayload,
   ReadTexturePayload,
   ReloadPluginsPayload,
-  SetKeyframesPayload,
+  SetFramePosePayload,
   SetFaceUvPayload,
   SetProjectTextureResolutionPayload,
   SetTriggerKeyframesPayload,
@@ -68,8 +65,9 @@ export type {
   EnsureProjectResult,
   ExportResult,
   ExportTraceLogResult,
-  GenerateTexturePresetResult,
   GetProjectStateResult,
+  PaintTextureResult,
+  PaintFacesResult,
   PreflightUvBounds,
   PreflightUsageSummary,
   PreflightTextureResult,
@@ -87,14 +85,10 @@ export interface ToolPayloadMap {
   read_texture: ReadTexturePayload;
   export_trace_log: ExportTraceLogPayload;
   reload_plugins: ReloadPluginsPayload;
-  generate_texture_preset: GenerateTexturePresetPayload;
-  auto_uv_atlas: AutoUvAtlasPayload;
-  set_project_texture_resolution: SetProjectTextureResolutionPayload;
-  preflight_texture: PreflightTexturePayload;
+  paint_faces: PaintFacesPayload;
   ensure_project: EnsureProjectPayload;
   delete_texture: DeleteTexturePayload;
   assign_texture: AssignTexturePayload;
-  set_face_uv: SetFaceUvPayload;
   add_bone: AddBonePayload;
   update_bone: UpdateBonePayload;
   delete_bone: DeleteBonePayload;
@@ -104,7 +98,7 @@ export interface ToolPayloadMap {
   create_animation_clip: CreateAnimationClipPayload;
   update_animation_clip: UpdateAnimationClipPayload;
   delete_animation_clip: DeleteAnimationClipPayload;
-  set_keyframes: SetKeyframesPayload;
+  set_frame_pose: SetFramePosePayload;
   set_trigger_keyframes: SetTriggerKeyframesPayload;
   export: ExportPayload;
   render_preview: RenderPreviewPayload;

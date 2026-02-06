@@ -10,6 +10,16 @@ Steps:
 5) validate or render_preview
 6) export (optional)
 
+Project setup example (with UV density):
+```json
+{
+  "format": "geckolib",
+  "name": "dragon",
+  "onMissing": "create",
+  "uvPixelsPerBlock": 16
+}
+```
+
 Minimal example (cube only, root auto-created):
 ```json
 {

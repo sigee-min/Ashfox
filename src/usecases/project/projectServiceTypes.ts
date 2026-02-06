@@ -4,6 +4,8 @@ import type { FormatPort } from '../../ports/formats';
 import type { ProjectSession } from '../../session';
 import type { ProjectStateBuilder } from '../../domain/project/projectStateBuilder';
 import type { FormatOverrides } from '../../domain/formats';
+import type { UvPolicyConfig } from '../../domain/uv/policy';
+import type { UsecaseResult } from '../result';
 
 export interface ProjectServiceDeps {
   session: ProjectSession;
@@ -19,8 +21,21 @@ export interface ProjectServiceDeps {
   };
   getSnapshot: () => ReturnType<ProjectSession['snapshot']>;
   ensureRevisionMatch: (ifRevision?: string) => ToolError | null;
+  runWithoutRevisionGuard?: <T>(fn: () => T) => T;
+  texture?: {
+    createBlankTexture: (payload: {
+      name: string;
+      width?: number;
+      height?: number;
+      background?: string;
+      ifRevision?: string;
+      allowExisting?: boolean;
+    }) => UsecaseResult<{ id: string; name: string; created: boolean }>;
+  };
   policies: {
     formatOverrides?: FormatOverrides;
     autoDiscardUnsaved?: boolean;
+    autoCreateProjectTexture?: boolean;
+    uvPolicy?: UvPolicyConfig;
   };
 }

@@ -134,6 +134,7 @@ const buildEditorStub = (state: EditorStubState): EditorPort => {
       state.textureResolution = { width, height };
       return null;
     },
+    setProjectUvPixelsPerBlock: (_pixelsPerBlock: number) => null,
     getTextureUsage: (_params: TextureUsageQuery) => ({ result: state.textureUsage })
   };
 };
@@ -194,6 +195,13 @@ export const createTextureRendererStub = (): TextureRendererPort => ({
       image: createMockImage('data:image/png;base64,BBBB'),
       width,
       height
+    }
+  }),
+  readPixels: ({ width = 1, height = 1 }) => ({
+    result: {
+      width,
+      height,
+      data: new Uint8ClampedArray(width * height * 4)
     }
   })
 });

@@ -10,8 +10,8 @@ import type {
   UpdateTextureCommand
 } from '../../../ports/editor';
 import type { ToolError } from '../../../types';
-import type { TextureConstructor } from '../../../types/blockbench';
-import { readTextureId, readTextureSize, removeEntity, renameEntity, withUndo } from '../blockbenchUtils';
+import type { PreviewItem, TextureConstructor } from '../../../types/blockbench';
+import { readGlobals, readTextureId, readTextureSize, removeEntity, renameEntity, withUndo } from '../blockbenchUtils';
 import { getTextureApi } from '../blockbenchAdapterUtils';
 import {
   ADAPTER_TEXTURE_CANVAS_UNAVAILABLE,
@@ -59,6 +59,7 @@ export const runImportTexture = (log: Logger, params: ImportTextureCommand): Too
     if (imageMissing) {
       return { code: 'not_implemented', message: ADAPTER_TEXTURE_CANVAS_UNAVAILABLE };
     }
+    refreshTextureViewport(log);
     log.info('texture imported', { name: params.name });
     return null;
   } catch (err) {
@@ -101,6 +102,7 @@ export const runUpdateTexture = (log: Logger, params: UpdateTextureCommand): Too
     if (imageMissing) {
       return { code: 'not_implemented', message: ADAPTER_TEXTURE_CANVAS_UNAVAILABLE };
     }
+    refreshTextureViewport(log);
     log.info('texture updated', { name: params.name, newName: params.newName });
     return null;
   } catch (err) {
@@ -128,6 +130,7 @@ export const runDeleteTexture = (log: Logger, params: DeleteTextureCommand): Too
         if (idx >= 0) list.splice(idx, 1);
       }
     });
+    refreshTextureViewport(log);
     log.info('texture deleted', { name: target?.name ?? params.name });
     return null;
   } catch (err) {
@@ -177,3 +180,28 @@ export const runReadTexture = (
 };
 
 export const runListTextures = (): TextureStat[] => listTextureStats();
+
+const refreshTextureViewport = (log: Logger): void => {
+  try {
+    const globals = readGlobals();
+    const registry = globals.Preview;
+    const selected = registry?.selected;
+    const all = registry?.all ?? [];
+    const candidates = [selected, ...all].filter((entry): entry is PreviewItem => Boolean(entry));
+    const rendered = new Set<PreviewItem>();
+    for (const preview of candidates) {
+      if (rendered.has(preview)) continue;
+      if (typeof preview.render === 'function') {
+        preview.render();
+        rendered.add(preview);
+      }
+    }
+    if (rendered.size === 0) {
+      globals.Blockbench?.dispatchEvent?.('bbmcp:texture_changed', {
+        source: 'texture_commands'
+      });
+    }
+  } catch (err) {
+    log.warn('texture viewport refresh failed', { message: errorMessage(err, 'texture viewport refresh failed') });
+  }
+};

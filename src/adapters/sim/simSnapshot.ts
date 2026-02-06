@@ -10,6 +10,7 @@ export const buildSnapshot = (state: BlockbenchSimState): SessionState => ({
   formatId: state.project.formatId ?? null,
   name: state.project.name,
   dirty: undefined,
+  uvPixelsPerBlock: state.project.uvPixelsPerBlock,
   bones: [...state.bones],
   cubes: state.cubes.map((cube) => toTrackedCube(cube)),
   textures: state.textures.map((tex) => toTrackedTexture(tex)),

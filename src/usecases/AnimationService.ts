@@ -15,13 +15,14 @@ import {
   ANIMATION_CLIP_NOT_FOUND,
   ANIMATION_FPS_POSITIVE,
   ANIMATION_ID_EXISTS,
-  ANIMATION_KEYFRAME_SINGLE_REQUIRED,
   ANIMATION_LENGTH_EXCEEDS_MAX,
   ANIMATION_LENGTH_POSITIVE,
+  ANIMATION_POSE_BONES_REQUIRED,
+  ANIMATION_POSE_CHANNEL_REQUIRED,
+  ANIMATION_POSE_VALUE_INVALID,
   ANIMATION_TRIGGER_KEYFRAME_SINGLE_REQUIRED,
   ANIMATION_UNSUPPORTED_FORMAT,
-  KEYFRAME_TIME_INVALID,
-  KEYFRAME_VALUE_INVALID,
+  ANIMATION_FRAME_INVALID,
   MODEL_BONE_NOT_FOUND,
   TRIGGER_TIME_INVALID,
   TRIGGER_VALUE_INVALID
@@ -221,54 +222,111 @@ export class AnimationService {
     );
   }
 
-  setKeyframes(payload: {
+  setFramePose(payload: {
     clipId?: string;
     clip: string;
-    bone: string;
-    channel: 'rot' | 'pos' | 'scale';
-    keys: { time: number; value: [number, number, number]; interp?: 'linear' | 'step' | 'catmullrom' }[];
+    frame: number;
+    bones: Array<{
+      name: string;
+      rot?: [number, number, number];
+      pos?: [number, number, number];
+      scale?: [number, number, number];
+      interp?: 'linear' | 'step' | 'catmullrom';
+    }>;
+    interp?: 'linear' | 'step' | 'catmullrom';
     ifRevision?: string;
-  }): UsecaseResult<{ clip: string; clipId?: string; bone: string }> {
+  }): UsecaseResult<{
+    clip: string;
+    clipId?: string;
+    frame: number;
+    time: number;
+    bones: number;
+    channels: number;
+  }> {
     return withActiveAndRevision(
       this.ensureActive,
       this.ensureRevisionMatch,
       payload.ifRevision,
       () => {
+        const supportErr = this.ensureAnimationsSupported();
+        if (supportErr) return fail(supportErr);
         const snapshot = this.getSnapshot();
         const selectorErr = this.ensureClipSelector(payload.clipId, payload.clip);
         if (selectorErr) return fail(selectorErr);
-        const boneBlankErr = ensureNonBlankString(payload.bone, 'Animation bone');
-        if (boneBlankErr) return fail(boneBlankErr);
-        const boneExists = snapshot.bones.some((bone) => bone.name === payload.bone);
-        if (!boneExists) return fail({ code: 'invalid_payload', message: MODEL_BONE_NOT_FOUND(payload.bone) });
+        if (!Number.isFinite(payload.frame) || payload.frame < 0) {
+          return fail({ code: 'invalid_payload', message: ANIMATION_FRAME_INVALID });
+        }
+        if (!Array.isArray(payload.bones) || payload.bones.length === 0) {
+          return fail({ code: 'invalid_payload', message: ANIMATION_POSE_BONES_REQUIRED });
+        }
         const resolved = this.resolveClipTarget(snapshot, payload.clipId, payload.clip);
         if (!resolved.ok) return resolved;
         const anim = resolved.value;
-        if (payload.keys.length !== 1) {
-          return fail({ code: 'invalid_payload', message: ANIMATION_KEYFRAME_SINGLE_REQUIRED });
+        const fps = resolvePoseFps(anim);
+        const time = payload.frame / fps;
+        const boneNames = new Set(snapshot.bones.map((bone) => bone.name));
+        const updates: Array<{
+          bone: string;
+          channel: 'rot' | 'pos' | 'scale';
+          value: [number, number, number];
+          interp?: 'linear' | 'step' | 'catmullrom';
+        }> = [];
+        for (const entry of payload.bones) {
+          const boneBlankErr = ensureNonBlankString(entry?.name, 'Animation bone');
+          if (boneBlankErr) return fail(boneBlankErr);
+          if (!boneNames.has(entry.name)) {
+            return fail({ code: 'invalid_payload', message: MODEL_BONE_NOT_FOUND(entry.name) });
+          }
+          const channels = [
+            { key: 'rot' as const, value: entry.rot },
+            { key: 'pos' as const, value: entry.pos },
+            { key: 'scale' as const, value: entry.scale }
+          ];
+          const hasChannel = channels.some((channel) => channel.value !== undefined);
+          if (!hasChannel) {
+            return fail({ code: 'invalid_payload', message: ANIMATION_POSE_CHANNEL_REQUIRED });
+          }
+          for (const channel of channels) {
+            if (!channel.value) continue;
+            const vec = normalizePoseVector(channel.value);
+            if (!vec) {
+              return fail({ code: 'invalid_payload', message: ANIMATION_POSE_VALUE_INVALID });
+            }
+            const interp = entry.interp ?? payload.interp;
+            updates.push({
+              bone: entry.name,
+              channel: channel.key,
+              value: vec,
+              interp
+            });
+          }
         }
-        const key = payload.keys[0];
-        if (!Number.isFinite(key.time)) {
-          return fail({ code: 'invalid_payload', message: KEYFRAME_TIME_INVALID('set_keyframes') });
+        let applied = 0;
+        for (const update of updates) {
+          const err = this.editor.setKeyframes({
+            clipId: anim.id,
+            clip: anim.name,
+            bone: update.bone,
+            channel: update.channel,
+            keys: [{ time, value: update.value, interp: update.interp }],
+            timePolicy: snapshot.animationTimePolicy
+          });
+          if (err) return fail(err);
+          this.session.upsertAnimationChannel(anim.name, {
+            bone: update.bone,
+            channel: update.channel,
+            keys: [{ time, value: update.value, interp: update.interp }]
+          });
+          applied += 1;
         }
-        if (!Array.isArray(key.value) || key.value.length < 3 || key.value.some((v) => !Number.isFinite(v))) {
-          return fail({ code: 'invalid_payload', message: KEYFRAME_VALUE_INVALID('set_keyframes') });
-        }
-        const err = this.editor.setKeyframes({
-          clipId: anim.id,
+        return ok({
           clip: anim.name,
-          bone: payload.bone,
-          channel: payload.channel,
-          keys: payload.keys,
-          timePolicy: snapshot.animationTimePolicy
+          clipId: anim.id ?? undefined,
+          frame: payload.frame,
+          time,
+          bones: payload.bones.length,
+          channels: applied
         });
-        if (err) return fail(err);
-        this.session.upsertAnimationChannel(anim.name, {
-          bone: payload.bone,
-          channel: payload.channel,
-          keys: payload.keys
-        });
-        return ok({ clip: anim.name, clipId: anim.id ?? undefined, bone: payload.bone });
       }
     );
   }
@@ -364,6 +422,21 @@ export class AnimationService {
     return Object.keys(record).every((key) => this.isJsonSafe(record[key], seen));
   }
 }
+
+const normalizePoseVector = (value: [number, number, number] | undefined): [number, number, number] | null => {
+  if (!Array.isArray(value) || value.length < 3) return null;
+  const next: [number, number, number] = [Number(value[0]), Number(value[1]), Number(value[2])];
+  if (next.some((entry) => !Number.isFinite(entry))) return null;
+  return next;
+};
+
+const DEFAULT_ANIMATION_FPS = 20;
+
+const resolvePoseFps = (anim: { fps?: number }): number => {
+  const fps = Number(anim.fps);
+  if (Number.isFinite(fps) && fps > 0) return fps;
+  return DEFAULT_ANIMATION_FPS;
+};
 
 
 

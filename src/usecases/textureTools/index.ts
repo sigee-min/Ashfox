@@ -1,3 +1,4 @@
 export type { TextureToolContext } from './context';
 export { runAutoUvAtlas } from './autoUvAtlas';
-export { runGenerateTexturePreset } from './texturePreset';
+export { runPaintTexture } from './texturePaint';
+export { runPaintFaces } from './texturePaintFaces';

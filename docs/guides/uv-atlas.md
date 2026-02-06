@@ -1,27 +1,14 @@
 # UV Atlas Guide
 
-Use auto_uv_atlas to re-pack UVs when overlaps or scale mismatches occur.
+Internal UV atlas runs automatically on cube add/scale.
 
 Key points:
-- Only identical rects may overlap.
-- auto_uv_atlas groups by texture + face size.
+- UV rects must not overlap.
+- The atlas assigns one rect per face (no sharing).
 - When packing overflows, resolution doubles and packing retries.
+- If the atlas still overflows, bbmcp lowers `uvPixelsPerBlock` automatically to fit.
 - Rect sizes are computed from the starting resolution; increasing size adds space instead of scaling UVs.
 
-Example (plan only):
-```json
-{
-  "apply": false
-}
-```
-
-Example (apply):
-```json
-{
-  "apply": true
-}
-```
-
 After apply:
-- Call preflight_texture again.
-- Repaint textures using the new mapping.
+- Preflight is internal-only.
+- Repaint textures using the new mapping (pixels are reprojected to follow the new UVs).

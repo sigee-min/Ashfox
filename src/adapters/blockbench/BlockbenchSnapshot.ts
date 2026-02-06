@@ -14,6 +14,7 @@ import {
   guessFormatKind
 } from './snapshot/projectMeta';
 import { resolveAnimationTimePolicy } from '../../domain/animation/timePolicy';
+import { normalizePixelsPerBlock } from '../../domain/uv/policy';
 
 const readGlobals = (): BlockbenchGlobals => readBlockbenchGlobals();
 
@@ -34,6 +35,7 @@ export class BlockbenchSnapshot implements SnapshotPort {
       const formatId = getActiveFormatId(globals);
       const format = guessFormatKind(formatId);
       const name = getProjectName(globals);
+      const project = globals.Project ?? globals.Blockbench?.project ?? null;
       const id = getProjectId(globals);
       const dirty = getProjectDirty(globals);
 
@@ -70,12 +72,21 @@ export class BlockbenchSnapshot implements SnapshotPort {
         });
       });
 
+      const projectRecord = project as Record<string, unknown> | null | undefined;
+      const bbmcpRaw = projectRecord?.bbmcp;
+      const bbmcp = bbmcpRaw && typeof bbmcpRaw === 'object' ? (bbmcpRaw as Record<string, unknown>) : undefined;
+      const uvPixelsPerBlock =
+        projectRecord?.bbmcpUvPixelsPerBlock ??
+        (bbmcp?.uvPixelsPerBlock as number | undefined) ??
+        (bbmcp?.uv_pixels_per_block as number | undefined);
+
       return {
         id,
         format,
         formatId,
         name,
         dirty,
+        uvPixelsPerBlock: normalizePixelsPerBlock(uvPixelsPerBlock),
         bones,
         cubes,
         textures,
