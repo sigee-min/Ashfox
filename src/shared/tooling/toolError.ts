@@ -1,4 +1,4 @@
-import type { ToolError, ToolErrorCode } from '../../types';
+import type { ToolError, ToolErrorCode } from '../../types/internal';
 import {
   TOOL_FIX_INVALID_PAYLOAD,
   TOOL_FIX_INVALID_STATE,
@@ -68,6 +68,7 @@ const normalizeTerminology = (value: string): string =>
     .replace(/textureResolution/g, 'texture resolution')
     .replace(/get_project_state/g, 'get_project_state')
     .replace(/set_project_texture_resolution/g, 'set_project_texture_resolution');
+
 
 
 

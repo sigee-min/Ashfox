@@ -1,4 +1,4 @@
-import { ToolError } from '../types';
+import { ToolError } from '../types/internal';
 
 export type TexturePixelData = {
   width: number;
@@ -26,5 +26,6 @@ export interface TextureRendererPort {
     height?: number;
   }) => { result?: TextureReadResult; error?: ToolError };
 }
+
 
 

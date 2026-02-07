@@ -1,4 +1,4 @@
-import type { Capabilities, ToolError } from '../../types';
+import type { Capabilities, ToolError } from '../../types/internal';
 import type { EditorPort } from '../../ports/editor';
 import type { FormatPort } from '../../ports/formats';
 import type { ProjectSession } from '../../session';
@@ -39,3 +39,4 @@ export interface ProjectServiceDeps {
     uvPolicy?: UvPolicyConfig;
   };
 }
+

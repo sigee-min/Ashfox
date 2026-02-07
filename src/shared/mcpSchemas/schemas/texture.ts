@@ -1,6 +1,4 @@
 import type { JsonSchema } from '../types';
-import { UV_PAINT_MAPPINGS, UV_PAINT_SCOPES } from '../../texturePolicy';
-import { cubeFaceSchema, numberArray } from './common';
 
 export const textureOpSchema: JsonSchema = {
   type: 'object',
@@ -21,65 +19,32 @@ export const textureOpSchema: JsonSchema = {
     x2: { type: 'number', description: 'Line end X (pixels).' },
     y2: { type: 'number', description: 'Line end Y (pixels).' },
     color: { type: 'string', description: 'Color in hex (e.g., \"#ff00aa\" or \"#ff00aaff\").' },
-    lineWidth: { type: 'number', description: 'Stroke width (pixels).' }
-  }
-};
-
-export const uvPaintSchema: JsonSchema = {
-  type: 'object',
-  description:
-    'UV-first painting config. A source canvas is painted using ops/background, then stretched/tiled into target UV rects. Omit uvPaint to paint the full texture.',
-  additionalProperties: false,
-  properties: {
-    scope: {
-      type: 'string',
-      enum: UV_PAINT_SCOPES,
-      description: 'What to paint: per-face, per-UV-rect, or full UV bounds.'
-    },
-    mapping: {
-      type: 'string',
-      enum: UV_PAINT_MAPPINGS,
-      description: 'How to map the source canvas into UV rects: stretch once or tile.'
-    },
-    padding: { type: 'number', description: 'Extra pixels around each UV rect to reduce seams (>= 0).' },
-    anchor: {
-      ...numberArray(2, 2),
-      description: 'Anchor offset [x,y] in source pixels for stretch/tile alignment.'
-    },
-    source: {
-      type: 'object',
-      additionalProperties: false,
-      required: ['width', 'height'],
-      properties: {
-        width: { type: 'number', description: 'Source canvas width (pixels).' },
-        height: { type: 'number', description: 'Source canvas height (pixels).' }
-      }
-    },
-    target: {
-      type: 'object',
-      description: 'Optional target filter. Omit to paint all UV rects in the mapping table.',
-      additionalProperties: false,
-      properties: {
-        cubeIds: {
-          type: 'array',
-          minItems: 1,
-          items: { type: 'string' },
-          description: 'Limit painting to these cube ids. If cubeNames is also provided, both must match.'
-        },
-        cubeNames: {
-          type: 'array',
-          minItems: 1,
-          items: { type: 'string' },
-          description: 'Limit painting to these cube names. If cubeIds is also provided, both must match.'
-        },
-        faces: {
-          type: 'array',
-          minItems: 1,
-          items: cubeFaceSchema,
-          description: 'Limit painting to these cube faces.'
+    lineWidth: { type: 'number', description: 'Stroke width (pixels).' },
+    shade: {
+      description:
+        'Fill shading for fill_rect. Defaults to enabled; set false (or enabled:false) to disable. Object values tune the effect.',
+      anyOf: [
+        { type: 'boolean' },
+        {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            enabled: { type: 'boolean', description: 'Enable/disable shading.' },
+            intensity: { type: 'number', description: 'Directional shading intensity (0..1).' },
+            edge: { type: 'number', description: 'Edge darkening strength (0..1).' },
+            noise: { type: 'number', description: 'Per-pixel tonal noise strength (0..1).' },
+            seed: { type: 'number', description: 'Deterministic shading seed.' },
+            lightDir: {
+              type: 'string',
+              enum: ['tl_br', 'tr_bl', 'top_bottom', 'left_right'],
+              description: 'Light direction for directional gradient.'
+            }
+          }
         }
-      }
+      ]
     }
   }
 };
+
+
 

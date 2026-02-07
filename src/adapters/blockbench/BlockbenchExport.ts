@@ -1,5 +1,5 @@
 import { ExportPort, ExportNativeParams } from '../../ports/exporter';
-import { ToolError } from '../../types';
+import { ToolError } from '../../types/internal';
 import { errorMessage, Logger } from '../../logging';
 import { FormatEntry, readBlockbenchGlobals } from '../../types/blockbench';
 import {
@@ -70,5 +70,6 @@ function isThenable(value: unknown): value is { then: (onFulfilled: (arg: unknow
   const candidate = value as { then?: unknown };
   return typeof candidate.then === 'function';
 }
+
 
 

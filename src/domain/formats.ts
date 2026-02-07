@@ -1,4 +1,4 @@
-import { FormatKind } from '../types';
+import { FormatKind } from '../types/internal';
 import { FormatDescriptor } from '../ports/formats';
 
 export type FormatOverrides = Partial<Record<FormatKind, string>>;
@@ -57,6 +57,7 @@ function getPatterns(kind: FormatKind): string[] {
       return [];
   }
 }
+
 
 
 

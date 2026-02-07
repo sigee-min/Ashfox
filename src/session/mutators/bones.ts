@@ -43,3 +43,5 @@ export const removeBones = (
     removedCubes: beforeCubes - state.cubes.length
   };
 };
+
+

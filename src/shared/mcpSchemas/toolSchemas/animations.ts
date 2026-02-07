@@ -97,3 +97,5 @@ export const animationToolSchemas: Record<string, JsonSchema> = {
     }
   }
 };
+
+

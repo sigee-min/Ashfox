@@ -1,4 +1,4 @@
-import { FormatKind, RenderPreviewPayload, RenderPreviewResult, ToolError } from '../types';
+import { FormatKind, RenderPreviewPayload, RenderPreviewResult, ToolError } from '../types/internal';
 import type { AnimationTimePolicy } from '../domain/animation/timePolicy';
 import type { CubeFaceDirection, FaceUvMap } from '../domain/model';
 import type {
@@ -244,5 +244,6 @@ export interface EditorPort {
   setProjectUvPixelsPerBlock: (pixelsPerBlock: number) => ToolError | null;
   getTextureUsage: (params: TextureUsageQuery) => { result?: TextureUsageResult; error?: ToolError };
 }
+
 
 

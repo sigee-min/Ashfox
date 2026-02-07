@@ -1,6 +1,3 @@
-export const UV_USAGE_REQUIRED = 'UV usage id is required. Refresh UV mapping and retry.';
-export const UV_USAGE_MISSING_MESSAGE = 'UV usage id is missing. Refresh UV mapping and retry.';
-
 export const UV_USAGE_CHANGED_MESSAGE = 'UV usage changed since the last mapping refresh. Retry after UV refresh.';
 export const UV_USAGE_CHANGED_FIX = 'Retry after automatic UV refresh completes.';
 

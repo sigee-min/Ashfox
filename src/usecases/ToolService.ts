@@ -2,16 +2,12 @@ import {
   Capabilities,
   AutoUvAtlasResult,
   AutoUvAtlasPayload,
-  FormatKind,
   PaintTextureResult,
   PaintTexturePayload,
   PaintFacesResult,
   PaintFacesPayload,
   PreflightTextureResult,
   PreflightTexturePayload,
-  ProjectDiff,
-  ProjectState,
-  ProjectStateDetail,
   ReadTextureResult,
   RenderPreviewResult,
   SetFaceUvPayload,
@@ -19,7 +15,7 @@ import {
   ToolName,
   ToolError,
   ToolPayloadMap
-} from '../types';
+} from '../types/internal';
 import { CubeFaceDirection, TextureSource, TriggerChannel } from '../ports/editor';
 import { NOOP_VIEWPORT_REFRESHER, type ViewportRefresherPort } from '../ports/viewportRefresher';
 import { TextureMeta } from '../types/texture';
@@ -31,6 +27,16 @@ import { runReloadPlugins } from './toolService/reloadPlugins';
 import { createToolServiceContext, ToolServiceDeps } from './toolServiceContext';
 import { createToolServiceFacades, ToolServiceFacades } from './toolServiceFacades';
 import { getViewportEffectForTool } from '../shared/tooling/viewportEffects';
+import type {
+  CreateProjectOptions,
+  CreateProjectResult,
+  EnsureProjectPayload,
+  EnsureProjectResult,
+  GetProjectDiffPayload,
+  GetProjectDiffResult,
+  GetProjectStatePayload,
+  GetProjectStateResult
+} from './project/projectServiceContracts';
 
 export class ToolService {
   private readonly capabilities: Capabilities;
@@ -130,25 +136,23 @@ export class ToolService {
     return this.facades.texture.autoUvAtlas(payload);
   }
 
-  getProjectState(payload: ToolPayloadMap['get_project_state']): UsecaseResult<{ project: ProjectState }> {
+  getProjectState(payload: GetProjectStatePayload): UsecaseResult<GetProjectStateResult> {
     return this.facades.project.getProjectState(payload);
   }
 
-  getProjectDiff(payload: { sinceRevision: string; detail?: ProjectStateDetail }): UsecaseResult<{ diff: ProjectDiff }> {
+  getProjectDiff(payload: GetProjectDiffPayload): UsecaseResult<GetProjectDiffResult> {
     return this.facades.project.getProjectDiff(payload);
   }
 
-  ensureProject(
-    payload: ToolPayloadMap['ensure_project']
-  ): UsecaseResult<{ action: 'created' | 'reused' | 'deleted'; project: { id: string; format: FormatKind; name: string | null; formatId?: string | null } }> {
+  ensureProject(payload: EnsureProjectPayload): UsecaseResult<EnsureProjectResult> {
     return this.facades.project.ensureProject(payload);
   }
 
   createProject(
     format: Capabilities['formats'][number]['format'],
     name: string,
-    options?: { confirmDiscard?: boolean; dialog?: Record<string, unknown>; ifRevision?: string; uvPixelsPerBlock?: number }
-  ): UsecaseResult<{ id: string; format: FormatKind; name: string }> {
+    options?: CreateProjectOptions
+  ): UsecaseResult<CreateProjectResult> {
     return this.facades.project.createProject(format, name, options);
   }
 
@@ -276,6 +280,7 @@ export class ToolService {
   }
 
 }
+
 
 
 

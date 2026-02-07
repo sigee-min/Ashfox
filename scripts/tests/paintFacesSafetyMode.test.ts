@@ -128,9 +128,30 @@ const run = (ctx: TextureToolContext, payload: PaintFacesPayload) => runPaintFac
   assert.equal(res.ok, true);
   if (res.ok) {
     assert.equal(res.value.targets, 1);
+    assert.equal(res.value.facesApplied, 1);
     assert.equal(res.value.opsApplied, 1);
     assert.equal(res.value.resolvedSource?.coordSpace, 'face');
     assert.equal(res.value.resolvedSource?.width, 8);
+    assert.equal(res.value.resolvedSource?.height, 8);
+    assert.ok((res.value.changedPixels ?? 0) > 0);
+  }
+  assert.equal(getUpdateCalls(), 1);
+}
+
+{
+  const { ctx, getUpdateCalls } = createContext();
+  const res = run(ctx, {
+    textureName: 'minecraft_dragon',
+    target: { cubeName: 'body_main' },
+    op: { op: 'fill_rect', x: 0, y: 0, width: 16, height: 8, color: '#3f6f3b' }
+  });
+  assert.equal(res.ok, true);
+  if (res.ok) {
+    assert.equal(res.value.targets, 1);
+    assert.equal(res.value.facesApplied, 2);
+    assert.equal(res.value.opsApplied, 1);
+    assert.equal(res.value.resolvedSource?.coordSpace, 'face');
+    assert.equal(res.value.resolvedSource?.width, 16);
     assert.equal(res.value.resolvedSource?.height, 8);
     assert.ok((res.value.changedPixels ?? 0) > 0);
   }
@@ -183,15 +204,6 @@ assertBlocked(
     op: { op: 'fill_rect', x: 0, y: 0, width: 1, height: 1, color: '#3f6f3b' }
   },
   'cubeId or cubeName'
-);
-
-assertBlocked(
-  {
-    textureName: 'minecraft_dragon',
-    target: { cubeName: 'body_main' } as unknown as PaintFacesPayload['target'],
-    op: { op: 'fill_rect', x: 0, y: 0, width: 1, height: 1, color: '#3f6f3b' }
-  },
-  'target.face'
 );
 
 assertBlocked(

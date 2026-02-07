@@ -1,4 +1,4 @@
-import type { ToolError } from '../../types';
+import type { ToolError } from '../../types/internal';
 import type { EditorPort } from '../../ports/editor';
 import type { ProjectSession, SessionState } from '../../session';
 import { ok, fail, type UsecaseResult } from '../result';
@@ -287,3 +287,4 @@ export class BoneService {
     return ok(parentUpdate);
   }
 }
+

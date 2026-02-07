@@ -8,10 +8,6 @@ export const PROJECT_FORMAT_UNKNOWN = 'Active project format is unknown.';
 export const PROJECT_MISMATCH = 'Active project does not match requested criteria.';
 export const PROJECT_DELETE_NAME_REQUIRED = 'target.name is required when action=delete.';
 export const PROJECT_DELETE_NAME_REQUIRED_FIX = 'Provide target.name matching the open project.';
-export const PROJECT_FORMAT_REQUIRED_FOR_TOOL = (expected: string, toolName: string) =>
-  `Active project format must be ${expected} for ${toolName}.`;
-export const PROJECT_FORMAT_REQUIRED_FOR_TOOL_FIX = (toolName: string, expected: string) =>
-  `Call ${toolName} with ensureProject or switch to a ${expected} project.`;
 export const PROJECT_UNSUPPORTED_FORMAT = (format: string) => `Unsupported format: ${format}`;
 export const PROJECT_FORMAT_ID_MISSING = (format: string) => `No matching format ID for ${format}`;
 export const PROJECT_FORMAT_ID_MISSING_FIX = 'Set a format ID override in settings or choose another format.';

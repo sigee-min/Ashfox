@@ -1,6 +1,6 @@
 import type { ResourceStore } from '../ports/resources';
 import type { TraceLogWriter } from '../ports/traceLog';
-import type { ToolError } from '../types';
+import type { ToolError } from '../types/internal';
 import { buildTraceLogReport } from './traceLogReport';
 
 const DEFAULT_URI = 'bbmcp://logs/trace.ndjson';
@@ -47,20 +47,4 @@ export class ResourceTraceLogWriter implements TraceLogWriter {
     return null;
   }
 }
-
-export class InMemoryTraceLogWriter implements TraceLogWriter {
-  private text = '';
-
-  write(text: string): ToolError | null {
-    this.text = text;
-    return null;
-  }
-
-  getText(): string {
-    return this.text;
-  }
-}
-
-
-
 

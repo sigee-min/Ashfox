@@ -1,4 +1,4 @@
-import { ToolError } from '../../types';
+import { ToolError } from '../../types/internal';
 import {
   AssignTextureCommand,
   BoneCommand,
@@ -123,5 +123,6 @@ export class BlockbenchGeometryAdapter {
     }
   }
 }
+
 
 

@@ -1,5 +1,5 @@
 import { errorMessage, Logger } from '../../logging';
-import { RenderPreviewOutputKind, RenderPreviewPayload, RenderPreviewResult, ToolError } from '../../types';
+import { RenderPreviewOutputKind, RenderPreviewPayload, RenderPreviewResult, ToolError } from '../../types/internal';
 import { toolError } from '../../shared/tooling/toolResponse';
 import { readGlobals } from './blockbenchUtils';
 import {
@@ -200,6 +200,7 @@ export class BlockbenchPreviewAdapter {
     }
   }
 }
+
 
 
 

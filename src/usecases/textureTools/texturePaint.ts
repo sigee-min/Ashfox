@@ -1,4 +1,4 @@
-import type { PaintTexturePayload, PaintTextureResult } from '../../types';
+import type { PaintTexturePayload, PaintTextureResult } from '../../types/internal';
 import { MAX_TEXTURE_OPS, isTextureOp } from '../../domain/textureOps';
 import { applyTextureOps, fillPixels, parseHexColor } from '../../domain/texturePaint';
 import { resolveUvPaintRects } from '../../domain/uv/paint';
@@ -192,7 +192,9 @@ export const runPaintTexture = (
       const reason =
         res.reason === 'invalid_line_width'
           ? TEXTURE_OP_LINEWIDTH_INVALID(resolvedLabel)
-          : TEXTURE_OP_COLOR_INVALID(resolvedLabel);
+          : res.reason === 'invalid_op'
+            ? TEXTURE_OP_INVALID(resolvedLabel)
+            : TEXTURE_OP_COLOR_INVALID(resolvedLabel);
       return fail({ code: 'invalid_payload', message: reason, details: { opIndex: res.opIndex } });
     }
   }
@@ -243,3 +245,4 @@ export const runPaintTexture = (
   if (!upsert.ok) return fail(upsert.error);
   return ok({ width, height, uvUsageId: payload.uvUsageId, opsApplied: ops.length });
 };
+

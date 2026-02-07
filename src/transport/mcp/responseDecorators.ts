@@ -1,4 +1,4 @@
-import type { RenderPreviewResult, ToolPayloadMap, ToolResponse, ToolResultMap } from '../../types';
+import type { RenderPreviewResult, ToolPayloadMap, ToolResponse, ToolResultMap } from '../../types/internal';
 import {
   buildRenderPreviewContent,
   buildRenderPreviewStructured,
@@ -62,3 +62,4 @@ export const decorateToolResponse = (
   }
   return response;
 };
+

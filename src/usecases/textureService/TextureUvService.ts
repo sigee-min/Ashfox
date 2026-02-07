@@ -1,4 +1,4 @@
-import type { ToolError } from '../../types';
+import type { ToolError } from '../../types/internal';
 import type { SessionState } from '../../session';
 import type { CubeFaceDirection, EditorPort, FaceUvMap } from '../../ports/editor';
 import { withActiveAndRevision } from '../guards';
@@ -27,6 +27,25 @@ export interface TextureUvDeps {
   getUvPolicyConfig?: () => import('../../domain/uv/policy').UvPolicyConfig;
 }
 
+type SetFaceUvPayload = {
+  cubeId?: string;
+  cubeName?: string;
+  faces: FaceUvMap;
+  ifRevision?: string;
+};
+
+type SetFaceUvSuccess = {
+  cubeId?: string;
+  cubeName: string;
+  faces: CubeFaceDirection[];
+  warnings?: string[];
+  warningCodes?: string[];
+};
+
+type ResolvedCubeTarget = { id?: string; name: string };
+
+type NormalizedFaces = { normalized: FaceUvMap; faces: CubeFaceDirection[] };
+
 export class TextureUvService {
   private readonly editor: EditorPort;
   private readonly getSnapshot: () => SessionState;
@@ -42,77 +61,87 @@ export class TextureUvService {
     this.getUvPolicyConfig = deps.getUvPolicyConfig;
   }
 
-  setFaceUv(payload: {
-    cubeId?: string;
-    cubeName?: string;
-    faces: FaceUvMap;
-    ifRevision?: string;
-  }): UsecaseResult<{
-    cubeId?: string;
-    cubeName: string;
-    faces: CubeFaceDirection[];
-    warnings?: string[];
-    warningCodes?: string[];
-  }> {
+  setFaceUv(payload: SetFaceUvPayload): UsecaseResult<SetFaceUvSuccess> {
     return withActiveAndRevision(
       this.ensureActive,
       this.ensureRevisionMatch,
       payload.ifRevision,
       () => {
-        const assignmentRes = validateUvAssignments(
-          [{ cubeId: payload.cubeId, cubeName: payload.cubeName, faces: payload.faces }],
-          uvAssignmentMessages
-        );
-        if (!assignmentRes.ok) {
-          const reason = assignmentRes.error.details?.reason;
-          if (reason === 'target_required' || reason === 'cube_ids_string_array' || reason === 'cube_names_string_array') {
-            return fail({
-              ...assignmentRes.error,
-              fix: TEXTURE_FACE_UV_TARGET_FIX
-            });
-          }
-          if (reason === 'faces_required' || reason === 'faces_non_empty') {
-            return fail({
-              ...assignmentRes.error,
-              fix: TEXTURE_FACE_UV_FACES_FIX
-            });
-          }
-          return fail(assignmentRes.error);
-        }
-        const snapshot = this.getSnapshot();
-        const target = snapshot.cubes.find((cube) => cube.id === payload.cubeId || cube.name === payload.cubeName);
-        if (!target) {
-          return fail({
-            code: 'invalid_payload',
-            message: MODEL_CUBE_NOT_FOUND(payload.cubeId ?? payload.cubeName ?? 'unknown')
-          });
-        }
-        const faces: CubeFaceDirection[] = [];
-        const normalized: FaceUvMap = {};
-        const faceEntries = Object.entries(payload.faces ?? {});
-        for (const [faceKey, uv] of faceEntries) {
-          const [x1, y1, x2, y2] = uv as [number, number, number, number];
-          const boundsErr = this.ensureFaceUvWithinResolution([x1, y1, x2, y2]);
-          if (boundsErr) return fail(boundsErr);
-          normalized[faceKey as CubeFaceDirection] = [x1, y1, x2, y2];
-          faces.push(faceKey as CubeFaceDirection);
-        }
-        const rectWarnings = this.buildUvRectWarnings(target.name, normalized);
-        const err = this.editor.setFaceUv({
+        const validationErr = this.validateSetFaceUvPayload(payload);
+        if (validationErr) return fail(validationErr);
+        const targetRes = this.resolveCubeTarget(payload);
+        if (!targetRes.ok) return targetRes;
+        const target = targetRes.value;
+        const normalizedRes = this.normalizeFaceUvMap(payload.faces);
+        if (!normalizedRes.ok) return normalizedRes;
+        const normalized = normalizedRes.value;
+        const applyErr = this.editor.setFaceUv({
           cubeId: target.id ?? payload.cubeId,
           cubeName: target.name,
-          faces: normalized
+          faces: normalized.normalized
         });
-        if (err) return fail(err);
-        return ok({
-          cubeId: target.id ?? payload.cubeId,
-          cubeName: target.name,
-          faces,
-          ...(rectWarnings.warnings.length > 0 ? { warnings: rectWarnings.warnings } : {}),
-          ...(rectWarnings.warningCodes.length > 0 ? { warningCodes: rectWarnings.warningCodes } : {})
-        });
+        if (applyErr) return fail(applyErr);
+        const warnings = this.buildUvRectWarnings(target.name, normalized.normalized);
+        return ok(this.buildSetFaceUvResult(target, payload, normalized.faces, warnings));
       }
     );
+  }
+
+  private validateSetFaceUvPayload(payload: SetFaceUvPayload): ToolError | null {
+    const assignmentRes = validateUvAssignments(
+      [{ cubeId: payload.cubeId, cubeName: payload.cubeName, faces: payload.faces }],
+      uvAssignmentMessages
+    );
+    if (assignmentRes.ok) return null;
+    const reason = assignmentRes.error.details?.reason;
+    if (reason === 'target_required' || reason === 'cube_ids_string_array' || reason === 'cube_names_string_array') {
+      return { ...assignmentRes.error, fix: TEXTURE_FACE_UV_TARGET_FIX };
+    }
+    if (reason === 'faces_required' || reason === 'faces_non_empty') {
+      return { ...assignmentRes.error, fix: TEXTURE_FACE_UV_FACES_FIX };
+    }
+    return assignmentRes.error;
+  }
+
+  private resolveCubeTarget(payload: SetFaceUvPayload): UsecaseResult<ResolvedCubeTarget> {
+    const snapshot = this.getSnapshot();
+    const target = snapshot.cubes.find((cube) => cube.id === payload.cubeId || cube.name === payload.cubeName);
+    if (!target) {
+      return fail({
+        code: 'invalid_payload',
+        message: MODEL_CUBE_NOT_FOUND(payload.cubeId ?? payload.cubeName ?? 'unknown')
+      });
+    }
+    return ok({ id: target.id ?? payload.cubeId, name: target.name });
+  }
+
+  private normalizeFaceUvMap(faces: FaceUvMap): UsecaseResult<NormalizedFaces> {
+    const normalized: FaceUvMap = {};
+    const faceKeys: CubeFaceDirection[] = [];
+    for (const [faceKey, uv] of Object.entries(faces ?? {})) {
+      const [x1, y1, x2, y2] = uv as [number, number, number, number];
+      const boundsErr = this.ensureFaceUvWithinResolution([x1, y1, x2, y2]);
+      if (boundsErr) return fail(boundsErr);
+      const face = faceKey as CubeFaceDirection;
+      normalized[face] = [x1, y1, x2, y2];
+      faceKeys.push(face);
+    }
+    return ok({ normalized, faces: faceKeys });
+  }
+
+  private buildSetFaceUvResult(
+    target: ResolvedCubeTarget,
+    payload: SetFaceUvPayload,
+    faces: CubeFaceDirection[],
+    warnings: { warnings: string[]; warningCodes: string[] }
+  ): SetFaceUvSuccess {
+    return {
+      cubeId: target.id ?? payload.cubeId,
+      cubeName: target.name,
+      faces,
+      ...(warnings.warnings.length > 0 ? { warnings: warnings.warnings } : {}),
+      ...(warnings.warningCodes.length > 0 ? { warningCodes: warnings.warningCodes } : {})
+    };
   }
 
   private ensureFaceUvWithinResolution(uv: [number, number, number, number]): ToolError | null {
@@ -207,4 +236,5 @@ export class TextureUvService {
 }
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
 

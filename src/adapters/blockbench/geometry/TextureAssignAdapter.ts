@@ -1,4 +1,4 @@
-import type { ToolError } from '../../../types';
+import type { ToolError } from '../../../types/internal';
 import type { Logger } from '../../../logging';
 import type { AssignTextureCommand } from '../../../ports/editor';
 import { withToolErrorAdapterError } from '../adapterErrors';
@@ -12,7 +12,7 @@ import {
   TEXTURE_NOT_FOUND
 } from '../../../shared/messages';
 import type { CubeFaceDirection } from '../../../types/blockbench';
-import { ALL_FACES, ensureFaceMap, enforceManualUvMode, normalizeFaces, resolveFaceTextureRef } from './uvUtils';
+import { ALL_FACES, ensureFaceEntry, ensureFaceMap, enforceManualUvMode, normalizeFaces, resolveFaceTextureRef } from './uvUtils';
 
 export class BlockbenchTextureAssignAdapter {
   private readonly log: Logger;
@@ -58,8 +58,7 @@ export class BlockbenchTextureAssignAdapter {
           cube.applyTexture?.(texture, faces ?? true);
           if (textureRef) {
             targets.forEach((faceKey) => {
-              const face = faceMap[faceKey] ?? {};
-              if (!faceMap[faceKey]) faceMap[faceKey] = face;
+              const face = ensureFaceEntry(faceMap, faceKey);
               if (!extendEntity(face, { texture: textureRef })) {
                 face.texture = textureRef;
               }
@@ -80,3 +79,4 @@ export class BlockbenchTextureAssignAdapter {
     });
   }
 }
+

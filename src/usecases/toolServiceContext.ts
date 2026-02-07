@@ -1,4 +1,4 @@
-import type { Capabilities } from '../types';
+import type { Capabilities } from '../types/internal';
 import { ProjectSession } from '../session';
 import type { EditorPort } from '../ports/editor';
 import type { FormatPort } from '../ports/formats';
@@ -179,6 +179,7 @@ export const createToolServiceContext = (deps: ToolServiceDeps): ToolServiceCont
     validationService
   };
 };
+
 
 
 

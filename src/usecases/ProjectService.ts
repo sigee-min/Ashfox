@@ -1,8 +1,18 @@
-import type { Capabilities, EnsureProjectAction, FormatKind, ProjectDiff, ProjectState, ProjectStateDetail } from '../types';
+import type { Capabilities, FormatKind } from '../types/internal';
 import { type UsecaseResult } from './result';
 import { ProjectLifecycleService } from './project/ProjectLifecycleService';
 import { ProjectStateService } from './project/ProjectStateService';
 import type { ProjectServiceDeps } from './project/projectServiceTypes';
+import type {
+  CreateProjectOptions,
+  CreateProjectResult,
+  EnsureProjectPayload,
+  EnsureProjectResult,
+  GetProjectDiffPayload,
+  GetProjectDiffResult,
+  GetProjectStatePayload,
+  GetProjectStateResult
+} from './project/projectServiceContracts';
 
 export class ProjectService {
   private readonly projectState: ProjectServiceDeps['projectState'];
@@ -15,36 +25,23 @@ export class ProjectService {
     this.state = new ProjectStateService(deps);
   }
 
-  getProjectState(payload: { detail?: ProjectStateDetail; includeUsage?: boolean }): UsecaseResult<{ project: ProjectState }> {
+  getProjectState(payload: GetProjectStatePayload): UsecaseResult<GetProjectStateResult> {
     return this.state.getProjectState(payload);
   }
 
-  getProjectDiff(payload: { sinceRevision: string; detail?: ProjectStateDetail }): UsecaseResult<{ diff: ProjectDiff }> {
+  getProjectDiff(payload: GetProjectDiffPayload): UsecaseResult<GetProjectDiffResult> {
     return this.state.getProjectDiff(payload);
   }
 
-  ensureProject(payload: {
-    action?: EnsureProjectAction;
-    target?: { name?: string };
-    format?: Capabilities['formats'][number]['format'];
-    name?: string;
-    match?: 'none' | 'format' | 'name' | 'format_and_name';
-    onMismatch?: 'reuse' | 'error' | 'create';
-    onMissing?: 'create' | 'error';
-    confirmDiscard?: boolean;
-    force?: boolean;
-    uvPixelsPerBlock?: number;
-    dialog?: Record<string, unknown>;
-    ifRevision?: string;
-  }): UsecaseResult<{ action: 'created' | 'reused' | 'deleted'; project: { id: string; format: FormatKind; name: string | null; formatId?: string | null } }> {
+  ensureProject(payload: EnsureProjectPayload): UsecaseResult<EnsureProjectResult> {
     return this.lifecycle.ensureProject(payload);
   }
 
   createProject(
     format: Capabilities['formats'][number]['format'],
     name: string,
-    options?: { confirmDiscard?: boolean; dialog?: Record<string, unknown>; ifRevision?: string; uvPixelsPerBlock?: number }
-  ): UsecaseResult<{ id: string; format: FormatKind; name: string }> {
+    options?: CreateProjectOptions
+  ): UsecaseResult<CreateProjectResult> {
     return this.lifecycle.createProject(format, name, options);
   }
 
@@ -52,6 +49,7 @@ export class ProjectService {
     return this.projectState.matchOverrideKind(formatId);
   }
 }
+
 
 
 

@@ -1,4 +1,4 @@
-import type { Limits } from '../../types';
+import type { Limits } from '../../types/internal';
 import { checkDimensions, formatDimensionAxis, mapDimensionError } from '../dimensions';
 import { fail, ok, type DomainResult } from '../result';
 
@@ -42,6 +42,7 @@ export const validateUvPaintSourceSize = (
   }
   return ok({ width, height });
 };
+
 
 
 

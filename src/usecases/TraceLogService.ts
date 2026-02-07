@@ -1,6 +1,6 @@
 import type { TraceLogStore } from '../trace/traceLogStore';
 import type { TraceLogWriterFactory, TraceLogWriteOptions } from '../ports/traceLog';
-import type { ExportTraceLogPayload, ExportTraceLogResult } from '../types';
+import type { ExportTraceLogPayload, ExportTraceLogResult } from '../types/internal';
 import { ok, fail, UsecaseResult } from './result';
 
 const DEFAULT_RESOURCE_URI = 'bbmcp://logs/trace.ndjson';
@@ -66,6 +66,7 @@ export class TraceLogService {
     return this.resourceUri;
   }
 }
+
 
 
 

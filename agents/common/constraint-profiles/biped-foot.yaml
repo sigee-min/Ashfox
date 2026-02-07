@@ -1,0 +1,57 @@
+version: 1
+name: biped-foot
+scope:
+  target: feet
+  forwardAxis: z
+  groundAxis: y
+landmarks:
+  left_foot:
+    cubeName: foot_l
+  right_foot:
+    cubeName: foot_r
+  left_toe_1:
+    cubeName: toe_l_1
+  left_toe_2:
+    cubeName: toe_l_2
+  right_toe_1:
+    cubeName: toe_r_1
+  right_toe_2:
+    cubeName: toe_r_2
+rules:
+  - id: left_toes_forward_align
+    type: direction_alignment
+    base: left_foot
+    tips:
+      - left_toe_1
+      - left_toe_2
+    axis: z
+    minDot: 0.7
+  - id: right_toes_forward_align
+    type: direction_alignment
+    base: right_foot
+    tips:
+      - right_toe_1
+      - right_toe_2
+    axis: z
+    minDot: 0.7
+  - id: left_toe_spacing
+    type: distance_range
+    metric: euclidean
+    a: left_toe_1
+    b: left_toe_2
+    min: 0.5
+    max: 3.5
+  - id: right_toe_spacing
+    type: distance_range
+    metric: euclidean
+    a: right_toe_1
+    b: right_toe_2
+    min: 0.5
+    max: 3.5
+  - id: feet_ground_band
+    type: ground_contact_band
+    points:
+      - left_foot
+      - right_foot
+    axis: y
+    maxDelta: 0.75

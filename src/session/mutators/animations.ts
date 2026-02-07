@@ -58,3 +58,5 @@ export const upsertAnimationTrigger = (state: SessionState, clip: string, trigge
     anim.triggers.push(trigger);
   }
 };
+
+

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { BLOCKBENCH_SPEC_SNAPSHOT } from '../../src/adapters/sim/BlockbenchSpec';
+import { BLOCKBENCH_SPEC_SNAPSHOT } from './support/sim/BlockbenchSpec';
 
 const snapshot = BLOCKBENCH_SPEC_SNAPSHOT;
 

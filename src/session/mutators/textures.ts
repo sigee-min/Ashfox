@@ -36,3 +36,5 @@ export const removeTextures = (state: SessionState, names: string[] | Set<string
   state.textures = state.textures.filter((t) => !nameSet.has(t.name));
   return before - state.textures.length;
 };
+
+

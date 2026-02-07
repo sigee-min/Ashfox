@@ -1,7 +1,7 @@
 import { CUBE_FACE_DIRECTIONS } from '../../shared/toolConstants';
 import type { CubeFaceDirection, TextureUsageResult } from '../../ports/editor';
 import type { SessionState } from '../../session';
-import type { PreflightUsageSummary, PreflightUvBounds } from '../../types';
+import type { PreflightUsageSummary, PreflightUvBounds } from '../../types/internal';
 import { buildTargetFilters, filterByTargetFilters } from '../../domain/targetFilters';
 
 const VALID_CUBE_FACES: ReadonlySet<CubeFaceDirection> = new Set(CUBE_FACE_DIRECTIONS);
@@ -103,3 +103,4 @@ const clampResolution = (value: number, maxSize: number): number => {
   if (value > maxSize) return maxSize;
   return value;
 };
+

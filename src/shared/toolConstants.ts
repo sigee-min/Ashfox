@@ -5,10 +5,8 @@ export const FORMAT_KINDS = [
   'Image',
   'Generic Model'
 ] as const;
-export type FormatKind = typeof FORMAT_KINDS[number];
 
 export const PROJECT_STATE_DETAILS = ['summary', 'full'] as const;
-export type ProjectStateDetail = typeof PROJECT_STATE_DETAILS[number];
 
 export const TOOL_NAMES = [
   'list_capabilities',
@@ -53,10 +51,8 @@ export const CUBE_FACE_DIRECTIONS = ['north', 'south', 'east', 'west', 'up', 'do
 export type CubeFaceDirection = typeof CUBE_FACE_DIRECTIONS[number];
 
 export const PREVIEW_MODES = ['fixed', 'turntable'] as const;
-export type PreviewMode = typeof PREVIEW_MODES[number];
 
 export const PREVIEW_OUTPUTS = ['single', 'sequence'] as const;
-export type PreviewOutput = typeof PREVIEW_OUTPUTS[number];
 
 
 

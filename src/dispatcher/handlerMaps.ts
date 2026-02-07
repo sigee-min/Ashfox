@@ -4,7 +4,7 @@ import type {
   ToolResultMap,
   ToolResponse,
   WithState
-} from '../types';
+} from '../types/internal';
 import type { UsecaseResult } from '../usecases/result';
 import { ToolService } from '../usecases/ToolService';
 import { toToolResponse } from '../shared/tooling/toolResponse';
@@ -102,3 +102,4 @@ export const createHandlerMaps = (args: {
 
   return { statefulRetryHandlers, statefulHandlers, responseHandlers };
 };
+

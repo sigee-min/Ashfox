@@ -29,7 +29,6 @@ import {
   UV_PAINT_OBJECT_REQUIRED,
   UV_PAINT_PADDING_EXCEEDS_RECT,
   UV_PAINT_PADDING_INVALID,
-  UV_PAINT_PATTERN_UNAVAILABLE,
   UV_PAINT_RECT_INVALID,
   UV_PAINT_RECT_OUTSIDE_BOUNDS,
   UV_PAINT_RECTS_REQUIRED,
@@ -138,8 +137,4 @@ export const buildUvPaintSourceMessages = () => ({
   axisPositive: UV_PAINT_SOURCE_AXIS_POSITIVE,
   axisInteger: UV_PAINT_SOURCE_AXIS_INTEGER,
   exceedsMax: UV_PAINT_SOURCE_EXCEEDS_MAX
-});
-
-export const buildUvPaintRuntimeMessages = () => ({
-  patternUnavailable: UV_PAINT_PATTERN_UNAVAILABLE
 });

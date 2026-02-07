@@ -1,0 +1,49 @@
+version: 1
+name: humanoid-face
+scope:
+  target: face
+  symmetryAxis: x
+landmarks:
+  midline:
+    type: scalar
+    value: 0.0
+  left_eye:
+    cubeName: eye_l
+  right_eye:
+    cubeName: eye_r
+  nose:
+    cubeName: nose
+  mouth:
+    cubeName: mouth
+rules:
+  - id: eye_mirror_x
+    type: mirror_pair
+    left: left_eye
+    right: right_eye
+    axis: x
+    midlineRef: midline
+    tolerance: 0.5
+  - id: eyes_same_height
+    type: distance_range
+    metric: abs_delta_y
+    a: left_eye
+    b: right_eye
+    min: 0.0
+    max: 0.75
+  - id: nose_near_midline
+    type: midline_distance
+    point: nose
+    axis: x
+    midlineRef: midline
+    max: 0.75
+  - id: mouth_below_nose
+    type: vertical_order
+    upper: nose
+    lower: mouth
+    minDelta: 0.5
+  - id: mouth_centered
+    type: midline_distance
+    point: mouth
+    axis: x
+    midlineRef: midline
+    max: 1.25

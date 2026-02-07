@@ -1,6 +1,4 @@
-import type { ToolError } from '../types';
-
-export const isBlankString = (value?: string): boolean => typeof value === 'string' && value.trim().length === 0;
+import type { ToolError } from '../types/internal';
 
 export const ensureNonBlankString = (
   value: unknown,
@@ -67,6 +65,7 @@ export const ensureIdNameMatch = <T extends IdNameItem>(
   }
   return null;
 };
+
 
 
 

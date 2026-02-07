@@ -1,4 +1,4 @@
-import type { ToolError } from '../types';
+import type { ToolError } from '../types/internal';
 import { RevisionStore } from '../domain/revision/revisionStore';
 import { ProjectStateBuilder } from '../domain/project/projectStateBuilder';
 import { decideRevisionMatch } from './revision/revisionCompare';
@@ -60,6 +60,7 @@ export class RevisionContext implements RevisionContextLike {
     }
   }
 }
+
 
 
 

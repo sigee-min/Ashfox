@@ -1,4 +1,4 @@
-import type { AutoUvAtlasPayload, AutoUvAtlasResult, Capabilities, ToolError } from '../types';
+import type { AutoUvAtlasPayload, AutoUvAtlasResult, Capabilities, ToolError } from '../types/internal';
 import { ProjectSession, SessionState } from '../session';
 import { EditorPort } from '../ports/editor';
 import { BoneService } from './model/BoneService';
@@ -136,6 +136,7 @@ export class ModelService {
     return this.cubeService.deleteCube(payload);
   }
 }
+
 
 
 

@@ -1,4 +1,4 @@
-import type { ToolError } from '../../types';
+import type { ToolError } from '../../types/internal';
 import type { TextureMeta } from '../../types/texture';
 import type { EditorPort } from '../../ports/editor';
 import type { ProjectSession, SessionState } from '../../session';
@@ -69,31 +69,17 @@ export class TextureWriteService {
         const idErr = ensureIdAvailable(snapshot.textures, id, TEXTURE_ID_EXISTS);
         if (idErr) return fail(idErr);
         const contentHash = hashCanvasImage(payload.image);
+        const meta = pickTextureMeta(payload);
         const err = this.editor.importTexture({
           id,
           name: payload.name,
           image: payload.image,
           width: payload.width,
           height: payload.height,
-          namespace: payload.namespace,
-          folder: payload.folder,
-          particle: payload.particle,
-          visible: payload.visible,
-          renderMode: payload.renderMode,
-          renderSides: payload.renderSides,
-          pbrChannel: payload.pbrChannel,
-          group: payload.group,
-          frameTime: payload.frameTime,
-          frameOrderType: payload.frameOrderType,
-          frameOrder: payload.frameOrder,
-          frameInterpolate: payload.frameInterpolate,
-          internal: payload.internal,
-          keepSize: payload.keepSize
+          ...meta
         });
         if (err) return fail(err);
-        const match = this.editor
-          .listTextures()
-          .find((t) => (t.id && t.id === id) || t.name === payload.name);
+        const match = findTextureByIdOrName(this.editor.listTextures(), id, payload.name);
         const resolvedSize = resolveTextureSize(
           { width: match?.width, height: match?.height },
           { width: payload.width, height: payload.height }
@@ -104,20 +90,7 @@ export class TextureWriteService {
           width: resolvedSize.width,
           height: resolvedSize.height,
           contentHash: contentHash ?? undefined,
-          namespace: payload.namespace,
-          folder: payload.folder,
-          particle: payload.particle,
-          visible: payload.visible,
-          renderMode: payload.renderMode,
-          renderSides: payload.renderSides,
-          pbrChannel: payload.pbrChannel,
-          group: payload.group,
-          frameTime: payload.frameTime,
-          frameOrderType: payload.frameOrderType,
-          frameOrder: payload.frameOrder,
-          frameInterpolate: payload.frameInterpolate,
-          internal: payload.internal,
-          keepSize: payload.keepSize
+          ...meta
         });
         return ok({ id, name: payload.name });
       }
@@ -155,6 +128,7 @@ export class TextureWriteService {
         const targetId = resolveEntityId(target.id, payload.id, 'tex');
         const renameErr = ensureRenameAvailable(snapshot.textures, payload.newName, targetName, TEXTURE_ALREADY_EXISTS);
         if (renameErr) return fail(renameErr);
+        const meta = pickTextureMeta(payload);
         const renaming = Boolean(payload.newName && payload.newName !== targetName);
         if (contentHash && target.contentHash && contentHash === target.contentHash && !renaming) {
           return fail({
@@ -176,26 +150,11 @@ export class TextureWriteService {
           image: payload.image,
           width: payload.width,
           height: payload.height,
-          namespace: payload.namespace,
-          folder: payload.folder,
-          particle: payload.particle,
-          visible: payload.visible,
-          renderMode: payload.renderMode,
-          renderSides: payload.renderSides,
-          pbrChannel: payload.pbrChannel,
-          group: payload.group,
-          frameTime: payload.frameTime,
-          frameOrderType: payload.frameOrderType,
-          frameOrder: payload.frameOrder,
-          frameInterpolate: payload.frameInterpolate,
-          internal: payload.internal,
-          keepSize: payload.keepSize
+          ...meta
         });
         if (err) return fail(err);
         const effectiveName = payload.newName ?? targetName;
-        const match = this.editor
-          .listTextures()
-          .find((t) => (t.id && t.id === targetId) || t.name === effectiveName);
+        const match = findTextureByIdOrName(this.editor.listTextures(), targetId, effectiveName);
         const resolvedSize = resolveTextureSize(
           { width: match?.width, height: match?.height },
           { width: payload.width, height: payload.height },
@@ -207,20 +166,7 @@ export class TextureWriteService {
           width: resolvedSize.width,
           height: resolvedSize.height,
           contentHash: contentHash ?? undefined,
-          namespace: payload.namespace,
-          folder: payload.folder,
-          particle: payload.particle,
-          visible: payload.visible,
-          renderMode: payload.renderMode,
-          renderSides: payload.renderSides,
-          pbrChannel: payload.pbrChannel,
-          group: payload.group,
-          frameTime: payload.frameTime,
-          frameOrderType: payload.frameOrderType,
-          frameOrder: payload.frameOrder,
-          frameInterpolate: payload.frameInterpolate,
-          internal: payload.internal,
-          keepSize: payload.keepSize
+          ...meta
         });
         return ok({ id: targetId, name: effectiveName });
       }
@@ -249,3 +195,45 @@ export class TextureWriteService {
     );
   }
 }
+
+const findTextureByIdOrName = (
+  textures: ReturnType<EditorPort['listTextures']>,
+  id: string,
+  name: string
+) => textures.find((texture) => (texture.id && texture.id === id) || texture.name === name);
+
+const pickTextureMeta = (
+  payload: TextureMeta
+): Pick<
+  TextureMeta,
+  | 'namespace'
+  | 'folder'
+  | 'particle'
+  | 'visible'
+  | 'renderMode'
+  | 'renderSides'
+  | 'pbrChannel'
+  | 'group'
+  | 'frameTime'
+  | 'frameOrderType'
+  | 'frameOrder'
+  | 'frameInterpolate'
+  | 'internal'
+  | 'keepSize'
+> => ({
+  namespace: payload.namespace,
+  folder: payload.folder,
+  particle: payload.particle,
+  visible: payload.visible,
+  renderMode: payload.renderMode,
+  renderSides: payload.renderSides,
+  pbrChannel: payload.pbrChannel,
+  group: payload.group,
+  frameTime: payload.frameTime,
+  frameOrderType: payload.frameOrderType,
+  frameOrder: payload.frameOrder,
+  frameInterpolate: payload.frameInterpolate,
+  internal: payload.internal,
+  keepSize: payload.keepSize
+});
+

@@ -1,4 +1,4 @@
-import type { ToolError } from '../../../types';
+import type { ToolError } from '../../../types/internal';
 import type { Logger } from '../../../logging';
 import type { BoneCommand, DeleteBoneCommand, UpdateBoneCommand } from '../../../ports/editor';
 import {
@@ -102,3 +102,4 @@ export class BlockbenchBoneAdapter {
     });
   }
 }
+

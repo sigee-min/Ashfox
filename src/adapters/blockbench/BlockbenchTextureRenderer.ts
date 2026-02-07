@@ -1,5 +1,5 @@
 import { TexturePixelData, TextureRenderResult, TextureRendererPort } from '../../ports/textureRenderer';
-import { ToolError } from '../../types';
+import { ToolError } from '../../types/internal';
 import { readBlockbenchGlobals } from '../../types/blockbench';
 import {
   ADAPTER_TEXTURE_RENDERER_DOCUMENT_UNAVAILABLE,
@@ -61,5 +61,6 @@ export class BlockbenchTextureRenderer implements TextureRendererPort {
     return { result: { width, height, data: new Uint8ClampedArray(imageData.data) } };
   }
 }
+
 
 

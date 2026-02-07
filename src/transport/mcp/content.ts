@@ -1,4 +1,4 @@
-import { McpContentBlock, ReadTextureResult, RenderPreviewResult } from '../../types';
+import { McpContentBlock, ReadTextureResult, RenderPreviewResult } from '../../types/internal';
 import type { RenderPreviewStructured } from '../../types/preview';
 
 export const buildRenderPreviewContent = (result: RenderPreviewResult): McpContentBlock[] => {
@@ -56,6 +56,7 @@ const extractBase64FromDataUri = (dataUri: string): string | null => {
   if (comma === -1) return null;
   return raw.slice(comma + 1).trim();
 };
+
 
 
 

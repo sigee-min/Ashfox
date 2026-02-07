@@ -22,7 +22,7 @@ import {
   UpdateTextureCommand,
   TriggerKeyframeCommand
 } from '../../ports/editor';
-import { RenderPreviewPayload, RenderPreviewResult, ToolError, FormatKind } from '../../types';
+import { RenderPreviewPayload, RenderPreviewResult, ToolError, FormatKind } from '../../types/internal';
 import { Logger } from '../../logging';
 import { BlockbenchProjectAdapter } from './BlockbenchProjectAdapter';
 import { BlockbenchTextureAdapter } from './BlockbenchTextureAdapter';
@@ -154,5 +154,6 @@ export class BlockbenchEditor implements EditorPort {
     return this.project.setProjectUvPixelsPerBlock(pixelsPerBlock);
   }
 }
+
 
 

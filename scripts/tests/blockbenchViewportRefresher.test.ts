@@ -3,28 +3,7 @@ import assert from 'node:assert/strict';
 import { BlockbenchViewportRefresher } from '../../src/adapters/blockbench/BlockbenchViewportRefresher';
 import type { CanvasUpdateViewOptions } from '../../src/types/blockbench';
 import { noopLog } from './helpers';
-
-const withGlobals = (overrides: Record<string, unknown>, fn: () => void) => {
-  const globals = globalThis as Record<string, unknown>;
-  const previous = Object.entries(overrides).map(([key, value]) => ({
-    key,
-    exists: Object.prototype.hasOwnProperty.call(globals, key),
-    value: globals[key],
-    next: value
-  }));
-  for (const entry of previous) {
-    if (entry.next === undefined) delete globals[entry.key];
-    else globals[entry.key] = entry.next;
-  }
-  try {
-    fn();
-  } finally {
-    for (const entry of previous) {
-      if (entry.exists) globals[entry.key] = entry.value;
-      else delete globals[entry.key];
-    }
-  }
-};
+import { withGlobals } from './support/withGlobals';
 
 {
   const refresher = new BlockbenchViewportRefresher(noopLog);
@@ -138,4 +117,109 @@ const withGlobals = (overrides: Record<string, unknown>, fn: () => void) => {
   assert.equal(selectCalls, 1);
   assert.equal(setTimeCalls, 1);
   assert.equal(updateViewCalls, 1);
+}
+
+{
+  const refresher = new BlockbenchViewportRefresher(noopLog);
+  let setTimeCalls = 0;
+  const clip = { time: 0.5 };
+  withGlobals(
+    {
+      Animation: { selected: clip },
+      Animator: {
+        time: 0.5,
+        setTime: (_time: number) => {
+          setTimeCalls += 1;
+        }
+      },
+      Canvas: { updateView: (_options: CanvasUpdateViewOptions) => undefined },
+      Preview: undefined
+    },
+    () => {
+      refresher.refresh({ effect: 'animation', source: 'set_frame_pose' });
+    }
+  );
+  assert.equal(setTimeCalls, 1);
+}
+
+{
+  const refresher = new BlockbenchViewportRefresher(noopLog);
+  let previewCalls = 0;
+  const clip = { time: 0.25 };
+  withGlobals(
+    {
+      Animation: { selected: clip },
+      Animator: {
+        time: 0.25,
+        preview: (_time: number) => {
+          previewCalls += 1;
+        }
+      },
+      Canvas: { updateView: (_options: CanvasUpdateViewOptions) => undefined },
+      Preview: undefined
+    },
+    () => {
+      refresher.refresh({ effect: 'animation', source: 'set_frame_pose' });
+    }
+  );
+  assert.equal(previewCalls, 1);
+}
+
+{
+  const refresher = new BlockbenchViewportRefresher(noopLog);
+  const clip = { time: Number.NaN };
+  withGlobals(
+    {
+      Animation: { selected: clip },
+      Animator: { time: 1.25 },
+      Canvas: { updateView: (_options: CanvasUpdateViewOptions) => undefined },
+      Preview: undefined
+    },
+    () => {
+      refresher.refresh({ effect: 'animation', source: 'set_frame_pose' });
+    }
+  );
+  assert.equal(clip.time, 1.25);
+}
+
+{
+  const refresher = new BlockbenchViewportRefresher(noopLog);
+  let textureFallbackCalls = 0;
+  withGlobals(
+    {
+      Canvas: {
+        updateAllUVs: () => {
+          textureFallbackCalls += 1;
+        }
+      },
+      Preview: undefined
+    },
+    () => {
+      refresher.refresh({ effect: 'texture', source: 'paint_faces' });
+    }
+  );
+  assert.equal(textureFallbackCalls, 1);
+}
+
+{
+  const refresher = new BlockbenchViewportRefresher(noopLog);
+  let renderCalls = 0;
+  const preview = {
+    render: () => {
+      renderCalls += 1;
+    }
+  };
+  withGlobals(
+    {
+      Canvas: undefined,
+      Preview: {
+        selected: preview,
+        all: [preview]
+      }
+    },
+    () => {
+      refresher.refresh({ effect: 'none', source: 'get_project_state' });
+    }
+  );
+  assert.equal(renderCalls, 1);
 }

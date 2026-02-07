@@ -1,4 +1,4 @@
-import type { FormatKind, ToolError, ToolResponse } from '../types';
+import type { FormatKind, ToolError, ToolResponse } from '../types/internal';
 import { err } from '../shared/tooling/toolResponse';
 import { PROJECT_NO_ACTIVE } from '../shared/messages';
 import type { SessionState } from './types';
@@ -108,3 +108,4 @@ export class SessionStateStore {
     this.state.uvPixelsPerBlock = value;
   }
 }
+

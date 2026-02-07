@@ -1,4 +1,4 @@
-import type { ToolError } from '../../types';
+import type { ToolError } from '../../types/internal';
 import { errorMessage, type Logger } from '../../logging';
 import { toolError } from '../../shared/tooling/toolResponse';
 
@@ -32,6 +32,7 @@ export const withAdapterError = <T>(
     return onError(toolError('unknown', message, { reason: 'adapter_exception', context }));
   }
 };
+
 
 
 

@@ -1,4 +1,4 @@
-import type { ToolError } from '../types';
+import type { ToolError } from '../types/internal';
 
 export const resolveIfRevision = (payload: unknown): string | undefined => {
   if (!payload || typeof payload !== 'object') return undefined;
@@ -30,3 +30,4 @@ export const extractGuardMeta = (error: ToolError): Record<string, unknown> => {
   if (typeof record.reason === 'string') meta.reason = record.reason;
   return meta;
 };
+

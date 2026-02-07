@@ -1,8 +1,6 @@
 import type { DomainResult } from '../result';
 import { fail } from '../result';
 
-export type UvBoundsErrorReason = 'negative' | 'out_of_bounds' | 'order';
-
 export type UvBoundsMessages = {
   negative: string;
   order: string;

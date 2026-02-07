@@ -1,4 +1,4 @@
-import type { ToolError } from '../types';
+import type { ToolError } from '../types/internal';
 import { ProjectSession } from '../session';
 import type { SnapshotPort } from '../ports/snapshot';
 import { ProjectStateBuilder } from '../domain/project/projectStateBuilder';
@@ -73,6 +73,7 @@ export class SnapshotContext implements SnapshotContextLike<ReturnType<ProjectSe
         };
   }
 }
+
 
 
 

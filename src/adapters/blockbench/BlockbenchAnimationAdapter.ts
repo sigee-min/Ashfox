@@ -1,4 +1,4 @@
-import { ToolError } from '../../types';
+import { ToolError } from '../../types/internal';
 import {
   AnimationCommand,
   DeleteAnimationCommand,
@@ -76,4 +76,5 @@ export class BlockbenchAnimationAdapter {
     }
   }
 }
+
 

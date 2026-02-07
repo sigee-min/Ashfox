@@ -1,4 +1,4 @@
-import type { ProjectDiff, ProjectState, ProjectStateDetail, ToolError } from '../../types';
+import type { ProjectDiff, ProjectState, ProjectStateDetail, ToolError } from '../../types/internal';
 
 type ResultLike<T> = { ok: true; value: T } | { ok: false; error: ToolError };
 
@@ -45,6 +45,7 @@ export const buildStateMeta = (deps: StateMetaDeps, options: StateMetaOptions): 
   if (options.includeDiff) meta.diff = diffValue ?? null;
   return meta;
 };
+
 
 
 

@@ -1,4 +1,4 @@
-import type { ToolError, ToolErrorCode } from '../types';
+import type { ToolError, ToolErrorCode } from '../types/internal';
 
 export type DomainErrorCode = ToolErrorCode;
 
@@ -19,5 +19,6 @@ export const fail = <T = never>(
   ok: false,
   error: { code, message, ...(details ? { details } : {}), ...(fix ? { fix } : {}) }
 });
+
 
 

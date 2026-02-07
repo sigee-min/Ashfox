@@ -1,5 +1,5 @@
 import type { PreviewItem } from '../../../types/blockbench';
-import type { ToolError } from '../../../types';
+import type { ToolError } from '../../../types/internal';
 import { toolError } from '../../../shared/tooling/toolResponse';
 import { readGlobals } from '../blockbenchUtils';
 import { getAnimations } from '../animation/animationCommands';
@@ -228,3 +228,4 @@ export const selectPreview = (selected: PreviewItem | null | undefined, all: Pre
   if (selected?.canvas) return selected;
   return all.find((p) => Boolean(p?.canvas)) ?? null;
 };
+

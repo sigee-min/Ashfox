@@ -1,4 +1,4 @@
-import type { Capabilities, Dispatcher } from '../types';
+import type { Capabilities, Dispatcher } from '../types/internal';
 import type { Logger } from '../logging';
 import type { ToolPolicies } from '../usecases/policies';
 import { computeCapabilities } from '../config';
@@ -190,6 +190,7 @@ export const buildRuntimeServices = (options: BuildRuntimeServicesOptions): Runt
     traceLogService
   };
 };
+
 
 
 

@@ -1,4 +1,3 @@
-import type { Limits, TextureUsage } from '../model';
 import type { UvPaintSpec } from './paintSpec';
 
 export type UvPaintMessages = {
@@ -35,12 +34,3 @@ export type UvPaintResolveInput = {
   targetName?: string;
   uvPaint?: UvPaintSpec;
 };
-
-export type UvPaintValidationContext = {
-  value: unknown;
-  limits: Limits;
-  label: string;
-  messages: UvPaintMessages;
-};
-
-export type UvPaintUsageEntry = TextureUsage['textures'][number];

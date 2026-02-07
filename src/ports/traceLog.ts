@@ -1,4 +1,4 @@
-import type { ToolError } from '../types';
+import type { ToolError } from '../types/internal';
 
 export type TraceLogWriteMode = 'auto' | 'writeFile' | 'export';
 
@@ -15,6 +15,7 @@ export interface TraceLogWriter {
 export interface TraceLogWriterFactory {
   create: (options?: TraceLogWriteOptions) => TraceLogWriter;
 }
+
 
 
 

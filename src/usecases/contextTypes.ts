@@ -1,4 +1,4 @@
-import type { ToolError } from '../types';
+import type { ToolError } from '../types/internal';
 import type { FormatOverrides } from '../domain/formats';
 import type { ExportPolicy, SnapshotPolicy } from './policies';
 import type { UvPolicyConfig } from '../domain/uv/policy';
@@ -25,6 +25,7 @@ export interface RevisionContextLike {
   runWithoutRevisionGuard<T>(fn: () => T): T;
   runWithoutRevisionGuardAsync<T>(fn: () => Promise<T> | T): Promise<T>;
 }
+
 
 
 

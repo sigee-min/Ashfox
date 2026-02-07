@@ -1,6 +1,6 @@
 import type { TraceLogRecord } from '../types/traceLog';
 import type { TraceLogWriter } from '../ports/traceLog';
-import type { ToolError } from '../types';
+import type { ToolError } from '../types/internal';
 import { serializeTraceLogRecord } from './traceLogFormat';
 
 export type TraceLogStoreOptions = {
@@ -132,6 +132,7 @@ const normalizeMinEntries = (value?: number): number => {
   const normalized = Math.max(0, Math.trunc(value));
   return normalized;
 };
+
 
 
 

@@ -1,4 +1,4 @@
-import type { FormatKind } from '../types';
+import type { FormatKind } from '../types/internal';
 import type { TextureFrameOrderType, TextureMeta, TexturePbrChannel, TextureRenderMode, TextureRenderSides } from '../types/texture';
 import type { AnimationTimePolicy } from '../domain/animation/timePolicy';
 
@@ -143,4 +143,5 @@ export interface SessionState {
   animationsStatus?: 'available' | 'unavailable';
   animationTimePolicy: AnimationTimePolicy;
 }
+
 

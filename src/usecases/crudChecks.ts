@@ -1,4 +1,4 @@
-import type { ToolError } from '../types';
+import type { ToolError } from '../types/internal';
 import { createId } from '../shared/id';
 
 type NamedEntity = { name: string; id?: string | null };
@@ -37,3 +37,4 @@ export const resolveEntityId = (
   requestedId: string | undefined,
   prefix: string
 ): string => requestedId ?? existingId ?? createId(prefix);
+

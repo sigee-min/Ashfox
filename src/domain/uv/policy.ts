@@ -81,39 +81,11 @@ const computeExpectedUvSizeInternal = (
   return { width, height, exceedsTexture };
 };
 
-export const computeExpectedUvSize = (
-  face: FaceDimensions,
-  texture: { width: number; height: number },
-  policy: UvPolicyConfig
-): { width: number; height: number } | null => {
-  const result = computeExpectedUvSizeInternal(face, texture, policy, { allowOverflow: false });
-  if (!result) return null;
-  return { width: result.width, height: result.height };
-};
-
 export const computeExpectedUvSizeWithOverflow = (
   face: FaceDimensions,
   texture: { width: number; height: number },
   policy: UvPolicyConfig
 ): ExpectedUvSize | null => computeExpectedUvSizeInternal(face, texture, policy, { allowOverflow: true });
-
-export const shouldAutoFixUv = (
-  actualUv: [number, number, number, number] | undefined,
-  expected: { width: number; height: number },
-  policy: UvPolicyConfig
-): boolean => {
-  if (!actualUv) return true;
-  const [x1, y1, x2, y2] = actualUv;
-  const actualWidth = abs(x2 - x1);
-  const actualHeight = abs(y2 - y1);
-  if (actualWidth <= policy.tinyThreshold || actualHeight <= policy.tinyThreshold) return true;
-  if (expected.width <= 0 || expected.height <= 0) return false;
-  const widthRatio = actualWidth / expected.width;
-  const heightRatio = actualHeight / expected.height;
-  const widthMismatch = Math.abs(1 - widthRatio) > policy.scaleTolerance;
-  const heightMismatch = Math.abs(1 - heightRatio) > policy.scaleTolerance;
-  return widthMismatch || heightMismatch;
-};
 
 
 

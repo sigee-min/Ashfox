@@ -1,4 +1,4 @@
-import type { Capabilities, PreflightTextureResult, ToolError } from '../../types';
+import type { Capabilities, PreflightTextureResult, ToolError } from '../../types/internal';
 import type { EditorPort } from '../../ports/editor';
 import { computeTextureUsageId } from '../../domain/textureUsage';
 import {
@@ -154,4 +154,5 @@ export const runTexturePreflight = (
     return ok(result);
   });
 };
+
 

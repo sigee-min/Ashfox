@@ -3,8 +3,16 @@ import assert from 'node:assert/strict';
 import type { ProjectDiff, ProjectState } from '../../src/types';
 import { TraceLogStore } from '../../src/trace/traceLogStore';
 import { TraceRecorder } from '../../src/trace/traceRecorder';
-import { parseTraceLogText, stepsFromTraceLog } from '../../src/trace/traceLogReplay';
+import { parseTraceLogText } from '../../src/trace/traceLogReplay';
 import { ok } from './helpers';
+
+const stepsFromTraceLog = (records: Array<{ kind: string; op?: string; payload?: unknown }>) =>
+  records
+    .filter((record) => record.kind === 'step' && typeof record.op === 'string')
+    .map((record) => ({
+      op: record.op as string,
+      payload: record.payload
+    }));
 
 const createState = (revision: string): ProjectState => ({
   id: 'p1',

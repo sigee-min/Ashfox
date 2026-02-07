@@ -1,5 +1,5 @@
 import type { Logger } from '../logging';
-import type { ToolName, ToolPayloadMap, ToolResponse } from '../types';
+import type { ToolName, ToolPayloadMap, ToolResponse } from '../types/internal';
 import { errorMessage } from '../logging';
 import type { TraceRecorder } from '../trace/traceRecorder';
 
@@ -18,3 +18,4 @@ export const recordTrace = <T>(
     log.warn('trace log record failed', { tool, message });
   }
 };
+

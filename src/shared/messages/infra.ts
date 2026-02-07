@@ -57,6 +57,10 @@ export const ADAPTER_PROJECT_UNSAVED_CHANGES =
   'Project has unsaved changes. Save or close it before creating a new project.';
 export const ADAPTER_PROJECT_CREATE_UNAVAILABLE = 'Blockbench project creation unavailable';
 export const ADAPTER_PROJECT_CLOSE_UNAVAILABLE = 'Blockbench project close unavailable';
+export const ADAPTER_PROJECT_CLOSE_ASYNC_UNSUPPORTED =
+  'Blockbench project close returned a Promise; asynchronous close is not supported.';
+export const ADAPTER_PROJECT_CLOSE_NOT_APPLIED =
+  'Project close did not apply synchronously. Retry after the close operation completes.';
 export const ADAPTER_PROJECT_CLOSE_UNSAVED_CHANGES =
   'Project has unsaved changes. Save it or retry with force=true to close without saving.';
 export const ADAPTER_BLOCKBENCH_WRITEFILE_UNAVAILABLE = 'Blockbench.writeFile not available';

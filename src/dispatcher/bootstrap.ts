@@ -1,4 +1,4 @@
-import type { Capabilities } from '../types';
+import type { Capabilities } from '../types/internal';
 import type { ProjectSession } from '../session';
 import type { Logger } from '../logging';
 import { BlockbenchEditor } from '../adapters/blockbench/BlockbenchEditor';
@@ -38,3 +38,4 @@ export const buildDefaultToolService = (
     policies: { snapshotPolicy: 'hybrid', exportPolicy: 'strict' }
   });
 };
+

@@ -1,4 +1,4 @@
-import type { Capabilities, FormatKind } from '../../types';
+import type { Capabilities, FormatKind } from '../../types/internal';
 import { resolveFormatId } from '../../domain/formats';
 import { withFormatOverrideHint } from '../formatHints';
 import { buildProjectDialogDefaults } from '../../domain/project/projectDialogDefaults';
@@ -107,3 +107,4 @@ const shouldRetryDiscardUnsaved = (
   if (explicitConfirmDiscard !== false) return false;
   return error.code === 'invalid_state' && error.message === ADAPTER_PROJECT_UNSAVED_CHANGES;
 };
+

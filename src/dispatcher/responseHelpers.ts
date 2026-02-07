@@ -1,4 +1,4 @@
-import type { ToolErrorCode, ToolName, ToolPayloadMap, ToolResponse, ToolResultMap } from '../types';
+import type { ToolErrorCode, ToolName, ToolPayloadMap, ToolResponse, ToolResultMap } from '../types/internal';
 import { err } from '../shared/tooling/toolResponse';
 
 export const respondOk = <T>(data: T): ToolResponse<T> => ({ ok: true, data });
@@ -14,3 +14,4 @@ export type HandlerResult = ToolResultMap[ToolName];
 export type Handler = {
   bivarianceHack(payload: HandlerPayload): ToolResponse<HandlerResult>;
 }['bivarianceHack'];
+

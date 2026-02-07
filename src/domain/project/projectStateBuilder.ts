@@ -1,4 +1,4 @@
-import { FormatKind, FORMAT_KINDS, ProjectInfo, ProjectState, ProjectStateDetail } from '../../types';
+import { FormatKind, FORMAT_KINDS, ProjectInfo, ProjectState, ProjectStateDetail } from '../../types/internal';
 import { FormatPort } from '../../ports/formats';
 import { FormatOverrides, matchesFormatKind } from '../formats';
 import { SessionState } from '../../session';
@@ -90,6 +90,7 @@ export class ProjectStateBuilder {
     return match ? match[0] : null;
   }
 }
+
 
 
 

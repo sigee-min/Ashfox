@@ -2,8 +2,7 @@ import type { JsonSchema } from '../types';
 import {
   ENSURE_PROJECT_MATCHES,
   ENSURE_PROJECT_ON_MISMATCH,
-  ENSURE_PROJECT_ON_MISSING,
-  FORMAT_KINDS
+  ENSURE_PROJECT_ON_MISSING
 } from '../../toolConstants';
 
 export const ensureProjectBaseProperties: Record<string, JsonSchema> = {
@@ -16,11 +15,4 @@ export const ensureProjectBaseProperties: Record<string, JsonSchema> = {
   dialog: { type: 'object', additionalProperties: true }
 };
 
-export const ensureProjectSchema = (options?: { includeFormat?: boolean }): JsonSchema => ({
-  type: 'object',
-  additionalProperties: false,
-  properties: {
-    ...(options?.includeFormat ? { format: { type: 'string', enum: FORMAT_KINDS } } : {}),
-    ...ensureProjectBaseProperties
-  }
-});
+

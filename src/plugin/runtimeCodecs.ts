@@ -1,4 +1,4 @@
-import type { Capabilities, ExportPayload, FormatKind } from '../types';
+import type { Capabilities, ExportPayload, FormatKind } from '../types/internal';
 import type { ProjectSession } from '../session';
 import type { BlockbenchFormats } from '../adapters/blockbench/BlockbenchFormats';
 import type { ExportPolicy } from '../usecases/policies';
@@ -155,3 +155,4 @@ const isThenable = (value: unknown): value is { then: (onFulfilled: (arg: unknow
   const candidate = value as { then?: unknown };
   return typeof candidate.then === 'function';
 };
+

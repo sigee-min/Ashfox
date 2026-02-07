@@ -31,5 +31,3 @@ export const TOOL_VIEWPORT_EFFECTS: Record<ToolName, ViewportEffect> = {
 };
 
 export const getViewportEffectForTool = (tool: ToolName): ViewportEffect => TOOL_VIEWPORT_EFFECTS[tool];
-
-export const toolNeedsViewportRefresh = (tool: ToolName): boolean => getViewportEffectForTool(tool) !== 'none';

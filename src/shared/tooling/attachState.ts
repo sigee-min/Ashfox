@@ -1,4 +1,4 @@
-import type { ProjectDiff, ProjectState, ProjectStateDetail, ToolError, ToolResponse, WithState } from '../../types';
+import type { ProjectDiff, ProjectState, ProjectStateDetail, ToolError, ToolResponse, WithState } from '../../types/internal';
 import { buildResponseMeta } from './responseMeta';
 
 type ResultLike<T> = { ok: true; value: T } | { ok: false; error: ToolError };
@@ -71,6 +71,7 @@ export const attachStateToResponse = <TPayload extends StatePayload, TResult>(
     error: { ...response.error, details }
   };
 };
+
 
 
 

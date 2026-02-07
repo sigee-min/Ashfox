@@ -28,9 +28,12 @@ export const collectDescendantBones = (bones: SessionState['bones'], rootName: s
     childrenMap.set(bone.parent, list);
   });
   const result: string[] = [];
+  const visited = new Set<string>();
   const queue = [...(childrenMap.get(rootName) ?? [])];
   while (queue.length > 0) {
     const next = queue.shift()!;
+    if (visited.has(next)) continue;
+    visited.add(next);
     result.push(next);
     const children = childrenMap.get(next);
     if (children && children.length > 0) {

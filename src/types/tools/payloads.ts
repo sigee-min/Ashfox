@@ -45,7 +45,7 @@ export interface PaintTexturePayload extends IncludeStateOption, IncludeDiffOpti
 export interface PaintFaceTarget {
   cubeId?: string;
   cubeName?: string;
-  face: CubeFaceDirection;
+  face?: CubeFaceDirection;
 }
 
 export interface PaintFacesPayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {

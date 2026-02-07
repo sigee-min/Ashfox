@@ -14,8 +14,6 @@ export type UvAtlasMessages = {
   overflow: string;
 };
 
-export type AtlasRect = { x1: number; y1: number; x2: number; y2: number };
-
 export type AtlasAssignment = {
   cubeId?: string;
   cubeName: string;
@@ -55,47 +53,20 @@ type BuildContext = {
 };
 
 export const buildUvAtlasPlan = (context: BuildContext): DomainResult<AtlasPlan> => {
-  const messages = context.messages;
-  const startWidth = Math.trunc(context.resolution.width);
-  const startHeight = Math.trunc(context.resolution.height);
-  if (!Number.isFinite(startWidth) || !Number.isFinite(startHeight) || startWidth <= 0 || startHeight <= 0) {
-    return fail('invalid_payload', messages.resolutionPositive);
-  }
-  const baseWidth =
-    typeof context.baseResolution?.width === 'number' && Number.isFinite(context.baseResolution.width)
-      ? Math.trunc(context.baseResolution.width)
-      : startWidth;
-  const baseHeight =
-    typeof context.baseResolution?.height === 'number' && Number.isFinite(context.baseResolution.height)
-      ? Math.trunc(context.baseResolution.height)
-      : startHeight;
-  if (!Number.isFinite(baseWidth) || !Number.isFinite(baseHeight) || baseWidth <= 0 || baseHeight <= 0) {
-    return fail('invalid_payload', messages.resolutionPositive);
-  }
-  const maxWidth = Math.trunc(context.maxResolution.width);
-  const maxHeight = Math.trunc(context.maxResolution.height);
-  if (!Number.isFinite(maxWidth) || !Number.isFinite(maxHeight) || maxWidth <= 0 || maxHeight <= 0) {
-    return fail('invalid_payload', messages.maxResolutionPositive);
-  }
-  const padding = Math.max(0, Math.trunc(context.padding));
-  const cubeById = new Map<string, Cube>();
-  const cubeByName = new Map<string, Cube>();
-  context.cubes.forEach((cube) => {
-    if (cube.id) cubeById.set(cube.id, cube);
-    cubeByName.set(cube.name, cube);
-  });
-  const baseResolution = { width: baseWidth, height: baseHeight };
-  let width = startWidth;
-  let height = startHeight;
+  const prepared = prepareBuildContext(context);
+  if (!prepared.ok) return prepared;
+
+  let width = prepared.data.start.width;
+  let height = prepared.data.start.height;
   let steps = 0;
   while (true) {
-    const planRes = buildPlanForResolution(context.usage, cubeById, cubeByName, {
+    const planRes = buildPlanForResolution(context.usage, prepared.data.cubeById, prepared.data.cubeByName, {
       width,
       height,
-      padding,
+      padding: prepared.data.padding,
       policy: context.policy,
-      baseResolution,
-      messages
+      baseResolution: prepared.data.base,
+      messages: context.messages
     });
     if (planRes.ok) {
       return {
@@ -112,22 +83,93 @@ export const buildUvAtlasPlan = (context: BuildContext): DomainResult<AtlasPlan>
     if (reason !== 'atlas_overflow') {
       return planRes;
     }
-    const nextWidth = width * 2;
-    const nextHeight = height * 2;
-    if (nextWidth > maxWidth || nextHeight > maxHeight) {
-      return fail('invalid_state', messages.exceedsMax, {
-        width,
-        height,
-        nextWidth,
-        nextHeight,
-        maxWidth,
-        maxHeight
-      });
-    }
-    width = nextWidth;
-    height = nextHeight;
+    const nextRes = nextResolutionStep(width, height, prepared.data.max, context.messages);
+    if (!nextRes.ok) return nextRes;
+    width = nextRes.data.width;
+    height = nextRes.data.height;
     steps += 1;
   }
+};
+
+type PreparedBuildContext = {
+  start: { width: number; height: number };
+  base: { width: number; height: number };
+  max: { width: number; height: number };
+  padding: number;
+  cubeById: Map<string, Cube>;
+  cubeByName: Map<string, Cube>;
+};
+
+const prepareBuildContext = (context: BuildContext): DomainResult<PreparedBuildContext> => {
+  const startWidth = toPositiveInt(context.resolution.width);
+  const startHeight = toPositiveInt(context.resolution.height);
+  if (!startWidth || !startHeight) {
+    return fail('invalid_payload', context.messages.resolutionPositive);
+  }
+
+  const baseWidth =
+    context.baseResolution?.width !== undefined ? toPositiveInt(context.baseResolution.width) : startWidth;
+  const baseHeight =
+    context.baseResolution?.height !== undefined ? toPositiveInt(context.baseResolution.height) : startHeight;
+  if (!baseWidth || !baseHeight) {
+    return fail('invalid_payload', context.messages.resolutionPositive);
+  }
+
+  const maxWidth = toPositiveInt(context.maxResolution.width);
+  const maxHeight = toPositiveInt(context.maxResolution.height);
+  if (!maxWidth || !maxHeight) {
+    return fail('invalid_payload', context.messages.maxResolutionPositive);
+  }
+
+  const lookup = buildCubeLookup(context.cubes);
+  return {
+    ok: true,
+    data: {
+      start: { width: startWidth, height: startHeight },
+      base: { width: baseWidth, height: baseHeight },
+      max: { width: maxWidth, height: maxHeight },
+      padding: Math.max(0, Math.trunc(context.padding)),
+      cubeById: lookup.byId,
+      cubeByName: lookup.byName
+    }
+  };
+};
+
+const toPositiveInt = (value: number): number | null => {
+  const normalized = Math.trunc(value);
+  if (!Number.isFinite(normalized) || normalized <= 0) return null;
+  return normalized;
+};
+
+const buildCubeLookup = (cubes: Cube[]): { byId: Map<string, Cube>; byName: Map<string, Cube> } => {
+  const byId = new Map<string, Cube>();
+  const byName = new Map<string, Cube>();
+  cubes.forEach((cube) => {
+    if (cube.id) byId.set(cube.id, cube);
+    byName.set(cube.name, cube);
+  });
+  return { byId, byName };
+};
+
+const nextResolutionStep = (
+  width: number,
+  height: number,
+  max: { width: number; height: number },
+  messages: UvAtlasMessages
+): DomainResult<{ width: number; height: number }> => {
+  const nextWidth = width * 2;
+  const nextHeight = height * 2;
+  if (nextWidth > max.width || nextHeight > max.height) {
+    return fail('invalid_state', messages.exceedsMax, {
+      width,
+      height,
+      nextWidth,
+      nextHeight,
+      maxWidth: max.width,
+      maxHeight: max.height
+    });
+  }
+  return { ok: true, data: { width: nextWidth, height: nextHeight } };
 };
 
 const buildPlanForResolution = (

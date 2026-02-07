@@ -6,9 +6,8 @@ import {
   PLUGIN_VERSION,
   TOOL_SCHEMA_VERSION
 } from '../config';
-import { Capabilities, Dispatcher } from '../types';
+import { Capabilities, Dispatcher } from '../types/internal';
 import { ConsoleLogger, errorMessage, LogLevel } from '../logging';
-import type { ExportPolicy } from '../usecases/policies';
 import { FormatOverrides } from '../domain/formats';
 import { DEFAULT_TOOL_REGISTRY } from '../transport/mcp/tools';
 import { GUIDE_RESOURCE_TEMPLATES, GUIDE_RESOURCES } from '../shared/resources/guides';
@@ -38,20 +37,7 @@ type BbmcpBridge = {
 const formatOverrides: FormatOverrides = {};
 const resourceStore = new InMemoryResourceStore([...GUIDE_RESOURCE_TEMPLATES]);
 GUIDE_RESOURCES.forEach((resource) => resourceStore.put(resource));
-const policies = createDefaultPolicies(formatOverrides) as {
-  formatOverrides: FormatOverrides;
-  snapshotPolicy: 'hybrid';
-  exportPolicy: ExportPolicy;
-  uvPolicy: ReturnType<typeof createDefaultPolicies>['uvPolicy'];
-  paintFaces: ReturnType<typeof createDefaultPolicies>['paintFaces'];
-  autoDiscardUnsaved: boolean;
-  autoAttachActiveProject: boolean;
-  autoIncludeState: boolean;
-  autoIncludeDiff: boolean;
-  requireRevision: boolean;
-  autoRetryRevision: boolean;
-  autoCreateProjectTexture: boolean;
-};
+const policies = createDefaultPolicies(formatOverrides);
 
 let logLevel: LogLevel = 'info';
 
@@ -243,6 +229,7 @@ Notes:
     }
   });
 };
+
 
 
 

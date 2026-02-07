@@ -1,5 +1,5 @@
 import { hashTextToHex } from '../../shared/hash';
-import { JsonSchema, McpToolDefinition } from './types';
+import { McpToolDefinition } from './types';
 import { toolSchemas } from '../../shared/mcpSchemas/toolSchemas';
 
 export type ToolRegistry = {
@@ -173,16 +173,6 @@ export const buildToolRegistry = (options?: { includeLowLevel?: boolean }): Tool
 };
 
 export const DEFAULT_TOOL_REGISTRY = buildToolRegistry({ includeLowLevel: true });
-
-export const MCP_TOOLS = DEFAULT_TOOL_REGISTRY.tools;
-export const TOOL_REGISTRY_HASH = DEFAULT_TOOL_REGISTRY.hash;
-export const TOOL_REGISTRY_COUNT = DEFAULT_TOOL_REGISTRY.count;
-
-export const getToolSchema = (name: string, registry: ToolRegistry = DEFAULT_TOOL_REGISTRY): JsonSchema | null =>
-  registry.map.get(name)?.inputSchema ?? null;
-
-export const isKnownTool = (name: string, registry: ToolRegistry = DEFAULT_TOOL_REGISTRY) =>
-  registry.map.has(name);
 
 
 

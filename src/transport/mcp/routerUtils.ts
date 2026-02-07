@@ -1,4 +1,4 @@
-import type { ToolResponse } from '../../types';
+import type { ToolResponse } from '../../types/internal';
 import type { JsonRpcMessage, JsonRpcResponse } from './types';
 export { isRecord } from '../../domain/guards';
 import { toolError } from '../../shared/tooling/toolResponse';
@@ -109,6 +109,7 @@ export const randomId = () => {
   }
   return Math.random().toString(16).slice(2) + Date.now().toString(16);
 };
+
 
 
 

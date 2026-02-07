@@ -1,4 +1,4 @@
-import type { ToolError } from '../../types';
+import type { ToolError } from '../../types/internal';
 import {
   REVISION_MISMATCH_FIX,
   REVISION_MISMATCH_MESSAGE,
@@ -23,6 +23,7 @@ export const buildRevisionMismatchError = (expected: string, currentRevision: st
   fix: REVISION_MISMATCH_FIX,
   details: { expected, currentRevision, reason: 'revision_mismatch' }
 });
+
 
 
 

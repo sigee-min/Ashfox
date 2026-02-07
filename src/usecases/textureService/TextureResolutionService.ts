@@ -1,4 +1,4 @@
-import type { Capabilities, ToolError } from '../../types';
+import type { Capabilities, ToolError } from '../../types/internal';
 import type { EditorPort } from '../../ports/editor';
 import { checkDimensions, mapDimensionError } from '../../domain/dimensions';
 import { withActiveAndRevision } from '../guards';
@@ -69,3 +69,4 @@ export class TextureResolutionService {
     );
   }
 }
+

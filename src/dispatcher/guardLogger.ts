@@ -1,4 +1,4 @@
-import type { ToolName, ToolPayloadMap, ToolResponse } from '../types';
+import type { ToolName, ToolPayloadMap, ToolResponse } from '../types/internal';
 import type { Logger } from '../logging';
 import { extractGuardMeta, resolveGuardReason, resolveIfRevision } from './utils';
 
@@ -19,3 +19,4 @@ export const createGuardLogger = (log: Logger) => {
     return response;
   };
 };
+

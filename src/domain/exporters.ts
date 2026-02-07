@@ -1,4 +1,4 @@
-import { ExportPayload } from '../types';
+import { ExportPayload } from '../types/internal';
 import { SessionState, TrackedAnimationChannel, TrackedAnimationTrigger } from '../session';
 
 export type ExportKind = ExportPayload['format'];
@@ -190,6 +190,7 @@ function buildAnimatedJavaModel(state: SessionState) {
     }))
   };
 }
+
 
 
 

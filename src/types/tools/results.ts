@@ -59,6 +59,7 @@ export interface PaintFacesResult {
   width: number;
   height: number;
   targets: number;
+  facesApplied?: number;
   opsApplied?: number;
   changedPixels?: number;
   resolvedSource?: {

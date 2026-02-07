@@ -5,8 +5,20 @@ import { TraceLogStore } from '../../src/trace/traceLogStore';
 import { TraceRecorder } from '../../src/trace/traceRecorder';
 import { parseTraceLogText } from '../../src/trace/traceLogReplay';
 import { TraceLogFlushScheduler } from '../../src/trace/traceLogFlushScheduler';
-import { InMemoryTraceLogWriter } from '../../src/trace/traceLogWriters';
 import { ok } from './helpers';
+
+class InMemoryTraceLogWriter {
+  private text = '';
+
+  write(text: string) {
+    this.text = text;
+    return null;
+  }
+
+  getText(): string {
+    return this.text;
+  }
+}
 
 const createState = (): ProjectState => ({
   id: 'p1',

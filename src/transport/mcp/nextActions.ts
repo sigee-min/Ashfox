@@ -1,4 +1,4 @@
-import type { NextAction, NextActionArgs, NextActionValueRef } from '../../types';
+import type { NextAction, NextActionArgs, NextActionValueRef } from '../../types/internal';
 
 export const refTool = (tool: string, pointer: string, note?: string): NextActionValueRef => ({
   $ref: {
@@ -43,11 +43,6 @@ export const askUser = (question: string, reason: string, priority: number = 1):
   priority
 });
 
-export const noop = (reason: string, priority: number = 99): NextAction => ({
-  type: 'noop',
-  reason,
-  priority
-});
 
 
 

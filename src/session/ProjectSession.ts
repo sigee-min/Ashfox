@@ -1,4 +1,4 @@
-import type { FormatKind, ToolError, ToolResponse } from '../types';
+import type { FormatKind, ToolError, ToolResponse } from '../types/internal';
 import type {
   AnimationUpdate,
   BoneUpdate,
@@ -108,3 +108,4 @@ export class ProjectSession {
     this.mutators.upsertAnimationTrigger(clip, trigger);
   }
 }
+

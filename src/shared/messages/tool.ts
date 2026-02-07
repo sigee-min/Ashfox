@@ -1,9 +1,3 @@
-export const PAYLOAD_REQUIRED = 'payload is required';
-export const FORMAT_REQUIRED = 'format is required';
-export const UNSUPPORTED_FORMAT = (format: string) => `unsupported format: ${format}`;
-export const UNSUPPORTED_TARGET_VERSION = (targetVersion: string) => `unsupported targetVersion: ${targetVersion}`;
-export const TARGET_VERSION_ONLY_GECKOLIB = 'targetVersion is only valid for geckolib format';
-
 export const DIMENSION_POSITIVE_MESSAGE = (label: string, axis?: string | null) =>
   `${label} must be ${axis ? 'a positive number' : 'positive numbers'}.`;
 export const DIMENSION_INTEGER_MESSAGE = (label: string, axis?: string | null) =>
@@ -42,7 +36,5 @@ export const REVISION_REQUIRED_MESSAGE = 'ifRevision is required. Call get_proje
 export const REVISION_REQUIRED_FIX = 'Call get_project_state and retry with ifRevision set to the returned revision.';
 export const REVISION_MISMATCH_MESSAGE = 'Project revision mismatch. Refresh project state before retrying.';
 export const REVISION_MISMATCH_FIX = 'Call get_project_state and retry with the latest revision.';
-
-export const PROXY_FORMAT_NOT_IMPLEMENTED = (format: string) => `Format not implemented: ${format}`;
 
 

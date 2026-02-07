@@ -1,4 +1,4 @@
-import type { ToolError } from '../types';
+import type { ToolError } from '../types/internal';
 
 export type TmpSaveResult = {
   path: string;
@@ -12,5 +12,6 @@ export interface TmpStorePort {
     options?: { nameHint?: string; prefix?: string; cwd?: string }
   ) => { ok: true; data: TmpSaveResult } | { ok: false; error: ToolError };
 }
+
 
 

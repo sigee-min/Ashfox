@@ -4,8 +4,7 @@ import { TOOL_NAMES } from '../../src/shared/toolConstants';
 import {
   TOOL_VIEWPORT_EFFECTS,
   VIEWPORT_EFFECTS,
-  getViewportEffectForTool,
-  toolNeedsViewportRefresh
+  getViewportEffectForTool
 } from '../../src/shared/tooling/viewportEffects';
 
 {
@@ -19,7 +18,7 @@ import {
 }
 
 {
-  assert.equal(toolNeedsViewportRefresh('list_capabilities'), false);
-  assert.equal(toolNeedsViewportRefresh('update_cube'), true);
-  assert.equal(toolNeedsViewportRefresh('set_frame_pose'), true);
+  assert.equal(getViewportEffectForTool('list_capabilities') === 'none', true);
+  assert.equal(getViewportEffectForTool('update_cube') !== 'none', true);
+  assert.equal(getViewportEffectForTool('set_frame_pose') !== 'none', true);
 }

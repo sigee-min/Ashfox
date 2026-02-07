@@ -1,4 +1,4 @@
-import type { ToolError, ToolName, ToolPayloadMap } from '../types';
+import type { ToolError, ToolName, ToolPayloadMap } from '../types/internal';
 import { isRecord } from '../domain/guards';
 import type { McpContentBlock, NextAction } from '../types/shared';
 
@@ -100,5 +100,6 @@ export const isSidecarMessage = (value: unknown): value is SidecarMessage => {
   }
   return false;
 };
+
 
 

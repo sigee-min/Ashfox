@@ -1,4 +1,4 @@
-import type { ProjectState, ToolError } from '../../types';
+import type { ProjectState, ToolError } from '../../types/internal';
 import { decideRevisionMatch } from './revisionCompare';
 
 type Result<T> = { ok: true; value: T } | { ok: false; error: ToolError };
@@ -40,6 +40,7 @@ export const decideRevision = (
   }
   return { ok: true, action: 'proceed', currentRevision, project };
 };
+
 
 
 

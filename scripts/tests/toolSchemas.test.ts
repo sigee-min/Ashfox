@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
-import { MCP_TOOLS } from '../../src/transport/mcp/tools';
+import { DEFAULT_TOOL_REGISTRY } from '../../src/transport/mcp/tools';
 import { toolSchemas } from '../../src/shared/mcpSchemas/toolSchemas';
 
 const schemaKeys = Object.keys(toolSchemas);
-assert.ok(schemaKeys.length >= MCP_TOOLS.length, 'toolSchemas should cover all exposed tools');
+assert.ok(schemaKeys.length >= DEFAULT_TOOL_REGISTRY.tools.length, 'toolSchemas should cover all exposed tools');
 
 const schemaKeySet = new Set(schemaKeys);
-for (const tool of MCP_TOOLS) {
+for (const tool of DEFAULT_TOOL_REGISTRY.tools) {
   assert.ok(schemaKeySet.has(tool.name), `Missing schema for tool: ${tool.name}`);
 }
 

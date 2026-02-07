@@ -1,4 +1,4 @@
-import type { AutoUvAtlasPayload, AutoUvAtlasResult, Capabilities, ToolError } from '../../types';
+import type { AutoUvAtlasPayload, AutoUvAtlasResult, Capabilities, ToolError } from '../../types/internal';
 import type { EditorPort } from '../../ports/editor';
 import type { ProjectSession, SessionState } from '../../session';
 import { ok, fail, type UsecaseResult } from '../result';
@@ -19,6 +19,7 @@ import { ensureNonBlankFields } from './validators';
 import { ensureIdAvailable, ensureNameAvailable, ensureRenameAvailable, resolveEntityId } from '../crudChecks';
 import { resolveTargets } from '../targetSelectors';
 import { buildIdNameMismatchMessage } from '../../shared/targetMessages';
+import { createCubeMutationPolicy, type CubeMutationPolicy } from './cubeMutationPolicy';
 
 export interface CubeServiceDeps {
   session: ProjectSession;
@@ -29,6 +30,7 @@ export interface CubeServiceDeps {
   ensureRevisionMatch: (ifRevision?: string) => ToolError | null;
   autoUvAtlas?: (payload: AutoUvAtlasPayload) => UsecaseResult<AutoUvAtlasResult>;
   runWithoutRevisionGuard?: <T>(fn: () => T) => T;
+  mutationPolicy?: CubeMutationPolicy;
 }
 
 export class CubeService {
@@ -38,8 +40,7 @@ export class CubeService {
   private readonly getSnapshot: () => SessionState;
   private readonly ensureActive: () => ToolError | null;
   private readonly ensureRevisionMatch: (ifRevision?: string) => ToolError | null;
-  private readonly autoUvAtlas?: (payload: AutoUvAtlasPayload) => UsecaseResult<AutoUvAtlasResult>;
-  private readonly runWithoutRevisionGuard?: <T>(fn: () => T) => T;
+  private readonly mutationPolicy: CubeMutationPolicy;
 
   constructor(deps: CubeServiceDeps) {
     this.session = deps.session;
@@ -48,8 +49,16 @@ export class CubeService {
     this.getSnapshot = deps.getSnapshot;
     this.ensureActive = deps.ensureActive;
     this.ensureRevisionMatch = deps.ensureRevisionMatch;
-    this.autoUvAtlas = deps.autoUvAtlas;
-    this.runWithoutRevisionGuard = deps.runWithoutRevisionGuard;
+    this.mutationPolicy =
+      deps.mutationPolicy ??
+      createCubeMutationPolicy({
+        editor: this.editor,
+        addRootBoneToSession: () => {
+          this.session.addBone({ name: 'root', pivot: [0, 0, 0] });
+        },
+        autoUvAtlas: deps.autoUvAtlas,
+        runWithoutRevisionGuard: deps.runWithoutRevisionGuard
+      });
   }
 
   addCube(payload: {
@@ -128,7 +137,7 @@ export class CubeService {
           boxUv: payload.boxUv,
           uvOffset: payload.uvOffset
         });
-        this.maybeAutoUvAtlas(true);
+        this.mutationPolicy.afterAddCube();
         return ok({ id, name: payload.name });
       }
     );
@@ -181,7 +190,7 @@ export class CubeService {
         if (!boneRes.ok) return fail(boneRes.error);
         const boneUpdate = boneRes.value;
         if (payload.boneRoot || boneUpdate === 'root') {
-          const rootErr = this.ensureRootBone(snapshot);
+          const rootErr = this.mutationPolicy.ensureRootBone(snapshot);
           if (rootErr) return fail(rootErr);
         }
         const err = this.editor.updateCube({
@@ -216,7 +225,7 @@ export class CubeService {
           boxUv: payload.boxUv,
           uvOffset: payload.uvOffset
         });
-        this.maybeAutoUvAtlas(geometryChanged);
+        this.mutationPolicy.afterUpdateCube(geometryChanged);
         return ok({ id: targetId, name: payload.newName ?? targetName });
       }
     );
@@ -286,7 +295,7 @@ export class CubeService {
     }
     const rootExists = snapshot.bones.some((bone) => bone.name === 'root');
     if (!rootExists) {
-      const rootErr = this.ensureRootBone(snapshot);
+      const rootErr = this.mutationPolicy.ensureRootBone(snapshot);
       if (rootErr) return fail(rootErr);
     }
     return ok('root');
@@ -325,26 +334,8 @@ export class CubeService {
     if (payload.inflate !== undefined && payload.inflate !== target.inflate) return true;
     return false;
   }
-
-  private maybeAutoUvAtlas(shouldRun: boolean) {
-    if (!shouldRun) return;
-    if (!this.autoUvAtlas || !this.runWithoutRevisionGuard) return;
-    const textures = this.editor.listTextures();
-    if (!textures || textures.length === 0) return;
-    this.runWithoutRevisionGuard(() => {
-      const res = this.autoUvAtlas!({ apply: true });
-      return res;
-    });
-  }
-
-  private ensureRootBone(snapshot: SessionState): ToolError | null {
-    if (snapshot.bones.some((bone) => bone.name === 'root')) return null;
-    const err = this.editor.addBone({ name: 'root', pivot: [0, 0, 0] });
-    if (err) return err;
-    this.session.addBone({ name: 'root', pivot: [0, 0, 0] });
-    return null;
-  }
 }
 
 const vecEqual = (a: [number, number, number], b: [number, number, number]) =>
   a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+

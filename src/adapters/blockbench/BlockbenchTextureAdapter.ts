@@ -1,4 +1,4 @@
-import { ToolError } from '../../types';
+import { ToolError } from '../../types/internal';
 import { Logger } from '../../logging';
 import {
   ImportTextureCommand,
@@ -43,6 +43,7 @@ export class BlockbenchTextureAdapter {
     return runListTextures();
   }
 }
+
 
 
 

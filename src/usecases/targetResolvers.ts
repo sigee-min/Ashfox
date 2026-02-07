@@ -1,5 +1,5 @@
 import { buildIdNameMismatchMessage } from '../shared/targetMessages';
-import type { ToolError } from '../types';
+import type { ToolError } from '../types/internal';
 import {
   ANIMATION_CLIP_ID_OR_NAME_REQUIRED,
   ANIMATION_CLIP_NOT_FOUND,
@@ -118,3 +118,4 @@ const resolveSingleTarget = <T extends TargetNamed>(
   if (!resolved.ok) return { error: resolved.error };
   return { target: resolved.value[0] };
 };
+

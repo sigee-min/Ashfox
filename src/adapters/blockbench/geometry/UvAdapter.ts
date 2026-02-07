@@ -1,4 +1,4 @@
-import type { ToolError } from '../../../types';
+import type { ToolError } from '../../../types/internal';
 import type { Logger } from '../../../logging';
 import type { SetFaceUvCommand } from '../../../ports/editor';
 import { withToolErrorAdapterError } from '../adapterErrors';
@@ -6,7 +6,7 @@ import { getCubeApi } from '../blockbenchAdapterUtils';
 import { findCubeRef } from '../outlinerLookup';
 import { withUndo, extendEntity } from '../blockbenchUtils';
 import { MODEL_CUBE_NOT_FOUND, UV_ASSIGNMENT_FACES_NON_EMPTY } from '../../../shared/messages';
-import { ensureFaceMap, enforceManualUvMode, VALID_FACE_KEYS } from './uvUtils';
+import { ensureFaceEntry, ensureFaceMap, enforceManualUvMode, VALID_FACE_KEYS } from './uvUtils';
 import type { CubeFaceDirection } from '../../../types/blockbench';
 
 export class BlockbenchUvAdapter {
@@ -34,8 +34,7 @@ export class BlockbenchUvAdapter {
         enforceManualUvMode(target, { preserve: true });
         faceEntries.forEach(([faceKey, uv]) => {
           if (!VALID_FACE_KEYS.has(faceKey as CubeFaceDirection) || !uv) return;
-          const face = faceMap[faceKey] ?? {};
-          if (!faceMap[faceKey]) faceMap[faceKey] = face;
+          const face = ensureFaceEntry(faceMap, faceKey as CubeFaceDirection);
           if (!extendEntity(face, { uv: uv as [number, number, number, number] })) {
             face.uv = uv as [number, number, number, number];
           }
@@ -46,3 +45,4 @@ export class BlockbenchUvAdapter {
     });
   }
 }
+

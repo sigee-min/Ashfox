@@ -1,4 +1,4 @@
-import type { ToolError } from '../types';
+import type { ToolError } from '../types/internal';
 import { fail, type UsecaseResult } from './result';
 
 type EnsureActive = () => ToolError | null;
@@ -38,5 +38,6 @@ export const withActiveAndRevision = <T>(
   if (guardErr) return fail(guardErr);
   return fn();
 };
+
 
 

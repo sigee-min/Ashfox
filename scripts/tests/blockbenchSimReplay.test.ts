@@ -4,8 +4,8 @@ import path from 'node:path';
 
 import type { FormatKind } from '../../src/types';
 import type { ToolPolicies } from '../../src/usecases/policies';
-import type { TraceStep } from '../../src/trace/traceRunner';
-import { runTrace } from '../../src/trace/traceRunner';
+import type { TraceStep } from './support/traceRunner';
+import { runTrace } from './support/traceRunner';
 import { registerAsync } from './helpers';
 import { createBlockbenchSimHarness } from './simHarness';
 

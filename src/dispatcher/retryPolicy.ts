@@ -1,5 +1,5 @@
 import type { Logger } from '../logging';
-import type { ToolName } from '../types';
+import type { ToolName } from '../types/internal';
 import type { ToolService } from '../usecases/ToolService';
 import type { UsecaseResult } from '../usecases/result';
 import { decideRevision } from '../usecases/revision/revisionGuard';
@@ -72,3 +72,4 @@ export const callWithAutoRetry = <TPayload extends object, TResult>(args: {
   }
   return { result: retry, payload: retryPayload };
 };
+

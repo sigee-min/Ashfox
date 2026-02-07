@@ -1,4 +1,4 @@
-import type { ToolResponse } from '../../types';
+import type { ToolResponse } from '../../types/internal';
 import { errFromDomain } from './toolResponse';
 import type { ToolService } from '../../usecases/ToolService';
 
@@ -11,6 +11,7 @@ export const guardOptionalRevision = (
   if (!err) return null;
   return errFromDomain(err);
 };
+
 
 
 

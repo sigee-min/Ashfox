@@ -1,7 +1,8 @@
-import type { FormatKind } from '../../types';
+import type { FormatKind } from '../../types/internal';
 import { ok, fail, type UsecaseResult } from '../result';
 import { ensureNonBlankString } from '../../shared/payloadValidation';
 import {
+  ADAPTER_PROJECT_CLOSE_NOT_APPLIED,
   PROJECT_DELETE_NAME_REQUIRED,
   PROJECT_DELETE_NAME_REQUIRED_FIX,
   PROJECT_MISMATCH,
@@ -48,6 +49,22 @@ export const runDeleteProject = (
   }
   const err = ctx.editor.closeProject({ force: payload.force });
   if (err) return fail(err);
+  const postSnapshot = ctx.getSnapshot();
+  const postNormalized = ctx.projectState.normalize(postSnapshot);
+  const postInfo = ctx.projectState.toProjectInfo(postNormalized);
+  if (postInfo && postNormalized.format) {
+    return fail({
+      code: 'invalid_state',
+      message: ADAPTER_PROJECT_CLOSE_NOT_APPLIED,
+      details: {
+        actual: {
+          name: postInfo.name ?? null,
+          format: postNormalized.format,
+          formatId: postNormalized.formatId ?? null
+        }
+      }
+    });
+  }
   ctx.session.reset();
   return ok({
     action: 'deleted',
@@ -59,3 +76,4 @@ export const runDeleteProject = (
     }
   });
 };
+

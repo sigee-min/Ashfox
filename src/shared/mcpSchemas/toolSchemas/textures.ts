@@ -28,11 +28,13 @@ export const textureToolSchemas: Record<string, JsonSchema> = {
       target: {
         type: 'object',
         additionalProperties: false,
-        required: ['face'],
         properties: {
           cubeId: { type: 'string' },
           cubeName: { type: 'string' },
-          face: cubeFaceSchema
+          face: {
+            ...cubeFaceSchema,
+            description: 'Optional face filter. Omit to apply to all cube faces.'
+          }
         }
       },
       coordSpace: { type: 'string', enum: ['face', 'texture'] },
@@ -77,3 +79,5 @@ export const textureToolSchemas: Record<string, JsonSchema> = {
   },
   // apply_texture_spec and apply_uv_spec removed (legacy pipeline)
 };
+
+

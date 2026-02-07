@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { BlockbenchSim } from '../../src/adapters/sim/BlockbenchSim';
+import { BlockbenchSim } from './support/sim/BlockbenchSim';
 
 const sim = new BlockbenchSim({
   project: {

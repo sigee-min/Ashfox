@@ -1,4 +1,4 @@
-import type { ToolError } from '../../types';
+import type { ToolError } from '../../types/internal';
 import { buildMissingRevisionError, buildRevisionMismatchError } from './revisionErrors';
 
 export type RevisionCompareInput = {
@@ -30,3 +30,4 @@ export const decideRevisionMatch = (input: RevisionCompareInput): RevisionCompar
   }
   return { ok: true, action: 'proceed', ...(currentRevision ? { currentRevision } : {}) };
 };
+

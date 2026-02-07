@@ -16,10 +16,6 @@ export const cubeFaceSchema: JsonSchema = {
 };
 
 export const revisionProp: JsonSchema = { type: 'string' };
-export const mutationRevisionProp: JsonSchema = {
-  type: 'string',
-  description: 'Required for mutations. Get the latest revision from get_project_state.'
-};
 
 export const stateProps: Record<string, JsonSchema> = {
   includeState: { type: 'boolean' },
@@ -31,3 +27,5 @@ export const metaProps: Record<string, JsonSchema> = {
   includeDiff: { type: 'boolean' },
   diffDetail: { type: 'string', enum: PROJECT_STATE_DETAILS }
 };
+
+

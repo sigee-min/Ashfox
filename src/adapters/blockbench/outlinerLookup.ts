@@ -16,7 +16,7 @@ export const findGroupRef = (name?: string, id?: string): GroupInstance | null =
   return null;
 };
 
-export const findCube = (name?: string): CubeInstance | null => {
+const findCube = (name?: string): CubeInstance | null => {
   if (!name) return null;
   return findOutlinerNode((node) => isCubeNode(node) && node.name === name);
 };
@@ -30,7 +30,7 @@ export const findCubeRef = (name?: string, id?: string): CubeInstance | null => 
   return null;
 };
 
-export const findOutlinerNode = (match: (node: OutlinerNode) => boolean): OutlinerNode | null => {
+const findOutlinerNode = (match: (node: OutlinerNode) => boolean): OutlinerNode | null => {
   const outliner = readGlobals().Outliner;
   const toArray = (value: OutlinerNode[] | OutlinerNode | null | undefined): OutlinerNode[] => {
     if (!value) return [];

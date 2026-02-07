@@ -1,4 +1,4 @@
-import type { Capabilities, ExportPayload, FormatKind, ToolError } from '../types';
+import type { Capabilities, ExportPayload, FormatKind, ToolError } from '../types/internal';
 import type { ExportPort } from '../ports/exporter';
 import type { EditorPort } from '../ports/editor';
 import type { FormatPort } from '../ports/formats';
@@ -56,34 +56,17 @@ export class ExportService {
       const exportPolicy = this.policies.exportPolicy ?? 'strict';
       const snapshot = this.getSnapshot();
       const expectedFormat = exportFormatToCapability(payload.format);
-      if (expectedFormat) {
-        const formatCapability = this.capabilities.formats.find((f) => f.format === expectedFormat);
-        if (!formatCapability || !formatCapability.enabled) {
-          return fail({ code: 'unsupported_format', message: EXPORT_FORMAT_NOT_ENABLED(expectedFormat) });
-        }
-      }
-      if (expectedFormat) {
-        if (snapshot.format && snapshot.format !== expectedFormat) {
-          return fail({ code: 'invalid_payload', message: EXPORT_FORMAT_MISMATCH });
-        }
-        if (
-          !snapshot.format &&
-          snapshot.formatId &&
-          !matchesFormatKind(expectedFormat, snapshot.formatId) &&
-          this.projectState.matchOverrideKind(snapshot.formatId) !== expectedFormat
-        ) {
-          return fail({
-            code: 'invalid_payload',
-            message: withFormatOverrideHint(EXPORT_FORMAT_MISMATCH)
-          });
-        }
-      }
-      const formatId =
-        snapshot.formatId ??
-        (expectedFormat ? resolveFormatId(expectedFormat, this.formats.listFormats(), this.policies.formatOverrides) : null);
+      const capabilityErr = this.ensureFormatEnabled(expectedFormat);
+      if (capabilityErr) return fail(capabilityErr);
+
+      const snapshotErr = this.ensureSnapshotMatchesExpected(snapshot, expectedFormat);
+      if (snapshotErr) return fail(snapshotErr);
+
+      const formatId = this.resolveExportFormatId(snapshot, expectedFormat);
       if (!formatId) {
         return fail({ code: 'unsupported_format', message: withFormatOverrideHint(EXPORT_FORMAT_ID_MISSING) });
       }
+
       const nativeErr = this.exporter.exportNative({ formatId, destPath: payload.destPath });
       if (!nativeErr) return ok({ path: payload.destPath });
       if (exportPolicy === 'strict') {
@@ -92,12 +75,56 @@ export class ExportService {
       if (nativeErr.code !== 'not_implemented' && nativeErr.code !== 'unsupported_format') {
         return fail(nativeErr);
       }
-      const bundle = buildInternalExport(payload.format, snapshot);
-      const serialized = JSON.stringify(bundle.data, null, 2);
-      const err = this.editor.writeFile(payload.destPath, serialized);
-      if (err) return fail(err);
-      return ok({ path: payload.destPath });
+      return this.writeInternalFallback(payload, snapshot);
     });
+  }
+
+  private ensureFormatEnabled(expectedFormat: FormatKind | null): ToolError | null {
+    if (!expectedFormat) return null;
+    const formatCapability = this.capabilities.formats.find((entry) => entry.format === expectedFormat);
+    if (!formatCapability || !formatCapability.enabled) {
+      return { code: 'unsupported_format', message: EXPORT_FORMAT_NOT_ENABLED(expectedFormat) };
+    }
+    return null;
+  }
+
+  private ensureSnapshotMatchesExpected(
+    snapshot: ReturnType<ProjectSession['snapshot']>,
+    expectedFormat: FormatKind | null
+  ): ToolError | null {
+    if (!expectedFormat) return null;
+    if (snapshot.format && snapshot.format !== expectedFormat) {
+      return { code: 'invalid_payload', message: EXPORT_FORMAT_MISMATCH };
+    }
+    if (
+      !snapshot.format &&
+      snapshot.formatId &&
+      !matchesFormatKind(expectedFormat, snapshot.formatId) &&
+      this.projectState.matchOverrideKind(snapshot.formatId) !== expectedFormat
+    ) {
+      return { code: 'invalid_payload', message: withFormatOverrideHint(EXPORT_FORMAT_MISMATCH) };
+    }
+    return null;
+  }
+
+  private resolveExportFormatId(
+    snapshot: ReturnType<ProjectSession['snapshot']>,
+    expectedFormat: FormatKind | null
+  ): string | null {
+    if (snapshot.formatId) return snapshot.formatId;
+    if (!expectedFormat) return null;
+    return resolveFormatId(expectedFormat, this.formats.listFormats(), this.policies.formatOverrides);
+  }
+
+  private writeInternalFallback(
+    payload: ExportPayload,
+    snapshot: ReturnType<ProjectSession['snapshot']>
+  ): UsecaseResult<{ path: string }> {
+    const bundle = buildInternalExport(payload.format, snapshot);
+    const serialized = JSON.stringify(bundle.data, null, 2);
+    const err = this.editor.writeFile(payload.destPath, serialized);
+    if (err) return fail(err);
+    return ok({ path: payload.destPath });
   }
 }
 
@@ -113,6 +140,7 @@ const exportFormatToCapability = (format: ExportPayload['format']): FormatKind |
       return null;
   }
 };
+
 
 
 

@@ -1,4 +1,4 @@
-import type { ToolPayloadMap } from '../../types';
+import type { ToolPayloadMap } from '../../types/internal';
 import type { HostPort } from '../../ports/host';
 import { ok, fail, type UsecaseResult } from '../result';
 import {
@@ -33,3 +33,4 @@ const normalizeReloadDelay = (value?: number): number => {
   if (numeric < 0) return 0;
   return Math.min(Math.trunc(numeric), 10_000);
 };
+

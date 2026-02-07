@@ -1,4 +1,4 @@
-import type { Capabilities, ToolError } from '../../types';
+import type { Capabilities, ToolError } from '../../types/internal';
 import type { EditorPort } from '../../ports/editor';
 import type { TextureRendererPort } from '../../ports/textureRenderer';
 import type { SessionState } from '../../session';
@@ -63,4 +63,5 @@ export const uvGuardMessages = buildUvGuardMessages();
 export const uvPaintMessages = buildUvPaintMessages();
 export const uvPaintPixelMessages = buildUvPaintPixelMessages();
 export const uvPaintSourceMessages = buildUvPaintSourceMessages();
+
 

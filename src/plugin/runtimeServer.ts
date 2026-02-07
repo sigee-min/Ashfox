@@ -1,4 +1,4 @@
-import type { Dispatcher } from '../types';
+import type { Dispatcher } from '../types/internal';
 import type { LogLevel } from '../logging';
 import { ConsoleLogger } from '../logging';
 import type { ResourceStore } from '../ports/resources';
@@ -73,3 +73,4 @@ export const restartServer = (args: {
 
   return { sidecar, inlineServerStop };
 };
+

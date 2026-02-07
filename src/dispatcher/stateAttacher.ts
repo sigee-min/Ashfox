@@ -1,4 +1,4 @@
-import type { ProjectDiff, ProjectState, ProjectStateDetail, ToolPayloadMap, ToolResponse, ToolResultMap } from '../types';
+import type { ProjectDiff, ProjectState, ProjectStateDetail, ToolPayloadMap, ToolResponse, ToolResultMap } from '../types/internal';
 import type { UsecaseResult } from '../usecases/result';
 import { attachStateToResponse } from '../shared/tooling/attachState';
 import type { BaseResult, StatefulToolName } from './handlerMaps';
@@ -31,3 +31,4 @@ export const createStateAttacher = (deps: StateAttachDeps) => {
     };
   };
 };
+

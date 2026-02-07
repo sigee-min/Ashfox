@@ -1,6 +1,5 @@
-import type { ProjectDiff, ProjectState, ProjectStateDetail, ToolError } from '../../types';
+import type { ProjectDiff, ProjectState, ProjectStateDetail, ToolError } from '../../types/internal';
 import { buildStateMeta } from '../../domain/project/stateMeta';
-import { errFromDomain } from './toolResponse';
 
 type ResultLike<T> = { ok: true; value: T } | { ok: false; error: ToolError };
 
@@ -32,23 +31,3 @@ export const buildResponseMeta = (deps: ResponseMetaDeps, options: ResponseMetaO
     }
   );
 
-export const withResponseMeta = <T extends Record<string, unknown>>(
-  data: T,
-  deps: ResponseMetaDeps,
-  options: ResponseMetaOptions
-): T & { state?: unknown; diff?: unknown; revision?: string } => {
-  const extra = buildResponseMeta(deps, options);
-  if (Object.keys(extra).length === 0) return data;
-  return { ...data, ...extra };
-};
-
-export const withResponseErrorMeta = (
-  error: ToolError,
-  deps: ResponseMetaDeps,
-  options: ResponseMetaOptions
-) => {
-  const extra = buildResponseMeta(deps, options);
-  if (Object.keys(extra).length === 0) return errFromDomain(error);
-  const details = { ...(error.details ?? {}), ...extra };
-  return errFromDomain({ ...error, details });
-};

@@ -1,6 +1,6 @@
 import { CUBE_FACE_DIRECTIONS } from './model';
 import { hashTextToHex } from '../shared/hash';
-import type { CubeFaceDirection, TextureUsage, TextureUsageEntry } from './model';
+import type { CubeFaceDirection, TextureUsage } from './model';
 
 type NormalizedFace = { face: CubeFaceDirection; uv: [number, number, number, number] | null };
 type NormalizedCube = { id: string | null; name: string; faces: NormalizedFace[] };
@@ -59,36 +59,6 @@ export const computeTextureUsageId = (
   usage: TextureUsage,
   projectResolution?: { width: number; height: number } | null
 ): string => hashTextToHex(JSON.stringify(normalizeUsage(usage, projectResolution)));
-
-export type TextureUsageTarget = {
-  id?: string;
-  name?: string;
-  targetId?: string;
-  targetName?: string;
-};
-
-export const resolveTextureUsageEntry = (
-  usage: TextureUsage,
-  target: TextureUsageTarget
-): TextureUsageEntry | null => {
-  if (target.targetId) {
-    const byId = usage.textures.find((entry) => entry.id === target.targetId);
-    if (byId) return byId;
-  }
-  if (target.targetName) {
-    const byName = usage.textures.find((entry) => entry.name === target.targetName);
-    if (byName) return byName;
-  }
-  if (target.id) {
-    const byId = usage.textures.find((entry) => entry.id === target.id);
-    if (byId) return byId;
-  }
-  if (target.name) {
-    const byName = usage.textures.find((entry) => entry.name === target.name);
-    if (byName) return byName;
-  }
-  return null;
-};
 
 const normalizeTextureSize = (value?: number): number | null => {
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;

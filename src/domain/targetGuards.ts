@@ -1,4 +1,4 @@
-import type { ToolError } from '../types';
+import type { ToolError } from '../types/internal';
 import { resolveTargetByIdOrName, resolveTargetLabel } from './sessionLookup';
 import type { IdNameMismatchMessage } from './payloadValidation';
 import { ensureIdNameMatch, ensureIdOrName } from './payloadValidation';
@@ -45,6 +45,7 @@ export const resolveTargetOrError = <T extends TargetNamed>(
   }
   return { target };
 };
+
 
 
 

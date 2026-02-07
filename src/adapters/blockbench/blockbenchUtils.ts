@@ -1,5 +1,5 @@
 export { readGlobals } from './utils/globals';
-export { normalizeEditAspects, withUndo } from './utils/undo';
+export { withUndo } from './utils/undo';
 export { renameEntity, removeEntity, extendEntity } from './utils/entity';
 export { setVisibility, readVisibility } from './utils/visibility';
 export { readNodeId, readTextureId, readTextureAliases, readAnimationId } from './utils/ids';

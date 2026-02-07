@@ -4,20 +4,23 @@
   "private": true,
   "scripts": {
     "build": "node ./scripts/esbuild.js",
-    "test": "node scripts/tests/run.js",
-    "test:cov": "c8 --reporter=text --reporter=json-summary --reporter=lcov --report-dir coverage npm test",
+    "test:unit": "node scripts/tests/run.js",
+    "test": "npm run typecheck && npm run test:unit",
+    "test:cov": "c8 --reporter=text --reporter=json-summary --reporter=lcov --report-dir coverage npm run test:unit",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "spec:sync": "node scripts/specs/update-blockbench-spec.js",
-    "quality:check": "node scripts/quality/check.js",
+    "quality:check": "npm run typecheck && node scripts/quality/check.js",
     "quality:audit": "node scripts/quality/audit.js",
+    "quality:deadcode": "node scripts/quality/deadcode.js",
     "quality:coverage": "node scripts/quality/coverage.js",
-    "quality": "npm run typecheck && npm run test:cov && npm run build && npm run quality:check && npm run quality:coverage && npm run quality:audit"
+    "quality": "npm run test:cov && npm run build && npm run quality:check && npm run quality:deadcode && npm run quality:coverage && npm run quality:audit"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
     "c8": "^10.1.3",
     "esbuild": "^0.27.3",
     "ts-node": "^10.9.2",
+    "ts-prune": "^0.10.3",
     "typescript": "^5.6.3"
   },
   "dependencies": {

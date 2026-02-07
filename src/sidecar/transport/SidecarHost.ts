@@ -1,4 +1,4 @@
-import { Dispatcher, ToolName, ToolPayloadMap, ToolResponse } from '../../types';
+import { Dispatcher, ToolName, ToolPayloadMap, ToolResponse } from '../../types/internal';
 import { errorMessage, Logger } from '../../logging';
 import {
   PROTOCOL_VERSION,
@@ -87,6 +87,7 @@ export class SidecarHost {
     this.send(response);
   }
 }
+
 
 
 

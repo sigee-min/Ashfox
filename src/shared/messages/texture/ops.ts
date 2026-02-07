@@ -1,10 +1,5 @@
 export const TEXTURE_CANVAS_UNAVAILABLE = 'texture canvas not available';
 export const TEXTURE_CANVAS_CONTEXT_UNAVAILABLE = 'texture canvas context not available';
-export const UV_PAINT_CANVAS_UNAVAILABLE = 'uvPaint canvas not available';
-export const UV_PAINT_CONTEXT_UNAVAILABLE = 'uvPaint canvas context not available';
-export const TEXTURE_BASE_IMAGE_UNAVAILABLE = 'Texture base image unavailable';
-export const TEXTURE_BASE_SIZE_UNAVAILABLE = 'Texture base size unavailable';
-export const TEXTURE_OP_UNSUPPORTED = 'unsupported texture op';
 export const TEXTURE_DATA_UNAVAILABLE = 'texture data unavailable';
 export const TEXTURE_CONTENT_UNCHANGED = 'texture content unchanged';
 export const TEXTURE_CONTENT_UNCHANGED_FIX =
@@ -53,7 +48,4 @@ export const TEXTURE_ALREADY_EXISTS = (name: string) => `Texture already exists:
 export const TEXTURE_ID_EXISTS = (id: string) => `Texture id already exists: ${id}`;
 export const TEXTURE_ID_OR_NAME_REQUIRED = 'Texture id or name is required';
 export const TEXTURE_ID_OR_NAME_REQUIRED_FIX = 'Provide id or name for the texture.';
-export const TEXTURE_UPDATE_TARGET_REQUIRED = 'targetId or targetName is required for update';
-export const TEXTURE_DELETE_IN_USE = (names: string, suffix: string, plural: boolean) =>
-  `Cannot delete texture${plural ? 's' : ''} ${names}${suffix} because they are still in use.`;
 

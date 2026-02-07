@@ -1,4 +1,4 @@
-import { Dispatcher } from '../types';
+import { Dispatcher } from '../types/internal';
 import { errorMessage, Logger } from '../logging';
 import { SidecarHost } from './transport/SidecarHost';
 import { SidecarLaunchConfig } from './types';
@@ -249,5 +249,6 @@ function isPathModule(value: unknown): value is PathModule {
   const mod = value as { join?: unknown; dirname?: unknown };
   return typeof mod.join === 'function' && typeof mod.dirname === 'function';
 }
+
 
 

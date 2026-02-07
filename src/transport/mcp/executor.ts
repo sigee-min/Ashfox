@@ -1,4 +1,4 @@
-import { Dispatcher, ToolName, ToolPayloadMap, ToolResponse } from '../../types';
+import { Dispatcher, ToolName, ToolPayloadMap, ToolResponse } from '../../types/internal';
 import { normalizeToolResponse } from '../../shared/tooling/toolResponseGuard';
 import { decorateToolResponse } from './responseDecorators';
 
@@ -23,6 +23,7 @@ export class LocalToolExecutor implements ToolExecutor {
     });
   }
 }
+
 
 
 

@@ -1,5 +1,5 @@
 import { SessionState, TrackedAnimation, TrackedBone, TrackedCube, TrackedTexture } from '../../session';
-import { ProjectDiffCounts, ProjectDiffCountsByKind, ProjectDiffSet } from '../../types';
+import { ProjectDiffCounts, ProjectDiffCountsByKind, ProjectDiffSet } from '../../types/internal';
 
 type DiffOutput<T> = {
   counts: ProjectDiffCounts;
@@ -169,6 +169,7 @@ export const diffSnapshots = (
     }
   };
 };
+
 
 
 

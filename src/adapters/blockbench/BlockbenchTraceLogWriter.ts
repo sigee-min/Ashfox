@@ -1,5 +1,5 @@
 import type { TraceLogWriteMode, TraceLogWriter } from '../../ports/traceLog';
-import type { ToolError } from '../../types';
+import type { ToolError } from '../../types/internal';
 import { errorMessage } from '../../logging';
 import { toolError } from '../../shared/tooling/toolResponse';
 import { loadNativeModule } from '../../shared/nativeModules';
@@ -54,11 +54,13 @@ export class BlockbenchTraceLogWriter implements TraceLogWriter {
     const exportFile = blockbench.exportFile;
     const canWriteFile = typeof writeFile === 'function';
     const canExport = typeof exportFile === 'function';
+    let writeError: ToolError | null = null;
 
     if (this.mode === 'writeFile' || this.mode === 'auto') {
       if (canWriteFile && resolvedPath) {
         const writeErr = writeTraceLogFile(writeFile, resolvedPath, text, this.fileName, path);
         if (!writeErr) return null;
+        writeError = writeErr;
         if (this.mode === 'writeFile') return writeErr;
       }
       if (this.mode === 'writeFile') {
@@ -70,8 +72,13 @@ export class BlockbenchTraceLogWriter implements TraceLogWriter {
     }
 
     if ((this.mode === 'export' || this.mode === 'auto') && canExport) {
-      exportFile({ content: text, name: this.fileName });
-      return null;
+      const exportErr = writeTraceLogExport(exportFile, text, this.fileName);
+      if (!exportErr) return null;
+      return exportErr;
+    }
+
+    if (writeError) {
+      return writeError;
     }
 
     return toolError('not_implemented', 'Blockbench exportFile unavailable for trace log write.', {
@@ -156,6 +163,23 @@ const writeTraceLogFile = (
     });
   }
 };
+
+const writeTraceLogExport = (
+  exportFile: (options: { content: string; name: string }) => void,
+  text: string,
+  fileName: string
+): ToolError | null => {
+  try {
+    exportFile({ content: text, name: fileName });
+    return null;
+  } catch (err) {
+    return toolError('io_error', errorMessage(err, 'Trace log export failed.'), {
+      reason: 'trace_log_export_failed',
+      name: fileName
+    });
+  }
+};
+
 
 
 

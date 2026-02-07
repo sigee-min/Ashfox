@@ -1,4 +1,4 @@
-import type { ToolError } from '../../types';
+import type { ToolError } from '../../types/internal';
 import type { CubeConstructor, GroupConstructor, OutlinerApi, TextureConstructor } from '../../types/blockbench';
 import {
   ADAPTER_CUBE_API_UNAVAILABLE,
@@ -34,3 +34,4 @@ export const getCubeApi = (): { CubeCtor: CubeConstructor; outliner: OutlinerApi
   }
   return { CubeCtor, outliner };
 };
+

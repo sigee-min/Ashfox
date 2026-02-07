@@ -1,4 +1,4 @@
-import type { ToolError } from '../../../types';
+import type { ToolError } from '../../../types/internal';
 import type { Logger } from '../../../logging';
 import type { CubeCommand, DeleteCubeCommand, UpdateCubeCommand } from '../../../ports/editor';
 import {
@@ -45,12 +45,7 @@ export class BlockbenchCubeAdapter {
         }).init?.();
         if (cube) {
           enforceManualUvMode(cube);
-          if (typeof params.boxUv === 'boolean') {
-            cube.box_uv = params.boxUv;
-            if (typeof cube.setUVMode === 'function') {
-              cube.setUVMode(params.boxUv);
-            }
-          }
+          applyBoxUvMode(cube as Record<string, unknown>, params.boxUv);
           if (params.uvOffset) assignVec2(cube, 'uv_offset', params.uvOffset);
           setVisibility(cube, params.visibility);
           if (params.id) cube.bbmcpId = params.id;
@@ -91,33 +86,14 @@ export class BlockbenchCubeAdapter {
         if (wantsManualUv) {
           enforceManualUvMode(target, { preserve: true });
         }
-        if (params.from) {
-          assignVec3(target, 'from', params.from);
-          if (!matchesVec3(readVec3(target.from), params.from)) {
-            applyError = buildVecMismatchError('from', params.from, readVec3(target.from));
-            return;
-          }
-        }
-        if (params.to) {
-          assignVec3(target, 'to', params.to);
-          if (!matchesVec3(readVec3(target.to), params.to)) {
-            applyError = buildVecMismatchError('to', params.to, readVec3(target.to));
-            return;
-          }
-        }
-        if (params.origin) {
-          assignVec3(target, 'origin', params.origin);
-          if (!matchesVec3(readVec3(target.origin), params.origin)) {
-            applyError = buildVecMismatchError('origin', params.origin, readVec3(target.origin));
-            return;
-          }
-        }
-        if (params.rotation) {
-          assignVec3(target, 'rotation', params.rotation);
-          if (!matchesVec3(readVec3(target.rotation), params.rotation)) {
-            applyError = buildVecMismatchError('rotation', params.rotation, readVec3(target.rotation));
-            return;
-          }
+        const vecError =
+          applyVerifiedVec3(target as Record<string, unknown>, 'from', params.from) ??
+          applyVerifiedVec3(target as Record<string, unknown>, 'to', params.to) ??
+          applyVerifiedVec3(target as Record<string, unknown>, 'origin', params.origin) ??
+          applyVerifiedVec3(target as Record<string, unknown>, 'rotation', params.rotation);
+        if (vecError) {
+          applyError = vecError;
+          return;
         }
         if (params.uv) assignVec2(target, 'uv_offset', params.uv);
         if (params.uvOffset) assignVec2(target, 'uv_offset', params.uvOffset);
@@ -126,12 +102,7 @@ export class BlockbenchCubeAdapter {
           target.mirror_uv = params.mirror;
           if (typeof target.mirror === 'boolean') target.mirror = params.mirror;
         }
-        if (typeof params.boxUv === 'boolean') {
-          target.box_uv = params.boxUv;
-          if (typeof target.setUVMode === 'function') {
-            target.setUVMode(params.boxUv);
-          }
-        }
+        applyBoxUvMode(target as Record<string, unknown>, params.boxUv);
         setVisibility(target, params.visibility);
         if (params.boneRoot || params.bone !== undefined) {
           moveOutlinerNode(target, parent ?? null, outliner, this.log, 'cube');
@@ -164,6 +135,7 @@ export class BlockbenchCubeAdapter {
 
 type Vec3 = [number, number, number];
 type Vec3Like = Vec3 | { x?: number; y?: number; z?: number } | null | undefined;
+type Vec3Field = 'from' | 'to' | 'origin' | 'rotation';
 
 const readVec3 = (value: Vec3Like): Vec3 | null => {
   if (!value) return null;
@@ -201,3 +173,25 @@ const buildVecMismatchError = (field: string, expected: Vec3, actual: Vec3 | nul
     actual
   }
 });
+
+const applyVerifiedVec3 = (
+  target: Record<string, unknown>,
+  field: Vec3Field,
+  value: Vec3 | undefined
+): ToolError | null => {
+  if (!value) return null;
+  assignVec3(target, field, value);
+  const actual = readVec3((target as Record<string, unknown>)[field] as Vec3Like);
+  if (matchesVec3(actual, value)) return null;
+  return buildVecMismatchError(field, value, actual);
+};
+
+const applyBoxUvMode = (target: Record<string, unknown>, boxUv: boolean | undefined) => {
+  if (typeof boxUv !== 'boolean') return;
+  (target as { box_uv?: boolean }).box_uv = boxUv;
+  const setUvMode = (target as { setUVMode?: (value: boolean) => void }).setUVMode;
+  if (typeof setUvMode === 'function') {
+    setUvMode.call(target, boxUv);
+  }
+};
+

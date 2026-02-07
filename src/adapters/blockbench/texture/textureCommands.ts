@@ -9,8 +9,8 @@ import type {
   TextureStat,
   UpdateTextureCommand
 } from '../../../ports/editor';
-import type { ToolError } from '../../../types';
-import type { PreviewItem, TextureConstructor } from '../../../types/blockbench';
+import type { ToolError } from '../../../types/internal';
+import type { PreviewItem, TextureConstructor, TextureInstance } from '../../../types/blockbench';
 import { readGlobals, readTextureId, readTextureSize, removeEntity, renameEntity, withUndo } from '../blockbenchUtils';
 import { getTextureApi } from '../blockbenchAdapterUtils';
 import {
@@ -28,6 +28,8 @@ import {
 } from './textureOps';
 import { findTextureRef, listTextureStats } from './textureLookup';
 
+type TextureWriteCommand = ImportTextureCommand | UpdateTextureCommand;
+
 export const runImportTexture = (log: Logger, params: ImportTextureCommand): ToolError | null => {
   try {
     const api = getTextureApi();
@@ -37,23 +39,13 @@ export const runImportTexture = (log: Logger, params: ImportTextureCommand): Too
     withUndo({ textures: true }, 'Import texture', () => {
       const tex = new TextureCtor({ name: params.name, width: params.width, height: params.height });
       if (params.id) tex.bbmcpId = params.id;
-      applyTextureDefaults(tex);
       if (typeof tex.add === 'function') {
         tex.add();
       }
-      applyTextureDimensions(tex, params.width, params.height);
-      applyTextureMeta(tex, params);
-      if (!applyTextureImage(tex, params.image)) {
+      if (!applyTextureContent(tex, params)) {
         imageMissing = true;
         return;
       }
-      if (applyTextureDimensions(tex, params.width, params.height)) {
-        if (!applyTextureImage(tex, params.image)) {
-          imageMissing = true;
-          return;
-        }
-      }
-      finalizeTextureChange(tex);
       tex.select?.();
     });
     if (imageMissing) {
@@ -84,20 +76,7 @@ export const runUpdateTexture = (log: Logger, params: UpdateTextureCommand): Too
       if (params.newName && params.newName !== target.name) {
         renameEntity(target, params.newName);
       }
-      applyTextureDefaults(target);
-      applyTextureDimensions(target, params.width, params.height);
-      applyTextureMeta(target, params);
-      if (!applyTextureImage(target, params.image)) {
-        imageMissing = true;
-        return;
-      }
-      if (applyTextureDimensions(target, params.width, params.height)) {
-        if (!applyTextureImage(target, params.image)) {
-          imageMissing = true;
-          return;
-        }
-      }
-      finalizeTextureChange(target);
+      if (!applyTextureContent(target, params)) imageMissing = true;
     });
     if (imageMissing) {
       return { code: 'not_implemented', message: ADAPTER_TEXTURE_CANVAS_UNAVAILABLE };
@@ -181,13 +160,28 @@ export const runReadTexture = (
 
 export const runListTextures = (): TextureStat[] => listTextureStats();
 
+const applyTextureContent = (
+  tex: TextureInstance,
+  params: TextureWriteCommand
+): boolean => {
+  applyTextureDefaults(tex);
+  applyTextureDimensions(tex, params.width, params.height);
+  applyTextureMeta(tex, params);
+  if (!applyTextureImage(tex, params.image)) return false;
+  if (applyTextureDimensions(tex, params.width, params.height) && !applyTextureImage(tex, params.image)) {
+    return false;
+  }
+  finalizeTextureChange(tex);
+  return true;
+};
+
+const collectPreviewCandidates = (registry: { selected?: PreviewItem | null; all?: PreviewItem[] } | undefined): PreviewItem[] =>
+  [registry?.selected, ...(registry?.all ?? [])].filter((entry): entry is PreviewItem => Boolean(entry));
+
 const refreshTextureViewport = (log: Logger): void => {
   try {
     const globals = readGlobals();
-    const registry = globals.Preview;
-    const selected = registry?.selected;
-    const all = registry?.all ?? [];
-    const candidates = [selected, ...all].filter((entry): entry is PreviewItem => Boolean(entry));
+    const candidates = collectPreviewCandidates(globals.Preview);
     const rendered = new Set<PreviewItem>();
     for (const preview of candidates) {
       if (rendered.has(preview)) continue;
@@ -205,3 +199,4 @@ const refreshTextureViewport = (log: Logger): void => {
     log.warn('texture viewport refresh failed', { message: errorMessage(err, 'texture viewport refresh failed') });
   }
 };
+

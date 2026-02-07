@@ -1,5 +1,5 @@
 import { readBlockbenchGlobals } from '../../types/blockbench';
-import { ToolError } from '../../types';
+import { ToolError } from '../../types/internal';
 import { HostPort } from '../../ports/host';
 import { ADAPTER_PLUGINS_DEVRELOAD_UNAVAILABLE } from '../../shared/messages';
 
@@ -32,5 +32,6 @@ const normalizeDelay = (value: number): number => {
   const rounded = Math.max(0, Math.trunc(value));
   return Math.min(rounded, MAX_DELAY_MS);
 };
+
 
 

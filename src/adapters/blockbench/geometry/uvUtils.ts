@@ -1,6 +1,5 @@
 import { CUBE_FACE_DIRECTIONS } from '../../../shared/toolConstants';
 import type { CubeFace, CubeFaceDirection, CubeInstance, TextureInstance } from '../../../types/blockbench';
-import { extendEntity } from '../blockbenchUtils';
 
 export const VALID_FACE_KEYS = new Set<CubeFaceDirection>(CUBE_FACE_DIRECTIONS);
 export const ALL_FACES: CubeFaceDirection[] = [...CUBE_FACE_DIRECTIONS];
@@ -16,6 +15,14 @@ export const ensureFaceMap = (cube: CubeInstance): Record<string, CubeFace> => {
     cube.faces = {};
   }
   return cube.faces as Record<string, CubeFace>;
+};
+
+export const ensureFaceEntry = (faceMap: Record<string, CubeFace>, face: CubeFaceDirection): CubeFace => {
+  const existing = faceMap[face];
+  if (existing) return existing;
+  const created: CubeFace = {};
+  faceMap[face] = created;
+  return created;
 };
 
 export const normalizeFaces = (faces?: CubeFaceDirection[]): CubeFaceDirection[] | undefined => {
@@ -42,15 +49,5 @@ export const enforceManualUvMode = (cube: CubeInstance, options?: { preserve?: b
   }
   if (typeof cube.autouv === 'number') {
     cube.autouv = 0;
-  }
-};
-
-export const applyFaceTextureRef = (
-  face: CubeFace,
-  textureRef: string | null | undefined
-): void => {
-  if (!textureRef) return;
-  if (!extendEntity(face, { texture: textureRef })) {
-    face.texture = textureRef;
   }
 };

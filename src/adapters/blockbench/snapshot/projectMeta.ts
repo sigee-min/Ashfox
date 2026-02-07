@@ -1,5 +1,5 @@
 import type { BlockbenchGlobals } from '../../../types/blockbench';
-import { FormatKind, FORMAT_KINDS } from '../../../types';
+import { FormatKind, FORMAT_KINDS } from '../../../types/internal';
 import { matchesFormatKind } from '../../../domain/formats';
 
 export const getProjectName = (globals: BlockbenchGlobals): string | null => {
@@ -45,3 +45,4 @@ export const guessFormatKind = (formatId: string | null): FormatKind | null => {
   if (!formatId) return null;
   return FORMAT_KINDS.find((kind) => matchesFormatKind(kind, formatId)) ?? null;
 };
+

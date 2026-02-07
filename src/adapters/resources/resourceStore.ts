@@ -34,32 +34,5 @@ export class InMemoryResourceStore implements ResourceStore {
   }
 }
 
-export type ResourceStoreViewFilter = {
-  allowResourceUri?: (uri: string) => boolean;
-  allowTemplateUri?: (uriTemplate: string) => boolean;
-};
-
-export const createResourceStoreView = (
-  store: ResourceStore,
-  filter: ResourceStoreViewFilter
-): ResourceStore => ({
-  list: () => {
-    const allow = filter.allowResourceUri;
-    if (!allow) return store.list();
-    return store.list().filter((entry) => allow(entry.uri));
-  },
-  read: (uri: string) => {
-    if (filter.allowResourceUri && !filter.allowResourceUri(uri)) return null;
-    return store.read(uri);
-  },
-  listTemplates: () => {
-    const allow = filter.allowTemplateUri;
-    if (!allow) return store.listTemplates();
-    return store.listTemplates().filter((template) => allow(template.uriTemplate));
-  },
-  has: (uri: string) => store.has(uri),
-  put: (resource: ResourceContent) => store.put(resource)
-});
-
 
 

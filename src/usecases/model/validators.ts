@@ -1,4 +1,4 @@
-import type { ToolError } from '../../types';
+import type { ToolError } from '../../types/internal';
 import { ensureNonBlankString } from '../../shared/payloadValidation';
 
 export const ensureNonBlankFields = (entries: Array<[unknown, string]>): ToolError | null => {
@@ -8,3 +8,4 @@ export const ensureNonBlankFields = (entries: Array<[unknown, string]>): ToolErr
   }
   return null;
 };
+

@@ -1,4 +1,4 @@
-import type { ProjectDiff, ProjectState, ProjectStateDetail } from '../../types';
+import type { ProjectDiff, ProjectState, ProjectStateDetail } from '../../types/internal';
 import { ok, fail, type UsecaseResult } from '../result';
 import { diffSnapshots } from '../../domain/project/diff';
 import { ensureNonBlankString } from '../../shared/payloadValidation';
@@ -76,3 +76,4 @@ export class ProjectStateService {
     return ok({ diff });
   }
 }
+

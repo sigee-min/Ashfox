@@ -1,4 +1,4 @@
-import type { FormatKind } from '../../types';
+import type { FormatKind } from '../../types/internal';
 
 type DialogDefaultsInput = {
   format: FormatKind;
@@ -28,3 +28,4 @@ export const buildProjectDialogDefaults = (input: DialogDefaultsInput): Record<s
   }
   return defaults;
 };
+

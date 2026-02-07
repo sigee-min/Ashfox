@@ -1,4 +1,4 @@
-import type { NextAction, NextActionArgs, NextActionValueRef, ToolPayloadMap, ToolResponse, ToolResultMap } from '../types';
+import type { NextAction, NextActionArgs, NextActionValueRef, ToolPayloadMap, ToolResponse, ToolResultMap } from '../types/internal';
 import { ADAPTER_PROJECT_DIALOG_INPUT_REQUIRED } from './messages';
 
 export type NextActionFactories = {
@@ -44,3 +44,4 @@ export const buildEnsureProjectNextActions = (
     )
   ];
 };
+

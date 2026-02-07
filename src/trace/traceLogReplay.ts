@@ -1,14 +1,10 @@
-import type { TraceLogEntry, TraceLogRecord } from '../types/traceLog';
-import type { TraceStep } from './traceRunner';
+import type { TraceLogRecord } from '../types/traceLog';
 import { toolError } from '../shared/tooling/toolResponse';
-import type { ToolError } from '../types';
+import type { ToolError } from '../types/internal';
 
 export type TraceLogParseResult =
   | { ok: true; records: TraceLogRecord[]; warnings?: string[] }
   | { ok: false; error: ToolError; warnings?: string[] };
-
-const isTraceLogEntry = (record: TraceLogRecord): record is TraceLogEntry =>
-  record.kind === 'step';
 
 export const parseTraceLogText = (text: string): TraceLogParseResult => {
   const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
@@ -44,15 +40,6 @@ export const parseTraceLogText = (text: string): TraceLogParseResult => {
 
   return { ok: true, records, ...(warnings.length > 0 ? { warnings } : {}) };
 };
-
-export const stepsFromTraceLog = (records: TraceLogRecord[]): TraceStep[] =>
-  records
-    .filter(isTraceLogEntry)
-    .map((entry) => ({
-      op: entry.op as TraceStep['op'],
-      payload: entry.payload
-    }));
-
 
 
 

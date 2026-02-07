@@ -10,7 +10,7 @@ import {
   ReadTexturePayload,
   ReadTextureResult,
   ToolError
-} from '../types';
+} from '../types/internal';
 import { ProjectSession, SessionState } from '../session';
 import { CubeFaceDirection, EditorPort, FaceUvMap, TextureSource } from '../ports/editor';
 import { TextureMeta } from '../types/texture';
@@ -27,9 +27,7 @@ import { TextureResolutionService } from './textureService/TextureResolutionServ
 import { TextureAssignmentService } from './textureService/TextureAssignmentService';
 import { TextureUvService } from './textureService/TextureUvService';
 import { ensureTextureSelector } from './textureService/textureSelector';
-import { parseHexColor, fillPixels } from '../domain/texturePaint';
-import { checkDimensions, mapDimensionError } from '../domain/dimensions';
-import { DIMENSION_INTEGER_MESSAGE, DIMENSION_POSITIVE_MESSAGE, TEXTURE_PAINT_SIZE_EXCEEDS_MAX, TEXTURE_PAINT_SIZE_EXCEEDS_MAX_FIX, TEXTURE_RENDERER_UNAVAILABLE, TEXTURE_RENDERER_NO_IMAGE, TEXTURE_NAME_REQUIRED, TEXTURE_ALREADY_EXISTS } from '../shared/messages';
+import { runCreateBlankTexture } from './textureService/textureBlank';
 
 const selectorError = (id?: string, name?: string) => ensureTextureSelector(id, name);
 
@@ -173,61 +171,16 @@ export class TextureService {
     ifRevision?: string;
     allowExisting?: boolean;
   }): UsecaseResult<{ id: string; name: string; created: boolean }> {
-    return withActiveOnly<{ id: string; name: string; created: boolean }>(this.ensureActive, () => {
-      if (!payload.name) {
-        return fail({ code: 'invalid_payload', message: TEXTURE_NAME_REQUIRED });
-      }
-      if (!this.textureRenderer) {
-        return fail({ code: 'not_implemented', message: TEXTURE_RENDERER_UNAVAILABLE });
-      }
-      const existing = this.editor.listTextures().find((tex) => tex.name === payload.name);
-      if (existing && payload.allowExisting) {
-        return ok({ id: existing.id ?? payload.name, name: payload.name, created: false });
-      }
-      if (existing && !payload.allowExisting) {
-        return fail({ code: 'invalid_payload', message: TEXTURE_ALREADY_EXISTS(payload.name) });
-      }
-      const resolution = this.editor.getProjectTextureResolution();
-      const width = Number(payload.width ?? resolution?.width ?? 16);
-      const height = Number(payload.height ?? resolution?.height ?? 16);
-      const maxSize = this.capabilities.limits.maxTextureSize;
-      const sizeCheck = checkDimensions(width, height, { requireInteger: true, maxSize });
-      if (!sizeCheck.ok) {
-        const sizeMessage = mapDimensionError(sizeCheck, {
-          nonPositive: (axis) => DIMENSION_POSITIVE_MESSAGE(axis, axis),
-          nonInteger: (axis) => DIMENSION_INTEGER_MESSAGE(axis, axis),
-          exceedsMax: (limit) => TEXTURE_PAINT_SIZE_EXCEEDS_MAX(limit || maxSize)
-        });
-        if (sizeCheck.reason === 'exceeds_max') {
-          return fail({
-            code: 'invalid_payload',
-            message: sizeMessage ?? TEXTURE_PAINT_SIZE_EXCEEDS_MAX(maxSize),
-            fix: TEXTURE_PAINT_SIZE_EXCEEDS_MAX_FIX(maxSize),
-            details: { width, height, maxSize }
-          });
-        }
-        return fail({ code: 'invalid_payload', message: sizeMessage ?? DIMENSION_POSITIVE_MESSAGE('width/height') });
-      }
-      const data = new Uint8ClampedArray(width * height * 4);
-      if (payload.background) {
-        const bg = parseHexColor(payload.background);
-        if (bg) fillPixels(data, width, height, bg);
-      }
-      const renderRes = this.textureRenderer.renderPixels({ width, height, data });
-      if (renderRes.error) return fail(renderRes.error);
-      if (!renderRes.result) {
-        return fail({ code: 'not_implemented', message: TEXTURE_RENDERER_NO_IMAGE });
-      }
-      const created = this.textureWriter.importTexture({
-        name: payload.name,
-        image: renderRes.result.image,
-        width,
-        height,
-        ifRevision: payload.ifRevision
-      });
-      if (!created.ok) return fail(created.error);
-      return ok({ id: created.value.id, name: created.value.name, created: true });
-    });
+    return runCreateBlankTexture(
+      {
+        ensureActive: this.ensureActive,
+        capabilities: this.capabilities,
+        editor: this.editor,
+        textureRenderer: this.textureRenderer,
+        importTexture: (nextPayload) => this.textureWriter.importTexture(nextPayload)
+      },
+      payload
+    );
   }
 
   importTexture(payload: {
@@ -310,6 +263,7 @@ export class TextureService {
     };
   }
 }
+
 
 
 

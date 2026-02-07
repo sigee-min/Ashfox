@@ -1,4 +1,4 @@
-import type { RenderPreviewPayload, RenderPreviewResult, ToolError } from '../types';
+import type { RenderPreviewPayload, RenderPreviewResult, ToolError } from '../types/internal';
 import type { EditorPort } from '../ports/editor';
 import type { TmpStorePort } from '../ports/tmpStore';
 import { ok, fail, UsecaseResult } from './result';
@@ -103,5 +103,6 @@ export class RenderService {
     });
   }
 }
+
 
 

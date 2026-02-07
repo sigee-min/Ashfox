@@ -14,21 +14,5 @@ export const resolveTextureSize = (
   return { width, height };
 };
 
-export const normalizeTextureDimension = (value?: number): number | null => {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
-  if (value <= 0) return null;
-  return Math.trunc(value);
-};
-
-export const normalizeTextureSize = (
-  width?: number,
-  height?: number
-): { width: number; height: number } | null => {
-  const w = normalizeTextureDimension(width);
-  const h = normalizeTextureDimension(height);
-  if (!w || !h) return null;
-  return { width: w, height: h };
-};
-
 
 

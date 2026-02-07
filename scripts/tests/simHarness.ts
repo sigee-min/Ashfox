@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 
 import type { FormatKind } from '../../src/types';
-import { BlockbenchSimEngine } from '../../src/adapters/sim/BlockbenchSimEngine';
+import { BlockbenchSimEngine } from './support/BlockbenchSimEngine';
 import { ProjectSession } from '../../src/session';
 import { ToolService } from '../../src/usecases/ToolService';
 import type { ToolPolicies } from '../../src/usecases/policies';
