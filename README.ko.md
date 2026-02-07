@@ -125,5 +125,12 @@ npm test
 npm run quality:check
 ```
 
+## 커뮤니티 및 보안
+- 기여 가이드: `CONTRIBUTING.md`
+- 행동 강령: `CODE_OF_CONDUCT.md`
+- 지원/이슈 제보: `SUPPORT.md`
+- 보안 정책/취약점 제보: `SECURITY.md`
+- 공개 릴리스 체크리스트: `docs/release-public-checklist.md`
+
 ## 라이선스
 LICENSE 참고.

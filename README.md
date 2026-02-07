@@ -125,5 +125,12 @@ Quality checks:
 npm run quality:check
 ```
 
+## Community and Security
+- Contributing guide: `CONTRIBUTING.md`
+- Code of conduct: `CODE_OF_CONDUCT.md`
+- Support and issue reporting: `SUPPORT.md`
+- Security policy and vulnerability reporting: `SECURITY.md`
+- Public release checklist: `docs/release-public-checklist.md`
+
 ## License
 See LICENSE.
