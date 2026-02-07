@@ -20,15 +20,16 @@ if (run.status !== 0) {
 }
 
 const output = run.stdout || '';
+const ignoredDeadcodePaths = ['src/types.ts:', 'src/types/internal.ts:'];
 const lines = output
   .split(/\r?\n/)
   .map((line) => line.trim())
   .filter(Boolean)
   .filter((line) => !line.includes('(used in module)'))
-  .filter((line) => !line.includes('\\src\\types.ts:'))
-  .filter((line) => !line.includes('\\src\\types\\internal.ts:'))
-  .filter((line) => !line.includes('/src/types.ts:'))
-  .filter((line) => !line.includes('/src/types/internal.ts:'));
+  .filter((line) => {
+    const normalized = line.replace(/\\/g, '/');
+    return !ignoredDeadcodePaths.some((path) => normalized.includes(path));
+  });
 
 if (lines.length > 0) {
   console.error('bbmcp deadcode gate failed (unused exports):');
