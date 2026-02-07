@@ -2,11 +2,22 @@
 
 Blockbench MCP 브리지 플러그인. bbmcp는 모델링, 텍스처링, 애니메이션을 위한 저수준·결정적 도구 표면을 MCP로 제공한다.
 
+## 쇼케이스
+이 결과물은 bbmcp로 수동 설정 없이 자연어만으로 5분 내 제작했다.
+bone, cube, uv, texture, animation 워크플로를 지원한다.
+작업 환경: codex5.3 xhigh.
+
+![Greyfox Animation](assets/images/greyfox-animation.gif)
+
+| Hero Render | Texture Sheet |
+| --- | --- |
+| ![Greyfox Model](assets/images/greyfox.png) | ![Greyfox Texture](assets/images/greyfox-texture.png) |
+
 ## 기능
 - 저수준 모델링만 제공: add_bone/add_cube (호출당 1개).
 - 저수준 애니메이션만 제공: create_animation_clip + set_frame_pose.
 - UV는 내부 처리: assign_texture -> paint_faces (수동 UV 도구 없음).
-- 큐브 추가/스케일 변경 시 자동 UV 아틀라스; 픽셀은 새 레이아웃을 따라 재투영.
+- 큐브 추가 및 geometry 변경(update_cube의 from/to/inflate) 시 자동 UV 아틀라스; 픽셀은 새 레이아웃을 따라 재투영.
 - 아틀라스가 넘치면 자동으로 밀도를 낮춤(uvPixelsPerBlock 감소).
 - 동시 편집 안정성을 위한 ifRevision 가드.
 - 미리보기는 MCP content block(base64 PNG) + 구조화 메타데이터로 반환.
@@ -94,8 +105,8 @@ endpoint.json 예시:
 toolRegistry.hash가 바뀌면 list_capabilities(또는 tools/list)를 다시 호출해 스키마를 갱신.
 
 ## 가이드 및 스펙
-- docs/texture-uv-spec.md
-- docs/llm-texture-strategy.md
+- docs/guides/texture-spec.md
+- docs/guides/llm-texture-strategy.md
 - MCP 리소스: bbmcp://guide/* (resources/templates/list 참고)
 
 ## 개발

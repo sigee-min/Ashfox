@@ -80,6 +80,7 @@ Notes:
 - Always include ifRevision for mutations.
 - Use update_bone/update_cube for edits; delete_bone/delete_cube accept id/name or ids/names arrays for bulk removal.
 - delete_bone reports all removed bones (including descendants) in `deleted`.
+- If textures already exist, cube add or geometry-changing update (`from`/`to`/`inflate`) can trigger internal auto-UV.
 - Keep ids stable if you plan to animate.
 
 LLM prompt guidance:

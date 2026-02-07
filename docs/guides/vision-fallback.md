@@ -24,6 +24,11 @@ Texture (auto + fallback):
 }
 ```
 
+Notes:
+- `render_preview` supports `fixed` and `turntable` modes, with `single` or `sequence` output.
+- `read_texture` accepts either `id` or `name` (or both when they refer to the same texture).
+- `saveToTmp` writes snapshots under `.bbmcp/tmp`; `tmpName`/`tmpPrefix` control file naming.
+
 Snapshots are saved under:
 - <project_root>/.bbmcp/tmp
 

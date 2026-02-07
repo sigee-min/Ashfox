@@ -10,14 +10,16 @@ Steps:
 5) validate / render_preview as needed
 
 Notes:
-- Animation tools are low-level only (no pipeline).
+- Animation tools are low-level only (no high-level pipeline).
+- Tool schemas are strict (`additionalProperties: false`); extra fields are rejected.
 - Use ifRevision for all mutations.
 - set_frame_pose applies one frame at a time, but can include multiple bones.
 - Repeat set_frame_pose calls to build a full curve across time.
 - Frame values are converted to time using the clip fps (time = frame / fps). If fps is missing, the server defaults to 20.
 - delete_animation_clip accepts id/name or ids/names arrays for bulk removal.
 - Bones referenced in set_frame_pose must exist in the model.
- - bones[].interp overrides the top-level interp for that bone.
+- bones[].interp overrides the top-level interp for that bone.
+- set_trigger_keyframes is one-key-per-call (`keys` max length is 1).
 - If you update UVs or geometry, re-render previews for visual checks.
 
 LLM prompt guidance:

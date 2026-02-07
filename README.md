@@ -2,11 +2,22 @@
 
 Blockbench MCP bridge plugin. bbmcp exposes a low-level, deterministic tool surface for modeling, texturing, and animation over MCP.
 
+## Showcase
+This is a real result created with bbmcp from natural language in under 5 minutes, with no manual setup.
+Supports bone, cube, uv, texture, and animation workflows.
+Built with codex5.3 xhigh.
+
+![Greyfox Animation](assets/images/greyfox-animation.gif)
+
+| Hero Render | Texture Sheet |
+| --- | --- |
+| ![Greyfox Model](assets/images/greyfox.png) | ![Greyfox Texture](assets/images/greyfox-texture.png) |
+
 ## Features
 - Low-level modeling only: add_bone/add_cube (one item per call).
 - Low-level animation only: create_animation_clip + set_frame_pose.
 - UVs are internal: assign_texture -> paint_faces (no manual UV tools).
-- Auto UV atlas runs on cube add/scale; pixels are reprojected to follow the new layout.
+- Auto UV atlas runs on cube add and geometry-changing cube updates; pixels are reprojected to follow the new layout.
 - Auto density reduction when atlas overflows (uvPixelsPerBlock is lowered to fit).
 - Revision guard (ifRevision) for safe concurrent edits.
 - Preview output as MCP content blocks (base64 PNG) plus structured metadata.
@@ -94,8 +105,8 @@ Notes:
 If toolRegistry.hash changes, re-run list_capabilities (or tools/list) to refresh schemas.
 
 ## Guides and Specs
-- docs/texture-uv-spec.md
-- docs/llm-texture-strategy.md
+- docs/guides/texture-spec.md
+- docs/guides/llm-texture-strategy.md
 - MCP resources: bbmcp://guide/* (see resources/templates/list)
 
 ## Development

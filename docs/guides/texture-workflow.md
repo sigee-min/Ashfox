@@ -13,12 +13,16 @@ Notes:
 - `ensure_project.uvPixelsPerBlock` sets the per-face UV density (default 16).
 - When reusing an existing project, bbmcp infers UV density from existing UVs using the median face density.
 - ensure_project auto-creates a texture named after the project when none exists.
-- Cube add/scale triggers an automatic internal UV atlas pass; existing pixels are reprojected to the new UV layout.
+- Cube add and geometry-changing cube updates trigger internal UV atlas when textures exist.
+- Existing pixels are reprojected to the new UV layout automatically.
 - paint_faces may return a recovery summary when auto-UV fixes were applied.
-- paint_faces is strict single-write: exactly one `target` (`cubeId`/`cubeName` + one `face`) and one `op`.
+- paint_faces is strict single-write: exactly one `target` (`cubeId`/`cubeName`, optional `face`) and one `op`.
+- paint_faces schema is strict; `targets`, `ops`, and `background` are invalid payload fields.
+- Omit `target.face` to paint all mapped faces of the target cube.
+- `fill_rect` shading is on by default for deterministic tonal variation; use `shade: false` to keep flat color.
+- Advanced shading uses `shade` object fields: `enabled`, `intensity`, `edge`, `noise`, `seed`, `lightDir`.
 - Default `coordSpace` is `face`; if `width/height` is omitted, source size follows the target face UV size.
 - Use `coordSpace: "texture"` only for texture-space coordinates; this requires explicit `width`/`height` matching texture size.
-- `background` is not part of the paint_faces payload.
 - For >=64px textures, keep ops minimal and use tiling patterns.
 - When specifying both cubeId and cubeName in target, both must match. Use only one to avoid overly narrow matches.
 - Support limit: models that still exceed atlas capacity after auto density reduction are not supported.

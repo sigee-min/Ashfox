@@ -1,6 +1,6 @@
 # UV Atlas Guide
 
-Internal UV atlas runs automatically on cube add/scale.
+Internal UV atlas runs automatically on cube add and geometry-changing cube updates (`from`/`to`/`inflate`) when textures exist.
 
 Key points:
 - UV rects must not overlap.
@@ -11,4 +11,5 @@ Key points:
 
 After apply:
 - Preflight is internal-only.
-- Repaint textures using the new mapping (pixels are reprojected to follow the new UVs).
+- Existing texture pixels are reprojected to follow the new UVs.
+- Repaint only when you want to change style/details after remap.
