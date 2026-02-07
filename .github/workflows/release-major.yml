@@ -21,10 +21,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect major or minor version bump
+      - name: Detect release condition
         id: version
         env:
           BEFORE_SHA: ${{ github.event.before }}
+          GH_REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           node <<'NODE'
           const fs = require('node:fs');
@@ -66,6 +68,32 @@ jobs:
 
           const current = parseVersion(currentVersion);
           const previous = previousVersion ? parseVersion(previousVersion) : null;
+          const tag = `v${currentVersion}`;
+          const tagExists = (() => {
+            try {
+              const existing = execSync(`git tag --list "${tag}"`, { encoding: 'utf8' }).trim();
+              return existing === tag;
+            } catch (error) {
+              return false;
+            }
+          })();
+          const releaseExists = (() => {
+            try {
+              const repo = process.env.GH_REPOSITORY;
+              const token = process.env.GH_TOKEN;
+              if (!repo || !token) return false;
+              const cmd =
+                'curl -s -o /dev/null -w "%{http_code}" ' +
+                `-H "Authorization: Bearer ${token}" ` +
+                '-H "Accept: application/vnd.github+json" ' +
+                `https://api.github.com/repos/${repo}/releases/tags/${tag}`;
+              const status = execSync(cmd, { encoding: 'utf8' }).trim();
+              return status === '200';
+            } catch (error) {
+              return false;
+            }
+          })();
+
           let releaseBumped = false;
           let bumpKind = '';
           if (current && previous) {
@@ -77,6 +105,7 @@ jobs:
               bumpKind = 'minor';
             }
           }
+          const releaseNeeded = releaseBumped || !tagExists || !releaseExists;
 
           const lines = [
             `current_version=${currentVersion}`,
@@ -86,37 +115,40 @@ jobs:
             `current_minor=${current?.minor ?? ''}`,
             `previous_minor=${previous?.minor ?? ''}`,
             `release_bumped=${releaseBumped ? 'true' : 'false'}`,
+            `release_needed=${releaseNeeded ? 'true' : 'false'}`,
+            `tag_exists=${tagExists ? 'true' : 'false'}`,
+            `release_exists=${releaseExists ? 'true' : 'false'}`,
             `bump_kind=${bumpKind}`,
-            `tag=v${currentVersion}`
+            `tag=${tag}`
           ];
           fs.appendFileSync(outputPath, `${lines.join('\n')}\n`);
 
           console.log(
-            `current=${currentVersion} previous=${previousVersion ?? 'unknown'} release_bumped=${releaseBumped} kind=${bumpKind || 'none'}`
+            `current=${currentVersion} previous=${previousVersion ?? 'unknown'} release_bumped=${releaseBumped} tag_exists=${tagExists} release_exists=${releaseExists} release_needed=${releaseNeeded} kind=${bumpKind || 'none'}`
           );
           NODE
 
-      - name: Skip when major/minor version is unchanged
-        if: steps.version.outputs.release_bumped != 'true'
-        run: echo "No major/minor version bump detected. Skipping release."
+      - name: Skip when release is unnecessary
+        if: steps.version.outputs.release_needed != 'true'
+        run: echo "No major/minor bump and release already exists. Skipping release."
 
       - name: Setup Node
-        if: steps.version.outputs.release_bumped == 'true'
+        if: steps.version.outputs.release_needed == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
       - name: Install
-        if: steps.version.outputs.release_bumped == 'true'
+        if: steps.version.outputs.release_needed == 'true'
         run: npm ci
 
       - name: Build
-        if: steps.version.outputs.release_bumped == 'true'
+        if: steps.version.outputs.release_needed == 'true'
         run: npm run build
 
       - name: Create GitHub Release
-        if: steps.version.outputs.release_bumped == 'true'
+        if: steps.version.outputs.release_needed == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
