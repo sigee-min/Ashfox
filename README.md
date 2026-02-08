@@ -1,6 +1,8 @@
-# <img src="docs/page/public/favicon-32x32.png" alt="bbmcp icon badge" width="16" height="16" /> bbmcp
+# <img src="docs/page/public/favicon-32x32.png" alt="bbmcp icon badge" width="32" height="32" /> bbmcp
 
 Blockbench MCP bridge plugin. bbmcp exposes a low-level, deterministic tool surface for modeling, texturing, and animation over MCP.
+
+Docs: [bbmcp.sigee.xyz](https://bbmcp.sigee.xyz)
 
 ## Install from URL (Quick)
 In Blockbench Desktop:
@@ -149,6 +151,10 @@ npm run quality:check
 - `release-please` manages release PRs from conventional commits on `main`.
 - Merging the release PR updates `package.json`/`CHANGELOG.md` via bot.
 - GitHub Release publication is automated by `.github/workflows/release-major.yml`.
+- `release-please` auth:
+  - recommended: set repository secret `RELEASE_PLEASE_TOKEN` (token must allow `contents:write` and `pull_requests:write`)
+  - optional fallback: set repository variable `RELEASE_PLEASE_ALLOW_GITHUB_TOKEN=true` and enable GitHub Actions PR creation in repository settings
+  - if neither is configured, the workflow exits cleanly with a notice (no failure)
 - Publish policy:
   - first release: auto-create
   - after bootstrap: only `major`/`minor` version bumps publish releases

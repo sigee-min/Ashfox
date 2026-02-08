@@ -14,10 +14,40 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
-      - name: Run release-please
+      - name: Resolve auth mode
+        id: auth
+        shell: bash
+        env:
+          RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          RELEASE_PLEASE_ALLOW_GITHUB_TOKEN: ${{ vars.RELEASE_PLEASE_ALLOW_GITHUB_TOKEN }}
+        run: |
+          if [[ -n "${RELEASE_PLEASE_TOKEN}" ]]; then
+            echo "mode=custom" >> "${GITHUB_OUTPUT}"
+            echo "::notice::release-please will run with RELEASE_PLEASE_TOKEN."
+          elif [[ "${RELEASE_PLEASE_ALLOW_GITHUB_TOKEN}" == "true" ]]; then
+            echo "mode=github" >> "${GITHUB_OUTPUT}"
+            echo "::notice::release-please will run with GITHUB_TOKEN (RELEASE_PLEASE_ALLOW_GITHUB_TOKEN=true)."
+          else
+            echo "mode=skip" >> "${GITHUB_OUTPUT}"
+            echo "::notice::release-please skipped. Set RELEASE_PLEASE_TOKEN secret (recommended), or set RELEASE_PLEASE_ALLOW_GITHUB_TOKEN=true and enable GitHub Actions PR creation."
+          fi
+
+      - name: Run release-please (PAT)
+        if: steps.auth.outputs.mode == 'custom'
         uses: googleapis/release-please-action@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          command: manifest
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          # GitHub release publication is handled by release-major.yml
+          skip-github-release: true
+
+      - name: Run release-please (GITHUB_TOKEN fallback)
+        if: steps.auth.outputs.mode == 'github'
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ github.token }}
           command: manifest
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
