@@ -186,7 +186,7 @@ Notes:
 | GeckoLib | Supported | Capability-gated. |
 | Animated Java | Supported | Capability-gated. |
 | Image (2D) | Experimental | Format id: `image`; image-editor workflows vary by host/runtime. |
-| Generic Model | Supported | Format id: `free`; Unity/Godot/Unreal-oriented generic workflow. |
+| Generic Model | Supported | Format id: `free`; general-purpose format often used in Unity/Godot/Unreal workflows (engine-side import behavior depends on your setup). |
 
 ## Support Limits
 - Extremely large models can exceed atlas capacity even after auto density reduction.

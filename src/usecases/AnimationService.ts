@@ -150,8 +150,8 @@ export class AnimationService {
     return {
       session: this.session,
       editor: this.editor,
-      getSnapshot: this.getSnapshot
+      getSnapshot: this.getSnapshot,
+      ensureAnimationsSupported: () => this.ensureAnimationsSupported()
     };
   }
 }
-

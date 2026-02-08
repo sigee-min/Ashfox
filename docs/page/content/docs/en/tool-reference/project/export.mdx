@@ -62,9 +62,10 @@ Exports the current project to the requested output format.
 
 ## Auto Mode
 - `format: "auto"` resolves by `destPath` extension first.
-- `.gltf` or `.glb` resolves to native glTF export.
+- `.gltf` or `.glb` resolves to native glTF export when a glTF codec is available.
 - Otherwise it falls back to the active project format default export target.
 - If no rule matches, the tool fails with `invalid_payload`.
+- If codec/IO support is unavailable, glTF export can return `not_implemented`.
 
 ## Response Example
 ```json
@@ -80,3 +81,4 @@ Exports the current project to the requested output format.
 - Do not send fields outside the declared schema.
 - Run `validate` before `export` for release safety.
 - Use `generic_model_json` for Generic Model (`free`) projects when deterministic JSON output is required.
+- `format: "gltf"` is not format-gated by active project type; the tool attempts a native glTF export for the current project.

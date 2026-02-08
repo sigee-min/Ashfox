@@ -158,7 +158,8 @@ jobs:
 
       - name: Skip when release is unnecessary
         if: steps.version.outputs.release_needed != 'true'
-        run: echo "Release skipped: ${{ steps.version.outputs.release_reason }}"
+        run: |
+          echo "Release skipped: ${{ steps.version.outputs.release_reason }}"
 
       - name: Setup Node
         if: steps.version.outputs.release_needed == 'true'

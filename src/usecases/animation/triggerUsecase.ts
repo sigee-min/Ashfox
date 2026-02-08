@@ -1,5 +1,6 @@
 import type { ProjectSession, SessionState } from '../../session';
 import type { EditorPort, TriggerChannel } from '../../ports/editor';
+import type { ToolError } from '../../types/internal';
 import { fail, ok, type UsecaseResult } from '../result';
 import { isValidTriggerPayloadValue } from './triggerPayload';
 import { ensureClipSelector, resolveClipTarget } from './clipSelectors';
@@ -20,12 +21,15 @@ export interface TriggerUsecaseDeps {
   session: ProjectSession;
   editor: EditorPort;
   getSnapshot: () => SessionState;
+  ensureAnimationsSupported: () => ToolError | null;
 }
 
 export const runSetTriggerKeyframes = (
   deps: TriggerUsecaseDeps,
   payload: SetTriggerKeyframesPayload
 ): UsecaseResult<{ clip: string; clipId?: string; channel: TriggerChannel }> => {
+  const supportErr = deps.ensureAnimationsSupported();
+  if (supportErr) return fail(supportErr);
   const snapshot = deps.getSnapshot();
   const selectorErr = ensureClipSelector(payload.clipId, payload.clip);
   if (selectorErr) return fail(selectorErr);

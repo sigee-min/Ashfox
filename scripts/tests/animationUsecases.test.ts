@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import type { Capabilities, ToolError } from '../../src/types/internal';
 import { ProjectSession } from '../../src/session';
 import {
+  ANIMATION_UNSUPPORTED_FORMAT,
   ANIMATION_CLIP_NAME_REQUIRED,
   ANIMATION_FRAME_INVALID,
   ANIMATION_TRIGGER_KEYFRAME_SINGLE_REQUIRED,
@@ -281,7 +282,30 @@ const createCrudDeps = (
     {
       session,
       editor: createEditorStub(),
-      getSnapshot: () => session.snapshot()
+      getSnapshot: () => session.snapshot(),
+      ensureAnimationsSupported: () => ({ code: 'unsupported_format', message: ANIMATION_UNSUPPORTED_FORMAT })
+    },
+    {
+      clip: 'idle',
+      channel: 'sound',
+      keys: [{ time: 0, value: 'a' }]
+    }
+  );
+  assert.equal(res.ok, false);
+  if (!res.ok) {
+    assert.equal(res.error.code, 'unsupported_format');
+    assert.equal(res.error.message, normalizedMessage(ANIMATION_UNSUPPORTED_FORMAT));
+  }
+}
+
+{
+  const session = createSession();
+  const res = runSetTriggerKeyframes(
+    {
+      session,
+      editor: createEditorStub(),
+      getSnapshot: () => session.snapshot(),
+      ensureAnimationsSupported: () => null
     },
     {
       clip: 'idle',
@@ -302,7 +326,8 @@ const createCrudDeps = (
     {
       session,
       editor: createEditorStub(),
-      getSnapshot: () => session.snapshot()
+      getSnapshot: () => session.snapshot(),
+      ensureAnimationsSupported: () => null
     },
     {
       clip: 'idle',
@@ -320,7 +345,8 @@ const createCrudDeps = (
     {
       session,
       editor: createEditorStub(),
-      getSnapshot: () => session.snapshot()
+      getSnapshot: () => session.snapshot(),
+      ensureAnimationsSupported: () => null
     },
     {
       clip: 'idle',
@@ -340,7 +366,8 @@ const createCrudDeps = (
     {
       session,
       editor,
-      getSnapshot: () => session.snapshot()
+      getSnapshot: () => session.snapshot(),
+      ensureAnimationsSupported: () => null
     },
     {
       clip: 'idle',
@@ -364,7 +391,8 @@ const createCrudDeps = (
     {
       session,
       editor,
-      getSnapshot: () => session.snapshot()
+      getSnapshot: () => session.snapshot(),
+      ensureAnimationsSupported: () => null
     },
     {
       clip: 'idle',
