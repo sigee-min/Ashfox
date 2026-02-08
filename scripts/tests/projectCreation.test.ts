@@ -171,3 +171,49 @@ const createContext = (options: CreateCtxOptions = {}) => {
   assert.equal(payloads[0]?.dialog?.format, 'geckolib_model');
   assert.equal(payloads[0]?.dialog?.parent, 'root');
 }
+
+{
+  const payloads: Array<{ confirmDiscard?: boolean; dialog?: Record<string, unknown> } | undefined> = [];
+  const ctx = {
+    capabilities: {
+      pluginVersion: 'test',
+      blockbenchVersion: 'test',
+      formats: [{ format: 'Generic Model', animations: true, enabled: true }],
+      limits: { maxCubes: 64, maxTextureSize: 256, maxAnimationSeconds: 120 }
+    },
+    editor: {
+      createProject: (
+        _name: string,
+        _formatId: string,
+        _format: 'Generic Model',
+        payload?: { confirmDiscard?: boolean; dialog?: Record<string, unknown> }
+      ) => {
+        payloads.push(payload);
+        return null;
+      }
+    },
+    formats: {
+      listFormats: () => [{ id: 'free', name: 'Generic Model' }],
+      getActiveFormatId: () => null
+    },
+    session: {
+      create: () =>
+        ({
+          ok: true,
+          data: { id: 'p2', format: 'Generic Model', name: 'agent' }
+        } as const)
+    },
+    ensureRevisionMatch: () => null,
+    policies: {
+      formatOverrides: undefined,
+      autoDiscardUnsaved: false
+    }
+  } as unknown as ProjectCreateContext;
+
+  const res = runCreateProject(ctx, 'Generic Model', 'agent');
+  assert.equal(res.ok, true);
+  if (res.ok) {
+    assert.equal(res.value.format, 'Generic Model');
+  }
+  assert.equal(payloads[0]?.dialog?.format, 'free');
+}

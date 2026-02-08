@@ -3,6 +3,14 @@ export type FormatDescriptor = {
   name?: string;
   singleTexture?: boolean;
   perTextureUvSize?: boolean;
+  boxUv?: boolean;
+  optionalBoxUv?: boolean;
+  uvRotation?: boolean;
+  animationMode?: boolean;
+  boneRig?: boolean;
+  armatureRig?: boolean;
+  meshes?: boolean;
+  imageEditor?: boolean;
 };
 
 export interface FormatPort {

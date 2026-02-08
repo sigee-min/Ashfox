@@ -19,7 +19,9 @@ const DEFAULT_LIMITS: Limits = {
 const BASE_FORMATS: Array<{ format: FormatKind; animations: boolean }> = [
   { format: 'Java Block/Item', animations: false },
   { format: 'geckolib', animations: true },
-  { format: 'animated_java', animations: true }
+  { format: 'animated_java', animations: true },
+  { format: 'Image', animations: false },
+  { format: 'Generic Model', animations: true }
 ];
 
 const CAPABILITIES_GUIDANCE = {
@@ -54,7 +56,8 @@ const computeFormatCapabilities = (
     const resolved = resolveFormatId(base.format, formats, overrides);
     const descriptor = resolved ? formats.find((format) => format.id === resolved) : undefined;
     const flags = normalizeFormatFlags(descriptor);
-    return { ...base, enabled: Boolean(resolved), ...(flags ? { flags } : {}) };
+    const animations = resolveAnimations(base.animations, descriptor);
+    return { format: base.format, animations, enabled: Boolean(resolved), ...(flags ? { flags } : {}) };
   });
 
 const normalizeFormatFlags = (
@@ -63,11 +66,22 @@ const normalizeFormatFlags = (
   if (!descriptor) return undefined;
   const flags = {
     singleTexture: descriptor.singleTexture,
-    perTextureUvSize: descriptor.perTextureUvSize
+    perTextureUvSize: descriptor.perTextureUvSize,
+    boxUv: descriptor.boxUv,
+    optionalBoxUv: descriptor.optionalBoxUv,
+    uvRotation: descriptor.uvRotation,
+    animationMode: descriptor.animationMode,
+    boneRig: descriptor.boneRig,
+    armatureRig: descriptor.armatureRig,
+    meshes: descriptor.meshes,
+    imageEditor: descriptor.imageEditor
   };
   const hasFlag = Object.values(flags).some((value) => value !== undefined);
   return hasFlag ? flags : undefined;
 };
+
+const resolveAnimations = (fallback: boolean, descriptor?: FormatDescriptor): boolean =>
+  typeof descriptor?.animationMode === 'boolean' ? descriptor.animationMode : fallback;
 
 export function computeCapabilities(
   blockbenchVersion: string | undefined,

@@ -8,6 +8,14 @@ export interface Capability {
   flags?: {
     singleTexture?: boolean;
     perTextureUvSize?: boolean;
+    boxUv?: boolean;
+    optionalBoxUv?: boolean;
+    uvRotation?: boolean;
+    animationMode?: boolean;
+    boneRig?: boolean;
+    armatureRig?: boolean;
+    meshes?: boolean;
+    imageEditor?: boolean;
   };
 }
 

@@ -45,7 +45,9 @@ const withGlobals = (overrides: TestGlobals, run: () => void) => {
         geckolib: {
           name: 'GeckoLib',
           single_texture: true,
-          per_texture_uv_size: false
+          per_texture_uv_size: false,
+          animation_mode: true,
+          bone_rig: true
         },
         java_block: {}
       },
@@ -58,7 +60,9 @@ const withGlobals = (overrides: TestGlobals, run: () => void) => {
         id: 'geckolib',
         name: 'GeckoLib',
         singleTexture: true,
-        perTextureUvSize: false
+        perTextureUvSize: false,
+        animationMode: true,
+        boneRig: true
       });
       assert.deepEqual(formats[1], { id: 'java_block', name: 'java_block' });
       assert.equal(adapter.getActiveFormatId(), 'geckolib');
@@ -86,3 +90,48 @@ const withGlobals = (overrides: TestGlobals, run: () => void) => {
   );
 }
 
+{
+  const adapter = new BlockbenchFormats();
+  withGlobals(
+    {
+      Formats: {
+        free: {
+          name: 'Generic Model',
+          meshes: true,
+          armature_rig: true,
+          bone_rig: true,
+          animation_mode: true,
+          optional_box_uv: true,
+          uv_rotation: true
+        },
+        image: {
+          name: 'Image',
+          image_editor: true,
+          animation_mode: false
+        }
+      },
+      Format: { id: 'free' }
+    },
+    () => {
+      const formats = adapter.listFormats();
+      assert.equal(formats.length, 2);
+      assert.deepEqual(formats[0], {
+        id: 'free',
+        name: 'Generic Model',
+        optionalBoxUv: true,
+        uvRotation: true,
+        animationMode: true,
+        boneRig: true,
+        armatureRig: true,
+        meshes: true
+      });
+      assert.deepEqual(formats[1], {
+        id: 'image',
+        name: 'Image',
+        animationMode: false,
+        imageEditor: true
+      });
+      assert.equal(adapter.getActiveFormatId(), 'free');
+    }
+  );
+}

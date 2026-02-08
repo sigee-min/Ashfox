@@ -47,6 +47,14 @@ export interface FormatEntry {
   codec?: { compile?: () => unknown };
   single_texture?: boolean;
   per_texture_uv_size?: boolean;
+  box_uv?: boolean;
+  optional_box_uv?: boolean;
+  uv_rotation?: boolean;
+  animation_mode?: boolean;
+  bone_rig?: boolean;
+  armature_rig?: boolean;
+  meshes?: boolean;
+  image_editor?: boolean;
 }
 
 export interface FormatSelection {

@@ -136,6 +136,28 @@ const withGlobals = (overrides: TestGlobals, run: () => void) => {
   withGlobals(
     {
       Project: {
+        name: 'generic-rig',
+        id: 'generic-id'
+      },
+      Format: { id: 'free' },
+      Outliner: { root: [] },
+      Texture: { all: [] },
+      Animations: []
+    },
+    () => {
+      const result = snapshot.readSnapshot();
+      assert.notEqual(result, null);
+      assert.equal(result?.format, 'Generic Model');
+      assert.equal(result?.formatId, 'free');
+    }
+  );
+}
+
+{
+  const snapshot = new BlockbenchSnapshot();
+  withGlobals(
+    {
+      Project: {
         name: 'root-only',
         id: 'root-id',
         dirty: false,
@@ -197,4 +219,3 @@ const withGlobals = (overrides: TestGlobals, run: () => void) => {
     }
   );
 }
-

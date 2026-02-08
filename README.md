@@ -109,8 +109,8 @@ Notes:
 | Java Block/Item | Supported | Default format. |
 | GeckoLib | Supported | Capability-gated. |
 | Animated Java | Supported | Capability-gated. |
-| Image (2D) | Planned (TODO) | Format id: `image`. |
-| Generic Model | Planned (TODO) | Format id: `free`. |
+| Image (2D) | Experimental | Format id: `image`; image-editor workflows vary by host/runtime. |
+| Generic Model | Supported | Format id: `free`; Unity/Godot/Unreal-oriented generic workflow. |
 
 ## Support Limits
 - Extremely large models can exceed atlas capacity even after auto density reduction.
