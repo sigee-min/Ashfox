@@ -370,5 +370,76 @@ registerAsync(
       assert.equal(writes.length, 1);
       assert.equal(writes[0].path, 'async-write.glb');
     }
+
+    {
+      const writes: Array<{ content: unknown; path: string }> = [];
+      const adapter = new BlockbenchExport(noopLog);
+      await withGlobalsAsync(
+        {
+          Blockbench: {
+            writeFile: () => undefined
+          },
+          Codecs: {
+            obj: {
+              id: 'obj',
+              name: 'Wavefront OBJ',
+              extension: 'obj',
+              compile: () => ({ mesh: true }),
+              write: (content: unknown, path: string) => {
+                writes.push({ content, path });
+              }
+            }
+          }
+        },
+        async () => {
+          const error = await adapter.exportCodec?.({ codecId: 'obj', destPath: 'asset.obj' });
+          assert.equal(error, null);
+        }
+      );
+      assert.equal(writes.length, 1);
+      assert.equal(writes[0].path, 'asset.obj');
+    }
+
+    {
+      const adapter = new BlockbenchExport(noopLog);
+      await withGlobalsAsync(
+        {
+          Blockbench: {
+            writeFile: () => undefined
+          },
+          Codecs: {}
+        },
+        async () => {
+          const error = await adapter.exportCodec?.({ codecId: 'fbx', destPath: 'asset.fbx' });
+          assert.equal(error?.code, 'not_implemented');
+        }
+      );
+    }
+
+    {
+      const adapter = new BlockbenchExport(noopLog);
+      await withGlobalsAsync(
+        {
+          Codecs: {
+            obj: {
+              id: 'obj',
+              name: 'Wavefront OBJ',
+              extension: 'obj'
+            },
+            fbx: {
+              id: 'fbx',
+              name: 'FBX',
+              extension: 'fbx'
+            }
+          }
+        },
+        async () => {
+          const targets = adapter.listNativeCodecs?.() ?? [];
+          assert.equal(targets.length, 2);
+          assert.equal(targets.some((target) => target.id === 'obj' && target.extensions.includes('obj')), true);
+          assert.equal(targets.some((target) => target.id === 'fbx' && target.extensions.includes('fbx')), true);
+        }
+      );
+    }
   })()
 );

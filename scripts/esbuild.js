@@ -7,7 +7,7 @@ const ensureDir = (dir) => {
 
 const buildPlugin = () =>
   esbuild.build({
-    entryPoints: ['src/plugin.ts'],
+    entryPoints: ['apps/plugin-desktop/src/index.ts'],
     outfile: 'dist/ashfox.js',
     bundle: true,
     sourcemap: true,
@@ -19,7 +19,7 @@ const buildPlugin = () =>
 
 const buildSidecar = () =>
   esbuild.build({
-    entryPoints: ['src/sidecar/index.ts'],
+    entryPoints: ['apps/mcp-headless/src/index.ts'],
     outfile: 'dist/ashfox-sidecar.js',
     bundle: true,
     sourcemap: true,

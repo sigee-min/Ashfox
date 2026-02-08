@@ -55,7 +55,7 @@ export const MCP_HIGH_LEVEL_TOOLS: McpToolDefinition[] = [
   defineTool({
     name: 'export',
     title: 'Export',
-    description: 'Exports the current project to the requested output format (including native glTF).',
+    description: 'Exports the current project to the requested output format (including native codec targets like glTF/OBJ/FBX when available).',
     inputSchema: toolSchemas.export
   })
 ];

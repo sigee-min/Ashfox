@@ -306,7 +306,15 @@ export interface SetTriggerKeyframesPayload extends IncludeStateOption, IncludeD
 }
 
 export interface ExportPayload extends IncludeStateOption, IfRevisionOption {
-  format: 'java_block_item_json' | 'gecko_geo_anim' | 'animated_java' | 'generic_model_json' | 'gltf' | 'auto';
+  format:
+    | 'java_block_item_json'
+    | 'gecko_geo_anim'
+    | 'animated_java'
+    | 'generic_model_json'
+    | 'gltf'
+    | 'native_codec'
+    | 'auto';
+  codecId?: string;
   destPath: string;
 }
 

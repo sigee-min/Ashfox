@@ -3,19 +3,28 @@ import assert from 'node:assert/strict';
 import { ProjectSession } from '../../src/session';
 import { ExportService } from '../../src/usecases/ExportService';
 import type { Capabilities, ToolError } from '../../src/types';
+import type { NativeCodecTarget } from '../../src/ports/exporter';
 import { createEditorStubWithState, createFormatPortStub } from './fakes';
 import { registerAsync } from './helpers';
-import { EXPORT_FORMAT_AUTO_UNRESOLVED, EXPORT_FORMAT_MISMATCH, EXPORT_FORMAT_NOT_ENABLED } from '../../src/shared/messages';
+import {
+  EXPORT_CODEC_ID_REQUIRED,
+  EXPORT_FORMAT_AUTO_UNRESOLVED,
+  EXPORT_FORMAT_MISMATCH,
+  EXPORT_FORMAT_NOT_ENABLED
+} from '../../src/shared/messages';
 
 type HarnessOptions = {
   capabilities?: Capabilities;
   exportPolicy?: 'strict' | 'best_effort';
   nativeError?: ToolError | null;
   gltfError?: ToolError | null;
+  codecError?: ToolError | null;
   writeFileError?: ToolError | null;
   snapshotOverride?: ReturnType<ProjectSession['snapshot']>;
   ensureActiveError?: ToolError | null;
   listFormats?: Array<{ id: string; name: string }>;
+  nativeCodecs?: NativeCodecTarget[];
+  disableCodecExport?: boolean;
   matchOverrideKind?: () => 'Java Block/Item' | 'geckolib' | 'animated_java' | 'Generic Model' | null;
 };
 
@@ -35,7 +44,7 @@ const createHarness = (options: HarnessOptions = {}) => {
   const session = new ProjectSession();
   const created = session.create('geckolib', 'dragon', 'geckolib_model');
   assert.equal(created.ok, true);
-  const calls = { native: 0, gltf: 0 };
+  const calls = { native: 0, gltf: 0, codec: 0 };
   const editorStub = createEditorStubWithState();
   const editor = {
     ...editorStub.editor,
@@ -56,7 +65,16 @@ const createHarness = (options: HarnessOptions = {}) => {
       exportGltf: () => {
         calls.gltf += 1;
         return options.gltfError ?? null;
-      }
+      },
+      ...(options.disableCodecExport
+        ? {}
+        : {
+            exportCodec: () => {
+              calls.codec += 1;
+              return options.codecError ?? null;
+            }
+          }),
+      listNativeCodecs: () => options.nativeCodecs ?? []
     },
     formats:
       options.listFormats === undefined
@@ -80,6 +98,36 @@ const createHarness = (options: HarnessOptions = {}) => {
 
 registerAsync(
   (async () => {
+    {
+      const { service } = createHarness();
+      const res = await service.exportModel({ format: 'native_codec', destPath: 'model.obj' });
+      assert.equal(res.ok, false);
+      if (!res.ok) {
+        assert.equal(res.error.code, 'invalid_payload');
+        assert.equal(res.error.message, EXPORT_CODEC_ID_REQUIRED);
+      }
+    }
+
+    {
+      const { service, calls } = createHarness({ codecError: null });
+      const res = await service.exportModel({ format: 'native_codec', codecId: 'obj', destPath: 'model.obj' });
+      assert.equal(res.ok, true);
+      assert.equal(calls.codec, 1);
+      assert.equal(calls.gltf, 0);
+      assert.equal(calls.native, 0);
+    }
+
+    {
+      const { service } = createHarness({
+        disableCodecExport: true
+      });
+      const res = await service.exportModel({ format: 'native_codec', codecId: 'obj', destPath: 'model.obj' });
+      assert.equal(res.ok, false);
+      if (!res.ok) {
+        assert.equal(res.error.code, 'not_implemented');
+      }
+    }
+
     {
       const capabilities = baseCapabilities();
       capabilities.formats = [{ format: 'geckolib', animations: true, enabled: false }];
@@ -265,6 +313,22 @@ registerAsync(
       assert.equal(res.ok, true);
       assert.equal(calls.gltf, 1);
       assert.equal(calls.native, 0);
+      assert.equal(calls.codec, 0);
+    }
+
+    {
+      const { service, calls } = createHarness({
+        codecError: null,
+        nativeCodecs: [
+          { id: 'obj', label: 'OBJ', extensions: ['obj'] },
+          { id: 'fbx', label: 'FBX', extensions: ['fbx'] }
+        ]
+      });
+      const res = await service.exportModel({ format: 'auto', destPath: 'model.obj' });
+      assert.equal(res.ok, true);
+      assert.equal(calls.gltf, 0);
+      assert.equal(calls.native, 0);
+      assert.equal(calls.codec, 1);
     }
 
     {
@@ -273,6 +337,19 @@ registerAsync(
       assert.equal(res.ok, true);
       assert.equal(calls.gltf, 0);
       assert.equal(calls.native, 1);
+      assert.equal(calls.codec, 0);
+    }
+
+    {
+      const { service, calls } = createHarness({
+        nativeError: null,
+        nativeCodecs: [{ id: 'json_codec', label: 'Json Codec', extensions: ['json'] }]
+      });
+      const res = await service.exportModel({ format: 'auto', destPath: 'model.json' });
+      assert.equal(res.ok, true);
+      assert.equal(calls.gltf, 0);
+      assert.equal(calls.native, 1);
+      assert.equal(calls.codec, 0);
     }
 
     {

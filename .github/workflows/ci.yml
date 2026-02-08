@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: docs/page
+        working-directory: apps/docs
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,7 +38,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: docs/page/package-lock.json
+          cache-dependency-path: apps/docs/package-lock.json
 
       - name: Install docs dependencies
         run: npm ci

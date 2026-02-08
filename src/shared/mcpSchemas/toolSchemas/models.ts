@@ -194,8 +194,17 @@ export const modelToolSchemas: Record<string, JsonSchema> = {
     additionalProperties: false,
     properties: {
       format: {
-        enum: ['java_block_item_json', 'gecko_geo_anim', 'animated_java', 'generic_model_json', 'gltf', 'auto']
+        enum: [
+          'java_block_item_json',
+          'gecko_geo_anim',
+          'animated_java',
+          'generic_model_json',
+          'gltf',
+          'native_codec',
+          'auto'
+        ]
       },
+      codecId: { type: 'string' },
       destPath: { type: 'string' },
       ...stateProps
     }

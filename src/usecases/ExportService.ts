@@ -10,6 +10,7 @@ import { buildInternalExport } from '../domain/exporters';
 import { withFormatOverrideHint } from './formatHints';
 import type { ExportPolicy } from './policies';
 import {
+  EXPORT_CODEC_ID_REQUIRED,
   EXPORT_FORMAT_AUTO_UNRESOLVED,
   EXPORT_FORMAT_ID_MISSING,
   EXPORT_FORMAT_MISMATCH,
@@ -60,7 +61,8 @@ export class ExportService {
     const resolvedFormat = this.resolveRequestedFormat(payload, snapshot);
     if (!resolvedFormat.ok) return fail(resolvedFormat.error);
 
-    const requestedFormat = resolvedFormat.value;
+    const requested = resolvedFormat.value;
+    const requestedFormat = requested.format;
     const expectedFormat = exportFormatToCapability(requestedFormat);
     const capabilityErr = this.ensureFormatEnabled(expectedFormat);
     if (capabilityErr) return fail(capabilityErr);
@@ -70,6 +72,12 @@ export class ExportService {
 
     if (requestedFormat === 'gltf') {
       return await this.exportGltf(payload.destPath);
+    }
+    if (requestedFormat === 'native_codec') {
+      if (!requested.codecId) {
+        return fail({ code: 'invalid_payload', message: EXPORT_CODEC_ID_REQUIRED });
+      }
+      return await this.exportCodec(requested.codecId, payload.destPath);
     }
 
     if (requestedFormat === 'generic_model_json') {
@@ -132,15 +140,41 @@ export class ExportService {
   private resolveRequestedFormat(
     payload: ExportPayload,
     snapshot: ReturnType<ProjectSession['snapshot']>
-  ): UsecaseResult<ResolvedExportFormat> {
+  ): UsecaseResult<ResolvedExportSelection> {
     if (payload.format !== 'auto') {
-      return ok(payload.format);
+      if (payload.format === 'native_codec') {
+        return ok({ format: payload.format, codecId: payload.codecId });
+      }
+      return ok({ format: payload.format });
     }
-    const fromPath = resolveAutoFormatFromPath(payload.destPath);
-    if (fromPath) return ok(fromPath);
+    const extension = extractPathExtension(payload.destPath);
+    if (extension === 'gltf' || extension === 'glb') {
+      return ok({ format: 'gltf' });
+    }
+    if (extension === 'json') {
+      const fromProjectJson = this.resolveAutoFormatFromSnapshot(snapshot);
+      if (fromProjectJson) return ok({ format: fromProjectJson });
+    }
+    const codecId = this.resolveCodecIdFromPath(payload.destPath);
+    if (codecId) {
+      return ok({ format: 'native_codec', codecId });
+    }
     const fromProject = this.resolveAutoFormatFromSnapshot(snapshot);
-    if (fromProject) return ok(fromProject);
+    if (fromProject) return ok({ format: fromProject });
     return fail({ code: 'invalid_payload', message: EXPORT_FORMAT_AUTO_UNRESOLVED });
+  }
+
+  private resolveCodecIdFromPath(destPath: string): string | null {
+    const extension = extractPathExtension(destPath);
+    if (!extension) return null;
+    const list = this.exporter.listNativeCodecs;
+    if (typeof list !== 'function') return null;
+    const codecs = list();
+    const match = codecs.find((codec) => {
+      if (codec.id.toLowerCase() === extension) return true;
+      return codec.extensions.some((value) => value.toLowerCase() === extension);
+    });
+    return match?.id ?? null;
   }
 
   private resolveAutoFormatFromSnapshot(snapshot: ReturnType<ProjectSession['snapshot']>): NonGltfExportFormat | null {
@@ -151,6 +185,15 @@ export class ExportService {
 
   private async exportGltf(destPath: string): Promise<UsecaseResult<{ path: string }>> {
     const err = await this.exporter.exportGltf({ destPath });
+    if (err) return fail(err);
+    return ok({ path: destPath });
+  }
+
+  private async exportCodec(codecId: string, destPath: string): Promise<UsecaseResult<{ path: string }>> {
+    if (typeof this.exporter.exportCodec !== 'function') {
+      return fail({ code: 'not_implemented', message: 'Native codec export is not available in this runtime.' });
+    }
+    const err = await this.exporter.exportCodec({ codecId, destPath });
     if (err) return fail(err);
     return ok({ path: destPath });
   }
@@ -169,7 +212,8 @@ export class ExportService {
 }
 
 type ResolvedExportFormat = Exclude<ExportPayload['format'], 'auto'>;
-type NonGltfExportFormat = Exclude<ResolvedExportFormat, 'gltf'>;
+type NonGltfExportFormat = Exclude<ResolvedExportFormat, 'gltf' | 'native_codec'>;
+type ResolvedExportSelection = { format: ResolvedExportFormat; codecId?: string };
 
 const exportFormatToCapability = (format: ResolvedExportFormat): FormatKind | null => {
   switch (format) {
@@ -182,17 +226,17 @@ const exportFormatToCapability = (format: ResolvedExportFormat): FormatKind | nu
     case 'generic_model_json':
       return 'Generic Model';
     case 'gltf':
+    case 'native_codec':
     default:
       return null;
   }
 };
 
-const resolveAutoFormatFromPath = (destPath: string): ResolvedExportFormat | null => {
+const extractPathExtension = (destPath: string): string | null => {
   const normalized = String(destPath ?? '').trim().toLowerCase();
-  if (normalized.endsWith('.gltf') || normalized.endsWith('.glb')) {
-    return 'gltf';
-  }
-  return null;
+  const index = normalized.lastIndexOf('.');
+  if (index < 0 || index === normalized.length - 1) return null;
+  return normalized.slice(index + 1);
 };
 
 const resolveSnapshotFormatKind = (

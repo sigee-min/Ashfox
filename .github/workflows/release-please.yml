@@ -1,10 +1,18 @@
-name: release-please
+name: release
 
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: Run mode (`prepare` creates/updates release PR, `publish` creates GitHub Release)
+        required: true
+        default: prepare
+        type: choice
+        options:
+          - prepare
+          - publish
       bump:
-        description: Version bump type for the release PR
+        description: Version bump type (`prepare` mode only)
         required: true
         default: auto
         type: choice
@@ -15,17 +23,17 @@ on:
           - major
 
 concurrency:
-  group: release-please-main
-  cancel-in-progress: true
-
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
+  group: release-main
+  cancel-in-progress: false
 
 jobs:
-  release-please:
+  prepare:
+    if: ${{ inputs.mode == 'prepare' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -93,9 +101,8 @@ jobs:
         uses: googleapis/release-please-action@v4
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-          config-file: release-please-config.json
-          manifest-file: .release-please-manifest.json
-          # GitHub release publication is handled by release-major.yml
+          config-file: .github/release-please/config.json
+          manifest-file: .github/release-please/manifest.json
           skip-github-release: true
 
       - name: Run release-please (PAT, forced)
@@ -103,10 +110,9 @@ jobs:
         uses: googleapis/release-please-action@v4
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-          config-file: release-please-config.json
-          manifest-file: .release-please-manifest.json
+          config-file: .github/release-please/config.json
+          manifest-file: .github/release-please/manifest.json
           release-as: ${{ steps.bump.outputs.release_as }}
-          # GitHub release publication is handled by release-major.yml
           skip-github-release: true
 
       - name: Run release-please (GITHUB_TOKEN fallback, auto)
@@ -114,9 +120,8 @@ jobs:
         uses: googleapis/release-please-action@v4
         with:
           token: ${{ github.token }}
-          config-file: release-please-config.json
-          manifest-file: .release-please-manifest.json
-          # GitHub release publication is handled by release-major.yml
+          config-file: .github/release-please/config.json
+          manifest-file: .github/release-please/manifest.json
           skip-github-release: true
 
       - name: Run release-please (GITHUB_TOKEN fallback, forced)
@@ -124,8 +129,195 @@ jobs:
         uses: googleapis/release-please-action@v4
         with:
           token: ${{ github.token }}
-          config-file: release-please-config.json
-          manifest-file: .release-please-manifest.json
+          config-file: .github/release-please/config.json
+          manifest-file: .github/release-please/manifest.json
           release-as: ${{ steps.bump.outputs.release_as }}
-          # GitHub release publication is handled by release-major.yml
           skip-github-release: true
+
+  publish:
+    if: ${{ inputs.mode == 'publish' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect release condition
+        id: version
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          GH_REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const { execSync } = require('node:child_process');
+
+          const outputPath = process.env.GITHUB_OUTPUT;
+          let beforeSha = process.env.BEFORE_SHA || '';
+          const currentVersion = JSON.parse(fs.readFileSync('package.json', 'utf8')).version;
+
+          const parseVersion = (value) => {
+            const match = String(value).trim().match(/^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/);
+            if (!match) return null;
+            return {
+              major: Number(match[1]),
+              minor: Number(match[2]),
+              patch: Number(match[3])
+            };
+          };
+
+          let previousVersion = null;
+          if (!beforeSha || /^0+$/.test(beforeSha)) {
+            try {
+              beforeSha = execSync('git rev-parse HEAD^', { encoding: 'utf8' }).trim();
+            } catch (error) {
+              beforeSha = '';
+            }
+          }
+          if (beforeSha && !/^0+$/.test(beforeSha)) {
+            try {
+              const previousRaw = execSync(`git show ${beforeSha}:package.json`, {
+                encoding: 'utf8',
+                stdio: ['ignore', 'pipe', 'ignore']
+              });
+              previousVersion = JSON.parse(previousRaw).version;
+            } catch (error) {
+              previousVersion = null;
+            }
+          }
+
+          const current = parseVersion(currentVersion);
+          const previous = previousVersion ? parseVersion(previousVersion) : null;
+          const tag = `v${currentVersion}`;
+          const tagExists = (() => {
+            try {
+              const existing = execSync(`git tag --list "${tag}"`, { encoding: 'utf8' }).trim();
+              return existing === tag;
+            } catch (error) {
+              return false;
+            }
+          })();
+          const releaseExists = (() => {
+            try {
+              const repo = process.env.GH_REPOSITORY;
+              const token = process.env.GH_TOKEN;
+              if (!repo || !token) return false;
+              const cmd =
+                'curl -s -o /dev/null -w "%{http_code}" ' +
+                `-H "Authorization: Bearer ${token}" ` +
+                '-H "Accept: application/vnd.github+json" ' +
+                `https://api.github.com/repos/${repo}/releases/tags/${tag}`;
+              const status = execSync(cmd, { encoding: 'utf8' }).trim();
+              return status === '200';
+            } catch (error) {
+              return false;
+            }
+          })();
+          const hasAnyRelease = (() => {
+            try {
+              const repo = process.env.GH_REPOSITORY;
+              const token = process.env.GH_TOKEN;
+              if (!repo || !token) return false;
+              const cmd =
+                'curl -s ' +
+                `-H "Authorization: Bearer ${token}" ` +
+                '-H "Accept: application/vnd.github+json" ' +
+                `https://api.github.com/repos/${repo}/releases?per_page=1`;
+              const body = execSync(cmd, { encoding: 'utf8' }).trim();
+              const parsed = JSON.parse(body);
+              return Array.isArray(parsed) && parsed.length > 0;
+            } catch (error) {
+              return false;
+            }
+          })();
+
+          let releaseBumped = false;
+          let bumpKind = '';
+          if (current && previous) {
+            if (current.major > previous.major) {
+              releaseBumped = true;
+              bumpKind = 'major';
+            } else if (current.major === previous.major && current.minor > previous.minor) {
+              releaseBumped = true;
+              bumpKind = 'minor';
+            } else if (
+              current.major === previous.major &&
+              current.minor === previous.minor &&
+              current.patch > previous.patch
+            ) {
+              releaseBumped = true;
+              bumpKind = 'patch';
+            }
+          }
+          let releaseNeeded = false;
+          let releaseReason = 'no_version_bump';
+          if (!hasAnyRelease) {
+            releaseNeeded = true;
+            releaseReason = 'bootstrap_first_release';
+          } else if (releaseBumped) {
+            releaseNeeded = !tagExists || !releaseExists;
+            releaseReason = `${bumpKind}_bump`;
+          }
+
+          const lines = [
+            `current_version=${currentVersion}`,
+            `previous_version=${previousVersion ?? ''}`,
+            `current_major=${current?.major ?? ''}`,
+            `previous_major=${previous?.major ?? ''}`,
+            `current_minor=${current?.minor ?? ''}`,
+            `previous_minor=${previous?.minor ?? ''}`,
+            `release_bumped=${releaseBumped ? 'true' : 'false'}`,
+            `release_needed=${releaseNeeded ? 'true' : 'false'}`,
+            `tag_exists=${tagExists ? 'true' : 'false'}`,
+            `release_exists=${releaseExists ? 'true' : 'false'}`,
+            `has_any_release=${hasAnyRelease ? 'true' : 'false'}`,
+            `release_reason=${releaseReason}`,
+            `bump_kind=${bumpKind}`,
+            `tag=${tag}`
+          ];
+          fs.appendFileSync(outputPath, `${lines.join('\n')}\n`);
+
+          console.log(
+            `current=${currentVersion} previous=${previousVersion ?? 'unknown'} release_bumped=${releaseBumped} tag_exists=${tagExists} release_exists=${releaseExists} has_any_release=${hasAnyRelease} release_needed=${releaseNeeded} reason=${releaseReason} kind=${bumpKind || 'none'}`
+          );
+          NODE
+
+      - name: Skip when release is unnecessary
+        if: steps.version.outputs.release_needed != 'true'
+        run: |
+          echo "Release skipped: ${{ steps.version.outputs.release_reason }}"
+
+      - name: Setup Node
+        if: steps.version.outputs.release_needed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        if: steps.version.outputs.release_needed == 'true'
+        run: npm ci
+
+      - name: Build
+        if: steps.version.outputs.release_needed == 'true'
+        run: npm run build
+
+      - name: Create GitHub Release
+        if: steps.version.outputs.release_needed == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          make_latest: true
+          files: |
+            dist/ashfox.js
+            dist/ashfox.js.map
+            dist/ashfox-sidecar.js
+            dist/ashfox-sidecar.js.map
+          overwrite_files: true

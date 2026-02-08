@@ -1,4 +1,4 @@
-import type { Capabilities, Dispatcher } from '../types/internal';
+import type { Capabilities, Dispatcher, ExportTargetCapability } from '../types/internal';
 import type { Logger } from '../logging';
 import type { ToolPolicies } from '../usecases/policies';
 import { computeCapabilities } from '../config';
@@ -60,6 +60,50 @@ type BuildRuntimeServicesOptions = {
 
 const DEFAULT_DETAIL_OPS = ['paint_faces', 'assign_texture', 'add_cube', 'update_cube'];
 
+const INTERNAL_EXPORT_TARGETS: ExportTargetCapability[] = [
+  {
+    kind: 'internal',
+    id: 'java_block_item_json',
+    label: 'Java Block/Item JSON',
+    extensions: ['json'],
+    available: true
+  },
+  {
+    kind: 'internal',
+    id: 'gecko_geo_anim',
+    label: 'GeckoLib Geo+Anim JSON',
+    extensions: ['json'],
+    available: true
+  },
+  {
+    kind: 'internal',
+    id: 'animated_java',
+    label: 'Animated Java JSON',
+    extensions: ['json'],
+    available: true
+  },
+  {
+    kind: 'internal',
+    id: 'generic_model_json',
+    label: 'Generic Model JSON',
+    extensions: ['json'],
+    available: true
+  },
+  {
+    kind: 'internal',
+    id: 'gltf',
+    label: 'glTF (native codec)',
+    extensions: ['gltf', 'glb'],
+    available: true
+  },
+  {
+    kind: 'internal',
+    id: 'native_codec',
+    label: 'Native Codec Export',
+    available: true
+  }
+];
+
 export const buildRuntimeServices = (options: BuildRuntimeServicesOptions): RuntimeServices => {
   const session = new ProjectSession();
   const editor = new BlockbenchEditor(options.logger);
@@ -84,6 +128,17 @@ export const buildRuntimeServices = (options: BuildRuntimeServicesOptions): Runt
   );
   const toolRegistry = DEFAULT_TOOL_REGISTRY;
   capabilities.toolRegistry = { hash: toolRegistry.hash, count: toolRegistry.count };
+  const nativeCodecs =
+    typeof exporter.listNativeCodecs === 'function'
+      ? exporter.listNativeCodecs().map((codec) => ({
+          kind: 'native_codec' as const,
+          id: codec.id,
+          label: codec.label,
+          extensions: codec.extensions,
+          available: true
+        }))
+      : [];
+  capabilities.exportTargets = [...INTERNAL_EXPORT_TARGETS, ...nativeCodecs];
   const service = new ToolService({
     session,
     capabilities,

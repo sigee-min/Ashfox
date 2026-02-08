@@ -1,4 +1,4 @@
-# <img src="docs/page/public/favicon-32x32.png" alt="Ashfox icon badge" width="32" height="32" /> Ashfox
+# <img src="apps/docs/public/favicon-32x32.png" alt="Ashfox icon badge" width="32" height="32" /> Ashfox
 
 Blockbench MCP bridge plugin. Ashfox exposes a low-level, deterministic tool surface for modeling, texturing, and animation over MCP.
 
@@ -16,6 +16,7 @@ Docs: [ashfox.sigee.xyz](https://ashfox.sigee.xyz)
 - Support Limits
 - Tool Discovery
 - Guides and Specs
+- Repository Layout
 - Showcase
 - Development
 - Release Automation
@@ -153,7 +154,7 @@ Project setup:
 2) Use ifRevision for every mutation.
 3) validate to catch issues early.
 4) render_preview for visuals.
-5) export for JSON output.
+5) export for JSON or native codec output (for example glTF/OBJ/FBX when available).
 
 Modeling:
 - add_bone (optional)
@@ -200,15 +201,22 @@ If toolRegistry.hash changes, re-run list_capabilities (or tools/list) to refres
 - docs/guides/llm-texture-strategy.md
 - MCP resources: ashfox://guide/* (see resources/templates/list)
 
+## Repository Layout
+- `apps/plugin-desktop`: plugin app entrypoint (desktop runtime boundary)
+- `apps/mcp-headless`: headless MCP app entrypoint (sidecar boundary)
+- `apps/docs`: user-facing docs site
+- `src`: current shared implementation for plugin/server/usecases
+- `docs/architecture/monorepo-target.md`: incremental migration plan
+
 ## Showcase
 Sample output generated with Ashfox tool calls (modeling/texturing/animation).  
 Generation time and final quality vary by prompt, model, and runtime environment.
 
-![Ashfox Animation](docs/page/public/assets/images/ashfox-animation.gif)
+![Ashfox Animation](apps/docs/public/assets/images/ashfox-animation.gif)
 
 | Final Model (Hero) | Texture Atlas |
 | --- | --- |
-| ![Ashfox Model](docs/page/public/assets/images/ashfox.png) | ![Ashfox Texture](docs/page/public/assets/images/ashfox-texture.png) |
+| ![Ashfox Model](apps/docs/public/assets/images/ashfox.png) | ![Ashfox Texture](apps/docs/public/assets/images/ashfox-texture.png) |
 
 ## Development
 Build:
@@ -227,12 +235,17 @@ npm run quality:check
 ```
 
 ## Release Automation
-- Release workflows run only by manual `workflow_dispatch` (Actions tab).
-- Run `release-please` and select `bump`:
+- Single release workflow: `.github/workflows/release-please.yml` (manual `workflow_dispatch` only).
+- Select `mode` when running:
+  - `prepare`: create/update the release PR
+  - `publish`: publish GitHub Release from the merged version
+- In `prepare` mode, select `bump`:
   - `auto`: follow conventional commits
   - `patch` / `minor` / `major`: force the next release PR version
 - Merging the release PR updates `package.json`/`CHANGELOG.md` via bot.
-- Run `.github/workflows/release-major.yml` (release-publish) manually to publish GitHub Releases.
+- release-please config files are stored in:
+  - `.github/release-please/config.json`
+  - `.github/release-please/manifest.json`
 - `release-please` auth:
   - recommended: set repository secret `RELEASE_PLEASE_TOKEN` (token must allow `contents:write` and `pull_requests:write`)
   - optional fallback: set repository variable `RELEASE_PLEASE_ALLOW_GITHUB_TOKEN=true` and enable GitHub Actions PR creation in repository settings

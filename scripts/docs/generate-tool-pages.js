@@ -5,7 +5,7 @@ const esbuild = require('esbuild');
 const ts = require('typescript');
 
 const repoRoot = path.resolve(__dirname, '..', '..');
-const docsRoot = path.join(repoRoot, 'docs', 'page', 'content', 'docs');
+const docsRoot = path.join(repoRoot, 'apps', 'docs', 'content', 'docs');
 
 const CATEGORY_ORDER = ['project', 'modeling', 'texturing', 'animation', 'system'];
 

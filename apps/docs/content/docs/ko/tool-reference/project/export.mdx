@@ -9,7 +9,7 @@ description: "내보내기 도구의 입력 스펙과 필드 동작 설명."
 - Strict schema: `true`
 
 ## 도구 설명
-Exports the current project to JSON output.
+Exports the current project to the requested output format (including native codec targets like glTF/OBJ/FBX when available).
 
 ## 입력 스키마 (JSON)
 ```json
@@ -25,8 +25,15 @@ Exports the current project to JSON output.
       "enum": [
         "java_block_item_json",
         "gecko_geo_anim",
-        "animated_java"
+        "animated_java",
+        "generic_model_json",
+        "gltf",
+        "native_codec",
+        "auto"
       ]
+    },
+    "codecId": {
+      "type": "string"
     },
     "destPath": {
       "type": "string"
@@ -44,7 +51,8 @@ Exports the current project to JSON output.
 ## 필드 레퍼런스
 | Field | Type | 필수 | Description | Constraints |
 | --- | --- | --- | --- | --- |
-| `format` | `enum("java_block_item_json", "gecko_geo_anim", "animated_java")` | ✅ | - | enum: "java_block_item_json", "gecko_geo_anim", "animated_java" |
+| `format` | `enum("java_block_item_json", "gecko_geo_anim", "animated_java", "generic_model_json", "gltf", "native_codec", "auto")` | ✅ | - | enum: "java_block_item_json", "gecko_geo_anim", "animated_java", "generic_model_json", "gltf", "native_codec", "auto" |
+| `codecId` | `string` | ❌ | - | - |
 | `destPath` | `string` | ✅ | - | - |
 | `includeState` | `boolean` | ❌ | - | - |
 | `ifRevision` | `string` | ❌ | - | - |
