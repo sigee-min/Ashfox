@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 
 import { callWithAutoRetry } from '../../src/dispatcher/retryPolicy';
 import type { ToolError } from '../../src/types';
+import { registerAsync } from './helpers';
 
 type TestLogger = {
   debugLogs: Array<{ message: string; meta?: Record<string, unknown> }>;
@@ -63,202 +64,205 @@ const createService = (options: {
     getProjectState: () => unknown;
   };
 
-// first call success -> no retry
-{
-  let calls = 0;
-  const log = createLogger();
-  const service = createService({
-    autoRetry: true,
-    requiresRevision: true,
-    stateResult: { ok: true, value: { project: { revision: 'r2', active: true } } }
-  });
-  const result = callWithAutoRetry({
-    tool: 'update_cube',
-    payload: { ifRevision: 'r1' },
-    call: () => {
-      calls += 1;
-      return { ok: true, value: { ok: true } };
-    },
-    service: service as never,
-    log: log.logger as never
-  });
-  assert.equal(calls, 1);
-  assert.equal(result.result.ok, true);
-  assert.equal(log.infoLogs.length, 0);
-}
+registerAsync(
+  (async () => {
+    // first call success -> no retry
+    {
+      let calls = 0;
+      const log = createLogger();
+      const service = createService({
+        autoRetry: true,
+        requiresRevision: true,
+        stateResult: { ok: true, value: { project: { revision: 'r2', active: true } } }
+      });
+      const result = await callWithAutoRetry({
+        tool: 'update_cube',
+        payload: { ifRevision: 'r1' },
+        call: () => {
+          calls += 1;
+          return { ok: true, value: { ok: true } };
+        },
+        service: service as never,
+        log: log.logger as never
+      });
+      assert.equal(calls, 1);
+      assert.equal(result.result.ok, true);
+      assert.equal(log.infoLogs.length, 0);
+    }
 
-// auto retry disabled -> return first mismatch
-{
-  let calls = 0;
-  const log = createLogger();
-  const service = createService({
-    autoRetry: false,
-    requiresRevision: true,
-    stateResult: { ok: true, value: { project: { revision: 'r2', active: true } } }
-  });
-  const result = callWithAutoRetry({
-    tool: 'update_cube',
-    payload: { ifRevision: 'r1' },
-    call: () => {
-      calls += 1;
-      return { ok: false, error: revisionMismatch('r1', 'r2') };
-    },
-    service: service as never,
-    log: log.logger as never
-  });
-  assert.equal(calls, 1);
-  assert.equal(result.result.ok, false);
-  assert.equal(log.debugLogs.length, 0);
-}
+    // auto retry disabled -> return first mismatch
+    {
+      let calls = 0;
+      const log = createLogger();
+      const service = createService({
+        autoRetry: false,
+        requiresRevision: true,
+        stateResult: { ok: true, value: { project: { revision: 'r2', active: true } } }
+      });
+      const result = await callWithAutoRetry({
+        tool: 'update_cube',
+        payload: { ifRevision: 'r1' },
+        call: () => {
+          calls += 1;
+          return { ok: false, error: revisionMismatch('r1', 'r2') };
+        },
+        service: service as never,
+        log: log.logger as never
+      });
+      assert.equal(calls, 1);
+      assert.equal(result.result.ok, false);
+      assert.equal(log.debugLogs.length, 0);
+    }
 
-// non-mismatch error -> return first
-{
-  let calls = 0;
-  const log = createLogger();
-  const service = createService({
-    autoRetry: true,
-    requiresRevision: true,
-    stateResult: { ok: true, value: { project: { revision: 'r2', active: true } } }
-  });
-  const result = callWithAutoRetry({
-    tool: 'update_cube',
-    payload: { ifRevision: 'r1' },
-    call: () => {
-      calls += 1;
-      return { ok: false, error: invalidState('invalid_payload') };
-    },
-    service: service as never,
-    log: log.logger as never
-  });
-  assert.equal(calls, 1);
-  assert.equal(result.result.ok, false);
-  assert.equal(log.debugLogs.length, 0);
-}
+    // non-mismatch error -> return first
+    {
+      let calls = 0;
+      const log = createLogger();
+      const service = createService({
+        autoRetry: true,
+        requiresRevision: true,
+        stateResult: { ok: true, value: { project: { revision: 'r2', active: true } } }
+      });
+      const result = await callWithAutoRetry({
+        tool: 'update_cube',
+        payload: { ifRevision: 'r1' },
+        call: () => {
+          calls += 1;
+          return { ok: false, error: invalidState('invalid_payload') };
+        },
+        service: service as never,
+        log: log.logger as never
+      });
+      assert.equal(calls, 1);
+      assert.equal(result.result.ok, false);
+      assert.equal(log.debugLogs.length, 0);
+    }
 
-// guard failure (missing ifRevision) -> retry skipped with debug
-{
-  let calls = 0;
-  const log = createLogger();
-  const service = createService({
-    autoRetry: true,
-    requiresRevision: true,
-    stateResult: { ok: true, value: { project: { revision: 'r2', active: true } } }
-  });
-  const result = callWithAutoRetry({
-    tool: 'update_cube',
-    payload: {},
-    call: () => {
-      calls += 1;
-      return { ok: false, error: revisionMismatch('r1', 'r2') };
-    },
-    service: service as never,
-    log: log.logger as never
-  });
-  assert.equal(calls, 1);
-  assert.equal(result.result.ok, false);
-  assert.equal(log.debugLogs.length, 1);
-  assert.equal(log.debugLogs[0].meta?.reason, 'missing_ifRevision');
-}
+    // guard failure (missing ifRevision) -> retry skipped with debug
+    {
+      let calls = 0;
+      const log = createLogger();
+      const service = createService({
+        autoRetry: true,
+        requiresRevision: true,
+        stateResult: { ok: true, value: { project: { revision: 'r2', active: true } } }
+      });
+      const result = await callWithAutoRetry({
+        tool: 'update_cube',
+        payload: {},
+        call: () => {
+          calls += 1;
+          return { ok: false, error: revisionMismatch('r1', 'r2') };
+        },
+        service: service as never,
+        log: log.logger as never
+      });
+      assert.equal(calls, 1);
+      assert.equal(result.result.ok, false);
+      assert.equal(log.debugLogs.length, 1);
+      assert.equal(log.debugLogs[0].meta?.reason, 'missing_ifRevision');
+    }
 
-// guard state unavailable -> retry skipped with reason
-{
-  let calls = 0;
-  const log = createLogger();
-  const service = createService({
-    autoRetry: true,
-    requiresRevision: true,
-    stateResult: { ok: false, error: invalidState('state_unavailable') }
-  });
-  const result = callWithAutoRetry({
-    tool: 'update_cube',
-    payload: { ifRevision: 'r1' },
-    call: () => {
-      calls += 1;
-      return { ok: false, error: revisionMismatch('r1', 'r2') };
-    },
-    service: service as never,
-    log: log.logger as never
-  });
-  assert.equal(calls, 1);
-  assert.equal(result.result.ok, false);
-  assert.equal(log.debugLogs.length, 1);
-  assert.equal(log.debugLogs[0].meta?.reason, 'state_unavailable');
-}
+    // guard state unavailable -> retry skipped with reason
+    {
+      let calls = 0;
+      const log = createLogger();
+      const service = createService({
+        autoRetry: true,
+        requiresRevision: true,
+        stateResult: { ok: false, error: invalidState('state_unavailable') }
+      });
+      const result = await callWithAutoRetry({
+        tool: 'update_cube',
+        payload: { ifRevision: 'r1' },
+        call: () => {
+          calls += 1;
+          return { ok: false, error: revisionMismatch('r1', 'r2') };
+        },
+        service: service as never,
+        log: log.logger as never
+      });
+      assert.equal(calls, 1);
+      assert.equal(result.result.ok, false);
+      assert.equal(log.debugLogs.length, 1);
+      assert.equal(log.debugLogs[0].meta?.reason, 'state_unavailable');
+    }
 
-// no new revision -> retry skipped
-{
-  let calls = 0;
-  const log = createLogger();
-  const service = createService({
-    autoRetry: true,
-    requiresRevision: true,
-    stateResult: { ok: true, value: { project: { revision: 'r1', active: true } } }
-  });
-  const result = callWithAutoRetry({
-    tool: 'update_cube',
-    payload: { ifRevision: 'r1' },
-    call: () => {
-      calls += 1;
-      return { ok: false, error: revisionMismatch('r1', 'r2') };
-    },
-    service: service as never,
-    log: log.logger as never
-  });
-  assert.equal(calls, 1);
-  assert.equal(result.result.ok, false);
-  assert.equal(log.debugLogs.length, 1);
-  assert.equal(log.debugLogs[0].meta?.reason, 'no_new_revision');
-}
+    // no new revision -> retry skipped
+    {
+      let calls = 0;
+      const log = createLogger();
+      const service = createService({
+        autoRetry: true,
+        requiresRevision: true,
+        stateResult: { ok: true, value: { project: { revision: 'r1', active: true } } }
+      });
+      const result = await callWithAutoRetry({
+        tool: 'update_cube',
+        payload: { ifRevision: 'r1' },
+        call: () => {
+          calls += 1;
+          return { ok: false, error: revisionMismatch('r1', 'r2') };
+        },
+        service: service as never,
+        log: log.logger as never
+      });
+      assert.equal(calls, 1);
+      assert.equal(result.result.ok, false);
+      assert.equal(log.debugLogs.length, 1);
+      assert.equal(log.debugLogs[0].meta?.reason, 'no_new_revision');
+    }
 
-// retry success path
-{
-  let calls = 0;
-  const log = createLogger();
-  const service = createService({
-    autoRetry: true,
-    requiresRevision: true,
-    stateResult: { ok: true, value: { project: { revision: 'r2', active: true } } }
-  });
-  const result = callWithAutoRetry({
-    tool: 'update_cube',
-    payload: { ifRevision: 'r1', name: 'cube' },
-    call: (payload: { ifRevision?: string; name: string }) => {
-      calls += 1;
-      if (calls === 1) return { ok: false, error: revisionMismatch('r1', 'r2') };
-      return { ok: true, value: { applied: payload.ifRevision } };
-    },
-    service: service as never,
-    log: log.logger as never
-  });
-  assert.equal(calls, 2);
-  assert.equal(result.payload.ifRevision, 'r2');
-  assert.equal(result.result.ok, true);
-  assert.equal(log.infoLogs.length >= 2, true);
-}
+    // retry success path
+    {
+      let calls = 0;
+      const log = createLogger();
+      const service = createService({
+        autoRetry: true,
+        requiresRevision: true,
+        stateResult: { ok: true, value: { project: { revision: 'r2', active: true } } }
+      });
+      const result = await callWithAutoRetry({
+        tool: 'update_cube',
+        payload: { ifRevision: 'r1', name: 'cube' },
+        call: (payload: { ifRevision?: string; name: string }) => {
+          calls += 1;
+          if (calls === 1) return { ok: false, error: revisionMismatch('r1', 'r2') };
+          return { ok: true, value: { applied: payload.ifRevision } };
+        },
+        service: service as never,
+        log: log.logger as never
+      });
+      assert.equal(calls, 2);
+      assert.equal(result.payload.ifRevision, 'r2');
+      assert.equal(result.result.ok, true);
+      assert.equal(log.infoLogs.length >= 2, true);
+    }
 
-// retry failure path
-{
-  let calls = 0;
-  const log = createLogger();
-  const service = createService({
-    autoRetry: true,
-    requiresRevision: true,
-    stateResult: { ok: true, value: { project: { revision: 'r2', active: true } } }
-  });
-  const result = callWithAutoRetry({
-    tool: 'update_cube',
-    payload: { ifRevision: 'r1' },
-    call: () => {
-      calls += 1;
-      if (calls === 1) return { ok: false, error: revisionMismatch('r1', 'r2') };
-      return { ok: false, error: invalidState('retry_failed') };
-    },
-    service: service as never,
-    log: log.logger as never
-  });
-  assert.equal(calls, 2);
-  assert.equal(result.result.ok, false);
-  assert.equal(log.warnLogs.length, 1);
-  assert.equal(log.warnLogs[0].meta?.code, 'invalid_state');
-}
-
+    // retry failure path
+    {
+      let calls = 0;
+      const log = createLogger();
+      const service = createService({
+        autoRetry: true,
+        requiresRevision: true,
+        stateResult: { ok: true, value: { project: { revision: 'r2', active: true } } }
+      });
+      const result = await callWithAutoRetry({
+        tool: 'update_cube',
+        payload: { ifRevision: 'r1' },
+        call: () => {
+          calls += 1;
+          if (calls === 1) return { ok: false, error: revisionMismatch('r1', 'r2') };
+          return { ok: false, error: invalidState('retry_failed') };
+        },
+        service: service as never,
+        log: log.logger as never
+      });
+      assert.equal(calls, 2);
+      assert.equal(result.result.ok, false);
+      assert.equal(log.warnLogs.length, 1);
+      assert.equal(log.warnLogs[0].meta?.code, 'invalid_state');
+    }
+  })()
+);
