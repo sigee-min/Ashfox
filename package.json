@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "node ./scripts/esbuild.js",
+    "docs:generate:tools": "node ./scripts/docs/generate-tool-pages.js",
     "test:unit": "node scripts/tests/run.js",
     "test": "npm run typecheck && npm run test:unit",
     "test:cov": "c8 --reporter=text --reporter=json-summary --reporter=lcov --report-dir coverage npm run test:unit",

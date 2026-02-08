@@ -122,6 +122,14 @@ html.dark .bb-landing-noise {
   opacity: 0.025;
 }
 
+.bb-docs-shell {
+  min-height: 100vh;
+}
+
+html:not(.dark) .bb-docs-shell {
+  background: #f8fafc;
+}
+
 .bb-landing-bg {
   position: absolute;
   top: -8rem;
@@ -266,5 +274,36 @@ html.dark .bb-landing-noise {
   .bb-landing-orb,
   .bb-reveal {
     animation: none !important;
+  }
+}
+
+.bb-scroll-reveal {
+  opacity: 0;
+  transform: translate3d(0, 56px, 0);
+  transition:
+    opacity 980ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 1080ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--bb-reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+.bb-scroll-reveal.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bb-scroll-reveal,
+  .bb-scroll-reveal.is-visible {
+    transform: none;
+  }
+
+  .bb-scroll-reveal {
+    opacity: 0;
+    transition: opacity 360ms ease;
+  }
+
+  .bb-scroll-reveal.is-visible {
+    opacity: 1;
   }
 }

@@ -17,8 +17,10 @@ export default async function Layout({ children, params }: DocsShellLayoutProps)
   if (!isLocale(lang)) notFound();
 
   return (
-    <DocsLayout tree={source.getPageTree(lang)} {...baseOptions(lang)}>
-      {children}
-    </DocsLayout>
+    <div className="bb-docs-shell">
+      <DocsLayout tree={source.getPageTree(lang)} {...baseOptions(lang)}>
+        {children}
+      </DocsLayout>
+    </div>
   );
 }

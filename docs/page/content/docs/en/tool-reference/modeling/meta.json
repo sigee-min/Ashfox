@@ -1,0 +1,14 @@
+{
+  "title": "Modeling Tools",
+  "pages": [
+    "add-bone",
+    "update-bone",
+    "delete-bone",
+    "add-cube",
+    "update-cube",
+    "delete-cube",
+    "add-mesh",
+    "update-mesh",
+    "delete-mesh"
+  ]
+}

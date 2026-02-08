@@ -1,11 +1,20 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import type { LandingCopy } from '@/lib/content/landing';
 import type { Locale } from '@/lib/i18n';
+import { ScrollReveal } from '@/components/landing/scroll-reveal';
 
 type LandingPageProps = {
   locale: Locale;
   copy: LandingCopy;
+};
+
+type ShowcaseItem = {
+  src: string;
+  type: 'gif' | 'image';
+  alt: string;
+  caption: string;
 };
 
 const landingDetailsByLocale: Record<
@@ -16,6 +25,10 @@ const landingDetailsByLocale: Record<
     statusBadge: string;
     workflowHint: string;
     featureLead: string;
+    showcaseTitle: string;
+    showcaseDescription: string;
+    showcaseActionLabel: string;
+    showcaseItems: ShowcaseItem[];
   }
 > = {
   en: {
@@ -29,6 +42,29 @@ const landingDetailsByLocale: Record<
     workflowHint: 'Each stage defines command boundaries and quality gates for safe team scaling.',
     featureLead:
       'Build reliable production habits with MCP tools designed for repeatable and auditable operations.',
+    showcaseTitle: 'Showcase',
+    showcaseDescription: 'Samples generated in bbmcp pipelines: preview animation, final render, and texture output.',
+    showcaseActionLabel: 'Open',
+    showcaseItems: [
+      {
+        src: '/assets/images/greyfox-animation.gif',
+        type: 'gif',
+        alt: 'Animated preview output generated with bbmcp',
+        caption: 'Animated preview (GIF)',
+      },
+      {
+        src: '/assets/images/greyfox.png',
+        type: 'image',
+        alt: 'Rendered model output generated with bbmcp',
+        caption: 'Rendered model output',
+      },
+      {
+        src: '/assets/images/greyfox-texture.png',
+        type: 'image',
+        alt: 'Texture sheet output generated with bbmcp',
+        caption: 'Texture sheet output',
+      },
+    ],
   },
   ko: {
     checklistTitle: 'MCP 핵심 기능',
@@ -40,11 +76,36 @@ const landingDetailsByLocale: Record<
     statusBadge: '출시 준비 완료',
     workflowHint: '각 단계에서 실행 범위와 검증 기준을 고정해 팀 확장 시에도 품질을 유지합니다.',
     featureLead: '실제 에셋 제작 현장에 맞춘 MCP 작업 흐름으로 반복 가능하고 감사 가능한 운영을 구축하세요.',
+    showcaseTitle: '쇼케이스',
+    showcaseDescription: 'bbmcp 파이프라인으로 만든 결과물입니다. 애니메이션 프리뷰, 모델 렌더, 텍스처 출력을 함께 확인하세요.',
+    showcaseActionLabel: '원본 보기',
+    showcaseItems: [
+      {
+        src: '/assets/images/greyfox-animation.gif',
+        type: 'gif',
+        alt: 'bbmcp로 생성한 애니메이션 프리뷰 결과',
+        caption: '애니메이션 프리뷰 (GIF)',
+      },
+      {
+        src: '/assets/images/greyfox.png',
+        type: 'image',
+        alt: 'bbmcp로 생성한 모델 렌더 결과',
+        caption: '모델 렌더 결과',
+      },
+      {
+        src: '/assets/images/greyfox-texture.png',
+        type: 'image',
+        alt: 'bbmcp로 생성한 텍스처 시트 결과',
+        caption: '텍스처 시트 결과',
+      },
+    ],
   },
 };
 
 export function LandingPage({ locale, copy }: LandingPageProps) {
   const details = landingDetailsByLocale[locale];
+  const showcaseHero = details.showcaseItems.find((item) => item.type === 'gif') ?? details.showcaseItems[0];
+  const showcaseGridItems = details.showcaseItems.filter((item) => item !== showcaseHero);
 
   return (
     <div className="relative isolate flex flex-1 flex-col overflow-hidden">
@@ -57,7 +118,7 @@ export function LandingPage({ locale, copy }: LandingPageProps) {
         <div className="bb-landing-orb bb-landing-orb-c" />
       </div>
       <main className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col gap-12 px-6 py-16 sm:px-10 lg:gap-16">
-        <section className="space-y-8 bb-reveal">
+        <section className="space-y-8">
           <p className="inline-flex rounded-full border border-fd-primary/40 bg-fd-primary/12 px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em] text-fd-primary">
             {copy.badge}
           </p>
@@ -84,77 +145,162 @@ export function LandingPage({ locale, copy }: LandingPageProps) {
           </div>
         </section>
 
-        <section className="bb-surface-card rounded-2xl border border-fd-border/70 p-6 backdrop-blur-md bb-reveal bb-reveal-delay-2">
+        <section className="space-y-5">
+          <div className="space-y-2">
+            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">{details.showcaseTitle}</h2>
+            <p className="max-w-3xl text-sm leading-relaxed text-fd-muted-foreground sm:text-base">
+              {details.showcaseDescription}
+            </p>
+          </div>
+          <ScrollReveal delayMs={60}>
+            <div className="space-y-4">
+              {showcaseHero ? (
+                <article className="group overflow-hidden rounded-2xl border border-fd-border/70 bg-fd-card/75">
+                  <div className="relative aspect-[16/11] md:aspect-[21/9]">
+                    <Image
+                      src={showcaseHero.src}
+                      alt={showcaseHero.alt}
+                      fill
+                      sizes="(min-width: 768px) 90vw, 100vw"
+                      unoptimized={showcaseHero.type === 'gif'}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                    />
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+                    <div className="absolute left-3 top-3 inline-flex items-center rounded-full border border-white/20 bg-black/40 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-white">
+                      {showcaseHero.type === 'gif' ? 'GIF' : 'Image'}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 border-t border-fd-border/60 px-4 py-3">
+                    <p className="text-sm font-medium">{showcaseHero.caption}</p>
+                    <a
+                      href={showcaseHero.src}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs font-semibold uppercase tracking-[0.08em] text-fd-primary hover:underline"
+                    >
+                      {details.showcaseActionLabel}
+                    </a>
+                  </div>
+                </article>
+              ) : null}
+
+              {showcaseGridItems.length > 0 ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {showcaseGridItems.map((item) => (
+                    <article key={item.src} className="group overflow-hidden rounded-2xl border border-fd-border/70 bg-fd-card/75">
+                      <div className="relative aspect-[16/10]">
+                        <Image
+                          src={item.src}
+                          alt={item.alt}
+                          fill
+                          sizes="(min-width: 768px) 45vw, 100vw"
+                          unoptimized={item.type === 'gif'}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                        />
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+                        <div className="absolute left-3 top-3 inline-flex items-center rounded-full border border-white/20 bg-black/40 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-white">
+                          {item.type === 'gif' ? 'GIF' : 'Image'}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 border-t border-fd-border/60 px-4 py-3">
+                        <p className="text-sm font-medium">{item.caption}</p>
+                        <a
+                          href={item.src}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs font-semibold uppercase tracking-[0.08em] text-fd-primary hover:underline"
+                        >
+                          {details.showcaseActionLabel}
+                        </a>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </ScrollReveal>
+        </section>
+
+        <section className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-medium text-fd-muted-foreground">{copy.workflowTitle}</p>
             <span className="inline-flex rounded-full border border-fd-primary/35 bg-fd-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-fd-primary">
               {details.statusBadge}
             </span>
           </div>
+          <ScrollReveal delayMs={80}>
+            <div className="bb-surface-card rounded-2xl border border-fd-border/70 p-6 backdrop-blur-md">
+              <ol className="space-y-4">
+                {copy.workflowSteps.map((step, index) => (
+                  <li key={step.title} className="relative flex gap-4 pl-1">
+                    {index < copy.workflowSteps.length - 1 ? (
+                      <span className="absolute left-[14px] top-7 h-[calc(100%-3px)] w-px bg-fd-border/90" />
+                    ) : null}
+                    <span className="relative z-10 mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border border-fd-primary/20 bg-fd-primary/10 text-xs font-semibold text-fd-primary">
+                      {index + 1}
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold">{step.title}</p>
+                      <p className="mt-1 text-sm text-fd-muted-foreground">{step.description}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
 
-          <ol className="mt-5 space-y-4">
-            {copy.workflowSteps.map((step, index) => (
-              <li key={step.title} className="relative flex gap-4 pl-1">
-                {index < copy.workflowSteps.length - 1 ? (
-                  <span className="absolute left-[14px] top-7 h-[calc(100%-3px)] w-px bg-fd-border/90" />
-                ) : null}
-                <span className="relative z-10 mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full border border-fd-primary/20 bg-fd-primary/10 text-xs font-semibold text-fd-primary">
-                  {index + 1}
-                </span>
-                <div>
-                  <p className="text-sm font-semibold">{step.title}</p>
-                  <p className="mt-1 text-sm text-fd-muted-foreground">{step.description}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-
-          <div className="mt-6 rounded-xl border border-fd-border/70 bg-fd-background/75 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-fd-primary">{details.checklistTitle}</p>
-            <ul className="mt-3 space-y-2">
-              {details.checklist.map((item) => (
-                <li key={item} className="flex items-start gap-2.5">
-                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-fd-primary" />
-                  <span className="text-sm text-fd-muted-foreground">{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+              <div className="mt-6 rounded-xl border border-fd-border/70 bg-fd-background/75 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-fd-primary">{details.checklistTitle}</p>
+                <ul className="mt-3 space-y-2">
+                  {details.checklist.map((item) => (
+                    <li key={item} className="flex items-start gap-2.5">
+                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-fd-primary" />
+                      <span className="text-sm text-fd-muted-foreground">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </ScrollReveal>
         </section>
 
-        <section className="space-y-6 bb-reveal bb-reveal-delay-3">
+        <section className="space-y-6">
           <div className="space-y-4">
             <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">{copy.featureTitle}</h2>
             <p className="max-w-3xl text-sm leading-relaxed text-fd-muted-foreground sm:text-base">{details.featureLead}</p>
             <p className="max-w-3xl text-sm leading-relaxed text-fd-muted-foreground">{details.workflowHint}</p>
           </div>
-          <div className="space-y-4">
-            {copy.features.map((feature) => (
-              <article
-                key={feature.title}
-                className="bb-surface-card rounded-xl border border-fd-border/70 p-5 transition-all hover:-translate-y-0.5 hover:border-fd-primary/25 hover:shadow-[var(--bb-feature-hover-shadow)]"
-              >
-                <h3 className="text-base font-semibold">{feature.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-fd-muted-foreground">{feature.description}</p>
-              </article>
-            ))}
-          </div>
+          <ScrollReveal delayMs={100}>
+            <div className="space-y-4">
+              {copy.features.map((feature) => (
+                <article
+                  key={feature.title}
+                  className="bb-surface-card rounded-xl border border-fd-border/70 p-5 transition-all hover:-translate-y-0.5 hover:border-fd-primary/25 hover:shadow-[var(--bb-feature-hover-shadow)]"
+                >
+                  <h3 className="text-base font-semibold">{feature.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-fd-muted-foreground">{feature.description}</p>
+                </article>
+              ))}
+            </div>
+          </ScrollReveal>
         </section>
 
-        <section className="bb-surface-card rounded-3xl border border-fd-border/75 p-8 text-center bb-reveal bb-reveal-delay-3">
+        <section className="space-y-4 text-center">
           <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">{copy.closingTitle}</h2>
-          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-fd-muted-foreground sm:text-base">
+          <p className="mx-auto max-w-2xl text-sm leading-relaxed text-fd-muted-foreground sm:text-base">
             {copy.closingDescription}
           </p>
-          <div className="mt-6 flex justify-center">
-            <Link
-              href={`/${locale}/docs`}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-fd-border bg-fd-background/80 px-5 py-2.5 text-sm font-semibold transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground"
-            >
-              {copy.primaryCta}
-              <ArrowRight className="size-4" />
-            </Link>
-          </div>
+          <ScrollReveal delayMs={120}>
+            <div className="bb-surface-card rounded-3xl border border-fd-border/75 p-8">
+              <div className="flex justify-center">
+                <Link
+                  href={`/${locale}/docs`}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-fd-border bg-fd-background/80 px-5 py-2.5 text-sm font-semibold transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground"
+                >
+                  {copy.primaryCta}
+                  <ArrowRight className="size-4" />
+                </Link>
+              </div>
+            </div>
+          </ScrollReveal>
         </section>
       </main>
     </div>

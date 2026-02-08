@@ -1,42 +1,20 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, ChevronDown, Monitor, Moon, Sun } from 'lucide-react';
+import { Check, ChevronDown, Languages } from 'lucide-react';
 import { buttonVariants } from 'fumadocs-ui/components/ui/button';
-import { useTheme } from 'next-themes';
-import type { Locale } from '@/lib/i18n';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import { isLocale, localeLabels, locales, type Locale } from '@/lib/i18n';
 
-type ThemeMode = 'light' | 'dark' | 'system';
+const LOCALE_STORAGE_KEY = 'bbmcp.docs.locale';
 
-type ThemeOption = {
-  value: ThemeMode;
-  label: string;
-  icon: typeof Sun;
-};
-
-const optionsByLocale: Record<Locale, ThemeOption[]> = {
-  en: [
-    { value: 'light', label: 'Light', icon: Sun },
-    { value: 'dark', label: 'Dark', icon: Moon },
-    { value: 'system', label: 'System', icon: Monitor },
-  ],
-  ko: [
-    { value: 'light', label: '라이트', icon: Sun },
-    { value: 'dark', label: '다크', icon: Moon },
-    { value: 'system', label: '시스템', icon: Monitor },
-  ],
-};
-
-export function ThemeSelect({ locale }: { locale: Locale }) {
+export function LanguageSelect({ locale }: { locale: Locale }) {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const { theme, setTheme } = useTheme();
+  const pathname = usePathname();
+  const router = useRouter();
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- keep SSR and initial hydration output identical.
-    setMounted(true);
-  }, []);
+  const chooseLanguageLabel = locale === 'ko' ? '언어' : 'Language';
 
   useEffect(() => {
     if (!open) return;
@@ -63,22 +41,36 @@ export function ThemeSelect({ locale }: { locale: Locale }) {
     };
   }, [open]);
 
-  const options = optionsByLocale[locale];
-  const currentValue: ThemeMode =
-    mounted && (theme === 'light' || theme === 'dark' || theme === 'system') ? theme : 'system';
-  const current = useMemo(
-    () => options.find((option) => option.value === currentValue) ?? options[2],
-    [currentValue, options],
-  );
+  const onSelectLocale = (nextLocale: Locale) => {
+    if (nextLocale === locale) {
+      setOpen(false);
+      return;
+    }
 
-  const CurrentIcon = current.icon;
-  const chooseThemeLabel = locale === 'ko' ? '테마' : 'Theme';
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, nextLocale);
+
+    const segments = pathname.split('/').filter((segment) => segment.length > 0);
+    if (segments.length === 0) {
+      router.push(`/${nextLocale}`);
+      setOpen(false);
+      return;
+    }
+
+    if (isLocale(segments[0])) {
+      segments[0] = nextLocale;
+    } else {
+      segments.unshift(nextLocale);
+    }
+
+    router.push(`/${segments.join('/')}`);
+    setOpen(false);
+  };
 
   return (
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        aria-label={chooseThemeLabel}
+        aria-label={chooseLanguageLabel}
         aria-haspopup="menu"
         aria-expanded={open}
         className={buttonVariants({
@@ -87,26 +79,25 @@ export function ThemeSelect({ locale }: { locale: Locale }) {
         })}
         onClick={() => setOpen((prev) => !prev)}
       >
-        <CurrentIcon className="size-4.5" />
-        <span className="max-sm:hidden">{current.label}</span>
+        <Languages className="size-4.5" />
+        <span className="max-sm:hidden">{localeLabels[locale]}</span>
         <ChevronDown className={`size-3 text-fd-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open ? (
         <div
           role="menu"
-          aria-label={chooseThemeLabel}
+          aria-label={chooseLanguageLabel}
           className="absolute right-0 z-40 mt-1.5 w-40 overflow-hidden rounded-md border border-fd-border bg-fd-popover p-0 shadow-lg"
         >
-          <p className="border-b px-2 py-1.5 text-xs font-medium text-fd-muted-foreground">{chooseThemeLabel}</p>
+          <p className="border-b px-2 py-1.5 text-xs font-medium text-fd-muted-foreground">{chooseLanguageLabel}</p>
           <div className="p-1">
-            {options.map((option) => {
-              const Icon = option.icon;
-              const selected = currentValue === option.value;
+            {locales.map((item) => {
+              const selected = item === locale;
 
               return (
                 <button
-                  key={option.value}
+                  key={item}
                   type="button"
                   role="menuitemradio"
                   aria-checked={selected}
@@ -115,13 +106,9 @@ export function ThemeSelect({ locale }: { locale: Locale }) {
                       ? 'bg-fd-primary/10 font-medium text-fd-primary'
                       : 'text-fd-foreground hover:bg-fd-accent hover:text-fd-accent-foreground'
                   }`}
-                  onClick={() => {
-                    setTheme(option.value);
-                    setOpen(false);
-                  }}
+                  onClick={() => onSelectLocale(item)}
                 >
-                  <Icon className="size-4" />
-                  <span className="flex-1">{option.label}</span>
+                  <span className="flex-1">{localeLabels[item]}</span>
                   {selected ? <Check className="size-4" /> : null}
                 </button>
               );

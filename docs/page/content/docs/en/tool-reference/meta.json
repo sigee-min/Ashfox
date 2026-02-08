@@ -1,11 +1,10 @@
 {
   "title": "Tool Reference",
   "pages": [
-    "index",
-    "project-lifecycle",
-    "modeling-tools",
-    "texturing-tools",
-    "animation-tools",
-    "system-and-safety"
+    "project",
+    "modeling",
+    "texturing",
+    "animation",
+    "system"
   ]
 }

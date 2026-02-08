@@ -1,0 +1,59 @@
+---
+title: Validate
+description: "Input schema and field behavior for validate."
+---
+
+## Overview
+- Tool name: `validate`
+- Category: Project
+- Strict schema: `true`
+
+## Tool Description
+Validates the current project.
+
+## Input Schema (JSON)
+```json
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "includeState": {
+      "type": "boolean"
+    },
+    "ifRevision": {
+      "type": "string"
+    }
+  }
+}
+```
+
+## Field Reference
+| Field | Type | Required | Description | Constraints |
+| --- | --- | --- | --- | --- |
+| `includeState` | `boolean` | ❌ | - | - |
+| `ifRevision` | `string` | ❌ | - | - |
+
+## Minimal Request Example
+```json
+{}
+```
+
+## Response Example
+```json
+{
+  "structuredContent": {
+    "findings": [
+      {
+        "code": "value",
+        "message": "value",
+        "severity": "error"
+      }
+    ]
+  }
+}
+```
+
+## Operational Notes
+- Use `ifRevision` for mutation calls when available.
+- Do not send fields outside the declared schema.
+- Run `validate` before `export` for release safety.

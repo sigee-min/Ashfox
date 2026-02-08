@@ -1,21 +1,14 @@
 ---
 title: 도구 레퍼런스
-description: bbmcp MCP 도구를 확장 가능한 구조로 정리한 참조 허브.
+description: "카테고리별 폴더 구조와 툴별 상세 페이지로 구성된 bbmcp MCP 도구 참조."
 ---
 
-이 섹션에서 영역별 도구 묶음과 운영 규칙을 확인하세요.
+모든 도구는 카테고리 폴더에 정리되어 있으며, 각 페이지에 입력 스펙과 필드 설명이 포함됩니다.
 
 <Cards>
-  <Card title="프로젝트 라이프사이클" href="./project-lifecycle" />
-  <Card title="모델링 도구" href="./modeling-tools" />
-  <Card title="텍스처링 도구" href="./texturing-tools" />
-  <Card title="애니메이션 도구" href="./animation-tools" />
-  <Card title="시스템 및 안전성" href="./system-and-safety" />
+  <Card title="프로젝트 도구" href="./project" />
+  <Card title="모델링 도구" href="./modeling" />
+  <Card title="텍스처 도구" href="./texturing" />
+  <Card title="애니메이션 도구" href="./animation" />
+  <Card title="시스템 도구" href="./system" />
 </Cards>
-
-## 핵심 규칙
-
-- 변경 도구 호출에 `ifRevision`을 포함합니다.
-- 저수준 단위 변경(명확한 한 단계 수정)을 유지합니다.
-- `export` 전에 `validate`를 실행합니다.
-- `toolRegistry.hash`가 바뀌면 `list_capabilities` 기반 스키마를 갱신합니다.

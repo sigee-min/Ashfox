@@ -1,0 +1,11 @@
+{
+  "title": "Project Tools",
+  "pages": [
+    "ensure-project",
+    "get-project-state",
+    "validate",
+    "render-preview",
+    "export",
+    "export-trace-log"
+  ]
+}

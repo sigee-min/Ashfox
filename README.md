@@ -22,11 +22,11 @@ No manual setup.
 | Build time | < 5 minutes |
 | Generation model | gpt-5.3-codex xhigh |
 
-![Greyfox Animation](assets/images/greyfox-animation.gif)
+![Greyfox Animation](docs/page/public/assets/images/greyfox-animation.gif)
 
 | Final Model (Hero) | Texture Atlas |
 | --- | --- |
-| ![Greyfox Model](assets/images/greyfox.png) | ![Greyfox Texture](assets/images/greyfox-texture.png) |
+| ![Greyfox Model](docs/page/public/assets/images/greyfox.png) | ![Greyfox Texture](docs/page/public/assets/images/greyfox-texture.png) |
 
 ## Features
 - Low-level modeling only: add_bone/add_cube/add_mesh (one item per call).

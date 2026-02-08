@@ -1,0 +1,10 @@
+{
+  "title": "텍스처 도구",
+  "pages": [
+    "read-texture",
+    "assign-texture",
+    "paint-faces",
+    "paint-mesh-face",
+    "delete-texture"
+  ]
+}

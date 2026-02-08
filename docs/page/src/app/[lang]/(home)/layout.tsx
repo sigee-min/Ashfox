@@ -1,5 +1,4 @@
-import { HomeLayout } from 'fumadocs-ui/layouts/home';
-import { baseOptions } from '@/lib/layout.shared';
+import { HomeHeader } from '@/components/home-header';
 import { isLocale } from '@/lib/i18n';
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -15,5 +14,10 @@ export default async function Layout({ children, params }: HomeLayoutProps) {
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
 
-  return <HomeLayout {...baseOptions(lang)}>{children}</HomeLayout>;
+  return (
+    <main id="nd-home-layout" className="flex flex-1 flex-col [--fd-layout-width:1400px]">
+      <HomeHeader locale={lang} />
+      {children}
+    </main>
+  );
 }
