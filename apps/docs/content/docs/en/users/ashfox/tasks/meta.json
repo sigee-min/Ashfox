@@ -1,0 +1,4 @@
+{
+  "title": "Task Guides",
+  "pages": ["index", "bootstrap-local-stack", "connect-mcp-client", "run-service-health-check"]
+}

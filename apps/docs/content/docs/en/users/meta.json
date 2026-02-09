@@ -1,4 +1,4 @@
 {
   "title": "User Guide",
-  "pages": ["index", "installation", "getting-started", "tool-reference", "guides", "troubleshooting"]
+  "pages": ["index", "blockbench-plugin", "ashfox", "mcp-spec"]
 }

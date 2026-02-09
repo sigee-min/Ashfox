@@ -1,0 +1,23 @@
+---
+title: 로컬 서비스 스택 부트스트랩
+description: web, gateway, worker 조합을 로컬에서 기동해 기본 동작을 검증합니다.
+---
+
+# 로컬 서비스 스택 부트스트랩
+
+## 목표
+
+Track B 서비스 구성을 로컬에서 재현하고 기동 상태를 확인합니다.
+
+## 단계
+
+1. 저장소 루트에서 의존성을 설치합니다 (`npm install`).
+2. 필요한 빌드를 수행합니다 (`npm run build`, `npm --workspace apps/web run build`).
+3. gateway/worker 프로세스를 실행하거나 Docker compose를 사용합니다.
+4. 클라이언트에서 엔드포인트 도달성을 확인합니다.
+
+## 관련 문서
+
+- [Two-Track Runtime Layout](/en/docs/contributors/project/monorepo-target)
+- [Development Onboarding](/en/docs/contributors/project/development-onboarding)
+- [연결 문제 해결](/ko/docs/users/troubleshooting/connectivity)

@@ -23,6 +23,9 @@ services:
       - ASHFOX_PORT=8790
       - ASHFOX_PATH=/mcp
       - ASHFOX_GATEWAY_BACKEND=engine
+      - ASHFOX_PERSISTENCE_PRESET=local
+      - ASHFOX_STORAGE_PROVIDER=fs
+      - ASHFOX_STORAGE_FS_ROOT=/tmp/ashfox-storage
     ports:
       - '8790:8790'
     depends_on:

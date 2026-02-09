@@ -1,0 +1,4 @@
+{
+  "title": "작업 가이드",
+  "pages": ["index", "bootstrap-local-stack", "connect-mcp-client", "run-service-health-check"]
+}

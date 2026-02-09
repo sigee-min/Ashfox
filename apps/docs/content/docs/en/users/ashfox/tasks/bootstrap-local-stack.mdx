@@ -1,0 +1,23 @@
+---
+title: Bootstrap Local Service Stack
+description: Bring up web, gateway, and worker services for local validation.
+---
+
+# Bootstrap Local Service Stack
+
+## Goal
+
+Run the full Track B service shape locally with predictable startup order.
+
+## Steps
+
+1. Install dependencies at repository root (`npm install`).
+2. Build required packages (`npm run build`, `npm --workspace apps/web run build`).
+3. Start gateway and worker processes (or Docker compose baseline).
+4. Validate endpoint reachability from a client.
+
+## Related Docs
+
+- [Two-Track Runtime Layout](/en/docs/contributors/project/monorepo-target)
+- [Development Onboarding](/en/docs/contributors/project/development-onboarding)
+- [Connectivity Troubleshooting](/en/docs/users/troubleshooting/connectivity)

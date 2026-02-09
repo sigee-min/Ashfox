@@ -7,6 +7,8 @@
     "apps/ashfox",
     "apps/mcp-gateway",
     "apps/worker",
+    "apps/web",
+    "apps/docs",
     "packages/runtime",
     "packages/contracts",
     "packages/conformance",
@@ -21,9 +23,11 @@
     "dev:gateway": "npm --workspace @ashfox/mcp-gateway run dev",
     "dev:worker": "npm --workspace @ashfox/worker run dev",
     "docs:generate:tools": "node ./scripts/docs/generate-tool-pages.js",
+    "docs:quality": "node ./scripts/docs/quality/check.js",
     "test:unit": "npm --workspace @ashfox/runtime run test",
     "test:conformance": "npm --workspace @ashfox/conformance run test",
-    "test": "npm run typecheck && npm run test:unit && npm run test:conformance",
+    "test:gateway": "npm --workspace @ashfox/mcp-gateway run test",
+    "test": "npm run typecheck && npm run test:unit && npm run test:conformance && npm run test:gateway",
     "test:cov": "npm --workspace @ashfox/runtime run test:cov",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "spec:sync": "node scripts/specs/update-blockbench-spec.js",
@@ -32,7 +36,7 @@
     "quality:deadcode": "node scripts/quality/deadcode.js",
     "quality:coverage": "node scripts/quality/coverage.js",
     "release:validate": "node scripts/release/validate.js",
-    "quality": "npm run test:cov && npm run test:conformance && npm run build && npm run quality:check && npm run quality:deadcode && npm run quality:coverage && npm run quality:audit && npm run release:validate"
+    "quality": "npm run test:cov && npm run test:conformance && npm run test:gateway && npm run build && npm run quality:check && npm run quality:deadcode && npm run quality:coverage && npm run quality:audit && npm run release:validate"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
@@ -41,11 +45,5 @@
     "ts-node": "^10.9.2",
     "ts-prune": "^0.10.3",
     "typescript": "^5.6.3"
-  },
-  "dependencies": {
-    "@openai/agents": "^0.4.3",
-    "zod": "^4.3.6"
   }
 }
-
-

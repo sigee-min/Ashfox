@@ -68,7 +68,7 @@ export function SiteFooter({ locale }: SiteFooterProps) {
                 <span>{copy.docs}</span>
               </Link>
               <Link
-                href={`/${locale}/docs/installation`}
+                href={`/${locale}/docs/users/installation`}
                 className="inline-flex items-center gap-2 text-fd-muted-foreground transition-colors hover:text-fd-foreground"
               >
                 <Hammer className="size-4" />
@@ -81,7 +81,7 @@ export function SiteFooter({ locale }: SiteFooterProps) {
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-fd-muted-foreground">{copy.resources}</p>
             <div className="flex flex-col gap-2 text-sm">
               <Link
-                href={`/${locale}/docs/tool-reference`}
+                href={`/${locale}/docs/users/tool-reference`}
                 className="text-fd-muted-foreground transition-colors hover:text-fd-foreground"
               >
                 {copy.tools}
@@ -122,4 +122,3 @@ export function SiteFooter({ locale }: SiteFooterProps) {
     </footer>
   );
 }
-

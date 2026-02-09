@@ -1,0 +1,169 @@
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import type { BlobPointer, BlobReadResult, BlobStore, BlobWriteInput } from '@ashfox/backend-core';
+import type { S3BlobStoreConfig } from '../config';
+
+export interface S3ClientLike {
+  send(command: unknown): Promise<Record<string, unknown>>;
+  destroy?(): void;
+}
+
+const normalizeBucket = (value: string): string => {
+  const normalized = value.trim();
+  if (!normalized) throw new Error('bucket must be a non-empty string.');
+  if (normalized.includes('/')) throw new Error('bucket must not include "/".');
+  return normalized;
+};
+
+const normalizeKey = (value: string): string => {
+  const normalized = value.trim().replace(/\\/g, '/').replace(/^\/+/, '');
+  if (!normalized) throw new Error('key must be a non-empty string.');
+  return normalized;
+};
+
+const normalizePrefix = (value: string | undefined): string | undefined => {
+  if (!value) return undefined;
+  const normalized = value.trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+  return normalized ? normalized : undefined;
+};
+
+const toStorageKey = (key: string, keyPrefix: string | undefined): string => {
+  const normalizedKey = normalizeKey(key);
+  const normalizedPrefix = normalizePrefix(keyPrefix);
+  if (!normalizedPrefix) return normalizedKey;
+  return `${normalizedPrefix}/${normalizedKey}`;
+};
+
+const fromStorageKey = (storageKey: string, keyPrefix: string | undefined): string => {
+  const normalizedPrefix = normalizePrefix(keyPrefix);
+  if (!normalizedPrefix) return storageKey;
+  const prefix = `${normalizedPrefix}/`;
+  if (!storageKey.startsWith(prefix)) return storageKey;
+  return storageKey.slice(prefix.length);
+};
+
+const isNotFoundError = (error: unknown): boolean => {
+  const candidate = error as { name?: string; code?: string; Code?: string; $metadata?: { httpStatusCode?: number } };
+  const code = candidate.code ?? candidate.Code ?? candidate.name;
+  if (code === 'NoSuchKey' || code === 'NoSuchBucket' || code === 'NotFound') return true;
+  if (candidate.$metadata?.httpStatusCode === 404) return true;
+  return false;
+};
+
+const toUint8Array = async (body: unknown): Promise<Uint8Array> => {
+  if (!body) return new Uint8Array();
+  const candidate = body as {
+    transformToByteArray?: () => Promise<Uint8Array>;
+    [Symbol.asyncIterator]?: () => AsyncIterator<Uint8Array | Buffer | string>;
+  };
+  if (typeof candidate.transformToByteArray === 'function') {
+    return candidate.transformToByteArray();
+  }
+  if (body instanceof Uint8Array) return body;
+  if (Buffer.isBuffer(body)) return body;
+  if (typeof candidate[Symbol.asyncIterator] !== 'function') {
+    throw new Error('Unable to read blob bytes from S3 response body.');
+  }
+  const chunks: Buffer[] = [];
+  for await (const chunk of candidate as AsyncIterable<Uint8Array | Buffer | string>) {
+    if (typeof chunk === 'string') {
+      chunks.push(Buffer.from(chunk));
+      continue;
+    }
+    chunks.push(Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+};
+
+export class S3BlobStore implements BlobStore {
+  private readonly config: S3BlobStoreConfig;
+  private readonly client: S3ClientLike;
+
+  constructor(config: S3BlobStoreConfig, client?: S3ClientLike) {
+    this.config = config;
+    this.client =
+      client ??
+      new S3Client({
+        region: config.region,
+        endpoint: config.endpoint,
+        forcePathStyle: config.forcePathStyle,
+        credentials: {
+          accessKeyId: config.accessKeyId,
+          secretAccessKey: config.secretAccessKey,
+          ...(config.sessionToken ? { sessionToken: config.sessionToken } : {})
+        }
+      });
+  }
+
+  async put(input: BlobWriteInput): Promise<BlobPointer> {
+    const bucket = normalizeBucket(input.bucket);
+    const key = normalizeKey(input.key);
+    const storageKey = toStorageKey(key, this.config.keyPrefix);
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: storageKey,
+        Body: input.bytes,
+        ContentType: input.contentType,
+        CacheControl: input.cacheControl,
+        Metadata: input.metadata
+      })
+    );
+    return { bucket, key };
+  }
+
+  async get(pointer: BlobPointer): Promise<BlobReadResult | null> {
+    const bucket = normalizeBucket(pointer.bucket);
+    const key = normalizeKey(pointer.key);
+    const storageKey = toStorageKey(key, this.config.keyPrefix);
+    try {
+      const result = (await this.client.send(
+        new GetObjectCommand({
+          Bucket: bucket,
+          Key: storageKey
+        })
+      )) as {
+        Body?: unknown;
+        ContentType?: string;
+        CacheControl?: string;
+        Metadata?: Record<string, string>;
+        LastModified?: Date;
+      };
+      const bytes = await toUint8Array(result.Body);
+      return {
+        bucket,
+        key: fromStorageKey(storageKey, this.config.keyPrefix),
+        bytes,
+        contentType: result.ContentType ?? 'application/octet-stream',
+        cacheControl: result.CacheControl,
+        metadata: result.Metadata,
+        updatedAt: result.LastModified?.toISOString()
+      };
+    } catch (error) {
+      if (isNotFoundError(error)) return null;
+      throw error;
+    }
+  }
+
+  async delete(pointer: BlobPointer): Promise<void> {
+    const bucket = normalizeBucket(pointer.bucket);
+    const key = normalizeKey(pointer.key);
+    const storageKey = toStorageKey(key, this.config.keyPrefix);
+    try {
+      await this.client.send(
+        new DeleteObjectCommand({
+          Bucket: bucket,
+          Key: storageKey
+        })
+      );
+    } catch (error) {
+      if (isNotFoundError(error)) return;
+      throw error;
+    }
+  }
+
+  async close(): Promise<void> {
+    if (typeof this.client.destroy === 'function') {
+      this.client.destroy();
+    }
+  }
+}

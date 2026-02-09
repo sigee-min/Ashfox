@@ -44,6 +44,8 @@ build/Release
 # Dependency directories
 node_modules/
 jspm_packages/
+apps/web/package-lock.json
+apps/docs/package-lock.json
 
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/

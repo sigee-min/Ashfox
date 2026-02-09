@@ -182,7 +182,7 @@ export function LandingPage({ locale, copy }: LandingPageProps) {
               <ArrowRight className="size-4" />
             </Link>
             <Link
-              href={`/${locale}/docs/installation`}
+              href={`/${locale}/docs/users/installation`}
               className="inline-flex items-center justify-center rounded-lg border border-fd-border/90 bg-fd-card/75 px-5 py-2.5 text-sm font-semibold transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground"
             >
               {copy.secondaryCta}
@@ -356,4 +356,3 @@ export function LandingPage({ locale, copy }: LandingPageProps) {
     </div>
   );
 }
-

@@ -4,6 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "ts-node src/index.ts",
-    "start": "ts-node src/index.ts"
+    "start": "ts-node src/index.ts",
+    "test": "node run.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.985.0",
+    "pg": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.16.0"
   }
 }

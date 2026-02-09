@@ -4,6 +4,7 @@ import { createEngineBackend } from '@ashfox/backend-engine';
 import { ConsoleLogger, type LogLevel } from '@ashfox/runtime/logging';
 import { startServer, type ServerConfig } from '@ashfox/runtime/server';
 import { GatewayDispatcher } from './dispatcher';
+import { closeGatewayPersistence, createGatewayPersistence } from './persistence';
 
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 8790;
@@ -23,52 +24,99 @@ const resolveBackendKind = (raw: string | undefined): BackendKind => {
   return DEFAULT_BACKEND;
 };
 
+const resolveFailFast = (raw: string | undefined): boolean => {
+  const normalized = String(raw ?? '').trim().toLowerCase();
+  if (!normalized) return true;
+  if (normalized === '0' || normalized === 'false' || normalized === 'no' || normalized === 'off') return false;
+  return true;
+};
+
+const toLoggableError = (error: unknown): Record<string, unknown> => {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    };
+  }
+  return { error: String(error) };
+};
+
 const logLevel: LogLevel = (process.env.ASHFOX_GATEWAY_LOG_LEVEL as LogLevel) ?? 'info';
 const logger = new ConsoleLogger('ashfox-gateway', () => logLevel);
 
-const registry = new BackendRegistry();
-registry.register(
-  createEngineBackend({
-    version: '0.0.0-scaffold',
-    details: { mode: 'standalone' }
-  })
-);
-registry.register(
-  createBlockbenchBackend({
-    version: '0.0.0-scaffold',
-    details: { mode: 'requires_plugin_bridge' }
-  })
-);
+const main = async (): Promise<void> => {
+  const persistence = createGatewayPersistence(process.env, {
+    failFast: resolveFailFast(process.env.ASHFOX_PERSISTENCE_FAIL_FAST)
+  });
 
-const dispatcher = new GatewayDispatcher({
-  registry,
-  defaultBackend: resolveBackendKind(process.env.ASHFOX_GATEWAY_BACKEND)
-});
+  const registry = new BackendRegistry();
+  registry.register(
+    createEngineBackend({
+      version: '0.0.0-scaffold',
+      details: { mode: 'standalone' },
+      persistence
+    })
+  );
+  registry.register(
+    createBlockbenchBackend({
+      version: '0.0.0-scaffold',
+      details: { mode: 'requires_plugin_bridge' }
+    })
+  );
 
-const config: ServerConfig = {
-  host: process.env.ASHFOX_HOST ?? DEFAULT_HOST,
-  port: toPort(process.env.ASHFOX_PORT),
-  path: process.env.ASHFOX_PATH ?? DEFAULT_PATH
+  const dispatcher = new GatewayDispatcher({
+    registry,
+    defaultBackend: resolveBackendKind(process.env.ASHFOX_GATEWAY_BACKEND)
+  });
+
+  const config: ServerConfig = {
+    host: process.env.ASHFOX_HOST ?? DEFAULT_HOST,
+    port: toPort(process.env.ASHFOX_PORT),
+    path: process.env.ASHFOX_PATH ?? DEFAULT_PATH
+  };
+
+  const stop = startServer(config, dispatcher, logger);
+  if (!stop) {
+    await closeGatewayPersistence(persistence);
+    throw new Error(
+      `ashfox gateway failed to start (host=${config.host}, port=${config.port}, path=${config.path}).`
+    );
+  }
+
+  logger.info('ashfox gateway started', {
+    host: config.host,
+    port: config.port,
+    path: config.path,
+    backend: resolveBackendKind(process.env.ASHFOX_GATEWAY_BACKEND),
+    persistence: persistence.health
+  });
+
+  let shuttingDown = false;
+  const shutdown = async (signal: 'SIGINT' | 'SIGTERM') => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    logger.info('ashfox gateway shutdown', { signal });
+    let exitCode = 0;
+    try {
+      await closeGatewayPersistence(persistence);
+    } catch (error) {
+      exitCode = 1;
+      logger.error('ashfox gateway persistence shutdown failed', toLoggableError(error));
+    }
+    stop();
+    process.exit(exitCode);
+  };
+
+  process.on('SIGINT', () => {
+    void shutdown('SIGINT');
+  });
+  process.on('SIGTERM', () => {
+    void shutdown('SIGTERM');
+  });
 };
 
-const stop = startServer(config, dispatcher, logger);
-if (!stop) {
-  logger.error('ashfox gateway failed to start', { host: config.host, port: config.port, path: config.path });
+void main().catch((error) => {
+  logger.error('ashfox gateway startup failed', toLoggableError(error));
   process.exit(1);
-}
-
-logger.info('ashfox gateway started', {
-  host: config.host,
-  port: config.port,
-  path: config.path,
-  backend: resolveBackendKind(process.env.ASHFOX_GATEWAY_BACKEND)
 });
-
-const shutdown = () => {
-  logger.info('ashfox gateway shutdown');
-  stop();
-  process.exit(0);
-};
-
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
