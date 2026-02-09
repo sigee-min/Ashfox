@@ -1,0 +1,57 @@
+version: '3.9'
+services:
+  web:
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile
+    container_name: ashfox-web
+    environment:
+      - NODE_ENV=production
+      - ASHFOX_GATEWAY_URL=http://mcp-gateway:8790/mcp
+    ports:
+      - '3000:3000'
+    depends_on:
+      - mcp-gateway
+
+  mcp-gateway:
+    build:
+      context: ..
+      dockerfile: apps/mcp-gateway/Dockerfile
+    container_name: ashfox-mcp-gateway
+    environment:
+      - ASHFOX_HOST=0.0.0.0
+      - ASHFOX_PORT=8790
+      - ASHFOX_PATH=/mcp
+      - ASHFOX_GATEWAY_BACKEND=engine
+    ports:
+      - '8790:8790'
+    depends_on:
+      - redis
+      - postgres
+
+  worker:
+    build:
+      context: ..
+      dockerfile: apps/worker/Dockerfile
+    container_name: ashfox-worker
+    environment:
+      - ASHFOX_WORKER_HEARTBEAT_MS=5000
+    depends_on:
+      - redis
+      - postgres
+
+  redis:
+    image: redis:7-alpine
+    container_name: ashfox-redis
+    ports:
+      - '6379:6379'
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: ashfox-postgres
+    environment:
+      - POSTGRES_DB=ashfox
+      - POSTGRES_USER=ashfox
+      - POSTGRES_PASSWORD=ashfox
+    ports:
+      - '5432:5432'

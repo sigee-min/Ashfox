@@ -2,6 +2,10 @@
   "name": "@ashfox/runtime",
   "version": "0.0.0",
   "private": true,
+  "exports": {
+    "./server": "./src/server.ts",
+    "./logging": "./src/logging.ts"
+  },
   "scripts": {
     "test": "node tests/run.js",
     "test:cov": "c8 --reporter=text --reporter=json-summary --reporter=lcov --report-dir ../../coverage npm run test"

@@ -28,6 +28,13 @@ npm run build:plugin-desktop
 npm run build:ashfox
 ```
 
+Scaffold apps:
+
+```bash
+npm run dev:gateway
+npm run dev:worker
+```
+
 ## 3) Test and Quality Commands
 
 ```bash
@@ -60,7 +67,22 @@ npm ci
 npm run build
 ```
 
-## 5) Contributing Workflow
+## 5) Web App Build
+
+```bash
+cd apps/web
+npm install
+npm run build
+```
+
+## 6) Docker Scaffold
+
+```bash
+cd deploy
+docker compose up --build
+```
+
+## 7) Contributing Workflow
 
 1. Branch from `main`.
 2. Keep changes scoped (runtime, contracts, docs, or CI).
@@ -74,7 +96,7 @@ Related references:
 - `SECURITY.md`
 - `SUPPORT.md`
 
-## 6) Release Workflow
+## 8) Release Workflow
 
 Release automation runs from `.github/workflows/release-please.yml` using manual dispatch.
 

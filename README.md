@@ -204,10 +204,17 @@ If toolRegistry.hash changes, re-run list_capabilities (or tools/list) to refres
 ## Repository Layout
 - `apps/plugin-desktop`: plugin app entrypoint (desktop runtime boundary)
 - `apps/ashfox`: headless MCP app entrypoint (sidecar boundary)
+- `apps/mcp-gateway`: multi-backend MCP gateway shell (tool routing + project locks)
+- `apps/worker`: async worker shell for engine-side jobs
+- `apps/web`: Next.js dashboard and API scaffold
 - `apps/docs`: user-facing docs site
 - `packages/runtime`: shared runtime implementation (plugin + server + usecases)
 - `packages/contracts`: MCP contract source (`mcpSchemas`) + schema policy (`version/hash`)
 - `packages/conformance`: contract conformance checks (schema coverage + validation behavior)
+- `packages/backend-core`: backend contracts/registry/locks shared by gateway runtimes
+- `packages/backend-blockbench`: blockbench backend adapter (dispatcher bridge)
+- `packages/backend-engine`: clean-room engine backend scaffold
+- `deploy/docker-compose.yml`: multi-service deployment scaffold (`web + mcp-gateway + worker`)
 - `apps/docs/content/docs/en/project/development-onboarding.mdx`: contributor onboarding for build/test/release
 
 ## Showcase
@@ -232,6 +239,8 @@ Core scripts:
 | `npm run build` | Build plugin + headless bundles into `dist/` |
 | `npm run build:plugin-desktop` | Build only the Blockbench plugin bundle |
 | `npm run build:ashfox` | Build only the headless MCP bundle |
+| `npm run dev:gateway` | Start MCP gateway scaffold (local) |
+| `npm run dev:worker` | Start worker scaffold (local) |
 | `npm run typecheck` | Run strict TypeScript checks |
 | `npm run test:unit` | Run runtime unit tests (`packages/runtime/tests`) |
 | `npm run test:conformance` | Run contract/conformance tests |
@@ -251,6 +260,19 @@ Docs site build (workspace-local):
 cd apps/docs
 npm ci
 npm run build
+```
+
+Web dashboard scaffold build:
+```bash
+cd apps/web
+npm install
+npm run build
+```
+
+Docker scaffold:
+```bash
+cd deploy
+docker compose up --build
 ```
 
 ## Release Automation

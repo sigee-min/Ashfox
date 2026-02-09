@@ -5,14 +5,21 @@
   "workspaces": [
     "apps/plugin-desktop",
     "apps/ashfox",
+    "apps/mcp-gateway",
+    "apps/worker",
     "packages/runtime",
     "packages/contracts",
-    "packages/conformance"
+    "packages/conformance",
+    "packages/backend-core",
+    "packages/backend-blockbench",
+    "packages/backend-engine"
   ],
   "scripts": {
     "build": "npm run build:plugin-desktop && npm run build:ashfox",
     "build:plugin-desktop": "npm --workspace @ashfox/plugin-desktop run build",
     "build:ashfox": "npm --workspace @ashfox/ashfox run build",
+    "dev:gateway": "npm --workspace @ashfox/mcp-gateway run dev",
+    "dev:worker": "npm --workspace @ashfox/worker run dev",
     "docs:generate:tools": "node ./scripts/docs/generate-tool-pages.js",
     "test:unit": "npm --workspace @ashfox/runtime run test",
     "test:conformance": "npm --workspace @ashfox/conformance run test",

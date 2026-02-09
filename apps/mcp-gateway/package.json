@@ -1,0 +1,9 @@
+{
+  "name": "@ashfox/mcp-gateway",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "start": "ts-node src/index.ts"
+  }
+}
