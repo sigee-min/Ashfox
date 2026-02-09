@@ -20,7 +20,8 @@ export const EXPORT_FORMAT_MISMATCH = 'Export format does not match active forma
 export const EXPORT_FORMAT_ID_MISSING = 'No matching format ID for export';
 export const EXPORT_FORMAT_ID_MISSING_FOR_KIND = (kind: string) => `No format ID for ${kind}`;
 export const EXPORT_CODEC_ID_REQUIRED = 'codecId is required when format=native_codec.';
-export const EXPORT_FORMAT_AUTO_UNRESOLVED =
-  'format=auto could not resolve an export target. Use a known extension (.gltf/.glb/.obj/.fbx etc.) or set format explicitly.';
+export const EXPORT_CODEC_ID_EMPTY = 'codecId must be a non-empty string when format=native_codec.';
+export const EXPORT_CODEC_ID_FORBIDDEN = 'codecId is only allowed when format=native_codec.';
+export const EXPORT_CODEC_UNSUPPORTED = (codecId: string) => `Native codec not available: ${codecId}`;
 
 

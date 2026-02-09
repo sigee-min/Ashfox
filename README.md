@@ -243,6 +243,7 @@ Core scripts:
 | `npm run typecheck` | Run strict TypeScript checks |
 | `npm run test:unit` | Run runtime unit tests (`packages/runtime/tests`) |
 | `npm run test:conformance` | Run contract/conformance tests |
+| `npm run test:practical` | Run high-value regression + contract smoke pack |
 | `npm test` | Run `typecheck + unit + conformance` |
 | `npm run test:cov` | Run unit tests with coverage output |
 | `npm run quality` | Run the full CI quality gate |

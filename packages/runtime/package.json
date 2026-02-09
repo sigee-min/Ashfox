@@ -8,6 +8,7 @@
   },
   "scripts": {
     "test": "node tests/run.js",
+    "test:practical": "node tests/run-practical.js",
     "test:cov": "c8 --reporter=text --reporter=json-summary --reporter=lcov --report-dir ../../coverage npm run test"
   }
 }

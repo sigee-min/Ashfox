@@ -362,8 +362,7 @@ export interface ExportPayload extends IncludeStateOption, IfRevisionOption {
     | 'animated_java'
     | 'generic_model_json'
     | 'gltf'
-    | 'native_codec'
-    | 'auto';
+    | 'native_codec';
   codecId?: string;
   destPath: string;
   options?: {

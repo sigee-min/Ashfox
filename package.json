@@ -26,6 +26,7 @@
     "docs:quality": "node ./scripts/docs/quality/check.js",
     "test:unit": "npm --workspace @ashfox/runtime run test",
     "test:conformance": "npm --workspace @ashfox/conformance run test",
+    "test:practical": "npm --workspace @ashfox/runtime run test:practical && npm --workspace @ashfox/conformance run test:practical",
     "test:gateway": "npm --workspace @ashfox/mcp-gateway run test",
     "test": "npm run typecheck && npm run test:unit && npm run test:conformance && npm run test:gateway",
     "test:cov": "npm --workspace @ashfox/runtime run test:cov",

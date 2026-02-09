@@ -200,8 +200,7 @@ export const modelToolSchemas: Record<string, JsonSchema> = {
           'animated_java',
           'generic_model_json',
           'gltf',
-          'native_codec',
-          'auto'
+          'native_codec'
         ]
       },
       codecId: { type: 'string' },

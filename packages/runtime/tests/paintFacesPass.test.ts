@@ -276,3 +276,21 @@ const createPassSetup = (options: PassSetup = {}) => {
   assert.equal(res.ok, false);
   if (!res.ok) assert.equal(res.error.message.startsWith('update failed'), true);
 }
+
+// Face-space full fill should cover the entire mapped face area (regression: only 1-2 pixels updated).
+{
+  const setup = createPassSetup({
+    usageRaw: createUsage([0, 0, 16, 16]),
+    payload: {
+      op: { op: 'fill_rect', x: 0, y: 0, width: 16, height: 16, color: '#2f4b38' }
+    }
+  });
+  const res = setup.run();
+  assert.equal(res.ok, true);
+  if (res.ok) {
+    assert.equal(res.value.facesApplied, 1);
+    assert.equal(res.value.opsApplied, 1);
+    assert.equal(res.value.changedPixels, 256);
+    assert.equal(res.value.resolvedSource?.coordSpace, 'face');
+  }
+}

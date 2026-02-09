@@ -7,8 +7,10 @@ import type { NativeCodecTarget } from '../src/ports/exporter';
 import { createEditorStubWithState, createFormatPortStub } from './fakes';
 import { registerAsync } from './helpers';
 import {
+  EXPORT_CODEC_ID_EMPTY,
+  EXPORT_CODEC_ID_FORBIDDEN,
   EXPORT_CODEC_ID_REQUIRED,
-  EXPORT_FORMAT_AUTO_UNRESOLVED,
+  EXPORT_CODEC_UNSUPPORTED,
   EXPORT_FORMAT_MISMATCH,
   EXPORT_FORMAT_NOT_ENABLED
 } from '../src/shared/messages';
@@ -109,7 +111,30 @@ registerAsync(
     }
 
     {
-      const { service, calls } = createHarness({ codecError: null });
+      const { service } = createHarness();
+      const res = await service.exportModel({ format: 'native_codec', codecId: '   ', destPath: 'model.obj' });
+      assert.equal(res.ok, false);
+      if (!res.ok) {
+        assert.equal(res.error.code, 'invalid_payload');
+        assert.equal(res.error.message, EXPORT_CODEC_ID_EMPTY);
+      }
+    }
+
+    {
+      const { service } = createHarness();
+      const res = await service.exportModel({ format: 'gltf', codecId: 'obj', destPath: 'model.gltf' });
+      assert.equal(res.ok, false);
+      if (!res.ok) {
+        assert.equal(res.error.code, 'invalid_payload');
+        assert.equal(res.error.message, EXPORT_CODEC_ID_FORBIDDEN);
+      }
+    }
+
+    {
+      const { service, calls } = createHarness({
+        codecError: null,
+        nativeCodecs: [{ id: 'obj', label: 'OBJ', extensions: ['obj'] }]
+      });
       const res = await service.exportModel({ format: 'native_codec', codecId: 'obj', destPath: 'model.obj' });
       assert.equal(res.ok, true);
       assert.equal(calls.codec, 1);
@@ -118,8 +143,100 @@ registerAsync(
     }
 
     {
+      const { service } = createHarness();
+      const res = await service.exportModel({ format: 'native_codec', codecId: 'obj', destPath: 'model.obj' });
+      assert.equal(res.ok, false);
+      if (!res.ok) {
+        assert.equal(res.error.code, 'unsupported_format');
+        assert.equal(res.error.message, `${EXPORT_CODEC_UNSUPPORTED('obj')}.`);
+      }
+    }
+
+    {
+      const { service, calls } = createHarness({
+        codecError: null,
+        nativeCodecs: [{ id: 'gltf', label: 'glTF', extensions: ['gltf', 'glb'] }]
+      });
+      const res = await service.exportModel({ format: 'native_codec', codecId: '.GLB', destPath: 'model.glb' });
+      assert.equal(res.ok, true);
+      assert.equal(calls.codec, 1);
+    }
+
+    {
+      const capabilities = baseCapabilities();
+      capabilities.exportTargets = [
+        { kind: 'internal', id: 'gecko_geo_anim', label: 'GeckoLib Geo+Anim JSON', available: true },
+        { kind: 'gltf', id: 'gltf', label: 'glTF', extensions: ['gltf', 'glb'], available: true },
+        { kind: 'native_codec', id: 'native_codec', label: 'Native Codec Export', available: true }
+      ];
       const { service } = createHarness({
-        disableCodecExport: true
+        capabilities,
+        nativeCodecs: [
+          { id: 'obj', label: 'OBJ', extensions: ['obj'] },
+          { id: 'fbx', label: 'FBX', extensions: ['fbx'] }
+        ]
+      });
+      const res = await service.exportModel({ format: 'native_codec', codecId: 'unknown', destPath: 'model.unknown' });
+      assert.equal(res.ok, false);
+      if (!res.ok) {
+        const details = res.error.details as
+          | { requestedCodecId?: string; availableCodecs?: Array<{ id: string }> }
+          | undefined;
+        assert.equal(details?.requestedCodecId, 'unknown');
+        assert.equal(details?.availableCodecs?.length, 2);
+        assert.equal(details?.availableCodecs?.[0]?.id, 'obj');
+        assert.equal(details?.availableCodecs?.[1]?.id, 'fbx');
+      }
+    }
+
+    {
+      const capabilities = baseCapabilities();
+      capabilities.exportTargets = [
+        { kind: 'internal', id: 'gecko_geo_anim', label: 'GeckoLib Geo+Anim JSON', available: true },
+        { kind: 'gltf', id: 'gltf', label: 'glTF', extensions: ['gltf', 'glb'], available: true },
+        { kind: 'native_codec', id: 'native_codec', label: 'Native Codec Export', available: true }
+      ];
+      const { service } = createHarness({ capabilities });
+      const res = await service.exportModel({ format: 'native_codec', codecId: 'obj', destPath: 'model.obj' });
+      assert.equal(res.ok, false);
+      if (!res.ok) {
+        const recommended = res.error.details?.recommendedTarget as { id: string } | undefined;
+        const availableTargets = res.error.details?.availableTargets as Array<{ id: string }> | undefined;
+        assert.equal(recommended?.id, 'gecko_geo_anim');
+        assert.equal(Array.isArray(availableTargets), true);
+        assert.equal(availableTargets?.length, 3);
+      }
+    }
+
+    {
+      const genericSnapshot = {
+        ...new ProjectSession().snapshot(),
+        id: 'p_generic_hint',
+        format: 'Generic Model' as const,
+        formatId: 'free',
+        name: 'generic_unit'
+      };
+      const capabilities = baseCapabilities();
+      capabilities.exportTargets = [
+        { kind: 'internal', id: 'generic_model_json', label: 'Generic Model JSON', available: true },
+        { kind: 'gltf', id: 'gltf', label: 'glTF', extensions: ['gltf', 'glb'], available: true }
+      ];
+      const { service } = createHarness({
+        capabilities,
+        snapshotOverride: genericSnapshot
+      });
+      const res = await service.exportModel({ format: 'gecko_geo_anim', destPath: 'out.json' });
+      assert.equal(res.ok, false);
+      if (!res.ok) {
+        const recommended = res.error.details?.recommendedTarget as { id: string } | undefined;
+        assert.equal(recommended?.id, 'generic_model_json');
+      }
+    }
+
+    {
+      const { service } = createHarness({
+        disableCodecExport: true,
+        nativeCodecs: [{ id: 'obj', label: 'OBJ', extensions: ['obj'] }]
       });
       const res = await service.exportModel({ format: 'native_codec', codecId: 'obj', destPath: 'model.obj' });
       assert.equal(res.ok, false);
@@ -333,77 +450,6 @@ registerAsync(
         assert.equal(res.error.code, 'not_implemented');
       }
       assert.equal(writes.length, 0);
-    }
-
-    {
-      const { service, calls } = createHarness({ gltfError: null });
-      const res = await service.exportModel({ format: 'auto', destPath: 'model.glb' });
-      assert.equal(res.ok, true);
-      assert.equal(calls.gltf, 1);
-      assert.equal(calls.native, 0);
-      assert.equal(calls.codec, 0);
-      if (res.ok) {
-        assert.equal(res.value.selectedTarget?.kind, 'gltf');
-        assert.equal(res.value.selectedTarget?.id, 'gltf');
-      }
-    }
-
-    {
-      const { service, calls } = createHarness({
-        codecError: null,
-        nativeCodecs: [
-          { id: 'obj', label: 'OBJ', extensions: ['obj'] },
-          { id: 'fbx', label: 'FBX', extensions: ['fbx'] }
-        ]
-      });
-      const res = await service.exportModel({ format: 'auto', destPath: 'model.obj' });
-      assert.equal(res.ok, true);
-      assert.equal(calls.gltf, 0);
-      assert.equal(calls.native, 0);
-      assert.equal(calls.codec, 1);
-      if (res.ok) {
-        assert.equal(res.value.selectedTarget?.kind, 'native_codec');
-        assert.equal(res.value.selectedTarget?.id, 'obj');
-        assert.equal(res.value.selectedTarget?.codecId, 'obj');
-      }
-    }
-
-    {
-      const { service, calls } = createHarness({ nativeError: null });
-      const res = await service.exportModel({ format: 'auto', destPath: 'model.json' });
-      assert.equal(res.ok, true);
-      assert.equal(calls.gltf, 0);
-      assert.equal(calls.native, 1);
-      assert.equal(calls.codec, 0);
-    }
-
-    {
-      const { service, calls } = createHarness({
-        nativeError: null,
-        nativeCodecs: [{ id: 'json_codec', label: 'Json Codec', extensions: ['json'] }]
-      });
-      const res = await service.exportModel({ format: 'auto', destPath: 'model.json' });
-      assert.equal(res.ok, true);
-      assert.equal(calls.gltf, 0);
-      assert.equal(calls.native, 1);
-      assert.equal(calls.codec, 0);
-    }
-
-    {
-      const { service } = createHarness({
-        snapshotOverride: {
-          ...new ProjectSession().snapshot(),
-          id: 'p_auto',
-          format: null,
-          formatId: 'unknown'
-        }
-      });
-      const res = await service.exportModel({ format: 'auto', destPath: 'model.bin' });
-      assert.equal(res.ok, false);
-      if (!res.ok) {
-        assert.equal(res.error.code, 'invalid_payload');
-        assert.equal(res.error.message, EXPORT_FORMAT_AUTO_UNRESOLVED);
-      }
     }
   })()
 );

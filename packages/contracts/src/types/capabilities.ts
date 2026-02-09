@@ -60,7 +60,7 @@ export interface ToolRegistryInfo {
 }
 
 export interface ExportTargetCapability {
-  kind: 'internal' | 'native_codec';
+  kind: 'internal' | 'gltf' | 'native_codec';
   id: string;
   label: string;
   extensions?: string[];

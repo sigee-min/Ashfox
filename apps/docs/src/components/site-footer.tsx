@@ -68,7 +68,7 @@ export function SiteFooter({ locale }: SiteFooterProps) {
                 <span>{copy.docs}</span>
               </Link>
               <Link
-                href={`/${locale}/docs/users/installation`}
+                href={`/${locale}/docs/users/blockbench-plugin/installation`}
                 className="inline-flex items-center gap-2 text-fd-muted-foreground transition-colors hover:text-fd-foreground"
               >
                 <Hammer className="size-4" />
