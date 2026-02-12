@@ -11,6 +11,7 @@ import {
   PROJECT_MATCH_NAME_REQUIRED,
   PROJECT_MISMATCH,
   PROJECT_NO_ACTIVE,
+  PROJECT_UNSUPPORTED_FORMAT,
   PROJECT_UV_PIXELS_PER_BLOCK_INVALID
 } from '../src/shared/messages';
 import { createEditorStub, createFormatPortStub } from './fakes';
@@ -30,12 +31,13 @@ type ServiceHarness = {
 
 const createHarness = (options?: {
   active?: boolean;
+  activeFormatId?: string;
   setUvError?: ToolError | null;
   autoCreateProjectTexture?: boolean;
 }) : ServiceHarness => {
   const session = new ProjectSession();
   if (options?.active) {
-    const created = session.create('active', 'geckolib_model');
+    const created = session.create('active', options.activeFormatId ?? 'geckolib_model');
     assert.equal(created.ok, true);
   }
 
@@ -229,6 +231,16 @@ const createHarness = (options?: {
     assert.equal(res.value.action, 'reused');
   }
   assert.deepEqual(uvCalls, [24]);
+}
+
+{
+  const { service } = createHarness({ active: true, activeFormatId: 'image' });
+  const res = service.ensureProject({ });
+  assert.equal(res.ok, false);
+  if (!res.ok) {
+    assert.equal(res.error.code, 'unsupported_format');
+    assert.equal(res.error.message, `${PROJECT_UNSUPPORTED_FORMAT('image')}.`);
+  }
 }
 
 {

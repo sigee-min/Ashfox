@@ -5,9 +5,13 @@ import {
   PROJECT_CREATE_REQUIREMENTS,
   PROJECT_CREATE_REQUIREMENTS_ON_MISMATCH_FIX,
   PROJECT_CREATE_REQUIREMENTS_ON_MISSING_FIX,
+  PROJECT_AUTHORING_FORMAT_ID_MISSING,
+  PROJECT_AUTHORING_FORMAT_ID_MISSING_FIX,
   PROJECT_MATCH_NAME_REQUIRED,
   PROJECT_MISMATCH,
   PROJECT_NO_ACTIVE,
+  PROJECT_UNSUPPORTED_FORMAT,
+  PROJECT_FORMAT_UNSUPPORTED_FIX,
   PROJECT_UV_PIXELS_PER_BLOCK_INVALID,
 } from '../../shared/messages';
 import { DEFAULT_UV_POLICY } from '../../domain/uv/policy';
@@ -16,6 +20,8 @@ import { toDomainSnapshot, toDomainTextureUsage } from '../domainMappers';
 import type { ProjectServiceDeps } from './projectServiceTypes';
 import { runCreateProject } from './projectCreation';
 import { runDeleteProject } from './projectDeletion';
+import { isAllowedAuthoringFormatId } from '../../domain/formats';
+import { withFormatOverrideHint } from '../formatHints';
 
 type EnsureMatchMode = 'none' | 'name';
 type EnsureOnMismatch = 'reuse' | 'error' | 'create';
@@ -99,6 +105,20 @@ export class ProjectLifecycleService {
     }
     if (!info) {
       return fail({ code: 'invalid_state', message: PROJECT_NO_ACTIVE });
+    }
+    if (!info.formatId) {
+      return fail({
+        code: 'unsupported_format',
+        message: withFormatOverrideHint(PROJECT_AUTHORING_FORMAT_ID_MISSING),
+        fix: PROJECT_AUTHORING_FORMAT_ID_MISSING_FIX
+      });
+    }
+    if (!isAllowedAuthoringFormatId(info.formatId)) {
+      return fail({
+        code: 'unsupported_format',
+        message: PROJECT_UNSUPPORTED_FORMAT(info.formatId),
+        fix: PROJECT_FORMAT_UNSUPPORTED_FIX
+      });
     }
     const mismatch = this.isProjectMismatch(normalizedPayload, intent, info.name ?? null);
     if (!mismatch) {

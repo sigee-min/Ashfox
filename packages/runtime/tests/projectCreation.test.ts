@@ -5,7 +5,8 @@ import {
   ADAPTER_PROJECT_UNSAVED_CHANGES,
   PROJECT_AUTHORING_FORMAT_ID_MISSING_FIX,
   PROJECT_FORMAT_UNSUPPORTED_FIX,
-  PROJECT_NAME_REQUIRED_FIX
+  PROJECT_NAME_REQUIRED_FIX,
+  PROJECT_UNSUPPORTED_FORMAT
 } from '../src/shared/messages';
 
 type CreateCtxOptions = {
@@ -169,4 +170,50 @@ const createContext = (options: CreateCtxOptions = {}) => {
   assert.equal(createCalls(), 1);
   assert.equal(payloads[0]?.dialog?.format, 'geckolib_model');
   assert.equal(payloads[0]?.dialog?.parent, 'root');
+}
+
+{
+  const { ctx, createCalls } = createContext({
+    listFormats: [{ id: 'image', name: 'Image' }]
+  });
+  const res = runCreateProject(ctx, 'dragon');
+  assert.equal(res.ok, false);
+  if (!res.ok) {
+    assert.equal(res.error.code, 'unsupported_format');
+    assert.equal(res.error.message, `${PROJECT_UNSUPPORTED_FORMAT('image')}.`);
+  }
+  assert.equal(createCalls(), 0);
+}
+
+// SPEC-PRO-012: unresolved effective formatId can still be selected deterministically
+// when exactly one allowlist candidate exists in formats.listFormats().
+{
+  const { ctx, createCalls, payloads } = createContext({
+    listFormats: [
+      { id: 'entity_rig', name: 'Entity Rig' },
+      { id: 'image', name: 'Image' }
+    ]
+  });
+  const res = runCreateProject(ctx, 'dragon');
+  assert.equal(res.ok, true);
+  assert.equal(createCalls(), 1);
+  assert.equal(payloads[0]?.dialog?.format, 'entity_rig');
+}
+
+// SPEC-PRO-013: if multiple allowlist candidates exist and the effective format cannot be resolved,
+// the engine must reject the request (decision is ambiguous).
+{
+  const { ctx, createCalls } = createContext({
+    listFormats: [
+      { id: 'entity_rig', name: 'Entity Rig' },
+      { id: 'geckolib_model', name: 'GeckoLib' }
+    ]
+  });
+  const res = runCreateProject(ctx, 'dragon');
+  assert.equal(res.ok, false);
+  if (!res.ok) {
+    assert.equal(res.error.code, 'unsupported_format');
+    assert.equal(res.error.fix, PROJECT_AUTHORING_FORMAT_ID_MISSING_FIX);
+  }
+  assert.equal(createCalls(), 0);
 }

@@ -1,4 +1,4 @@
-import { resolveFormatId } from '../../domain/formats';
+import { isAllowedAuthoringFormatId, resolveFormatId } from '../../domain/formats';
 import { withFormatOverrideHint } from '../formatHints';
 import { buildProjectDialogDefaults } from '../../domain/project/projectDialogDefaults';
 import { ensureNonBlankString } from '../../shared/payloadValidation';
@@ -7,6 +7,7 @@ import {
   PROJECT_AUTHORING_FORMAT_ID_MISSING,
   PROJECT_AUTHORING_FORMAT_ID_MISSING_FIX,
   PROJECT_AUTHORING_NOT_ENABLED,
+  PROJECT_UNSUPPORTED_FORMAT,
   PROJECT_FORMAT_UNSUPPORTED_FIX,
   PROJECT_NAME_REQUIRED_FIX,
 } from '../../shared/messages';
@@ -42,16 +43,28 @@ export const runCreateProject = (
       fix: PROJECT_FORMAT_UNSUPPORTED_FIX
     });
   }
-  const formatId = resolveFormatId(
-    ctx.formats.listFormats(),
+  const formats = ctx.formats.listFormats();
+  const resolved = resolveFormatId(
+    formats,
     ctx.policies.formatOverrides,
     ctx.formats.getActiveFormatId()
   );
+  const allowedCandidates = Array.from(
+    new Set(formats.map((format) => format.id).filter((id) => isAllowedAuthoringFormatId(id)))
+  );
+  const formatId = resolved ?? (allowedCandidates.length === 1 ? allowedCandidates[0] : null);
   if (!formatId) {
     return fail({
       code: 'unsupported_format',
       message: withFormatOverrideHint(PROJECT_AUTHORING_FORMAT_ID_MISSING),
       fix: PROJECT_AUTHORING_FORMAT_ID_MISSING_FIX
+    });
+  }
+  if (!isAllowedAuthoringFormatId(formatId)) {
+    return fail({
+      code: 'unsupported_format',
+      message: PROJECT_UNSUPPORTED_FORMAT(formatId),
+      fix: PROJECT_FORMAT_UNSUPPORTED_FIX
     });
   }
   const explicitConfirmDiscard = options?.confirmDiscard;

@@ -4,6 +4,11 @@ export type FormatOverrides = {
   formatId?: string;
 };
 
+// Gecko-compatible authoring profile is defined by an allowlist of Blockbench format IDs.
+// Keep this list tight; it is used as a hard gate for authoring and some export paths.
+export const ALLOWED_AUTHORING_FORMAT_IDS = ['entity_rig', 'geckolib_model', 'geckolib'] as const;
+export type AllowedAuthoringFormatId = (typeof ALLOWED_AUTHORING_FORMAT_IDS)[number];
+
 export function resolveFormatId(
   formats: FormatDescriptor[],
   overrides?: FormatOverrides,
@@ -40,6 +45,14 @@ const normalizeFormatId = (value: string | null | undefined): string | null => {
   if (!value) return null;
   const trimmed = String(value).trim();
   return trimmed.length > 0 ? trimmed : null;
+};
+
+export const isAllowedAuthoringFormatId = (
+  value: string | null | undefined
+): value is AllowedAuthoringFormatId => {
+  const normalized = normalizeFormatId(value);
+  if (!normalized) return false;
+  return (ALLOWED_AUTHORING_FORMAT_IDS as readonly string[]).includes(normalized);
 };
 
 const existsFormat = (formats: FormatDescriptor[], id: string): boolean =>

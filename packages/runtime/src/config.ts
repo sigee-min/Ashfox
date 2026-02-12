@@ -1,6 +1,6 @@
 import { AuthoringCapability, Capabilities, Limits, PreviewCapability } from '@ashfox/contracts/types/internal';
 import { FormatDescriptor } from './ports/formats';
-import { FormatOverrides, resolveFormatId } from './domain/formats';
+import { FormatOverrides, isAllowedAuthoringFormatId, resolveFormatId } from './domain/formats';
 import { TEXTURE_WORKFLOW_INSTRUCTIONS } from './shared/tooling/toolInstructions';
 import { TOOL_SCHEMA_VERSION as CONTRACT_TOOL_SCHEMA_VERSION } from '@ashfox/contracts/mcpSchemas/policy';
 
@@ -69,10 +69,19 @@ const computeAuthoringCapability = (
   overrides?: FormatOverrides
 ): AuthoringCapability => {
   const resolved = resolveFormatId(formats, overrides);
-  const descriptor = resolved ? formats.find((format) => format.id === resolved) : undefined;
+  const allowedCandidates = Array.from(
+    new Set(formats.map((format) => format.id).filter((id) => isAllowedAuthoringFormatId(id)))
+  );
+  const selected =
+    resolved && isAllowedAuthoringFormatId(resolved)
+      ? resolved
+      : resolved === null && allowedCandidates.length === 1
+        ? allowedCandidates[0]
+        : null;
+  const descriptor = selected ? formats.find((format) => format.id === selected) : undefined;
   const flags = normalizeFormatFlags(descriptor);
   const animations = resolveAnimations(DEFAULT_AUTHORING_CAPABILITY.animations, descriptor);
-  return { animations, enabled: Boolean(resolved), ...(flags ? { flags } : {}) };
+  return { animations, enabled: Boolean(selected), ...(flags ? { flags } : {}) };
 };
 
 const normalizeFormatFlags = (
