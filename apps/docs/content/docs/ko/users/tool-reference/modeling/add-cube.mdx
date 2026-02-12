@@ -1,6 +1,6 @@
 ---
 title: 큐브 추가
-description: "큐브 추가 도구 레퍼런스. 입력 스키마, 필드 제약, 요청/응답 예시를 제공합니다."
+description: "새 큐브를 추가합니다."
 ---
 
 ## 빠른 요약
@@ -112,23 +112,23 @@ description: "큐브 추가 도구 레퍼런스. 입력 스키마, 필드 제약
 ## 필드 레퍼런스
 | Field | Type | 필수 | 설명 | 제약 |
 | --- | --- | --- | --- | --- |
-| `id` | `string` | ❌ | - | - |
-| `name` | `string` | ✅ | - | - |
-| `from` | `array<number>` | ✅ | - | minItems: 3, maxItems: 3 |
-| `to` | `array<number>` | ✅ | - | minItems: 3, maxItems: 3 |
-| `origin` | `array<number>` | ❌ | - | minItems: 3, maxItems: 3 |
-| `rotation` | `array<number>` | ❌ | - | minItems: 3, maxItems: 3 |
-| `bone` | `string` | ❌ | - | - |
-| `boneId` | `string` | ❌ | - | - |
-| `inflate` | `number` | ❌ | - | - |
-| `mirror` | `boolean` | ❌ | - | - |
-| `visibility` | `boolean` | ❌ | - | - |
-| `boxUv` | `boolean` | ❌ | - | - |
-| `uvOffset` | `array<number>` | ❌ | - | minItems: 2, maxItems: 2 |
-| `ifRevision` | `string` | ❌ | - | - |
-| `includeState` | `boolean` | ❌ | - | - |
-| `includeDiff` | `boolean` | ❌ | - | - |
-| `diffDetail` | `enum("summary", "full")` | ❌ | - | enum: "summary", "full" |
+| `id` | `string` | ❌ | 스키마에 별도 설명이 없습니다. | 추가 제약이 선언되지 않았습니다. |
+| `name` | `string` | ✅ | 스키마에 별도 설명이 없습니다. | 추가 제약이 선언되지 않았습니다. |
+| `from` | `array<number>` | ✅ | 스키마에 별도 설명이 없습니다. | minItems: 3, maxItems: 3 |
+| `to` | `array<number>` | ✅ | 스키마에 별도 설명이 없습니다. | minItems: 3, maxItems: 3 |
+| `origin` | `array<number>` | ❌ | 스키마에 별도 설명이 없습니다. | minItems: 3, maxItems: 3 |
+| `rotation` | `array<number>` | ❌ | 스키마에 별도 설명이 없습니다. | minItems: 3, maxItems: 3 |
+| `bone` | `string` | ❌ | 스키마에 별도 설명이 없습니다. | 추가 제약이 선언되지 않았습니다. |
+| `boneId` | `string` | ❌ | 스키마에 별도 설명이 없습니다. | 추가 제약이 선언되지 않았습니다. |
+| `inflate` | `number` | ❌ | 스키마에 별도 설명이 없습니다. | 추가 제약이 선언되지 않았습니다. |
+| `mirror` | `boolean` | ❌ | 스키마에 별도 설명이 없습니다. | 추가 제약이 선언되지 않았습니다. |
+| `visibility` | `boolean` | ❌ | 스키마에 별도 설명이 없습니다. | 추가 제약이 선언되지 않았습니다. |
+| `boxUv` | `boolean` | ❌ | 스키마에 별도 설명이 없습니다. | 추가 제약이 선언되지 않았습니다. |
+| `uvOffset` | `array<number>` | ❌ | 스키마에 별도 설명이 없습니다. | minItems: 2, maxItems: 2 |
+| `ifRevision` | `string` | ❌ | 스키마에 별도 설명이 없습니다. | 추가 제약이 선언되지 않았습니다. |
+| `includeState` | `boolean` | ❌ | 스키마에 별도 설명이 없습니다. | 추가 제약이 선언되지 않았습니다. |
+| `includeDiff` | `boolean` | ❌ | 스키마에 별도 설명이 없습니다. | 추가 제약이 선언되지 않았습니다. |
+| `diffDetail` | `enum("summary", "full")` | ❌ | 스키마에 별도 설명이 없습니다. | enum: "summary", "full" |
 
 ## 최소 요청 예시
 ```json
@@ -148,6 +148,8 @@ description: "큐브 추가 도구 레퍼런스. 입력 스키마, 필드 제약
 ```
 
 ## 응답 예시
+이 응답은 스키매틱 예시입니다. 실제 값과 선택 필드는 프로젝트 상태 및 런타임 버전에 따라 달라질 수 있습니다.
+
 ```json
 {
   "structuredContent": {
@@ -158,6 +160,6 @@ description: "큐브 추가 도구 레퍼런스. 입력 스키마, 필드 제약
 ```
 
 ## 운영 노트
-- 변경 도구는 `ifRevision` 사용을 권장합니다.
-- 스키마에 없는 필드는 보내지 마세요 (strict schema).
-- `validate`로 최종 상태를 확인한 후 `export`를 수행하세요.
+- 입력 스키마에 선언된 필드만 전송하세요.
+- 응답 예시는 스키매틱이므로 선택 필드는 방어적으로 처리하세요.
+- 변경 도구에서 지원되는 경우 `ifRevision`을 사용해 충돌을 줄이세요.

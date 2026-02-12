@@ -1,6 +1,6 @@
 ---
 title: 텍스처 할당
-description: "텍스처 할당 도구 레퍼런스. 입력 스키마, 필드 제약, 요청/응답 예시를 제공합니다."
+description: "선택한 큐브/페이스에 텍스처를 연결합니다."
 ---
 
 ## 빠른 요약
@@ -78,15 +78,15 @@ description: "텍스처 할당 도구 레퍼런스. 입력 스키마, 필드 제
 ## 필드 레퍼런스
 | Field | Type | 필수 | 설명 | 제약 |
 | --- | --- | --- | --- | --- |
-| `textureId` | `string` | ❌ | - | - |
-| `textureName` | `string` | ❌ | - | - |
-| `cubeIds` | `array<string>` | ❌ | Limit to these cube ids. If cubeNames is also provided, both must match. | - |
-| `cubeNames` | `array<string>` | ❌ | Limit to these cube names. If cubeIds is also provided, both must match. | - |
-| `faces` | `array<enum("north", "south", "east", "west", "up", "down")>` | ❌ | - | minItems: 1 |
-| `ifRevision` | `string` | ❌ | - | - |
-| `includeState` | `boolean` | ❌ | - | - |
-| `includeDiff` | `boolean` | ❌ | - | - |
-| `diffDetail` | `enum("summary", "full")` | ❌ | - | enum: "summary", "full" |
+| `textureId` | `string` | ❌ | 스키마에 별도 설명이 없습니다. | 추가 제약이 선언되지 않았습니다. |
+| `textureName` | `string` | ❌ | 스키마에 별도 설명이 없습니다. | 추가 제약이 선언되지 않았습니다. |
+| `cubeIds` | `array<string>` | ❌ | Limit to these cube ids. If cubeNames is also provided, both must match. | 추가 제약이 선언되지 않았습니다. |
+| `cubeNames` | `array<string>` | ❌ | Limit to these cube names. If cubeIds is also provided, both must match. | 추가 제약이 선언되지 않았습니다. |
+| `faces` | `array<enum("north", "south", "east", "west", "up", "down")>` | ❌ | 스키마에 별도 설명이 없습니다. | minItems: 1 |
+| `ifRevision` | `string` | ❌ | 스키마에 별도 설명이 없습니다. | 추가 제약이 선언되지 않았습니다. |
+| `includeState` | `boolean` | ❌ | 스키마에 별도 설명이 없습니다. | 추가 제약이 선언되지 않았습니다. |
+| `includeDiff` | `boolean` | ❌ | 스키마에 별도 설명이 없습니다. | 추가 제약이 선언되지 않았습니다. |
+| `diffDetail` | `enum("summary", "full")` | ❌ | 스키마에 별도 설명이 없습니다. | enum: "summary", "full" |
 
 ## 최소 요청 예시
 ```json
@@ -99,6 +99,8 @@ description: "텍스처 할당 도구 레퍼런스. 입력 스키마, 필드 제
 ```
 
 ## 응답 예시
+이 응답은 스키매틱 예시입니다. 실제 값과 선택 필드는 프로젝트 상태 및 런타임 버전에 따라 달라질 수 있습니다.
+
 ```json
 {
   "structuredContent": {
@@ -109,6 +111,6 @@ description: "텍스처 할당 도구 레퍼런스. 입력 스키마, 필드 제
 ```
 
 ## 운영 노트
-- 변경 도구는 `ifRevision` 사용을 권장합니다.
-- 스키마에 없는 필드는 보내지 마세요 (strict schema).
-- `validate`로 최종 상태를 확인한 후 `export`를 수행하세요.
+- 입력 스키마에 선언된 필드만 전송하세요.
+- 응답 예시는 스키매틱이므로 선택 필드는 방어적으로 처리하세요.
+- 변경 도구에서 지원되는 경우 `ifRevision`을 사용해 충돌을 줄이세요.

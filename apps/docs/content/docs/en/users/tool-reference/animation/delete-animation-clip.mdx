@@ -1,6 +1,6 @@
 ---
 title: Delete Animation Clip
-description: "delete_animation_clip reference with schema, field constraints, and request/response examples."
+description: "Deletes an animation clip by id/name (or ids/names for bulk removal)."
 ---
 
 ## Quick Summary
@@ -63,14 +63,14 @@ Deletes an animation clip by id/name (or ids/names for bulk removal).
 ## Field Reference
 | Field | Type | Required | Description | Constraints |
 | --- | --- | --- | --- | --- |
-| `id` | `string` | ❌ | - | - |
-| `name` | `string` | ❌ | - | - |
-| `ids` | `array<string>` | ❌ | - | minItems: 1 |
-| `names` | `array<string>` | ❌ | - | minItems: 1 |
-| `ifRevision` | `string` | ❌ | - | - |
-| `includeState` | `boolean` | ❌ | - | - |
-| `includeDiff` | `boolean` | ❌ | - | - |
-| `diffDetail` | `enum("summary", "full")` | ❌ | - | enum: "summary", "full" |
+| `id` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `name` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `ids` | `array<string>` | ❌ | Not specified in schema. | minItems: 1 |
+| `names` | `array<string>` | ❌ | Not specified in schema. | minItems: 1 |
+| `ifRevision` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `includeState` | `boolean` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `includeDiff` | `boolean` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `diffDetail` | `enum("summary", "full")` | ❌ | Not specified in schema. | enum: "summary", "full" |
 
 ## Minimal Request Example
 ```json
@@ -80,6 +80,8 @@ Deletes an animation clip by id/name (or ids/names for bulk removal).
 ```
 
 ## Response Example
+This response is a schematic example. Actual values and optional fields vary by project state and runtime version.
+
 ```json
 {
   "structuredContent": {
@@ -95,6 +97,6 @@ Deletes an animation clip by id/name (or ids/names for bulk removal).
 ```
 
 ## Operational Notes
-- Use `ifRevision` for mutation calls when available.
-- Do not send fields outside the declared schema.
-- Run `validate` before `export` for release safety.
+- Send only fields declared in the input schema.
+- Treat the response example as schematic, and handle optional fields defensively.
+- For mutating tools, use `ifRevision` when the tool supports it.

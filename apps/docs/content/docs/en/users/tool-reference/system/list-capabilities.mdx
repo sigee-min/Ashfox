@@ -1,6 +1,6 @@
 ---
 title: List Capabilities
-description: "list_capabilities reference with schema, field constraints, and request/response examples."
+description: "Returns plugin capabilities and limits. Tool schemas are strict (extra fields are rejected)."
 ---
 
 ## Quick Summary
@@ -31,6 +31,8 @@ This tool has no input fields.
 ```
 
 ## Response Example
+This response is a schematic example. Actual values and optional fields vary by project state and runtime version.
+
 ```json
 {
   "structuredContent": {
@@ -53,6 +55,6 @@ This tool has no input fields.
 ```
 
 ## Operational Notes
-- Use `ifRevision` for mutation calls when available.
-- Do not send fields outside the declared schema.
-- Run `validate` before `export` for release safety.
+- Send only fields declared in the input schema.
+- Treat the response example as schematic, and handle optional fields defensively.
+- For mutating tools, use `ifRevision` when the tool supports it.

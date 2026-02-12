@@ -1,6 +1,6 @@
 ---
 title: Assign Texture
-description: "assign_texture reference with schema, field constraints, and request/response examples."
+description: "Binds a texture to cubes/faces (no UV edits)."
 ---
 
 ## Quick Summary
@@ -78,15 +78,15 @@ Binds a texture to cubes/faces (no UV edits).
 ## Field Reference
 | Field | Type | Required | Description | Constraints |
 | --- | --- | --- | --- | --- |
-| `textureId` | `string` | ❌ | - | - |
-| `textureName` | `string` | ❌ | - | - |
-| `cubeIds` | `array<string>` | ❌ | Limit to these cube ids. If cubeNames is also provided, both must match. | - |
-| `cubeNames` | `array<string>` | ❌ | Limit to these cube names. If cubeIds is also provided, both must match. | - |
-| `faces` | `array<enum("north", "south", "east", "west", "up", "down")>` | ❌ | - | minItems: 1 |
-| `ifRevision` | `string` | ❌ | - | - |
-| `includeState` | `boolean` | ❌ | - | - |
-| `includeDiff` | `boolean` | ❌ | - | - |
-| `diffDetail` | `enum("summary", "full")` | ❌ | - | enum: "summary", "full" |
+| `textureId` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `textureName` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `cubeIds` | `array<string>` | ❌ | Limit to these cube ids. If cubeNames is also provided, both must match. | No additional constraints declared. |
+| `cubeNames` | `array<string>` | ❌ | Limit to these cube names. If cubeIds is also provided, both must match. | No additional constraints declared. |
+| `faces` | `array<enum("north", "south", "east", "west", "up", "down")>` | ❌ | Not specified in schema. | minItems: 1 |
+| `ifRevision` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `includeState` | `boolean` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `includeDiff` | `boolean` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `diffDetail` | `enum("summary", "full")` | ❌ | Not specified in schema. | enum: "summary", "full" |
 
 ## Minimal Request Example
 ```json
@@ -99,6 +99,8 @@ Binds a texture to cubes/faces (no UV edits).
 ```
 
 ## Response Example
+This response is a schematic example. Actual values and optional fields vary by project state and runtime version.
+
 ```json
 {
   "structuredContent": {
@@ -109,6 +111,6 @@ Binds a texture to cubes/faces (no UV edits).
 ```
 
 ## Operational Notes
-- Use `ifRevision` for mutation calls when available.
-- Do not send fields outside the declared schema.
-- Run `validate` before `export` for release safety.
+- Send only fields declared in the input schema.
+- Treat the response example as schematic, and handle optional fields defensively.
+- For mutating tools, use `ifRevision` when the tool supports it.

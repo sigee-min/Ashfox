@@ -1,6 +1,6 @@
 ---
 title: Set Trigger Keyframes
-description: "set_trigger_keyframes reference with schema, field constraints, and request/response examples."
+description: "Sets trigger keyframes (sound/particle/timeline), one key per call."
 ---
 
 ## Quick Summary
@@ -81,16 +81,16 @@ Sets trigger keyframes (sound/particle/timeline), one key per call.
 ## Field Reference
 | Field | Type | Required | Description | Constraints |
 | --- | --- | --- | --- | --- |
-| `clipId` | `string` | ❌ | - | - |
-| `clip` | `string` | ✅ | - | - |
-| `channel` | `enum("sound", "particle", "timeline")` | ✅ | - | enum: "sound", "particle", "timeline" |
-| `keys` | `array<object>` | ✅ | - | minItems: 1, maxItems: 1 |
-| `keys[].time` | `number` | ✅ | - | - |
-| `keys[].value` | `any` | ✅ | - | - |
-| `ifRevision` | `string` | ❌ | - | - |
-| `includeState` | `boolean` | ❌ | - | - |
-| `includeDiff` | `boolean` | ❌ | - | - |
-| `diffDetail` | `enum("summary", "full")` | ❌ | - | enum: "summary", "full" |
+| `clipId` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `clip` | `string` | ✅ | Not specified in schema. | No additional constraints declared. |
+| `channel` | `enum("sound", "particle", "timeline")` | ✅ | Not specified in schema. | enum: "sound", "particle", "timeline" |
+| `keys` | `array<object>` | ✅ | Not specified in schema. | minItems: 1, maxItems: 1 |
+| `keys[].time` | `number` | ✅ | Not specified in schema. | No additional constraints declared. |
+| `keys[].value` | `any` | ✅ | Not specified in schema. | No additional constraints declared. |
+| `ifRevision` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `includeState` | `boolean` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `includeDiff` | `boolean` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `diffDetail` | `enum("summary", "full")` | ❌ | Not specified in schema. | enum: "summary", "full" |
 
 ## Minimal Request Example
 ```json
@@ -107,6 +107,8 @@ Sets trigger keyframes (sound/particle/timeline), one key per call.
 ```
 
 ## Response Example
+This response is a schematic example. Actual values and optional fields vary by project state and runtime version.
+
 ```json
 {
   "structuredContent": {
@@ -117,6 +119,6 @@ Sets trigger keyframes (sound/particle/timeline), one key per call.
 ```
 
 ## Operational Notes
-- Use `ifRevision` for mutation calls when available.
-- Do not send fields outside the declared schema.
-- Run `validate` before `export` for release safety.
+- Send only fields declared in the input schema.
+- Treat the response example as schematic, and handle optional fields defensively.
+- For mutating tools, use `ifRevision` when the tool supports it.

@@ -56,7 +56,7 @@ Static quality checks:
 npm run quality:check
 npm run quality:deadcode
 npm run quality:audit
-npm run release:validate
+npm run quality:coverage
 ```
 
 ## 4) Docs Build
@@ -98,11 +98,9 @@ Related references:
 
 ## 8) Release Workflow
 
-Release automation runs from `.github/workflows/release-please.yml` using manual dispatch.
+Release automation runs from `.github/workflows/release.yml` using manual dispatch.
 
-- `prepare`: create or update release PR
-- `publish`: publish GitHub Release from merged release PR
+- `publish`: run quality/build steps and publish GitHub Release
 
 Before running release workflows, complete the public checklist:
 - `apps/docs/content/docs/en/contributors/project/release-public-checklist.mdx`
-

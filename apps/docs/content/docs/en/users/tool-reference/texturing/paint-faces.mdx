@@ -1,6 +1,6 @@
 ---
 title: Paint Faces
-description: "paint_faces reference with schema, field constraints, and request/response examples."
+description: "Paints one cube face with one drawing op (UV handled internally). Default coordSpace=face; use coordSpace=texture with width/height for texture-space coordinates."
 ---
 
 ## Quick Summary
@@ -229,33 +229,33 @@ Paints one cube face with one drawing op (UV handled internally). Default coordS
 ## Field Reference
 | Field | Type | Required | Description | Constraints |
 | --- | --- | --- | --- | --- |
-| `textureId` | `string` | ❌ | - | - |
-| `textureName` | `string` | ❌ | - | - |
-| `target` | `object` | ✅ | - | additionalProperties=false |
-| `target.cubeId` | `string` | ❌ | - | - |
-| `target.cubeName` | `string` | ❌ | - | - |
+| `textureId` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `textureName` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `target` | `object` | ✅ | Not specified in schema. | additionalProperties=false |
+| `target.cubeId` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `target.cubeName` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
 | `target.face` | `enum("north", "south", "east", "west", "up", "down")` | ❌ | Optional face filter. Omit to apply to all cube faces. | enum: "north", "south", "east", "west", "up", "down" |
-| `coordSpace` | `enum("face", "texture")` | ❌ | - | enum: "face", "texture" |
-| `width` | `number` | ❌ | - | - |
-| `height` | `number` | ❌ | - | - |
-| `op` | `object` | ✅ | - | additionalProperties=false |
+| `coordSpace` | `enum("face", "texture")` | ❌ | Not specified in schema. | enum: "face", "texture" |
+| `width` | `number` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `height` | `number` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `op` | `object` | ✅ | Not specified in schema. | additionalProperties=false |
 | `op.op` | `enum("set_pixel", "fill_rect", "draw_rect", "draw_line")` | ✅ | Drawing operation. Coordinates are in source-canvas pixels (not UV pixels). | enum: "set_pixel", "fill_rect", "draw_rect", "draw_line" |
-| `op.x` | `number` | ❌ | X coordinate (pixels). | - |
-| `op.y` | `number` | ❌ | Y coordinate (pixels). | - |
-| `op.width` | `number` | ❌ | Width (pixels). | - |
-| `op.height` | `number` | ❌ | Height (pixels). | - |
-| `op.x1` | `number` | ❌ | Line start X (pixels). | - |
-| `op.y1` | `number` | ❌ | Line start Y (pixels). | - |
-| `op.x2` | `number` | ❌ | Line end X (pixels). | - |
-| `op.y2` | `number` | ❌ | Line end Y (pixels). | - |
-| `op.color` | `string` | ❌ | Color in hex (e.g., "#ff00aa" or "#ff00aaff"). | - |
-| `op.lineWidth` | `number` | ❌ | Stroke width (pixels). | - |
+| `op.x` | `number` | ❌ | X coordinate (pixels). | No additional constraints declared. |
+| `op.y` | `number` | ❌ | Y coordinate (pixels). | No additional constraints declared. |
+| `op.width` | `number` | ❌ | Width (pixels). | No additional constraints declared. |
+| `op.height` | `number` | ❌ | Height (pixels). | No additional constraints declared. |
+| `op.x1` | `number` | ❌ | Line start X (pixels). | No additional constraints declared. |
+| `op.y1` | `number` | ❌ | Line start Y (pixels). | No additional constraints declared. |
+| `op.x2` | `number` | ❌ | Line end X (pixels). | No additional constraints declared. |
+| `op.y2` | `number` | ❌ | Line end Y (pixels). | No additional constraints declared. |
+| `op.color` | `string` | ❌ | Color in hex (e.g., "#ff00aa" or "#ff00aaff"). | No additional constraints declared. |
+| `op.lineWidth` | `number` | ❌ | Stroke width (pixels). | No additional constraints declared. |
 | `op.shade` | `boolean \| object` | ❌ | Fill shading for fill_rect. Defaults to enabled; set false (or enabled:false) to disable. Object values tune the effect. | anyOf(2) |
-| `mapping` | `enum("stretch", "tile")` | ❌ | - | enum: "stretch", "tile" |
-| `ifRevision` | `string` | ❌ | - | - |
-| `includeState` | `boolean` | ❌ | - | - |
-| `includeDiff` | `boolean` | ❌ | - | - |
-| `diffDetail` | `enum("summary", "full")` | ❌ | - | enum: "summary", "full" |
+| `mapping` | `enum("stretch", "tile")` | ❌ | Not specified in schema. | enum: "stretch", "tile" |
+| `ifRevision` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `includeState` | `boolean` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `includeDiff` | `boolean` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `diffDetail` | `enum("summary", "full")` | ❌ | Not specified in schema. | enum: "summary", "full" |
 
 ## Conditional Rules
 ### `anyOf`
@@ -304,6 +304,8 @@ Paints one cube face with one drawing op (UV handled internally). Default coordS
 ```
 
 ## Response Example
+This response is a schematic example. Actual values and optional fields vary by project state and runtime version.
+
 ```json
 {
   "structuredContent": {
@@ -316,6 +318,6 @@ Paints one cube face with one drawing op (UV handled internally). Default coordS
 ```
 
 ## Operational Notes
-- Use `ifRevision` for mutation calls when available.
-- Do not send fields outside the declared schema.
-- Run `validate` before `export` for release safety.
+- Send only fields declared in the input schema.
+- Treat the response example as schematic, and handle optional fields defensively.
+- For mutating tools, use `ifRevision` when the tool supports it.

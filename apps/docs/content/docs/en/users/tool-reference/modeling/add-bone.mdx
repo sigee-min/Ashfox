@@ -1,6 +1,6 @@
 ---
 title: Add Bone
-description: "add_bone reference with schema, field constraints, and request/response examples."
+description: "Adds a bone to the current project."
 ---
 
 ## Quick Summary
@@ -85,18 +85,18 @@ Adds a bone to the current project.
 ## Field Reference
 | Field | Type | Required | Description | Constraints |
 | --- | --- | --- | --- | --- |
-| `id` | `string` | ❌ | - | - |
-| `name` | `string` | ✅ | - | - |
-| `parent` | `string` | ❌ | - | - |
-| `parentId` | `string` | ❌ | - | - |
-| `pivot` | `array<number>` | ❌ | - | minItems: 3, maxItems: 3 |
-| `rotation` | `array<number>` | ❌ | - | minItems: 3, maxItems: 3 |
-| `scale` | `array<number>` | ❌ | - | minItems: 3, maxItems: 3 |
-| `visibility` | `boolean` | ❌ | - | - |
-| `ifRevision` | `string` | ❌ | - | - |
-| `includeState` | `boolean` | ❌ | - | - |
-| `includeDiff` | `boolean` | ❌ | - | - |
-| `diffDetail` | `enum("summary", "full")` | ❌ | - | enum: "summary", "full" |
+| `id` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `name` | `string` | ✅ | Not specified in schema. | No additional constraints declared. |
+| `parent` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `parentId` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `pivot` | `array<number>` | ❌ | Not specified in schema. | minItems: 3, maxItems: 3 |
+| `rotation` | `array<number>` | ❌ | Not specified in schema. | minItems: 3, maxItems: 3 |
+| `scale` | `array<number>` | ❌ | Not specified in schema. | minItems: 3, maxItems: 3 |
+| `visibility` | `boolean` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `ifRevision` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `includeState` | `boolean` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `includeDiff` | `boolean` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `diffDetail` | `enum("summary", "full")` | ❌ | Not specified in schema. | enum: "summary", "full" |
 
 ## Minimal Request Example
 ```json
@@ -106,6 +106,8 @@ Adds a bone to the current project.
 ```
 
 ## Response Example
+This response is a schematic example. Actual values and optional fields vary by project state and runtime version.
+
 ```json
 {
   "structuredContent": {
@@ -116,6 +118,6 @@ Adds a bone to the current project.
 ```
 
 ## Operational Notes
-- Use `ifRevision` for mutation calls when available.
-- Do not send fields outside the declared schema.
-- Run `validate` before `export` for release safety.
+- Send only fields declared in the input schema.
+- Treat the response example as schematic, and handle optional fields defensively.
+- For mutating tools, use `ifRevision` when the tool supports it.

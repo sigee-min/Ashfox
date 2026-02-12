@@ -1,6 +1,6 @@
 ---
 title: Export Trace Log
-description: "export_trace_log reference with schema, field constraints, and request/response examples."
+description: "Flushes the trace log to disk (writeFile/export) and returns the resource URI for the in-memory log."
 ---
 
 ## Quick Summary
@@ -41,9 +41,9 @@ Flushes the trace log to disk (writeFile/export) and returns the resource URI fo
 ## Field Reference
 | Field | Type | Required | Description | Constraints |
 | --- | --- | --- | --- | --- |
-| `mode` | `enum("auto", "writeFile", "export")` | ❌ | - | enum: "auto", "writeFile", "export" |
-| `destPath` | `string` | ❌ | - | - |
-| `fileName` | `string` | ❌ | - | - |
+| `mode` | `enum("auto", "writeFile", "export")` | ❌ | Not specified in schema. | enum: "auto", "writeFile", "export" |
+| `destPath` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `fileName` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
 
 ## Minimal Request Example
 ```json
@@ -51,6 +51,8 @@ Flushes the trace log to disk (writeFile/export) and returns the resource URI fo
 ```
 
 ## Response Example
+This response is a schematic example. Actual values and optional fields vary by project state and runtime version.
+
 ```json
 {
   "structuredContent": {}
@@ -58,6 +60,6 @@ Flushes the trace log to disk (writeFile/export) and returns the resource URI fo
 ```
 
 ## Operational Notes
-- Use `ifRevision` for mutation calls when available.
-- Do not send fields outside the declared schema.
-- Run `validate` before `export` for release safety.
+- Send only fields declared in the input schema.
+- Treat the response example as schematic, and handle optional fields defensively.
+- For mutating tools, use `ifRevision` when the tool supports it.

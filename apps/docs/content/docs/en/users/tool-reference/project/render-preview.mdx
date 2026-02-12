@@ -1,6 +1,6 @@
 ---
 title: Render Preview
-description: "render_preview reference with schema, field constraints, and request/response examples."
+description: "Renders a preview image. fixed -> single (optional angle). turntable -> sequence. Returns MCP image content blocks (base64 PNG) plus structured metadata without dataUri. Set saveToTmp=true to write snapshots into .ashfox/tmp for manual upload fallback. See ashfox://guide/vision-fallback via resources/read. Single returns result.image; sequence returns result.frames[]. Example(single): \\{\"mode\":\"fixed\",\"output\":\"single\",\"angle\":[30,45,0]\\} Example(sequence): \\{\"mode\":\"turntable\",\"output\":\"sequence\",\"durationSeconds\":2,\"fps\":12\\}"
 ---
 
 ## Quick Summary
@@ -77,18 +77,18 @@ Renders a preview image. fixed -> single (optional angle). turntable -> sequence
 ## Field Reference
 | Field | Type | Required | Description | Constraints |
 | --- | --- | --- | --- | --- |
-| `mode` | `enum("fixed", "turntable")` | ✅ | - | enum: "fixed", "turntable" |
-| `angle` | `array<number>` | ❌ | - | minItems: 2, maxItems: 3 |
-| `clip` | `string` | ❌ | - | - |
-| `timeSeconds` | `number` | ❌ | - | - |
-| `durationSeconds` | `number` | ❌ | - | - |
-| `fps` | `number` | ❌ | - | - |
-| `output` | `enum("single", "sequence")` | ❌ | - | enum: "single", "sequence" |
-| `saveToTmp` | `boolean` | ❌ | - | - |
-| `tmpName` | `string` | ❌ | - | - |
-| `tmpPrefix` | `string` | ❌ | - | - |
-| `includeState` | `boolean` | ❌ | - | - |
-| `ifRevision` | `string` | ❌ | - | - |
+| `mode` | `enum("fixed", "turntable")` | ✅ | Not specified in schema. | enum: "fixed", "turntable" |
+| `angle` | `array<number>` | ❌ | Not specified in schema. | minItems: 2, maxItems: 3 |
+| `clip` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `timeSeconds` | `number` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `durationSeconds` | `number` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `fps` | `number` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `output` | `enum("single", "sequence")` | ❌ | Not specified in schema. | enum: "single", "sequence" |
+| `saveToTmp` | `boolean` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `tmpName` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `tmpPrefix` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `includeState` | `boolean` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `ifRevision` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
 
 ## Minimal Request Example
 ```json
@@ -98,6 +98,8 @@ Renders a preview image. fixed -> single (optional angle). turntable -> sequence
 ```
 
 ## Response Example
+This response is a schematic example. Actual values and optional fields vary by project state and runtime version.
+
 ```json
 {
   "structuredContent": {
@@ -108,6 +110,6 @@ Renders a preview image. fixed -> single (optional angle). turntable -> sequence
 ```
 
 ## Operational Notes
-- Use `ifRevision` for mutation calls when available.
-- Do not send fields outside the declared schema.
-- Run `validate` before `export` for release safety.
+- Send only fields declared in the input schema.
+- Treat the response example as schematic, and handle optional fields defensively.
+- For mutating tools, use `ifRevision` when the tool supports it.

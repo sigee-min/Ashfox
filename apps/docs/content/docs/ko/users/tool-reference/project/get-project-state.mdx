@@ -1,6 +1,6 @@
 ---
 title: 프로젝트 상태 조회
-description: "프로젝트 상태 조회 도구 레퍼런스. 입력 스키마, 필드 제약, 요청/응답 예시를 제공합니다."
+description: "현재 프로젝트의 구조, 텍스처, 애니메이션 상태를 읽기 전용으로 조회합니다."
 ---
 
 ## 빠른 요약
@@ -38,8 +38,8 @@ description: "프로젝트 상태 조회 도구 레퍼런스. 입력 스키마, 
 ## 필드 레퍼런스
 | Field | Type | 필수 | 설명 | 제약 |
 | --- | --- | --- | --- | --- |
-| `detail` | `enum("summary", "full")` | ❌ | - | enum: "summary", "full" |
-| `includeUsage` | `boolean` | ❌ | Include textureUsage in the response (defaults to true when detail=full). | - |
+| `detail` | `enum("summary", "full")` | ❌ | 스키마에 별도 설명이 없습니다. | enum: "summary", "full" |
+| `includeUsage` | `boolean` | ❌ | Include textureUsage in the response (defaults to true when detail=full). | 추가 제약이 선언되지 않았습니다. |
 
 ## 최소 요청 예시
 ```json
@@ -47,6 +47,8 @@ description: "프로젝트 상태 조회 도구 레퍼런스. 입력 스키마, 
 ```
 
 ## 응답 예시
+이 응답은 스키매틱 예시입니다. 실제 값과 선택 필드는 프로젝트 상태 및 런타임 버전에 따라 달라질 수 있습니다.
+
 ```json
 {
   "structuredContent": {
@@ -68,6 +70,6 @@ description: "프로젝트 상태 조회 도구 레퍼런스. 입력 스키마, 
 ```
 
 ## 운영 노트
-- 변경 도구는 `ifRevision` 사용을 권장합니다.
-- 스키마에 없는 필드는 보내지 마세요 (strict schema).
-- `validate`로 최종 상태를 확인한 후 `export`를 수행하세요.
+- 입력 스키마에 선언된 필드만 전송하세요.
+- 응답 예시는 스키매틱이므로 선택 필드는 방어적으로 처리하세요.
+- 변경 도구에서 지원되는 경우 `ifRevision`을 사용해 충돌을 줄이세요.

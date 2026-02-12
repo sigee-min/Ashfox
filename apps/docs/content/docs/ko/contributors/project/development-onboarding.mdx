@@ -56,7 +56,7 @@ npm run quality
 npm run quality:check
 npm run quality:deadcode
 npm run quality:audit
-npm run release:validate
+npm run quality:coverage
 ```
 
 ## 4) Docs 빌드
@@ -99,10 +99,9 @@ docker compose up --build
 
 ## 8) 릴리즈 워크플로우
 
-릴리즈 자동화는 `.github/workflows/release-please.yml`의 수동 실행으로 동작합니다.
+릴리즈 자동화는 `.github/workflows/release.yml`의 수동 실행으로 동작합니다.
 
-- `prepare`: release PR 생성/업데이트
-- `publish`: 머지된 release PR 기준 GitHub Release 발행
+- `publish`: 품질/빌드 검증 후 GitHub Release 발행
 
 워크플로우 실행 전에는 공개 체크리스트를 완료하세요.
 

@@ -1,6 +1,6 @@
 ---
 title: Read Texture
-description: "read_texture reference with schema, field constraints, and request/response examples."
+description: "Reads a texture image (dataUri + metadata) or saves a snapshot to .ashfox/tmp."
 ---
 
 ## Quick Summary
@@ -42,11 +42,11 @@ Reads a texture image (dataUri + metadata) or saves a snapshot to .ashfox/tmp.
 ## Field Reference
 | Field | Type | Required | Description | Constraints |
 | --- | --- | --- | --- | --- |
-| `id` | `string` | ❌ | - | - |
-| `name` | `string` | ❌ | - | - |
-| `saveToTmp` | `boolean` | ❌ | - | - |
-| `tmpName` | `string` | ❌ | - | - |
-| `tmpPrefix` | `string` | ❌ | - | - |
+| `id` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `name` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `saveToTmp` | `boolean` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `tmpName` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
+| `tmpPrefix` | `string` | ❌ | Not specified in schema. | No additional constraints declared. |
 
 ## Minimal Request Example
 ```json
@@ -56,6 +56,8 @@ Reads a texture image (dataUri + metadata) or saves a snapshot to .ashfox/tmp.
 ```
 
 ## Response Example
+This response is a schematic example. Actual values and optional fields vary by project state and runtime version.
+
 ```json
 {
   "structuredContent": {
@@ -68,6 +70,6 @@ Reads a texture image (dataUri + metadata) or saves a snapshot to .ashfox/tmp.
 ```
 
 ## Operational Notes
-- Use `ifRevision` for mutation calls when available.
-- Do not send fields outside the declared schema.
-- Run `validate` before `export` for release safety.
+- Send only fields declared in the input schema.
+- Treat the response example as schematic, and handle optional fields defensively.
+- For mutating tools, use `ifRevision` when the tool supports it.

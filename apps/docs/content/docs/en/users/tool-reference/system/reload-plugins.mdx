@@ -1,6 +1,6 @@
 ---
 title: Reload Plugins
-description: "reload_plugins reference with schema, field constraints, and request/response examples."
+description: "Reloads Blockbench plugins (confirm required)."
 ---
 
 ## Quick Summary
@@ -36,8 +36,8 @@ Reloads Blockbench plugins (confirm required).
 ## Field Reference
 | Field | Type | Required | Description | Constraints |
 | --- | --- | --- | --- | --- |
-| `confirm` | `boolean` | ✅ | - | - |
-| `delayMs` | `number` | ❌ | - | - |
+| `confirm` | `boolean` | ✅ | Not specified in schema. | No additional constraints declared. |
+| `delayMs` | `number` | ❌ | Not specified in schema. | No additional constraints declared. |
 
 ## Minimal Request Example
 ```json
@@ -47,6 +47,8 @@ Reloads Blockbench plugins (confirm required).
 ```
 
 ## Response Example
+This response is a schematic example. Actual values and optional fields vary by project state and runtime version.
+
 ```json
 {
   "structuredContent": {
@@ -58,6 +60,6 @@ Reloads Blockbench plugins (confirm required).
 ```
 
 ## Operational Notes
-- Use `ifRevision` for mutation calls when available.
-- Do not send fields outside the declared schema.
-- Run `validate` before `export` for release safety.
+- Send only fields declared in the input schema.
+- Treat the response example as schematic, and handle optional fields defensively.
+- For mutating tools, use `ifRevision` when the tool supports it.
