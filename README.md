@@ -251,7 +251,6 @@ Core scripts:
 | `npm run quality:deadcode` | Fail on unused exports |
 | `npm run quality:coverage` | Enforce coverage thresholds |
 | `npm run quality:audit` | Run dependency vulnerability audit |
-| `npm run docs:generate:tools` | Regenerate tool reference pages from schemas |
 | `npm run spec:sync` | Refresh Blockbench spec snapshot used by tests |
 
 Docs site build (workspace-local):

@@ -22,7 +22,6 @@
     "build:ashfox": "npm --workspace @ashfox/ashfox run build",
     "dev:gateway": "npm --workspace @ashfox/mcp-gateway run dev",
     "dev:worker": "npm --workspace @ashfox/worker run dev",
-    "docs:generate:tools": "node ./scripts/docs/generate-tool-pages.js",
     "docs:quality": "node ./scripts/docs/quality/check.js",
     "test:unit": "npm --workspace @ashfox/runtime run test",
     "test:conformance": "npm --workspace @ashfox/conformance run test",
