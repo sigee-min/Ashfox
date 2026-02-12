@@ -59,7 +59,7 @@ const withGlobalsAsync = async (overrides: TestGlobals, run: () => Promise<void>
 {
   const adapter = new BlockbenchExport(noopLog);
   withGlobals({}, () => {
-    const error = adapter.exportNative({ formatId: 'geckolib', destPath: 'out.json' });
+    const error = adapter.exportNative({ formatId: 'entity_rig', destPath: 'out.json' });
     assert.equal(error?.code, 'not_implemented');
   });
 }
@@ -74,7 +74,7 @@ const withGlobalsAsync = async (overrides: TestGlobals, run: () => Promise<void>
       Formats: {}
     },
     () => {
-      const error = adapter.exportNative({ formatId: 'geckolib', destPath: 'out.json' });
+      const error = adapter.exportNative({ formatId: 'entity_rig', destPath: 'out.json' });
       assert.equal(error?.code, 'not_implemented');
     }
   );
@@ -102,7 +102,7 @@ const withGlobalsAsync = async (overrides: TestGlobals, run: () => Promise<void>
       }
     },
     () => {
-      const error = adapter.exportNative({ formatId: 'geckolib', destPath: 'bound-format.json' });
+      const error = adapter.exportNative({ formatId: 'entity_rig', destPath: 'bound-format.json' });
       assert.equal(error, null);
     }
   );
@@ -134,7 +134,7 @@ const withGlobalsAsync = async (overrides: TestGlobals, run: () => Promise<void>
       }
     },
     () => {
-      const error = adapter.exportNative({ formatId: 'geckolib', destPath: 'bound-codec.json' });
+      const error = adapter.exportNative({ formatId: 'entity_rig', destPath: 'bound-codec.json' });
       assert.equal(error, null);
     }
   );
@@ -154,7 +154,7 @@ const withGlobalsAsync = async (overrides: TestGlobals, run: () => Promise<void>
       }
     },
     () => {
-      const error = adapter.exportNative({ formatId: 'geckolib', destPath: 'out.json' });
+      const error = adapter.exportNative({ formatId: 'entity_rig', destPath: 'out.json' });
       assert.equal(error?.code, 'not_implemented');
     }
   );
@@ -172,7 +172,7 @@ const withGlobalsAsync = async (overrides: TestGlobals, run: () => Promise<void>
       }
     },
     () => {
-      const error = adapter.exportNative({ formatId: 'geckolib', destPath: 'out.json' });
+      const error = adapter.exportNative({ formatId: 'entity_rig', destPath: 'out.json' });
       assert.equal(error?.code, 'not_implemented');
     }
   );
@@ -193,7 +193,7 @@ const withGlobalsAsync = async (overrides: TestGlobals, run: () => Promise<void>
       }
     },
     () => {
-      const error = adapter.exportNative({ formatId: 'geckolib', destPath: 'out.json' });
+      const error = adapter.exportNative({ formatId: 'entity_rig', destPath: 'out.json' });
       assert.equal(error, null);
     }
   );
@@ -218,7 +218,7 @@ const withGlobalsAsync = async (overrides: TestGlobals, run: () => Promise<void>
       }
     },
     () => {
-      const error = adapter.exportNative({ formatId: 'geckolib', destPath: 'outdir/' });
+      const error = adapter.exportNative({ formatId: 'entity_rig', destPath: 'outdir/' });
       assert.equal(error, null);
     }
   );
@@ -245,7 +245,7 @@ const withGlobalsAsync = async (overrides: TestGlobals, run: () => Promise<void>
       }
     },
     () => {
-      const error = adapter.exportNative({ formatId: 'geckolib', destPath: 'codec.json' });
+      const error = adapter.exportNative({ formatId: 'entity_rig', destPath: 'codec.json' });
       assert.equal(error, null);
     }
   );
@@ -267,7 +267,7 @@ const withGlobalsAsync = async (overrides: TestGlobals, run: () => Promise<void>
       }
     },
     () => {
-      const error = adapter.exportNative({ formatId: 'geckolib', destPath: 'out.json' });
+      const error = adapter.exportNative({ formatId: 'entity_rig', destPath: 'out.json' });
       assert.equal(error?.code, 'io_error');
       assert.equal(error?.message.includes('compile boom'), true);
     }

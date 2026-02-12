@@ -23,7 +23,7 @@ const createHarness = (options?: {
   deleteBoneError?: { code: string; message: string };
 }): BoneHarness => {
   const session = new ProjectSession();
-  session.create('Java Block/Item', 'demo');
+  session.create('demo');
   const baseEditor = createEditorStub();
   const calls = {
     addBone: 0,

@@ -49,7 +49,7 @@ const withGlobals = (overrides: TestGlobals, run: () => void) => {
           animation_mode: true,
           bone_rig: true
         },
-        java_block: {}
+        entity_rig: {}
       },
       Format: { id: 'geckolib' }
     },
@@ -64,7 +64,7 @@ const withGlobals = (overrides: TestGlobals, run: () => void) => {
         animationMode: true,
         boneRig: true
       });
-      assert.deepEqual(formats[1], { id: 'java_block', name: 'java_block' });
+      assert.deepEqual(formats[1], { id: 'entity_rig', name: 'entity_rig' });
       assert.equal(adapter.getActiveFormatId(), 'geckolib');
     }
   );
@@ -76,16 +76,16 @@ const withGlobals = (overrides: TestGlobals, run: () => void) => {
     {
       ModelFormat: {
         formats: {
-          animated_java: { name: 'Animated Java', single_texture: false }
+          entity_alt: { name: 'Entity Alt', single_texture: false }
         },
-        selected: { id: 'animated_java' }
+        selected: { id: 'entity_alt' }
       }
     },
     () => {
       const formats = adapter.listFormats();
       assert.equal(formats.length, 1);
-      assert.deepEqual(formats[0], { id: 'animated_java', name: 'Animated Java', singleTexture: false });
-      assert.equal(adapter.getActiveFormatId(), 'animated_java');
+      assert.deepEqual(formats[0], { id: 'entity_alt', name: 'Entity Alt', singleTexture: false });
+      assert.equal(adapter.getActiveFormatId(), 'entity_alt');
     }
   );
 }
@@ -95,9 +95,8 @@ const withGlobals = (overrides: TestGlobals, run: () => void) => {
   withGlobals(
     {
       Formats: {
-        free: {
-          name: 'Generic Model',
-          meshes: true,
+        entity_rig: {
+          name: 'Entity Rig',
           armature_rig: true,
           bone_rig: true,
           animation_mode: true,
@@ -105,22 +104,21 @@ const withGlobals = (overrides: TestGlobals, run: () => void) => {
           uv_rotation: true
         }
       },
-      Format: { id: 'free' }
+      Format: { id: 'entity_rig' }
     },
     () => {
       const formats = adapter.listFormats();
       assert.equal(formats.length, 1);
       assert.deepEqual(formats[0], {
-        id: 'free',
-        name: 'Generic Model',
+        id: 'entity_rig',
+        name: 'Entity Rig',
         optionalBoxUv: true,
         uvRotation: true,
         animationMode: true,
         boneRig: true,
-        armatureRig: true,
-        meshes: true
+        armatureRig: true
       });
-      assert.equal(adapter.getActiveFormatId(), 'free');
+      assert.equal(adapter.getActiveFormatId(), 'entity_rig');
     }
   );
 }

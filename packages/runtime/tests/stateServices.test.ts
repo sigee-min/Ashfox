@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 
 import { diffSnapshots } from '../src/domain/project/diff';
-import { resolveFormatId, matchesFormatKind } from '../src/domain/formats';
+import { resolveFormatId } from '../src/domain/formats';
 import { RevisionStore } from '../src/domain/revision/revisionStore';
 import { mergeSnapshots } from '../src/domain/project/snapshotMerge';
 import { resolveTextureSize } from '../src/domain/textureUtils';
@@ -26,8 +26,7 @@ import type { SessionState } from '../src/session';
 
 const baseSnapshot: SessionState = {
   id: 'p1',
-  format: 'Java Block/Item',
-  formatId: 'java_block',
+  formatId: 'geckolib_model',
   name: 'demo',
   dirty: false,
   bones: [{ name: 'bone', pivot: [0, 0, 0] }],
@@ -84,18 +83,26 @@ assert.equal(merged.name, 'live');
 assert.equal(merged.animations.length, nextSnapshot.animations.length);
 
 const formatId = resolveFormatId(
-  'Java Block/Item',
   [
-    { id: 'java_block', name: 'Java Block' },
-    { id: 'gecko', name: 'GeckoLib' },
+    { id: 'entity_rig', name: 'Entity Rig' },
+    { id: 'rig_aux', name: 'Rig Aux', boneRig: true, animationMode: true },
     { id: 'free', name: 'Generic Model' }
   ],
-  { 'Java Block/Item': 'java_block' }
+  { formatId: 'entity_rig' }
 );
-assert.equal(formatId, 'java_block');
-assert.equal(matchesFormatKind('Java Block/Item', 'java_block'), true);
-assert.equal(resolveFormatId('Generic Model', [{ id: 'free', name: 'Generic Model' }]), 'free');
-assert.equal(matchesFormatKind('Generic Model', 'free'), true);
+assert.equal(formatId, 'entity_rig');
+assert.equal(resolveFormatId([{ id: 'free', name: 'Generic Model' }]), 'free');
+assert.equal(
+  resolveFormatId(
+    [
+      { id: 'rig_a', name: 'Rig A', boneRig: true, animationMode: true },
+      { id: 'rig_b', name: 'Rig B', boneRig: true, animationMode: true }
+    ],
+    undefined,
+    'rig_b'
+  ),
+  'rig_b'
+);
 
 assert.equal(parseDataUriMimeType('data:image/png;base64,AAAA'), 'image/png');
 assert.equal(normalizeTextureDataUri('AAAA').startsWith('data:image/png;base64,'), true);
@@ -145,6 +152,3 @@ const uvOob = validateUvBounds([0, 0, 32, 32], { width: 16, height: 16 }, undefi
 assert.ok(uvOob && !uvOob.ok && uvOob.error.details?.reason === 'out_of_bounds');
 const uvOrder = validateUvBounds([4, 4, 2, 2], { width: 16, height: 16 }, undefined, uvBoundsMessages);
 assert.ok(uvOrder && !uvOrder.ok && uvOrder.error.details?.reason === 'order');
-
-
-

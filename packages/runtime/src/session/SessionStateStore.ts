@@ -1,4 +1,4 @@
-import type { FormatKind, ToolError, ToolResponse } from '@ashfox/contracts/types/internal';
+import type { ToolError, ToolResponse } from '@ashfox/contracts/types/internal';
 import { err } from '../shared/tooling/toolResponse';
 import { PROJECT_NO_ACTIVE } from '../shared/messages';
 import type { SessionState } from './types';
@@ -7,7 +7,6 @@ import { cloneAnimations } from './clone';
 
 const createEmptyState = (policy = resolveAnimationTimePolicy()): SessionState => ({
   id: null,
-  format: null,
   formatId: null,
   name: null,
   dirty: undefined,
@@ -24,12 +23,14 @@ const createEmptyState = (policy = resolveAnimationTimePolicy()): SessionState =
 export class SessionStateStore {
   private state: SessionState = createEmptyState();
 
-  create(format: FormatKind, name: string, formatId?: string | null): ToolResponse<{ id: string; format: FormatKind; name: string }> {
+  create(
+    name: string,
+    formatId?: string | null
+  ): ToolResponse<{ id: string; name: string }> {
     const id = `${Date.now()}`;
     const animationTimePolicy = { ...this.state.animationTimePolicy };
     this.state = {
       id,
-      format,
       formatId: formatId ?? null,
       name,
       dirty: undefined,
@@ -42,20 +43,18 @@ export class SessionStateStore {
       animationsStatus: 'available',
       animationTimePolicy
     };
-    return { ok: true, data: { id, format, name } };
+    return { ok: true, data: { id, name } };
   }
 
-  attach(snapshot: SessionState): ToolResponse<{ id: string; format: FormatKind; name: string | null }> {
-    if (!snapshot.format) {
-      return err<{ id: string; format: FormatKind; name: string | null }>('invalid_state', PROJECT_NO_ACTIVE);
+  attach(snapshot: SessionState): ToolResponse<{ id: string; name: string | null }> {
+    if (!hasProjectData(snapshot)) {
+      return err<{ id: string; name: string | null }>('invalid_state', PROJECT_NO_ACTIVE);
     }
     const id = snapshot.id ?? `${Date.now()}`;
-    const format = snapshot.format;
     const name = snapshot.name ?? null;
     const animationTimePolicy = resolveAnimationTimePolicy(snapshot.animationTimePolicy ?? this.state.animationTimePolicy);
     this.state = {
       id,
-      format,
       formatId: snapshot.formatId ?? null,
       name,
       dirty: snapshot.dirty,
@@ -68,7 +67,7 @@ export class SessionStateStore {
       animationsStatus: snapshot.animationsStatus ?? 'available',
       animationTimePolicy
     };
-    return { ok: true, data: { id, format, name } };
+    return { ok: true, data: { id, name } };
   }
 
   reset(): ToolResponse<{ ok: true }> {
@@ -90,7 +89,7 @@ export class SessionStateStore {
   }
 
   ensureActive(): ToolError | null {
-    if (!this.state.id || !this.state.format) {
+    if (!hasProjectData(this.state)) {
       return { code: 'invalid_state', message: PROJECT_NO_ACTIVE, details: { reason: 'no_active_project' } };
     }
     return null;
@@ -113,3 +112,14 @@ export class SessionStateStore {
   }
 }
 
+const hasProjectData = (snapshot: SessionState): boolean =>
+  Boolean(
+    snapshot.id ||
+    snapshot.formatId ||
+    snapshot.name ||
+    snapshot.bones.length > 0 ||
+    snapshot.cubes.length > 0 ||
+    (snapshot.meshes?.length ?? 0) > 0 ||
+    snapshot.textures.length > 0 ||
+    snapshot.animations.length > 0
+  );

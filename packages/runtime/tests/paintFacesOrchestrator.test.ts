@@ -16,7 +16,7 @@ import {
 const capabilities: Capabilities = {
   pluginVersion: 'test',
   blockbenchVersion: 'test',
-  formats: [{ format: 'geckolib', animations: true, enabled: true, flags: { singleTexture: true } }],
+  authoring: { animations: true, enabled: true, flags: { singleTexture: true } },
   limits: { maxCubes: 256, maxTextureSize: 256, maxAnimationSeconds: 120 }
 };
 
@@ -73,7 +73,7 @@ const createContext = (options?: {
     ensureRevisionMatch: () => null,
     getSnapshot: () => ({
       id: 'p1',
-      format: 'geckolib',
+      format: 'entity_rig',
       formatId: 'geckolib_model',
       name: options?.projectName === undefined ? 'atlas' : options.projectName,
       dirty: false,

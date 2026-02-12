@@ -7,7 +7,7 @@
     }
   },
   "project": {
-    "format": "geckolib",
+    "format": "entity_rig",
     "name": "Recovery Large Model",
     "textureResolution": {
       "width": 16,

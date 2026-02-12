@@ -10,8 +10,7 @@ import {
   getActiveFormatId,
   getProjectDirty,
   getProjectId,
-  getProjectName,
-  guessFormatKind
+  getProjectName
 } from './snapshot/projectMeta';
 import { resolveAnimationTimePolicy } from '../../domain/animation/timePolicy';
 import { normalizePixelsPerBlock } from '../../domain/uv/policy';
@@ -34,7 +33,6 @@ export class BlockbenchSnapshot implements SnapshotPort {
       const animations: SessionState['animations'] = [];
       const globals = readGlobals();
       const formatId = getActiveFormatId(globals);
-      const format = guessFormatKind(formatId);
       const name = getProjectName(globals);
       const project = globals.Project ?? globals.Blockbench?.project ?? null;
       const id = getProjectId(globals);
@@ -83,7 +81,6 @@ export class BlockbenchSnapshot implements SnapshotPort {
 
       return {
         id,
-        format,
         formatId,
         name,
         dirty,
@@ -103,7 +100,6 @@ export class BlockbenchSnapshot implements SnapshotPort {
     }
   }
 }
-
 
 
 

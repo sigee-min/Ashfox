@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 
-import type { Capabilities } from '../src/types';
 import { ConsoleLogger } from '../src/logging';
 import { ProjectSession } from '../src/session';
 import { registerCodecs } from '../src/plugin/runtimeCodecs';
@@ -36,16 +35,9 @@ const withGlobals = (overrides: TestGlobals, run: () => void) => {
   }
 };
 
-const createCapabilities = (format: 'geckolib'): Capabilities => ({
-  pluginVersion: 'test',
-  blockbenchVersion: 'test',
-  formats: [{ format, animations: true, enabled: true }],
-  limits: { maxCubes: 64, maxTextureSize: 256, maxAnimationSeconds: 120 }
-});
-
 {
   const session = new ProjectSession();
-  const created = session.create('geckolib', 'dragon', 'geckolib_model');
+  const created = session.create('dragon', 'geckolib_model');
   assert.equal(created.ok, true);
   const events: string[] = [];
   const registered: Array<Record<string, unknown>> = [];
@@ -76,10 +68,9 @@ const createCapabilities = (format: 'geckolib'): Capabilities => ({
     },
     () => {
       registerCodecs({
-        capabilities: createCapabilities('geckolib'),
         session,
         formats: {
-          listFormats: () => [{ id: 'geckolib', name: 'GeckoLib' }],
+          listFormats: () => [{ id: 'entity_rig', name: 'GeckoLib' }],
           getActiveFormatId: () => null
         } as never,
         formatOverrides: {},
@@ -87,7 +78,9 @@ const createCapabilities = (format: 'geckolib'): Capabilities => ({
         logger: new ConsoleLogger('unit', () => 'error')
       });
       assert.equal(registered.length, 1);
-      const compiled = registered[0].compile as () => string;
+      const geckoCodec = registered.find((entry) => String(entry.name).includes('_entity_rig'));
+      assert.ok(geckoCodec);
+      const compiled = geckoCodec!.compile as () => string;
       const out = compiled();
       assert.equal(typeof out, 'string');
       assert.equal(out.includes('"ok":true') || out.includes('"ok": true'), true);
@@ -99,7 +92,7 @@ const createCapabilities = (format: 'geckolib'): Capabilities => ({
 
 {
   const session = new ProjectSession();
-  const created = session.create('geckolib', 'dragon', 'geckolib_model');
+  const created = session.create('dragon', 'geckolib_model');
   assert.equal(created.ok, true);
   const registered: Array<Record<string, unknown>> = [];
 
@@ -120,10 +113,9 @@ const createCapabilities = (format: 'geckolib'): Capabilities => ({
     },
     () => {
       registerCodecs({
-        capabilities: createCapabilities('geckolib'),
         session,
         formats: {
-          listFormats: () => [{ id: 'geckolib', name: 'GeckoLib' }],
+          listFormats: () => [{ id: 'entity_rig', name: 'GeckoLib' }],
           getActiveFormatId: () => null
         } as never,
         formatOverrides: {},
@@ -138,4 +130,3 @@ const createCapabilities = (format: 'geckolib'): Capabilities => ({
     }
   );
 }
-

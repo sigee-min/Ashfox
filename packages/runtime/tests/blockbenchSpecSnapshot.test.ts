@@ -16,4 +16,3 @@ assert.equal((defaults?.width ?? 0) > 0, true);
 assert.equal((defaults?.height ?? 0) > 0, true);
 
 assert.equal(snapshot.aliases?.geckolib, 'geckolib');
-

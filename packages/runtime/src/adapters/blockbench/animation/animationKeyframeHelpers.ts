@@ -66,7 +66,45 @@ export const sanitizeClipKeyframes = <T extends { keyframes?: unknown[] }>(clip:
   sanitizeKeyframeList(clip.keyframes);
 };
 
-const buildKeyframeValueData = (value: unknown, interp?: string): Record<string, unknown> => {
+type TransformKeyframeMeta = {
+  interp?: string;
+  easing?: string;
+  easingArgs?: unknown[];
+  pre?: [number, number, number];
+  post?: [number, number, number];
+  bezier?: Record<string, unknown>;
+};
+
+const normalizeMeta = (
+  meta?: TransformKeyframeMeta | string
+): TransformKeyframeMeta | undefined => {
+  if (!meta) return undefined;
+  if (typeof meta === 'string') return { interp: meta };
+  return meta;
+};
+
+const sanitizeVec3 = (
+  value: [number, number, number] | undefined
+): [number, number, number] | undefined => {
+  if (!value) return undefined;
+  return value.map((entry) => (typeof entry === 'number' && Number.isFinite(entry) ? entry : 0)) as [
+    number,
+    number,
+    number
+  ];
+};
+
+const applyKeyframeMeta = (data: Record<string, unknown>, meta?: TransformKeyframeMeta) => {
+  if (!meta) return;
+  if (meta.interp) data.interpolation = meta.interp;
+  if (meta.easing) data.easing = meta.easing;
+  if (Array.isArray(meta.easingArgs)) data.easingArgs = [...meta.easingArgs];
+  if (meta.pre) data.pre = sanitizeVec3(meta.pre);
+  if (meta.post) data.post = sanitizeVec3(meta.post);
+  if (meta.bezier && typeof meta.bezier === 'object') data.bezier = { ...meta.bezier };
+};
+
+const buildKeyframeValueData = (value: unknown, meta?: TransformKeyframeMeta): Record<string, unknown> => {
   const data: Record<string, unknown> = {};
   if (Array.isArray(value)) {
     const normalized = value.map((entry) =>
@@ -74,7 +112,7 @@ const buildKeyframeValueData = (value: unknown, interp?: string): Record<string,
     );
     data.data_points = [{ x: normalized[0], y: normalized[1], z: normalized[2] }];
   }
-  if (interp) data.interpolation = interp;
+  applyKeyframeMeta(data, meta);
   return data;
 };
 
@@ -99,9 +137,10 @@ export const createTransformKeyframe = (
   channel: string,
   time: number,
   value: unknown,
-  interp?: string
+  meta?: TransformKeyframeMeta | string
 ): { keyframe?: KeyframeLike; error?: unknown } => {
-  const valueData = buildKeyframeValueData(value, interp);
+  const normalizedMeta = normalizeMeta(meta);
+  const valueData = buildKeyframeValueData(value, normalizedMeta);
   const numericTime = Number(time);
   const resolvedTime = Number.isFinite(numericTime) ? numericTime : 0;
   let lastError: unknown = null;
@@ -172,7 +211,12 @@ export const findExistingKeyframes = (
   return matches;
 };
 
-export const applyKeyframeValue = (keyframe: KeyframeLike, value: unknown, interp?: string) => {
+export const applyKeyframeValue = (
+  keyframe: KeyframeLike,
+  value: unknown,
+  meta?: TransformKeyframeMeta | string
+) => {
+  const normalizedMeta = normalizeMeta(meta);
   if (!Array.isArray(value)) return;
   const normalized = value.map((entry) => (typeof entry === 'number' && Number.isFinite(entry) ? entry : 0));
   if (keyframe.set) {
@@ -187,7 +231,8 @@ export const applyKeyframeValue = (keyframe: KeyframeLike, value: unknown, inter
   } else {
     keyframe.data_points = [{ x: normalized[0], y: normalized[1], z: normalized[2] }];
   }
-  if (interp) keyframe.interpolation = interp;
+  const target = keyframe as Record<string, unknown>;
+  applyKeyframeMeta(target, normalizedMeta);
 };
 
 export const applyTriggerValue = (keyframe: KeyframeLike, value: unknown) => {

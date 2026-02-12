@@ -49,7 +49,7 @@ const withGlobals = (overrides: TestGlobals, run: () => void) =>
     },
     () => {
       const adapter = new BlockbenchProjectAdapter(logger);
-      const err = adapter.createProject('demo', 'fmt', 'geckolib');
+      const err = adapter.createProject('demo', 'fmt');
       assert.deepEqual(err, { code: 'not_implemented', message: ADAPTER_PROJECT_CREATE_UNAVAILABLE });
     }
   );
@@ -71,7 +71,7 @@ const withGlobals = (overrides: TestGlobals, run: () => void) =>
     },
     () => {
       const adapter = new BlockbenchProjectAdapter(logger);
-      const err = adapter.createProject('demo', 'fmt', 'geckolib', { confirmDiscard: false });
+      const err = adapter.createProject('demo', 'fmt', { confirmDiscard: false });
       assert.deepEqual(err, { code: 'invalid_state', message: ADAPTER_PROJECT_UNSAVED_CHANGES });
       assert.equal(newProjectCalls, 0);
     }
@@ -95,7 +95,7 @@ const withGlobals = (overrides: TestGlobals, run: () => void) =>
     },
     () => {
       const adapter = new BlockbenchProjectAdapter(logger);
-      const err = adapter.createProject('dragon', 'geckolib_model', 'geckolib');
+      const err = adapter.createProject('dragon', 'geckolib_model');
       assert.equal(err, null);
       assert.equal(formatNewCalls, 1);
       assert.equal(project.name, 'dragon');
@@ -123,9 +123,9 @@ const withGlobals = (overrides: TestGlobals, run: () => void) =>
     },
     () => {
       const adapter = new BlockbenchProjectAdapter(logger);
-      const err = adapter.createProject('wyvern', 'animated_java', 'animated_java');
+      const err = adapter.createProject('wyvern', 'entity_alt');
       assert.equal(err, null);
-      assert.equal(newProjectFormat, 'animated_java');
+      assert.equal(newProjectFormat, 'entity_alt');
       assert.equal(projectName, 'wyvern');
     }
   );
@@ -146,7 +146,7 @@ const withGlobals = (overrides: TestGlobals, run: () => void) =>
     },
     () => {
       const adapter = new BlockbenchProjectAdapter(logger);
-      const err = adapter.createProject('hydra', 'fmt', 'geckolib');
+      const err = adapter.createProject('hydra', 'fmt');
       assert.equal(err, null);
       assert.equal(modelFormatCalls, 1);
     }
@@ -173,7 +173,7 @@ const withGlobals = (overrides: TestGlobals, run: () => void) =>
     },
     () => {
       const adapter = new BlockbenchProjectAdapter(logger);
-      const err = adapter.createProject('dragon', 'geckolib_model', 'geckolib');
+      const err = adapter.createProject('dragon', 'geckolib_model');
       assert.ok(err);
       assert.equal(err?.code, 'invalid_state');
       assert.equal(err?.message, ADAPTER_PROJECT_DIALOG_INPUT_REQUIRED);
@@ -196,7 +196,7 @@ const withGlobals = (overrides: TestGlobals, run: () => void) =>
     },
     () => {
       const adapter = new BlockbenchProjectAdapter(logger);
-      const err = adapter.createProject('dragon', 'geckolib_model', 'geckolib');
+      const err = adapter.createProject('dragon', 'geckolib_model');
       assert.ok(err);
       assert.equal(err?.code, 'unknown');
       assert.equal(err?.details?.context, 'project_create');

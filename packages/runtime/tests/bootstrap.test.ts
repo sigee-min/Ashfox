@@ -9,7 +9,7 @@ import { noopLog } from './helpers';
 const capabilities: Capabilities = {
   pluginVersion: 'test',
   blockbenchVersion: 'test',
-  formats: [{ format: 'free', animations: true, enabled: true }],
+  authoring: { animations: true, enabled: true  },
   limits: { maxCubes: 32, maxTextureSize: 64, maxAnimationSeconds: 8 }
 };
 

@@ -12,7 +12,7 @@ The most reliable order is to establish project context first, then shape hierar
 
 ## Recommended flow
 
-1. Run `ensure_project` to attach or create the target project and lock in format assumptions.
+1. Run `ensure_project` to attach or create the target project and lock in authoring context.
 2. Create or confirm the bone hierarchy with `add_bone` before adding many cubes.
 3. Add geometry iteratively with `add_cube`, one semantic part at a time.
 4. Refine with `update_bone` and `update_cube` as proportions stabilize.
@@ -24,7 +24,6 @@ The sequence is intentionally incremental. One bone or cube per call keeps revis
 
 ```json
 {
-  "format": "geckolib",
   "name": "dragon",
   "onMissing": "create",
   "uvPixelsPerBlock": 16
@@ -56,6 +55,6 @@ The sequence is intentionally incremental. One bone or cube per call keeps revis
 - Include `ifRevision` on every mutation to protect against stale writes.
 - Keep bone and cube names stable when animation is planned.
 - Use bulk delete only when a subtree or set of mirrored parts should be removed together.
-- Use mesh tools only on mesh-capable formats such as Generic Model (`free`).
+- Use mesh tools only when `list_capabilities` reports `authoring.flags.meshes = true`.
 
 If textures already exist, cube add or geometry-changing cube updates can trigger internal auto-UV. That is expected behavior and usually preferable to manual UV repair.

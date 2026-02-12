@@ -27,10 +27,7 @@ Exports the current project to the requested output format (including native cod
   "properties": {
     "format": {
       "enum": [
-        "java_block_item_json",
         "gecko_geo_anim",
-        "animated_java",
-        "generic_model_json",
         "gltf",
         "native_codec"
       ]
@@ -70,7 +67,7 @@ Exports the current project to the requested output format (including native cod
 ## Field Reference
 | Field | Type | Required | Description | Constraints |
 | --- | --- | --- | --- | --- |
-| `format` | `enum("java_block_item_json", "gecko_geo_anim", "animated_java", "generic_model_json", "gltf", "native_codec")` | ✅ | Specifies the model or export format. | enum: "java_block_item_json", "gecko_geo_anim", "animated_java", "generic_model_json", "gltf", "native_codec" |
+| `format` | `enum("gecko_geo_anim", "gltf", "native_codec")` | ✅ | Specifies the model or export format. | enum: "gecko_geo_anim", "gltf", "native_codec" |
 | `codecId` | `string` | ❌ | Request parameter `codecId`. | No extra constraints beyond the declared type. |
 | `destPath` | `string` | ✅ | Destination path for writing output artifacts. | No extra constraints beyond the declared type. |
 | `options` | `object` | ❌ | Request parameter `options`. | additionalProperties=false |
@@ -82,7 +79,7 @@ Exports the current project to the requested output format (including native cod
 ## Minimal Request Example
 ```json
 {
-  "format": "java_block_item_json",
+  "format": "gecko_geo_anim",
   "destPath": "./out/model.json"
 }
 ```

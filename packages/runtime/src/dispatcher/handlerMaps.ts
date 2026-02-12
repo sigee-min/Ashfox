@@ -17,7 +17,6 @@ export type BaseResult<K extends ToolName> = K extends ToolName
 
 export const STATEFUL_TOOL_NAMES = [
   'paint_faces',
-  'paint_mesh_face',
   'ensure_project',
   'delete_texture',
   'assign_texture',
@@ -27,9 +26,6 @@ export const STATEFUL_TOOL_NAMES = [
   'add_cube',
   'update_cube',
   'delete_cube',
-  'add_mesh',
-  'update_mesh',
-  'delete_mesh',
   'create_animation_clip',
   'update_animation_clip',
   'delete_animation_clip',
@@ -62,7 +58,6 @@ export const createHandlerMaps = (args: {
 }) => {
   const statefulRetryHandlers: StatefulHandlerMap = {
     paint_faces: (payload) => args.service.paintFaces(payload),
-    paint_mesh_face: (payload) => args.service.paintMeshFace(payload),
     ensure_project: (payload) => args.service.ensureProject(payload),
     delete_texture: (payload) => args.service.deleteTexture(payload),
     assign_texture: (payload) => args.service.assignTexture(payload),
@@ -72,9 +67,6 @@ export const createHandlerMaps = (args: {
     add_cube: (payload) => args.service.addCube(payload),
     update_cube: (payload) => args.service.updateCube(payload),
     delete_cube: (payload) => args.service.deleteCube(payload),
-    add_mesh: (payload) => args.service.addMesh(payload),
-    update_mesh: (payload) => args.service.updateMesh(payload),
-    delete_mesh: (payload) => args.service.deleteMesh(payload),
     create_animation_clip: (payload) => args.service.createAnimationClip(payload),
     update_animation_clip: (payload) => args.service.updateAnimationClip(payload),
     delete_animation_clip: (payload) => args.service.deleteAnimationClip(payload),
@@ -110,4 +102,3 @@ export const createHandlerMaps = (args: {
 
   return { statefulRetryHandlers, statefulHandlers, responseHandlers };
 };
-

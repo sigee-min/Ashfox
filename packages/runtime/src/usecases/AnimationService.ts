@@ -119,9 +119,7 @@ export class AnimationService {
   }
 
   private ensureAnimationsSupported(): ToolError | null {
-    const format = this.session.snapshot().format;
-    const capability = this.capabilities.formats.find((entry) => entry.format === format);
-    if (!capability || !capability.animations) {
+    if (!this.capabilities.authoring.enabled || !this.capabilities.authoring.animations) {
       return { code: 'unsupported_format', message: ANIMATION_UNSUPPORTED_FORMAT };
     }
     return null;

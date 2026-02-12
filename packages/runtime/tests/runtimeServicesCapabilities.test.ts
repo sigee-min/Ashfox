@@ -26,7 +26,6 @@ const buildRuntime = (overrides: Record<string, unknown>) => {
   const runtime = buildRuntime({
     Formats: {
       geckolib: { name: 'GeckoLib', animation_mode: true },
-      animated_java: { name: 'Animated Java', animation_mode: true },
       java_block: { name: 'Java Block/Item', animation_mode: false },
       free: { name: 'Generic Model', animation_mode: true, meshes: true }
     },
@@ -52,7 +51,6 @@ const buildRuntime = (overrides: Record<string, unknown>) => {
   const runtime = buildRuntime({
     Formats: {
       geckolib: { name: 'GeckoLib', animation_mode: true },
-      animated_java: { name: 'Animated Java', animation_mode: true },
       java_block: { name: 'Java Block/Item', animation_mode: false },
       free: { name: 'Generic Model', animation_mode: true, meshes: true }
     },
@@ -66,4 +64,3 @@ const buildRuntime = (overrides: Record<string, unknown>) => {
   assert.equal(gltf?.available, false);
   assert.equal(native?.available, false);
 }
-

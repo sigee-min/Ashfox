@@ -4,25 +4,22 @@ import type { EditorPort } from '../ports/editor';
 import type { FormatPort } from '../ports/formats';
 import type { NativeCodecTarget } from '../ports/exporter';
 import type { ProjectSession } from '../session';
-import { ProjectStateBuilder } from '../domain/project/projectStateBuilder';
 import { fail, ok, UsecaseResult } from './result';
 import { type FormatOverrides } from '../domain/formats';
 import { withFormatOverrideHint } from './formatHints';
 import type { ExportPolicy } from './policies';
 import {
+  EXPORT_AUTHORING_FORMAT_ID_MISSING,
+  EXPORT_AUTHORING_NOT_ENABLED,
   EXPORT_CODEC_ID_EMPTY,
   EXPORT_CODEC_ID_FORBIDDEN,
   EXPORT_CODEC_ID_REQUIRED,
   EXPORT_CODEC_UNSUPPORTED,
-  EXPORT_FORMAT_ID_MISSING,
-  EXPORT_FORMAT_MISMATCH,
-  EXPORT_FORMAT_NOT_ENABLED
 } from '../shared/messages';
-import { exportFormatToCapability, mapFormatKindToDefaultExport } from '../domain/export/formatMapping';
-import { ensureExportFormatEnabled, ensureSnapshotMatchesExportFormat } from '../domain/export/guards';
+import { exportRequiresAuthoringFormat } from '../domain/export/formatMapping';
+import { ensureExportFormatEnabled } from '../domain/export/guards';
 import { resolveExportFormatId } from '../domain/export/formatId';
 import { resolveRequestedExport } from '../domain/export/requestedFormat';
-import { resolveSnapshotFormatKind } from '../domain/export/snapshotResolution';
 import { writeInternalFallbackExport } from './export/writeInternalFallback';
 import type { ResolvedExportSelection } from '../domain/export/types';
 
@@ -31,7 +28,6 @@ export interface ExportServiceDeps {
   editor: EditorPort;
   exporter: ExportPort;
   formats: FormatPort;
-  projectState: ProjectStateBuilder;
   getSnapshot: () => ReturnType<ProjectSession['snapshot']>;
   ensureActive: () => ToolError | null;
   policies: {
@@ -45,7 +41,6 @@ export class ExportService {
   private readonly editor: EditorPort;
   private readonly exporter: ExportPort;
   private readonly formats: FormatPort;
-  private readonly projectState: ProjectStateBuilder;
   private readonly getSnapshot: () => ReturnType<ProjectSession['snapshot']>;
   private readonly ensureActive: () => ToolError | null;
   private readonly policies: ExportServiceDeps['policies'];
@@ -55,7 +50,6 @@ export class ExportService {
     this.editor = deps.editor;
     this.exporter = deps.exporter;
     this.formats = deps.formats;
-    this.projectState = deps.projectState;
     this.getSnapshot = deps.getSnapshot;
     this.ensureActive = deps.ensureActive;
     this.policies = deps.policies;
@@ -85,30 +79,12 @@ export class ExportService {
 
     const requested = requestedResult.value;
     const requestedFormat = requested.format;
-    const expectedFormat = exportFormatToCapability(requestedFormat);
+    const requiresAuthoringFormat = exportRequiresAuthoringFormat(requestedFormat);
     const resolvedTarget = this.buildSelectedTarget(requested);
-    const formatGuard = ensureExportFormatEnabled(this.capabilities, expectedFormat);
+    const formatGuard = ensureExportFormatEnabled(this.capabilities, requiresAuthoringFormat);
     if (!formatGuard.ok) {
       return this.failWithExportHints(
-        { code: 'unsupported_format', message: EXPORT_FORMAT_NOT_ENABLED(formatGuard.format) },
-        snapshot,
-        nativeCodecs
-      );
-    }
-
-    const snapshotGuard = ensureSnapshotMatchesExportFormat(
-      snapshot,
-      expectedFormat,
-      (formatId) => this.projectState.matchOverrideKind(formatId)
-    );
-    if (!snapshotGuard.ok) {
-      return this.failWithExportHints(
-        {
-          code: 'invalid_payload',
-          message: snapshotGuard.needsOverrideHint
-            ? withFormatOverrideHint(EXPORT_FORMAT_MISMATCH)
-            : EXPORT_FORMAT_MISMATCH
-        },
+        { code: 'unsupported_format', message: EXPORT_AUTHORING_NOT_ENABLED },
         snapshot,
         nativeCodecs
       );
@@ -135,22 +111,29 @@ export class ExportService {
       return this.withExportHintsResult(result, snapshot, nativeCodecs, codecId);
     }
 
-    if (requestedFormat === 'generic_model_json') {
-      return writeInternalFallbackExport(this.editor, requestedFormat, payload.destPath, snapshot, {
-        selectedTarget: resolvedTarget,
-        stage: 'done'
-      });
-    }
-
     const formatId = resolveExportFormatId(
       snapshot,
-      expectedFormat,
+      requiresAuthoringFormat,
       this.formats.listFormats(),
-      this.policies.formatOverrides
+      this.policies.formatOverrides,
+      this.formats.getActiveFormatId()
     );
     if (!formatId) {
+      if (exportPolicy === 'best_effort') {
+        const fallbackResult = writeInternalFallbackExport(
+          this.editor,
+          requestedFormat,
+          payload.destPath,
+          snapshot,
+          {
+            selectedTarget: resolvedTarget,
+            stage: 'fallback'
+          }
+        );
+        return this.withExportHintsResult(fallbackResult, snapshot, nativeCodecs);
+      }
       return this.failWithExportHints(
-        { code: 'unsupported_format', message: withFormatOverrideHint(EXPORT_FORMAT_ID_MISSING) },
+        { code: 'unsupported_format', message: withFormatOverrideHint(EXPORT_AUTHORING_FORMAT_ID_MISSING) },
         snapshot,
         nativeCodecs
       );
@@ -268,17 +251,11 @@ export class ExportService {
   }
 
   private recommendExportTarget(
-    snapshot: ReturnType<ProjectSession['snapshot']>,
+    _snapshot: ReturnType<ProjectSession['snapshot']>,
     availableTargets: Array<{ kind: string; id: string; label: string; extensions?: string[] }>
   ): { kind: string; id: string; label: string; extensions?: string[] } | null {
     if (availableTargets.length === 0) return null;
-    const formatKind = resolveSnapshotFormatKind(snapshot, (formatId) => this.projectState.matchOverrideKind(formatId));
-    const preferredId = formatKind ? mapFormatKindToDefaultExport(formatKind) : null;
-    if (preferredId) {
-      const preferred = availableTargets.find((target) => target.id === preferredId);
-      if (preferred) return preferred;
-    }
-    const order = ['gecko_geo_anim', 'java_block_item_json', 'animated_java', 'generic_model_json', 'gltf', 'native_codec'];
+    const order = ['gecko_geo_anim', 'gltf', 'native_codec'];
     for (const id of order) {
       const found = availableTargets.find((target) => target.id === id);
       if (found) return found;
@@ -316,7 +293,3 @@ const normalizeCodecToken = (value: string): string =>
   String(value)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '');
-
-
-
-

@@ -9,7 +9,7 @@ import { createEditorStub } from './fakes';
 const capabilities: Capabilities = {
   pluginVersion: 'test',
   blockbenchVersion: 'test',
-  formats: [{ format: 'Java Block/Item', animations: true, enabled: true, flags: { singleTexture: true } }],
+  authoring: { animations: true, enabled: true, flags: { singleTexture: true } },
   limits: { maxCubes: 64, maxTextureSize: 64, maxAnimationSeconds: 5 }
 };
 

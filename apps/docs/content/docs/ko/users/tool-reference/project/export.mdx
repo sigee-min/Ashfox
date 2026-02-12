@@ -27,10 +27,7 @@ summary: "대상 포맷으로 결과물을 내보내 파이프라인 후속 단�
   "properties": {
     "format": {
       "enum": [
-        "java_block_item_json",
         "gecko_geo_anim",
-        "animated_java",
-        "generic_model_json",
         "gltf",
         "native_codec"
       ]
@@ -70,7 +67,7 @@ summary: "대상 포맷으로 결과물을 내보내 파이프라인 후속 단�
 ## 필드 레퍼런스
 | Field | Type | 필수 | 설명 | 제약 |
 | --- | --- | --- | --- | --- |
-| `format` | `enum("java_block_item_json", "gecko_geo_anim", "animated_java", "generic_model_json", "gltf", "native_codec")` | ✅ | 모델 또는 내보내기 포맷을 지정합니다. | enum: "java_block_item_json", "gecko_geo_anim", "animated_java", "generic_model_json", "gltf", "native_codec" |
+| `format` | `enum("gecko_geo_anim", "gltf", "native_codec")` | ✅ | 모델 또는 내보내기 포맷을 지정합니다. | enum: "gecko_geo_anim", "gltf", "native_codec" |
 | `codecId` | `string` | ❌ | `codecId` 요청 파라미터입니다. | 선언된 타입 외 추가 제약은 없습니다. |
 | `destPath` | `string` | ✅ | 산출물 저장 경로를 지정합니다. | 선언된 타입 외 추가 제약은 없습니다. |
 | `options` | `object` | ❌ | `options` 요청 파라미터입니다. | additionalProperties=false |
@@ -82,7 +79,7 @@ summary: "대상 포맷으로 결과물을 내보내 파이프라인 후속 단�
 ## 최소 요청 예시
 ```json
 {
-  "format": "java_block_item_json",
+  "format": "gecko_geo_anim",
   "destPath": "./out/model.json"
 }
 ```

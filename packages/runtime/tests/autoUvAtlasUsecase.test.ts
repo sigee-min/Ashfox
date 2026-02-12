@@ -23,7 +23,7 @@ type UsageTexture = {
 const baseCapabilities: Capabilities = {
   pluginVersion: 'test',
   blockbenchVersion: 'test',
-  formats: [{ format: 'geckolib', animations: true, enabled: true, flags: { singleTexture: true } }],
+  authoring: { animations: true, enabled: true, flags: { singleTexture: true } },
   limits: { maxCubes: 512, maxTextureSize: 256, maxAnimationSeconds: 120 }
 };
 
@@ -52,7 +52,7 @@ const baseUsage = (): { textures: UsageTexture[]; unresolved?: Array<{ textureRe
 
 const baseSnapshot = (cubeSize: [number, number, number] = [8, 8, 1]) => ({
   id: 'p1',
-  format: 'geckolib',
+  format: 'entity_rig',
   formatId: 'geckolib_model',
   name: 'atlas',
   bones: [{ name: 'root', pivot: [0, 0, 0] as [number, number, number] }],

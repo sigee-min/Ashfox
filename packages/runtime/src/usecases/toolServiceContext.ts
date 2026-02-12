@@ -60,7 +60,7 @@ export const createToolServiceContext = (deps: ToolServiceDeps): ToolServiceCont
   if (policies.animationTimePolicy) {
     deps.session.setAnimationTimePolicy(policies.animationTimePolicy);
   }
-  const projectState = new ProjectStateBuilder(deps.formats, policies.formatOverrides);
+  const projectState = new ProjectStateBuilder(deps.formats);
   const revisionStore = new RevisionStore(REVISION_CACHE_LIMIT);
   const policyContext = new PolicyContext(policies);
   const snapshotContext = new SnapshotContext({
@@ -145,7 +145,6 @@ export const createToolServiceContext = (deps: ToolServiceDeps): ToolServiceCont
     editor: deps.editor,
     exporter: deps.exporter,
     formats: deps.formats,
-    projectState,
     getSnapshot: () => snapshotContext.getSnapshot(),
     ensureActive: () => snapshotContext.ensureActive(),
     policies: {
@@ -156,7 +155,8 @@ export const createToolServiceContext = (deps: ToolServiceDeps): ToolServiceCont
   const renderService = new RenderService({
     editor: deps.editor,
     tmpStore: deps.tmpStore,
-    ensureActive: () => snapshotContext.ensureActive()
+    ensureActive: () => snapshotContext.ensureActive(),
+    allowRenderPreview: policyContext.getAllowRenderPreview()
   });
   const validationService = new ValidationService({
     editor: deps.editor,
@@ -179,7 +179,4 @@ export const createToolServiceContext = (deps: ToolServiceDeps): ToolServiceCont
     validationService
   };
 };
-
-
-
 

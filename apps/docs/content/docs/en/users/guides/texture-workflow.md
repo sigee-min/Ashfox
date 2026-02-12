@@ -14,7 +14,7 @@ A typical texture session starts by confirming project state and active texture,
 
 1. Confirm state with `ensure_project` or `get_project_state`.
 2. Bind texture context with `assign_texture`.
-3. Apply paint operations with `paint_faces` for cubes or `paint_mesh_face` for meshes.
+3. Apply paint operations with `paint_faces`.
 4. Run `render_preview` after each meaningful visual milestone.
 
 `uvPixelsPerBlock` defines base UV density. If a project already exists, Ashfox infers density from current UVs, which keeps updates aligned with prior work.
@@ -38,15 +38,4 @@ When geometry changes and textures already exist, internal auto-UV and reproject
 }
 ```
 
-## Mesh paint example
-
-```json
-{
-  "textureName": "pot_tex",
-  "target": { "meshName": "leaf_cluster" },
-  "op": { "op": "fill_rect", "x": 0, "y": 0, "width": 8, "height": 8, "color": "#4d7c3f" }
-}
-```
-
 If paint quality drops after heavy geometry edits, re-run preview first and repaint only areas where visual intent changed.
-

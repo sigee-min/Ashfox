@@ -7,8 +7,6 @@ import {
   MODEL_BONE_NOT_FOUND,
   MODEL_CUBE_ID_OR_NAME_REQUIRED,
   MODEL_CUBE_NOT_FOUND,
-  MODEL_MESH_ID_OR_NAME_REQUIRED,
-  MODEL_MESH_NOT_FOUND,
   TEXTURE_ID_OR_NAME_REQUIRED,
   TEXTURE_ID_OR_NAME_REQUIRED_FIX,
   TEXTURE_NOT_FOUND
@@ -70,24 +68,6 @@ export const resolveCubeTarget = <T extends TargetNamed>(
     notFound: MODEL_CUBE_NOT_FOUND
   });
 
-export const resolveMeshTarget = <T extends TargetNamed>(
-  items: T[],
-  id: string | undefined,
-  name: string | undefined,
-  options?: ResolveOptions
-) =>
-  resolveSingleTarget(items, id, name, {
-    required: options?.required ?? { message: MODEL_MESH_ID_OR_NAME_REQUIRED },
-    mismatch: {
-      kind: 'Mesh',
-      plural: 'meshes',
-      idLabel: options?.idLabel,
-      nameLabel: options?.nameLabel,
-      message: buildIdNameMismatchMessage
-    },
-    notFound: MODEL_MESH_NOT_FOUND
-  });
-
 export const resolveTextureTarget = <T extends TargetNamed>(
   items: T[],
   id: string | undefined,
@@ -138,4 +118,3 @@ const resolveSingleTarget = <T extends TargetNamed>(
   if (!resolved.ok) return { error: resolved.error };
   return { target: resolved.value[0] };
 };
-

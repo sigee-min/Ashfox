@@ -10,5 +10,5 @@ export const GUIDE_FALLBACKS: Record<string, string> = {
   'texture-spec': fallback('Texture + UV Spec (Summary)', 'texture-spec'),
   'llm-texture-strategy': fallback('LLM Texture Strategy (Summary)', 'llm-texture-strategy'),
   'vision-fallback': fallback('Vision Fallback (Preview + Texture)', 'vision-fallback'),
-  'entity-workflow': fallback('Entity Workflow (GeckoLib-first)', 'entity-workflow')
+  'entity-workflow': fallback('Entity Workflow (Entity-rig-first)', 'entity-workflow')
 };

@@ -23,7 +23,6 @@ const run = async () => {
               id: 'p1',
               active: true,
               name: 'demo',
-              format: 'Generic Model',
               revision: 'r2',
               counts: { bones: 0, cubes: 0, textures: 0, animations: 0 }
             }
@@ -70,7 +69,6 @@ const run = async () => {
               id: 'p1',
               active: true,
               name: 'demo',
-              format: 'Generic Model',
               revision: 'r1',
               counts: { bones: 0, cubes: 0, textures: 0, animations: 0 }
             }

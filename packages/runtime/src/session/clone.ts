@@ -31,7 +31,12 @@ const cloneAnimationChannel = (channel: TrackedAnimationChannel): TrackedAnimati
   keys: channel.keys.map((key) => ({
     time: key.time,
     value: [key.value[0], key.value[1], key.value[2]],
-    interp: key.interp
+    interp: key.interp,
+    easing: key.easing,
+    easingArgs: key.easingArgs ? [...key.easingArgs] : undefined,
+    pre: key.pre ? [key.pre[0], key.pre[1], key.pre[2]] : undefined,
+    post: key.post ? [key.post[0], key.post[1], key.post[2]] : undefined,
+    bezier: key.bezier ? ({ ...key.bezier } as Record<string, unknown>) : undefined
   }))
 });
 

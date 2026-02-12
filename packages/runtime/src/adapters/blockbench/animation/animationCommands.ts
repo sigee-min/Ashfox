@@ -197,12 +197,20 @@ export const runSetKeyframes = (log: Logger, params: KeyframeCommand): ToolError
         sanitizeAnimatorKeyframes(animator);
         sanitizeAnimatorChannels(animator, ['rotation', 'position', 'scale']);
         for (const k of params.keys) {
+          const meta = {
+            interp: k.interp,
+            easing: k.easing,
+            easingArgs: k.easingArgs,
+            pre: k.pre,
+            post: k.post,
+            bezier: k.bezier
+          };
           const matches = findExistingKeyframes(animator, params.channel, k.time, params.timePolicy);
           if (matches.length > 0) {
-            matches.forEach((keyframe) => applyKeyframeValue(keyframe, k.value, k.interp));
+            matches.forEach((keyframe) => applyKeyframeValue(keyframe, k.value, meta));
             continue;
           }
-          const result = createTransformKeyframe(animator, channelKey, k.time, k.value, k.interp);
+          const result = createTransformKeyframe(animator, channelKey, k.time, k.value, meta);
           if (result.error) {
             resolveError = toolError('unknown', errorMessage(result.error, 'keyframe create failed'), {
               reason: 'adapter_exception',
@@ -211,7 +219,7 @@ export const runSetKeyframes = (log: Logger, params: KeyframeCommand): ToolError
             break;
           }
           if (!result.keyframe) continue;
-          applyKeyframeValue(result.keyframe, k.value, k.interp);
+          applyKeyframeValue(result.keyframe, k.value, meta);
         }
       }
     });
@@ -331,5 +339,4 @@ export const getAnimations = (): AnimationClip[] => {
   if (Array.isArray(globals.Animation?.all)) return globals.Animation.all;
   return [];
 };
-
 

@@ -63,26 +63,8 @@ const DEFAULT_DETAIL_OPS = ['paint_faces', 'assign_texture', 'add_cube', 'update
 const INTERNAL_EXPORT_TARGETS: Array<Omit<ExportTargetCapability, 'available'>> = [
   {
     kind: 'internal',
-    id: 'java_block_item_json',
-    label: 'Java Block/Item JSON',
-    extensions: ['json']
-  },
-  {
-    kind: 'internal',
     id: 'gecko_geo_anim',
-    label: 'GeckoLib Geo+Anim JSON',
-    extensions: ['json']
-  },
-  {
-    kind: 'internal',
-    id: 'animated_java',
-    label: 'Animated Java JSON',
-    extensions: ['json']
-  },
-  {
-    kind: 'internal',
-    id: 'generic_model_json',
-    label: 'Generic Model JSON',
+    label: 'Entity Rig Geo+Anim JSON',
     extensions: ['json']
   },
   {
@@ -97,13 +79,6 @@ const INTERNAL_EXPORT_TARGETS: Array<Omit<ExportTargetCapability, 'available'>> 
     label: 'Native Codec Export'
   }
 ];
-
-const FORMAT_TARGET_REQUIREMENTS: Partial<Record<string, Capabilities['formats'][number]['format']>> = {
-  java_block_item_json: 'Java Block/Item',
-  gecko_geo_anim: 'geckolib',
-  animated_java: 'animated_java',
-  generic_model_json: 'Generic Model'
-};
 
 export const buildRuntimeServices = (options: BuildRuntimeServicesOptions): RuntimeServices => {
   const session = new ProjectSession();
@@ -143,8 +118,6 @@ export const buildRuntimeServices = (options: BuildRuntimeServicesOptions): Runt
     (codec) => codec.id === 'gltf' || codec.extensions.includes('gltf') || codec.extensions.includes('glb')
   );
   const hasNativeCodecs = nativeCodecs.length > 0;
-  const isFormatEnabled = (format: Capabilities['formats'][number]['format']) =>
-    Boolean(capabilities.formats.find((entry) => entry.format === format && entry.enabled));
   const internalTargets: ExportTargetCapability[] = INTERNAL_EXPORT_TARGETS.map((target) => {
     if (target.kind === 'gltf') {
       return { ...target, available: gltfAvailable };
@@ -152,11 +125,7 @@ export const buildRuntimeServices = (options: BuildRuntimeServicesOptions): Runt
     if (target.id === 'native_codec') {
       return { ...target, available: hasNativeCodecs };
     }
-    const requiredFormat = FORMAT_TARGET_REQUIREMENTS[target.id];
-    if (!requiredFormat) {
-      return { ...target, available: true };
-    }
-    return { ...target, available: isFormatEnabled(requiredFormat) };
+    return { ...target, available: true };
   });
   capabilities.exportTargets = [...internalTargets, ...nativeCodecs];
   const service = new ToolService({
@@ -265,9 +234,6 @@ export const buildRuntimeServices = (options: BuildRuntimeServicesOptions): Runt
     traceLogService
   };
 };
-
-
-
 
 
 

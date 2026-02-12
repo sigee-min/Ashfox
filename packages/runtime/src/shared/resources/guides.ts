@@ -72,11 +72,10 @@ export const GUIDE_RESOURCES: ResourceContent[] = [
     uri: 'ashfox://guide/entity-workflow',
     name: 'Entity Workflow Guide',
     mimeType: 'text/markdown',
-    description: 'GeckoLib-first entity workflow with version targeting.',
+    description: 'Entity-rig-first workflow with version targeting.',
     text: loadGuideMarkdown('entity-workflow', GUIDE_FALLBACKS['entity-workflow'])
   }
 ];
-
 
 
 

@@ -12,7 +12,7 @@ type SetupOptions = {
 
 const createServiceSetup = (options: SetupOptions = {}) => {
   const session = new ProjectSession();
-  session.create('geckolib', 'demo', 'geckolib_model');
+  session.create('demo', 'geckolib_model');
   session.addBone({ name: 'root', pivot: [0, 0, 0] });
   session.addCube({ id: 'cube1', name: 'body', bone: 'root', from: [0, 0, 0], to: [8, 8, 8] });
   session.addCube({ id: 'cube2', name: 'body', bone: 'root', from: [1, 1, 1], to: [4, 4, 4] });
@@ -116,4 +116,3 @@ const createServiceSetup = (options: SetupOptions = {}) => {
   assert.deepEqual(calls[0].cubeNames, ['body']);
   assert.deepEqual(calls[0].faces, ['north', 'south']);
 }
-

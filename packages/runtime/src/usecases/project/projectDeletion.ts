@@ -1,4 +1,3 @@
-import type { FormatKind } from '@ashfox/contracts/types/internal';
 import { ok, fail, type UsecaseResult } from '../result';
 import { ensureNonBlankString } from '../../shared/payloadValidation';
 import {
@@ -18,7 +17,7 @@ export type ProjectDeleteContext = Pick<
 export const runDeleteProject = (
   ctx: ProjectDeleteContext,
   payload: { target?: { name?: string }; force?: boolean; ifRevision?: string }
-): UsecaseResult<{ action: 'deleted'; project: { id: string; format: FormatKind; name: string | null; formatId?: string | null } }> => {
+): UsecaseResult<{ action: 'deleted'; project: { id: string; name: string | null; formatId?: string | null } }> => {
   const revisionErr = ctx.ensureRevisionMatch(payload.ifRevision);
   if (revisionErr) return fail(revisionErr);
   const targetName = payload.target?.name;
@@ -34,7 +33,7 @@ export const runDeleteProject = (
   const snapshot = ctx.getSnapshot();
   const normalized = ctx.projectState.normalize(snapshot);
   const info = ctx.projectState.toProjectInfo(normalized);
-  if (!info || !normalized.format) {
+  if (!info) {
     return fail({ code: 'invalid_state', message: PROJECT_NO_ACTIVE });
   }
   if (info.name !== targetName) {
@@ -52,14 +51,13 @@ export const runDeleteProject = (
   const postSnapshot = ctx.getSnapshot();
   const postNormalized = ctx.projectState.normalize(postSnapshot);
   const postInfo = ctx.projectState.toProjectInfo(postNormalized);
-  if (postInfo && postNormalized.format) {
+  if (postInfo) {
     return fail({
       code: 'invalid_state',
       message: ADAPTER_PROJECT_CLOSE_NOT_APPLIED,
       details: {
         actual: {
           name: postInfo.name ?? null,
-          format: postNormalized.format,
           formatId: postNormalized.formatId ?? null
         }
       }
@@ -70,10 +68,8 @@ export const runDeleteProject = (
     action: 'deleted',
     project: {
       id: info.id,
-      format: normalized.format,
       name: info.name ?? null,
       formatId: normalized.formatId ?? null
     }
   });
 };
-

@@ -1,7 +1,7 @@
 {
   "name": "recovery-scale-mismatch",
   "project": {
-    "format": "geckolib",
+    "format": "entity_rig",
     "name": "Recovery Scale",
     "textureResolution": {
       "width": 16,

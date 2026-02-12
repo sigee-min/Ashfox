@@ -1,7 +1,7 @@
-import type { Capabilities, ExportPayload, FormatKind } from '@ashfox/contracts/types/internal';
 import type { ProjectSession } from '../session';
 import type { BlockbenchFormats } from '../adapters/blockbench/BlockbenchFormats';
 import type { ExportPolicy } from '../usecases/policies';
+import type { NonGltfExportFormat } from '../domain/export/types';
 import { readGlobals } from '../adapters/blockbench/blockbenchUtils';
 import type { Logger } from '../logging';
 import { buildInternalExport } from '../domain/exporters';
@@ -15,11 +15,10 @@ import {
 } from './messages';
 import {
   ADAPTER_NATIVE_COMPILER_EMPTY,
-  EXPORT_FORMAT_ID_MISSING_FOR_KIND
+  PROJECT_AUTHORING_FORMAT_ID_MISSING
 } from '../shared/messages';
 
 export const registerCodecs = (args: {
-  capabilities: Capabilities;
   session: ProjectSession;
   formats: BlockbenchFormats;
   formatOverrides: FormatOverrides;
@@ -37,7 +36,7 @@ export const registerCodecs = (args: {
     blockbench.showQuickMessage?.(PLUGIN_UI_EXPORT_FAILED(content), 2000);
   };
 
-  const buildInternalExportString = (exportKind: ExportPayload['format']): string | null => {
+  const buildInternalExportString = (exportKind: NonGltfExportFormat): string | null => {
     const snapshot = args.session.snapshot();
     try {
       return JSON.stringify(buildInternalExport(exportKind, snapshot).data);
@@ -46,17 +45,18 @@ export const registerCodecs = (args: {
     }
   };
 
-  const compileFor = (
-    kind: FormatKind,
-    exportKind: ExportPayload['format']
-  ): { ok: true; data: string } | { ok: false; message: string } => {
-    const formatId = resolveFormatId(kind, args.formats.listFormats(), args.formatOverrides);
+  const compileFor = (exportKind: NonGltfExportFormat): { ok: true; data: string } | { ok: false; message: string } => {
+    const formatId = resolveFormatId(
+      args.formats.listFormats(),
+      args.formatOverrides,
+      args.formats.getActiveFormatId()
+    );
     if (!formatId) {
       if (args.exportPolicy === 'best_effort') {
         const fallback = buildInternalExportString(exportKind);
         if (fallback) return { ok: true, data: fallback };
       }
-      return { ok: false, message: EXPORT_FORMAT_ID_MISSING_FOR_KIND(kind) };
+      return { ok: false, message: PROJECT_AUTHORING_FORMAT_ID_MISSING };
     }
 
     const compiled = compileAdapter.compileNativeFormat(formatId);
@@ -78,8 +78,8 @@ export const registerCodecs = (args: {
     return { ok: false, message: compiled.error.message };
   };
 
-  const compileWithNotice = (kind: FormatKind, exportKind: ExportPayload['format']): string | null => {
-    const result = compileFor(kind, exportKind);
+  const compileWithNotice = (exportKind: NonGltfExportFormat): string | null => {
+    const result = compileFor(exportKind);
     if (!result.ok) {
       notifyExportFailure(result.message);
       return null;
@@ -87,18 +87,18 @@ export const registerCodecs = (args: {
     return result.data;
   };
 
-  const register = (kind: FormatKind, exportKind: ExportPayload['format'], codecName: string) => {
+  const register = (exportKind: NonGltfExportFormat, codecName: string) => {
     new codecCtor({
       name: codecName,
       extension: 'json',
       remember: true,
       compile() {
-        const compiled = compileWithNotice(kind, exportKind);
+        const compiled = compileWithNotice(exportKind);
         return compiled ?? '';
       },
       export() {
         try {
-          const compiled = compileWithNotice(kind, exportKind);
+          const compiled = compileWithNotice(exportKind);
           if (!compiled) return;
           blockbench.exportFile?.(
             { content: compiled, name: 'model.json' },
@@ -112,14 +112,5 @@ export const registerCodecs = (args: {
     });
   };
 
-  if (args.capabilities.formats.find((f) => f.format === 'Java Block/Item' && f.enabled)) {
-    register('Java Block/Item', 'java_block_item_json', PLUGIN_ID + '_java_block_item');
-  }
-  if (args.capabilities.formats.find((f) => f.format === 'geckolib' && f.enabled)) {
-    register('geckolib', 'gecko_geo_anim', PLUGIN_ID + '_geckolib');
-  }
-  if (args.capabilities.formats.find((f) => f.format === 'animated_java' && f.enabled)) {
-    register('animated_java', 'animated_java', PLUGIN_ID + '_animated_java');
-  }
+  register('gecko_geo_anim', PLUGIN_ID + '_entity_rig');
 };
-

@@ -21,7 +21,15 @@ export const keyframeTimeBucket = (time: number, policy?: AnimationTimePolicyInp
 
 type TimedKey = { time: number };
 
-type ChannelKey = TimedKey & { value: [number, number, number]; interp?: 'linear' | 'step' | 'catmullrom' };
+type ChannelKey = TimedKey & {
+  value: [number, number, number];
+  interp?: 'linear' | 'step' | 'catmullrom';
+  easing?: string;
+  easingArgs?: unknown[];
+  pre?: [number, number, number];
+  post?: [number, number, number];
+  bezier?: Record<string, unknown>;
+};
 
 export const mergeChannelKeys = (
   existing: ChannelKey[] | undefined,

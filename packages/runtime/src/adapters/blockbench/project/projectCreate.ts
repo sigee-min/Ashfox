@@ -1,4 +1,4 @@
-import type { FormatKind, ToolError } from '@ashfox/contracts/types/internal';
+import type { ToolError } from '@ashfox/contracts/types/internal';
 import type { Logger } from '../../../logging';
 import { errorMessage } from '../../../logging';
 import { hasUnsavedChanges, markProjectSaved, readGlobals } from '../blockbenchUtils';
@@ -10,7 +10,6 @@ export const runCreateProject = (
   log: Logger,
   name: string,
   formatId: string,
-  kind: FormatKind,
   options?: { confirmDiscard?: boolean; dialog?: Record<string, unknown> }
 ): ToolError | null => {
   try {
@@ -28,9 +27,9 @@ export const runCreateProject = (
         };
       }
       if (!options?.confirmDiscard) {
-        log.warn('auto-discarding unsaved changes for project creation', { name, format: kind });
+        log.warn('auto-discarding unsaved changes for project creation', { name });
       } else {
-        log.warn('discarding unsaved changes for project creation', { name, format: kind });
+        log.warn('discarding unsaved changes for project creation', { name });
       }
       markProjectSaved(blockbench);
     }
@@ -51,8 +50,7 @@ export const runCreateProject = (
     }
     const dialogResult = tryAutoConfirmProjectDialog(name, {
       ...options,
-      formatId: resolvedId,
-      formatKind: kind
+      formatId: resolvedId
     });
     if (!dialogResult.ok) return dialogResult.error;
     if (typeof blockbench?.setProjectName === 'function') {
@@ -60,7 +58,7 @@ export const runCreateProject = (
     } else if (blockbench?.project) {
       blockbench.project.name = name;
     }
-    log.info('project created', { name, format: kind, formatId: resolvedId });
+    log.info('project created', { name, formatId: resolvedId });
     return null;
   } catch (err) {
     const message = errorMessage(err, 'project create failed');
@@ -68,4 +66,3 @@ export const runCreateProject = (
     return toolError('unknown', message, { reason: 'adapter_exception', context: 'project_create' });
   }
 };
-

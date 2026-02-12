@@ -1,4 +1,4 @@
-import { Capabilities, Capability, Limits, FormatKind, PreviewCapability } from '@ashfox/contracts/types/internal';
+import { AuthoringCapability, Capabilities, Limits, PreviewCapability } from '@ashfox/contracts/types/internal';
 import { FormatDescriptor } from './ports/formats';
 import { FormatOverrides, resolveFormatId } from './domain/formats';
 import { TEXTURE_WORKFLOW_INSTRUCTIONS } from './shared/tooling/toolInstructions';
@@ -33,12 +33,9 @@ const DEFAULT_LIMITS: Limits = {
   maxAnimationSeconds: 120
 };
 
-const BASE_FORMATS: Array<{ format: FormatKind; animations: boolean }> = [
-  { format: 'Java Block/Item', animations: false },
-  { format: 'geckolib', animations: true },
-  { format: 'animated_java', animations: true },
-  { format: 'Generic Model', animations: true }
-];
+const DEFAULT_AUTHORING_CAPABILITY = {
+  animations: true
+};
 
 const CAPABILITIES_GUIDANCE = {
   toolPathStability: {
@@ -61,24 +58,26 @@ const CAPABILITIES_GUIDANCE = {
   },
   textureStrategy: {
     note: TEXTURE_WORKFLOW_INSTRUCTIONS
+  },
+  pluginModePrerequisite: {
+    note: 'Plugin mode requires the Blockbench entity-rig plugin support to be installed and enabled before authoring/export.'
   }
 };
 
-const computeFormatCapabilities = (
+const computeAuthoringCapability = (
   formats: FormatDescriptor[],
   overrides?: FormatOverrides
-): Capability[] =>
-  BASE_FORMATS.map((base) => {
-    const resolved = resolveFormatId(base.format, formats, overrides);
-    const descriptor = resolved ? formats.find((format) => format.id === resolved) : undefined;
-    const flags = normalizeFormatFlags(descriptor);
-    const animations = resolveAnimations(base.animations, descriptor);
-    return { format: base.format, animations, enabled: Boolean(resolved), ...(flags ? { flags } : {}) };
-  });
+): AuthoringCapability => {
+  const resolved = resolveFormatId(formats, overrides);
+  const descriptor = resolved ? formats.find((format) => format.id === resolved) : undefined;
+  const flags = normalizeFormatFlags(descriptor);
+  const animations = resolveAnimations(DEFAULT_AUTHORING_CAPABILITY.animations, descriptor);
+  return { animations, enabled: Boolean(resolved), ...(flags ? { flags } : {}) };
+};
 
 const normalizeFormatFlags = (
   descriptor?: FormatDescriptor
-): Capability['flags'] | undefined => {
+): AuthoringCapability['flags'] | undefined => {
   if (!descriptor) return undefined;
   const flags = {
     singleTexture: descriptor.singleTexture,
@@ -88,8 +87,7 @@ const normalizeFormatFlags = (
     uvRotation: descriptor.uvRotation,
     animationMode: descriptor.animationMode,
     boneRig: descriptor.boneRig,
-    armatureRig: descriptor.armatureRig,
-    meshes: descriptor.meshes
+    armatureRig: descriptor.armatureRig
   };
   const hasFlag = Object.values(flags).some((value) => value !== undefined);
   return hasFlag ? flags : undefined;
@@ -108,7 +106,7 @@ export function computeCapabilities(
     pluginVersion: PLUGIN_VERSION,
     toolSchemaVersion: TOOL_SCHEMA_VERSION,
     blockbenchVersion: blockbenchVersion ?? 'unknown',
-    formats: computeFormatCapabilities(formats, overrides),
+    authoring: computeAuthoringCapability(formats, overrides),
     limits: DEFAULT_LIMITS,
     preview,
     guidance: CAPABILITIES_GUIDANCE

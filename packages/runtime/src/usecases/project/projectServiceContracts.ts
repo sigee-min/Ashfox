@@ -1,7 +1,5 @@
 import type {
-  Capabilities,
   EnsureProjectAction,
-  FormatKind,
   ProjectDiff,
   ProjectState,
   ProjectStateDetail
@@ -18,9 +16,8 @@ export type GetProjectDiffResult = { diff: ProjectDiff };
 export type EnsureProjectPayload = {
   action?: EnsureProjectAction;
   target?: { name?: string };
-  format?: Capabilities['formats'][number]['format'];
   name?: string;
-  match?: 'none' | 'format' | 'name' | 'format_and_name';
+  match?: 'none' | 'name';
   onMismatch?: 'reuse' | 'error' | 'create';
   onMissing?: 'create' | 'error';
   confirmDiscard?: boolean;
@@ -32,7 +29,7 @@ export type EnsureProjectPayload = {
 
 export type EnsureProjectResult = {
   action: 'created' | 'reused' | 'deleted';
-  project: { id: string; format: FormatKind; name: string | null; formatId?: string | null };
+  project: { id: string; name: string | null; formatId?: string | null };
 };
 
 export type CreateProjectOptions = {
@@ -42,5 +39,4 @@ export type CreateProjectOptions = {
   uvPixelsPerBlock?: number;
 };
 
-export type CreateProjectResult = { id: string; format: FormatKind; name: string };
-
+export type CreateProjectResult = { id: string; name: string };

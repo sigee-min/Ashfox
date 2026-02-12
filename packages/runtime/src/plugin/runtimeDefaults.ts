@@ -17,6 +17,7 @@ export const createDefaultPolicies = (formatOverrides: FormatOverrides) => ({
   requireRevision: true,
   autoRetryRevision: true,
   autoCreateProjectTexture: true,
+  allowRenderPreview: true,
   animationTimePolicy: {
     timeEpsilon: 1e-9,
     triggerDedupeByValue: true
@@ -35,4 +36,3 @@ export const createTraceLogDefaults = () => ({
   flushEvery: 1,
   flushIntervalMs: 0
 });
-

@@ -9,14 +9,14 @@ import {
 
 type Snapshot = {
   id: string | null;
-  format: 'geckolib' | null;
+  format: 'entity_rig' | null;
   formatId?: string | null;
   name: string | null;
 };
 
 const activeSnapshot: Snapshot = {
   id: 'p1',
-  format: 'geckolib',
+  format: 'entity_rig',
   formatId: 'geckolib_model',
   name: 'dragon'
 };

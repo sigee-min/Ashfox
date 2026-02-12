@@ -16,7 +16,6 @@ export const summarizeProjectState = (state: ProjectState): TraceLogStateSummary
   id: state.id,
   revision: state.revision,
   name: state.name ?? null,
-  format: state.format ?? null,
   ...(state.formatId !== undefined ? { formatId: state.formatId } : {}),
   ...(state.textureResolution ? { textureResolution: state.textureResolution } : {}),
   counts: state.counts
@@ -79,7 +78,6 @@ export const sanitizeTraceValue = (value: unknown, depth = 0, seen?: WeakSet<obj
 
 export const serializeTraceLogRecord = (record: TraceLogRecord): string =>
   JSON.stringify(record);
-
 
 
 

@@ -3,10 +3,7 @@ import { ProjectSession, SessionState } from '../session';
 import { EditorPort } from '../ports/editor';
 import { BoneService } from './model/BoneService';
 import { CubeService } from './model/CubeService';
-import { MeshService } from './model/MeshService';
-import type { MeshUvPolicy } from '../domain/mesh/autoUv';
-import { fail, type UsecaseResult } from './result';
-import { MODEL_MESH_UNSUPPORTED_FORMAT } from '../shared/messages';
+import type { UsecaseResult } from './result';
 
 export interface ModelServiceDeps {
   session: ProjectSession;
@@ -20,15 +17,10 @@ export interface ModelServiceDeps {
 }
 
 export class ModelService {
-  private readonly session: ProjectSession;
-  private readonly capabilities: Capabilities;
   private readonly boneService: BoneService;
   private readonly cubeService: CubeService;
-  private readonly meshService: MeshService;
 
   constructor(deps: ModelServiceDeps) {
-    this.session = deps.session;
-    this.capabilities = deps.capabilities;
     this.boneService = new BoneService({
       session: deps.session,
       editor: deps.editor,
@@ -45,13 +37,6 @@ export class ModelService {
       ensureRevisionMatch: deps.ensureRevisionMatch,
       autoUvAtlas: deps.autoUvAtlas,
       runWithoutRevisionGuard: deps.runWithoutRevisionGuard
-    });
-    this.meshService = new MeshService({
-      session: deps.session,
-      editor: deps.editor,
-      getSnapshot: deps.getSnapshot,
-      ensureActive: deps.ensureActive,
-      ensureRevisionMatch: deps.ensureRevisionMatch
     });
   }
 
@@ -150,80 +135,6 @@ export class ModelService {
   }): UsecaseResult<{ id: string; name: string; deleted: Array<{ id?: string; name: string }> }> {
     return this.cubeService.deleteCube(payload);
   }
-
-  addMesh(payload: {
-    id?: string;
-    name: string;
-    bone?: string;
-    boneId?: string;
-    origin?: [number, number, number];
-    rotation?: [number, number, number];
-    visibility?: boolean;
-    uvPolicy?: MeshUvPolicy;
-    vertices: Array<{ id: string; pos: [number, number, number] }>;
-    faces: Array<{
-      id?: string;
-      vertices: string[];
-      uv?: Array<{ vertexId: string; uv: [number, number] }>;
-      texture?: string | false;
-    }>;
-    ifRevision?: string;
-  }): UsecaseResult<{ id: string; name: string }> {
-    const unsupported = this.ensureMeshesSupported();
-    if (unsupported) return fail(unsupported);
-    return this.meshService.addMesh(payload);
-  }
-
-  updateMesh(payload: {
-    id?: string;
-    name?: string;
-    newName?: string;
-    bone?: string;
-    boneId?: string;
-    boneRoot?: boolean;
-    origin?: [number, number, number];
-    rotation?: [number, number, number];
-    visibility?: boolean;
-    uvPolicy?: MeshUvPolicy;
-    vertices?: Array<{ id: string; pos: [number, number, number] }>;
-    faces?: Array<{
-      id?: string;
-      vertices: string[];
-      uv?: Array<{ vertexId: string; uv: [number, number] }>;
-      texture?: string | false;
-    }>;
-    ifRevision?: string;
-  }): UsecaseResult<{ id: string; name: string }> {
-    const unsupported = this.ensureMeshesSupported();
-    if (unsupported) return fail(unsupported);
-    return this.meshService.updateMesh(payload);
-  }
-
-  deleteMesh(payload: {
-    id?: string;
-    name?: string;
-    ids?: string[];
-    names?: string[];
-    ifRevision?: string;
-  }): UsecaseResult<{ id: string; name: string; deleted: Array<{ id?: string; name: string }> }> {
-    const unsupported = this.ensureMeshesSupported();
-    if (unsupported) return fail(unsupported);
-    return this.meshService.deleteMesh(payload);
-  }
-
-  private ensureMeshesSupported(): ToolError | null {
-    const format = this.session.snapshot().format;
-    if (!format) return null;
-    const capability = this.capabilities.formats.find((entry) => entry.format === format);
-    if (!capability || !capability.enabled || !capability.flags?.meshes) {
-      return { code: 'unsupported_format', message: MODEL_MESH_UNSUPPORTED_FORMAT };
-    }
-    return null;
-  }
 }
-
-
-
-
 
 

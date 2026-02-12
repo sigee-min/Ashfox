@@ -40,7 +40,6 @@ export class RevisionStore {
 const hashSnapshot = (snapshot: SessionState): string => {
   const data = {
     id: snapshot.id ?? '',
-    format: snapshot.format ?? '',
     formatId: snapshot.formatId ?? '',
     name: snapshot.name ?? '',
     dirty: snapshot.dirty ?? null,
@@ -199,6 +198,5 @@ const cloneTriggerValue = (value: string | string[] | Record<string, unknown>): 
   }
   return value;
 };
-
 
 

@@ -1,4 +1,3 @@
-import type { FormatKind } from '@ashfox/contracts/types/internal';
 import type { TextureFrameOrderType, TextureMeta, TexturePbrChannel, TextureRenderMode, TextureRenderSides } from '@ashfox/contracts/types/texture';
 import type { AnimationTimePolicy } from '../domain/animation/timePolicy';
 import type { MeshUvPolicy } from '../domain/mesh/autoUv';
@@ -84,7 +83,16 @@ export interface TrackedTexture {
 export interface TrackedAnimationChannel {
   bone: string;
   channel: 'rot' | 'pos' | 'scale';
-  keys: { time: number; value: [number, number, number]; interp?: 'linear' | 'step' | 'catmullrom' }[];
+  keys: {
+    time: number;
+    value: [number, number, number];
+    interp?: 'linear' | 'step' | 'catmullrom';
+    easing?: string;
+    easingArgs?: unknown[];
+    pre?: [number, number, number];
+    post?: [number, number, number];
+    bezier?: Record<string, unknown>;
+  }[];
 }
 
 export interface TrackedAnimationTrigger {
@@ -128,18 +136,6 @@ export type CubeUpdate = {
   boxUv?: boolean;
 };
 
-export type MeshUpdate = {
-  id?: string;
-  newName?: string;
-  bone?: string | null;
-  origin?: [number, number, number];
-  rotation?: [number, number, number];
-  visibility?: boolean;
-  uvPolicy?: MeshUvPolicy;
-  vertices?: TrackedMeshVertex[];
-  faces?: TrackedMeshFace[];
-};
-
 export type TextureUpdate = {
   id?: string;
   newName?: string;
@@ -173,7 +169,6 @@ export type AnimationUpdate = {
 
 export interface SessionState {
   id: string | null;
-  format: FormatKind | null;
   formatId?: string | null;
   name: string | null;
   dirty?: boolean;
@@ -186,5 +181,3 @@ export interface SessionState {
   animationsStatus?: 'available' | 'unavailable';
   animationTimePolicy: AnimationTimePolicy;
 }
-
-

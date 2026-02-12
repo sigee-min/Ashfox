@@ -47,11 +47,7 @@ registerAsync(
     assert.equal(result?.structuredContent?.code, 'invalid_payload');
     assert.equal(result?.structuredContent?.details?.reason, 'schema_validation');
     assert.equal(result?.structuredContent?.details?.path, '$.format');
-    assert.deepEqual(result?.structuredContent?.details?.candidates, [
-      'Java Block/Item',
-      'geckolib',
-      'animated_java',
-      'Generic Model'
-    ]);
+    assert.equal(result?.structuredContent?.details?.rule, 'additionalProperties');
+    assert.equal(result?.structuredContent?.details?.key, 'format');
   })()
 );

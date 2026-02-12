@@ -9,10 +9,7 @@ const formatEnum =
 
 assert.equal(formatEnum.includes('auto'), false);
 assert.deepEqual(formatEnum, [
-  'java_block_item_json',
   'gecko_geo_anim',
-  'animated_java',
-  'generic_model_json',
   'gltf',
   'native_codec'
 ]);
@@ -38,4 +35,3 @@ assert.deepEqual(formatEnum, [
     assert.equal(res.reason, 'additionalProperties');
   }
 }
-

@@ -28,7 +28,7 @@ const withGlobals = (overrides: TestGlobals, run: () => void) => {
 
 {
   withGlobals({}, () => {
-    const res = tryAutoConfirmProjectDialog('demo', { formatId: 'geckolib_model', formatKind: 'geckolib' });
+    const res = tryAutoConfirmProjectDialog('demo', { formatId: 'geckolib_model' });
     assert.deepEqual(res, { ok: true });
   });
 }
@@ -79,7 +79,6 @@ const withGlobals = (overrides: TestGlobals, run: () => void) => {
     };
     dialogApi.open = dialog;
     const res = tryAutoConfirmProjectDialog('dragon', {
-      formatKind: 'geckolib'
     });
     assert.equal(res.ok, false);
     if (!res.ok) {
@@ -90,6 +89,6 @@ const withGlobals = (overrides: TestGlobals, run: () => void) => {
     }
     assert.equal(applied.length, 1);
     assert.equal(applied[0].name, 'dragon');
-    assert.equal(applied[0].format, 'geckolib');
+    assert.equal(applied[0].format, '');
   });
 }

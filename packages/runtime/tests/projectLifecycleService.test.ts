@@ -8,7 +8,6 @@ import {
   PROJECT_CREATE_REQUIREMENTS,
   PROJECT_CREATE_REQUIREMENTS_ON_MISMATCH_FIX,
   PROJECT_CREATE_REQUIREMENTS_ON_MISSING_FIX,
-  PROJECT_MATCH_FORMAT_REQUIRED,
   PROJECT_MATCH_NAME_REQUIRED,
   PROJECT_MISMATCH,
   PROJECT_NO_ACTIVE,
@@ -19,7 +18,7 @@ import { createEditorStub, createFormatPortStub } from './fakes';
 const capabilities: Capabilities = {
   pluginVersion: 'test',
   blockbenchVersion: 'test',
-  formats: [{ format: 'geckolib', animations: true, enabled: true }],
+  authoring: { animations: true, enabled: true  },
   limits: { maxCubes: 64, maxTextureSize: 256, maxAnimationSeconds: 120 }
 };
 
@@ -36,7 +35,7 @@ const createHarness = (options?: {
 }) : ServiceHarness => {
   const session = new ProjectSession();
   if (options?.active) {
-    const created = session.create('geckolib', 'active', 'geckolib_model');
+    const created = session.create('active', 'geckolib_model');
     assert.equal(created.ok, true);
   }
 
@@ -61,7 +60,6 @@ const createHarness = (options?: {
       toProjectInfo: (snapshot) => {
         const hasData =
           snapshot.id ||
-          snapshot.format ||
           snapshot.name ||
           snapshot.bones.length > 0 ||
           snapshot.cubes.length > 0 ||
@@ -71,14 +69,12 @@ const createHarness = (options?: {
         return {
           id: snapshot.id ?? 'active',
           name: snapshot.name ?? null,
-          format: snapshot.format ?? null,
           formatId: snapshot.formatId ?? null
         };
       },
       buildProjectState: () => {
         throw new Error('not used in test');
-      },
-      matchOverrideKind: () => null
+      }
     },
     revision: {
       track: () => 'r1',
@@ -108,6 +104,20 @@ const createHarness = (options?: {
 
 {
   const { service } = createHarness();
+  const res = service.ensureProject({
+    onMissing: 'create',
+    name: 'defaulted_gecko'
+  });
+  assert.equal(res.ok, true);
+  if (res.ok) {
+    assert.equal(res.value.action, 'created');
+    assert.equal(res.value.project.formatId, 'geckolib_model');
+    assert.equal(res.value.project.name, 'defaulted_gecko');
+  }
+}
+
+{
+  const { service } = createHarness();
   const res = service.ensureProject({ onMissing: 'error' });
   assert.equal(res.ok, false);
   if (!res.ok) {
@@ -118,21 +128,21 @@ const createHarness = (options?: {
 
 {
   const { service } = createHarness();
-  const res = service.ensureProject({ match: 'format' });
+  const res = service.ensureProject({ match: 'name' });
   assert.equal(res.ok, false);
   if (!res.ok) {
     assert.equal(res.error.code, 'invalid_payload');
-    assert.equal(res.error.message, PROJECT_MATCH_FORMAT_REQUIRED);
+    assert.equal(res.error.message, PROJECT_MATCH_NAME_REQUIRED);
   }
 }
 
 {
   const { service } = createHarness();
-  const res = service.ensureProject({ match: 'format_and_name', format: 'geckolib' });
+  const res = service.ensureProject({ match: 'name', name: '   ' });
   assert.equal(res.ok, false);
   if (!res.ok) {
     assert.equal(res.error.code, 'invalid_payload');
-    assert.equal(res.error.message, PROJECT_MATCH_NAME_REQUIRED);
+    assert.equal(res.error.message, 'name must be a non-empty string.');
   }
 }
 
@@ -151,7 +161,6 @@ const createHarness = (options?: {
   const { service } = createHarness();
   const res = service.ensureProject({
     onMissing: 'create',
-    format: 'geckolib',
     name: 'demo',
     uvPixelsPerBlock: 0
   });
@@ -166,7 +175,6 @@ const createHarness = (options?: {
   const { service, uvCalls, createdTextures } = createHarness({ autoCreateProjectTexture: true });
   const res = service.ensureProject({
     onMissing: 'create',
-    format: 'geckolib',
     name: 'dragon',
     uvPixelsPerBlock: 32
   });
@@ -200,11 +208,11 @@ const createHarness = (options?: {
     name: 'other',
     onMismatch: 'create'
   });
-  assert.equal(res.ok, false);
-  if (!res.ok) {
-    assert.equal(res.error.code, 'invalid_payload');
-    assert.equal(res.error.message, PROJECT_CREATE_REQUIREMENTS);
-    assert.equal(res.error.fix, PROJECT_CREATE_REQUIREMENTS_ON_MISMATCH_FIX);
+  assert.equal(res.ok, true);
+  if (res.ok) {
+    assert.equal(res.value.action, 'created');
+    assert.equal(res.value.project.name, 'other');
+    assert.equal(res.value.project.formatId, 'geckolib_model');
   }
 }
 
@@ -225,7 +233,7 @@ const createHarness = (options?: {
 
 {
   const { service } = createHarness();
-  const res = service.createProject('geckolib', 'demo', { uvPixelsPerBlock: 0 });
+  const res = service.createProject('demo', { uvPixelsPerBlock: 0 });
   assert.equal(res.ok, false);
   if (!res.ok) {
     assert.equal(res.error.code, 'invalid_payload');

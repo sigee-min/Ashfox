@@ -4,7 +4,6 @@ import type {
   EnsureProjectMatch,
   EnsureProjectOnMismatch,
   EnsureProjectOnMissing,
-  FormatKind,
   IfRevisionOption,
   IncludeDiffOption,
   IncludeStateOption,
@@ -39,14 +38,6 @@ export type UvPaintSpec = {
   anchor?: [number, number];
 };
 
-export type MeshSymmetryAxis = 'none' | 'x' | 'y' | 'z';
-
-export type MeshUvPolicy = {
-  symmetryAxis?: MeshSymmetryAxis;
-  texelDensity?: number;
-  padding?: number;
-};
-
 export type FillShadeDirection = 'tl_br' | 'tr_bl' | 'top_bottom' | 'left_right';
 
 export type FillRectShadeLike =
@@ -69,7 +60,6 @@ export type TextureOpLike =
 export interface EnsureProjectPayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
   action?: EnsureProjectAction;
   target?: { name?: string };
-  format?: FormatKind;
   name?: string;
   match?: EnsureProjectMatch;
   onMismatch?: EnsureProjectOnMismatch;
@@ -103,26 +93,6 @@ export interface PaintFacesPayload extends IncludeStateOption, IncludeDiffOption
   textureId?: string;
   textureName?: string;
   target: PaintFaceTarget;
-  coordSpace?: 'face' | 'texture';
-  width?: number;
-  height?: number;
-  op: TextureOpLike;
-  mapping?: 'stretch' | 'tile';
-}
-
-export type PaintMeshFaceScope = 'single_face' | 'all_faces';
-
-export interface PaintMeshFaceTarget {
-  meshId?: string;
-  meshName?: string;
-  faceId?: string;
-}
-
-export interface PaintMeshFacePayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
-  textureId?: string;
-  textureName?: string;
-  target: PaintMeshFaceTarget;
-  scope?: PaintMeshFaceScope;
   coordSpace?: 'face' | 'texture';
   width?: number;
   height?: number;
@@ -264,52 +234,6 @@ export interface DeleteCubePayload extends IncludeStateOption, IncludeDiffOption
   names?: string[];
 }
 
-export interface MeshVertexPayload {
-  id: string;
-  pos: [number, number, number];
-}
-
-export interface MeshFacePayload {
-  id?: string;
-  vertices: string[];
-  texture?: string | false;
-}
-
-export interface AddMeshPayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
-  id?: string;
-  name: string;
-  bone?: string;
-  boneId?: string;
-  origin?: [number, number, number];
-  rotation?: [number, number, number];
-  visibility?: boolean;
-  uvPolicy?: MeshUvPolicy;
-  vertices: MeshVertexPayload[];
-  faces: MeshFacePayload[];
-}
-
-export interface UpdateMeshPayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
-  id?: string;
-  name?: string;
-  newName?: string;
-  bone?: string;
-  boneId?: string;
-  boneRoot?: boolean;
-  origin?: [number, number, number];
-  rotation?: [number, number, number];
-  visibility?: boolean;
-  uvPolicy?: MeshUvPolicy;
-  vertices?: MeshVertexPayload[];
-  faces?: MeshFacePayload[];
-}
-
-export interface DeleteMeshPayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
-  id?: string;
-  name?: string;
-  ids?: string[];
-  names?: string[];
-}
-
 export interface CreateAnimationClipPayload extends IncludeStateOption, IncludeDiffOption, IfRevisionOption {
   id?: string;
   name: string;
@@ -357,10 +281,7 @@ export interface SetTriggerKeyframesPayload extends IncludeStateOption, IncludeD
 
 export interface ExportPayload extends IncludeStateOption, IfRevisionOption {
   format:
-    | 'java_block_item_json'
     | 'gecko_geo_anim'
-    | 'animated_java'
-    | 'generic_model_json'
     | 'gltf'
     | 'native_codec';
   codecId?: string;

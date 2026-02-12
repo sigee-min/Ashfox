@@ -1,7 +1,7 @@
 {
   "name": "animation-keyframe-regression",
   "project": {
-    "format": "geckolib",
+    "format": "entity_rig",
     "name": "Animation Keyframe Regression",
     "textureResolution": { "width": 64, "height": 64 }
   },

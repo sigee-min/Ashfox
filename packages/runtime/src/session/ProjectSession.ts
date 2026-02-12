@@ -1,9 +1,8 @@
-import type { FormatKind, ToolError, ToolResponse } from '@ashfox/contracts/types/internal';
+import type { ToolError, ToolResponse } from '@ashfox/contracts/types/internal';
 import type {
   AnimationUpdate,
   BoneUpdate,
   CubeUpdate,
-  MeshUpdate,
   SessionState,
   TextureUpdate,
   TrackedAnimation,
@@ -11,7 +10,6 @@ import type {
   TrackedAnimationTrigger,
   TrackedBone,
   TrackedCube,
-  TrackedMesh,
   TrackedTexture
 } from './types';
 import type { AnimationTimePolicy } from '../domain/animation/timePolicy';
@@ -22,15 +20,11 @@ export class ProjectSession {
   private readonly store = new SessionStateStore();
   private readonly mutators = new SessionMutators(() => this.store.getState());
 
-  create(
-    format: FormatKind,
-    name: string,
-    formatId?: string | null
-  ): ToolResponse<{ id: string; format: FormatKind; name: string }> {
-    return this.store.create(format, name, formatId);
+  create(name: string, formatId?: string | null): ToolResponse<{ id: string; name: string }> {
+    return this.store.create(name, formatId);
   }
 
-  attach(snapshot: SessionState): ToolResponse<{ id: string; format: FormatKind; name: string | null }> {
+  attach(snapshot: SessionState): ToolResponse<{ id: string; name: string | null }> {
     return this.store.attach(snapshot);
   }
 
@@ -78,18 +72,6 @@ export class ProjectSession {
     return this.mutators.removeCubes(names);
   }
 
-  addMesh(mesh: TrackedMesh) {
-    this.mutators.addMesh(mesh);
-  }
-
-  updateMesh(name: string, updates: MeshUpdate): boolean {
-    return this.mutators.updateMesh(name, updates);
-  }
-
-  removeMeshes(names: string[] | Set<string>): number {
-    return this.mutators.removeMeshes(names);
-  }
-
   addTexture(tex: TrackedTexture) {
     this.mutators.addTexture(tex);
   }
@@ -122,4 +104,3 @@ export class ProjectSession {
     this.mutators.upsertAnimationTrigger(clip, trigger);
   }
 }
-

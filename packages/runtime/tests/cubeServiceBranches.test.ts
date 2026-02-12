@@ -10,7 +10,7 @@ import { ok } from '../src/usecases/result';
 const capabilities: Capabilities = {
   pluginVersion: 'test',
   blockbenchVersion: 'test',
-  formats: [{ format: 'Java Block/Item', animations: true, enabled: true }],
+  authoring: { animations: true, enabled: true  },
   limits: { maxCubes: 4, maxTextureSize: 64, maxAnimationSeconds: 120 }
 };
 
@@ -35,7 +35,7 @@ const createHarness = (options?: {
   deleteCubeError?: { code: string; message: string };
 }): CubeHarness => {
   const session = new ProjectSession();
-  session.create('Java Block/Item', 'demo');
+  session.create('demo');
   const baseEditor = createEditorStub({
     textures: options?.textures ?? [{ id: 'tex1', name: 'atlas', width: 16, height: 16 }]
   });

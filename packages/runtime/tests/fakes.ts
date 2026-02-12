@@ -10,7 +10,6 @@ import type {
   EditorPort,
   ImportTextureCommand,
   KeyframeCommand,
-  MeshCommand,
   ReadTextureCommand,
   SetFaceUvCommand,
   TextureSource,
@@ -20,9 +19,7 @@ import type {
   UpdateAnimationCommand,
   UpdateBoneCommand,
   UpdateCubeCommand,
-  UpdateMeshCommand,
   UpdateTextureCommand,
-  DeleteMeshCommand,
   TriggerKeyframeCommand
 } from '../src/ports/editor';
 import type { ExportPort } from '../src/ports/exporter';
@@ -70,8 +67,7 @@ const buildEditorStub = (state: EditorStubState): EditorPort => {
   };
 
   return {
-    createProject: (_name: string, _formatId: string, _kind: 'Java Block/Item' | 'geckolib' | 'animated_java') =>
-      null,
+    createProject: (_name: string, _formatId: string) => null,
     closeProject: (_options?: { force?: boolean }) => null,
     importTexture: (params: ImportTextureCommand): ToolError | null => {
       upsertTexture({
@@ -121,9 +117,6 @@ const buildEditorStub = (state: EditorStubState): EditorPort => {
     addCube: (_params: CubeCommand) => null,
     updateCube: (_params: UpdateCubeCommand) => null,
     deleteCube: (_params: DeleteCubeCommand) => null,
-    addMesh: (_params: MeshCommand) => null,
-    updateMesh: (_params: UpdateMeshCommand) => null,
-    deleteMesh: (_params: DeleteMeshCommand) => null,
     createAnimation: (_params: AnimationCommand) => null,
     updateAnimation: (_params: UpdateAnimationCommand) => null,
     deleteAnimation: (_params: DeleteAnimationCommand) => null,
@@ -169,8 +162,8 @@ export const createEditorStubWithState = (stateOverrides: Partial<EditorStubStat
 };
 
 export const createFormatPortStub = (
-  formatId = 'java_block',
-  name = 'Java Block',
+  formatId = 'entity_rig',
+  name = 'Entity Rig',
   caps: { singleTexture?: boolean; perTextureUvSize?: boolean } = {}
 ): FormatPort => ({
   listFormats: () => [{ id: formatId, name, ...caps }],
@@ -250,4 +243,3 @@ export const createResourceStoreStub = (): ResourceStore => {
     }
   };
 };
-

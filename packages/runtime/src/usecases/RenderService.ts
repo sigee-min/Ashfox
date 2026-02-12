@@ -7,6 +7,7 @@ import {
   PREVIEW_FRAME_DATA_UNAVAILABLE,
   PREVIEW_FRAMES_UNAVAILABLE,
   PREVIEW_IMAGE_DATA_UNAVAILABLE,
+  PREVIEW_UNSUPPORTED_NO_RENDER,
   TMP_STORE_UNAVAILABLE
 } from '../shared/messages';
 
@@ -14,17 +15,20 @@ export interface RenderServiceDeps {
   editor: EditorPort;
   tmpStore?: TmpStorePort;
   ensureActive: () => ToolError | null;
+  allowRenderPreview?: boolean;
 }
 
 export class RenderService {
   private readonly editor: EditorPort;
   private readonly tmpStore?: TmpStorePort;
   private readonly ensureActive: () => ToolError | null;
+  private readonly allowRenderPreview: boolean;
 
   constructor(deps: RenderServiceDeps) {
     this.editor = deps.editor;
     this.tmpStore = deps.tmpStore;
     this.ensureActive = deps.ensureActive;
+    this.allowRenderPreview = deps.allowRenderPreview !== false;
   }
 
   private ensureTmpStore(): ToolError | null {
@@ -50,6 +54,9 @@ export class RenderService {
   }
 
   renderPreview(payload: RenderPreviewPayload): UsecaseResult<RenderPreviewResult> {
+    if (!this.allowRenderPreview) {
+      return fail({ code: 'not_implemented', message: PREVIEW_UNSUPPORTED_NO_RENDER });
+    }
     return withActiveOnly(this.ensureActive, () => {
       const { saveToTmp, tmpName, tmpPrefix, ...previewPayload } = payload;
       const res = this.editor.renderPreview(previewPayload);
@@ -103,6 +110,5 @@ export class RenderService {
     });
   }
 }
-
 
 

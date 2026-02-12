@@ -19,9 +19,7 @@ Ashfox uses per-face UV mapping and keeps UV management internal. In practice, t
 
 ## Request-shape expectations
 
-`paint_faces` and `paint_mesh_face` are strict about payload shape. Legacy multi-write fields like `targets` or `ops` should not be used. If you want multiple visual edits, submit them as a sequence of intentional single operations.
-
-For mesh painting, `scope` can be `single_face` or `all_faces`. If omitted, it is inferred from whether `target.faceId` is present.
+`paint_faces` is strict about payload shape. Legacy multi-write fields like `targets` or `ops` should not be used. If you want multiple visual edits, submit them as a sequence of intentional single operations.
 
 ## Coordinate strategy
 

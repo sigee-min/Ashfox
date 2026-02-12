@@ -13,7 +13,7 @@ Use a three-step rhythm: bind texture context, apply one intentional paint opera
 ## Recommended loop
 
 1. Prepare texture context with `assign_texture`.
-2. Apply a single paint operation with `paint_faces` or `paint_mesh_face`.
+2. Apply a single paint operation with `paint_faces`.
 3. Inspect with `render_preview` and decide the next operation.
 
 Repeat until the asset meets style and readability goals.

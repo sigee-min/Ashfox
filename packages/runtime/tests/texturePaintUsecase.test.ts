@@ -13,7 +13,7 @@ import { runPaintTexture } from '../src/usecases/textureTools/texturePaint';
 const capabilities = {
   pluginVersion: 'test',
   blockbenchVersion: 'test',
-  formats: [{ format: 'geckolib', animations: true, enabled: true }],
+  authoring: { animations: true, enabled: true  },
   limits: { maxCubes: 256, maxTextureSize: 64, maxAnimationSeconds: 120 }
 } as const;
 
@@ -77,7 +77,7 @@ const createHarness = (options: HarnessOptions = {}) => {
 
   const snapshot = {
     id: 'p1',
-    format: 'geckolib',
+    format: 'entity_rig',
     formatId: 'geckolib_model',
     name: 'demo',
     dirty: false,

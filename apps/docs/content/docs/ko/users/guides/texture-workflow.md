@@ -14,7 +14,7 @@ summary: "Auto-UV 전제를 활용해 텍스처 품질을 안정적으로 쌓는
 
 1. `ensure_project` 또는 `get_project_state`로 현재 상태를 확인합니다.
 2. `assign_texture`로 대상 텍스처를 명확히 바인딩합니다.
-3. 큐브는 `paint_faces`, 메시는 `paint_mesh_face`로 단일 연산을 적용합니다.
+3. `paint_faces`로 단일 연산을 적용합니다.
 4. `render_preview`로 시각 확인 후 다음 연산을 결정합니다.
 
 `coordSpace: "texture"`는 전체 텍스처 좌표가 꼭 필요할 때만 사용하고, 일반 작업은 기본 `face` 좌표계로 유지하는 것이 안전합니다.

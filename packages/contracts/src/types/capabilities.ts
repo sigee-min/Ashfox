@@ -1,13 +1,10 @@
-import type { FormatKind } from './shared';
-
 export type Limits = {
   maxCubes: number;
   maxTextureSize: number;
   maxAnimationSeconds: number;
 };
 
-export interface Capability {
-  format: FormatKind;
+export interface AuthoringCapability {
   animations: boolean;
   enabled: boolean;
   flags?: {
@@ -19,7 +16,6 @@ export interface Capability {
     animationMode?: boolean;
     boneRig?: boolean;
     armatureRig?: boolean;
-    meshes?: boolean;
   };
 }
 
@@ -72,7 +68,7 @@ export interface Capabilities {
   toolSchemaVersion?: string;
   toolRegistry?: ToolRegistryInfo;
   blockbenchVersion: string;
-  formats: Capability[];
+  authoring: AuthoringCapability;
   exportTargets?: ExportTargetCapability[];
   limits: Limits;
   preview?: PreviewCapability;

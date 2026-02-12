@@ -1,6 +1,4 @@
 import type { BlockbenchGlobals } from '../../../types/blockbench';
-import { FormatKind, FORMAT_KINDS } from '@ashfox/contracts/types/internal';
-import { matchesFormatKind } from '../../../domain/formats';
 
 export const getProjectName = (globals: BlockbenchGlobals): string | null => {
   const project = globals.Project ?? globals.Blockbench?.project ?? null;
@@ -40,9 +38,3 @@ export const getActiveFormatId = (globals: BlockbenchGlobals): string | null => 
   const active = globals.Format ?? globals.ModelFormat?.selected ?? null;
   return active?.id ?? null;
 };
-
-export const guessFormatKind = (formatId: string | null): FormatKind | null => {
-  if (!formatId) return null;
-  return FORMAT_KINDS.find((kind) => matchesFormatKind(kind, formatId)) ?? null;
-};
-

@@ -1,5 +1,5 @@
 import type { TextureFrameOrderType, TextureMeta, TexturePbrChannel, TextureRenderMode, TextureRenderSides } from './texture';
-import type { CubeFaceDirection, FormatKind, ProjectStateDetail } from './shared';
+import type { CubeFaceDirection, ProjectStateDetail } from './shared';
 
 type MeshSymmetryAxis = 'none' | 'x' | 'y' | 'z';
 
@@ -155,7 +155,6 @@ export interface ProjectState {
   id: string;
   active: boolean;
   name: string | null;
-  format: FormatKind | null;
   formatId?: string | null;
   dirty?: boolean;
   revision: string;
@@ -212,7 +211,6 @@ export type ProjectTextureUsage = {
 export interface ProjectInfo {
   id: string;
   name: string | null;
-  format: FormatKind | null;
   formatId?: string | null;
 }
 

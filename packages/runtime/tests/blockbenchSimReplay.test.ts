@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import type { FormatKind } from '../src/types';
 import type { ToolPolicies } from '../src/usecases/policies';
 import type { TraceStep } from './support/traceRunner';
 import { runTrace } from './support/traceRunner';
@@ -24,7 +23,7 @@ type FixtureStep = {
 };
 
 type FixtureProject = {
-  format: FormatKind;
+  format: string;
   name?: string | null;
   formatId?: string | null;
   textureResolution?: { width: number; height: number } | null;
@@ -123,6 +122,5 @@ fixtures.forEach((fixture) => {
     })()
   );
 });
-
 
 

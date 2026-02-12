@@ -20,7 +20,7 @@ import {
 const capabilities: Capabilities = {
   pluginVersion: 'test',
   blockbenchVersion: 'test',
-  formats: [{ format: 'Java Block/Item', animations: true, enabled: true, flags: { singleTexture: true } }],
+  authoring: { animations: true, enabled: true, flags: { singleTexture: true } },
   limits: { maxCubes: 32, maxTextureSize: 64, maxAnimationSeconds: 5 }
 };
 
@@ -52,7 +52,7 @@ const editorState = createEditorStubWithState({
   textureResolution: { width: 16, height: 16 }
 });
 const editor = editorState.editor;
-const formats = createFormatPortStub();
+const formats = createFormatPortStub('geckolib_model', 'GeckoLib');
 const snapshot = createSnapshotPortStub(session);
 const exporter = createExportPortStub('not_implemented');
 const host = createHostPortStub();
@@ -75,7 +75,7 @@ const service = new ToolService({
 });
 
 const ensureRes = service.ensureProject({
-  format: 'Java Block/Item',
+  format: 'entity_rig',
   name: 'demo',
   match: 'none',
   onMissing: 'create'
@@ -253,7 +253,7 @@ const validateRes = service.validate({});
 assert.equal(validateRes.ok, true);
 
 registerAsync(
-  service.exportModel({ format: 'java_block_item_json', destPath: 'out.json' }).then((exportRes) => {
+  service.exportModel({ format: 'gecko_geo_anim', destPath: 'out.json' }).then((exportRes) => {
     assert.equal(exportRes.ok, true);
   })
 );
@@ -276,4 +276,3 @@ const reloadErr = service.reloadPlugins({ confirm: false });
 assert.equal(reloadErr.ok, false);
 const reloadOk = service.reloadPlugins({ confirm: true, delayMs: 10 });
 assert.equal(reloadOk.ok, true);
-

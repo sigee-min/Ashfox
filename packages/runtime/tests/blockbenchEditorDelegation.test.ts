@@ -102,18 +102,6 @@ const logger: Logger = {
       calls.push('geometry.deleteCube');
       return geometryResult;
     },
-    addMesh: () => {
-      calls.push('geometry.addMesh');
-      return geometryResult;
-    },
-    updateMesh: () => {
-      calls.push('geometry.updateMesh');
-      return geometryResult;
-    },
-    deleteMesh: () => {
-      calls.push('geometry.deleteMesh');
-      return geometryResult;
-    },
     getTextureUsage: () => {
       calls.push('geometry.getTextureUsage');
       return { error: geometryResult };
@@ -150,7 +138,7 @@ const logger: Logger = {
 
   const typedEditor = editor as unknown as BlockbenchEditor;
 
-  assert.equal(typedEditor.createProject('a', 'b', 'geckolib'), projectResult);
+  assert.equal(typedEditor.createProject('a', 'b'), projectResult);
   assert.equal(typedEditor.closeProject(), projectResult);
   assert.equal(typedEditor.importTexture({ name: 'x', image: {} as CanvasImageSource }), textureResult);
   assert.equal(typedEditor.updateTexture({ name: 'x', image: {} as CanvasImageSource }), textureResult);
@@ -165,20 +153,6 @@ const logger: Logger = {
   assert.equal(typedEditor.addCube({ name: 'c', from: [0, 0, 0], to: [1, 1, 1] }), geometryResult);
   assert.equal(typedEditor.updateCube({ name: 'c' }), geometryResult);
   assert.equal(typedEditor.deleteCube({ name: 'c' }), geometryResult);
-  assert.equal(
-    typedEditor.addMesh({
-      name: 'm',
-      vertices: [
-        { id: 'v0', pos: [0, 0, 0] },
-        { id: 'v1', pos: [1, 0, 0] },
-        { id: 'v2', pos: [0, 1, 0] }
-      ],
-      faces: [{ vertices: ['v0', 'v1', 'v2'] }]
-    }),
-    geometryResult
-  );
-  assert.equal(typedEditor.updateMesh({ name: 'm' }), geometryResult);
-  assert.equal(typedEditor.deleteMesh({ name: 'm' }), geometryResult);
   assert.equal(typedEditor.createAnimation({ name: 'idle', length: 1, loop: true, fps: 20 }), animationResult);
   assert.equal(typedEditor.updateAnimation({ name: 'idle' }), animationResult);
   assert.equal(typedEditor.deleteAnimation({ name: 'idle' }), animationResult);
@@ -218,9 +192,6 @@ const logger: Logger = {
     'geometry.addCube',
     'geometry.updateCube',
     'geometry.deleteCube',
-    'geometry.addMesh',
-    'geometry.updateMesh',
-    'geometry.deleteMesh',
     'animation.createAnimation',
     'animation.updateAnimation',
     'animation.deleteAnimation',

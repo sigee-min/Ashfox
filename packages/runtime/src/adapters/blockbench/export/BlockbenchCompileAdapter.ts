@@ -41,7 +41,7 @@ export class BlockbenchCompileAdapter {
   }
 
   compileNativeFormat(formatId: string): CompileFormatResult {
-    const format = getFormatById(formatId);
+    const format = getFormatByLookupIds(resolveNativeFormatLookupIds(formatId));
     const compiler = resolveFormatCompiler(format);
     if (!compiler) {
       return { ok: false, error: { code: 'not_implemented', message: ADAPTER_NATIVE_COMPILER_UNAVAILABLE(formatId) } };
@@ -120,6 +120,35 @@ const getFormatById = (formatId: string): FormatEntry | null => {
   const formats = globals.Formats ?? globals.ModelFormat?.formats ?? null;
   if (!formats || typeof formats !== 'object') return null;
   return formats[formatId] ?? null;
+};
+
+const listFormatIds = (): string[] => {
+  const globals = readGlobals();
+  const formats = globals.Formats ?? globals.ModelFormat?.formats ?? null;
+  if (!formats || typeof formats !== 'object') return [];
+  return Object.keys(formats);
+};
+
+const getFormatByLookupIds = (lookupIds: string[]): FormatEntry | null => {
+  for (const lookupId of lookupIds) {
+    const match = getFormatById(lookupId);
+    if (match) return match;
+  }
+  return null;
+};
+
+const resolveNativeFormatLookupIds = (formatId: string): string[] => {
+  const raw = String(formatId ?? '').trim();
+  if (!raw) return [];
+  const normalized = raw.toLowerCase();
+  const lookup = [raw];
+  if (normalized === 'entity_rig' || normalized === 'entityrig' || normalized === 'entity-rig') {
+    const geckoLookup = listFormatIds().filter((id) =>
+      normalizeToken(id).includes('gecko')
+    );
+    lookup.push(...geckoLookup);
+  }
+  return Array.from(new Set(lookup));
 };
 
 const resolveFormatCompiler = (format: FormatEntry | null): (() => unknown) | null => {
@@ -231,4 +260,3 @@ const readCodecEntries = (): CodecSelection[] => {
   });
   return Array.from(deduped.values());
 };
-

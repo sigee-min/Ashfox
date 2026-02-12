@@ -58,7 +58,7 @@ export class SnapshotContext implements SnapshotContextLike<ReturnType<ProjectSe
     }
     const merged = mergeSnapshots(this.session.snapshot(), live);
     const normalized = this.projectState.normalize(merged);
-    if (!this.projectState.toProjectInfo(normalized) || !normalized.format) {
+    if (!this.projectState.toProjectInfo(normalized)) {
       return {
         ...stateError,
         fix: 'Use ensure_project to create or reuse an active project before mutating.'
@@ -73,7 +73,6 @@ export class SnapshotContext implements SnapshotContextLike<ReturnType<ProjectSe
         };
   }
 }
-
 
 
 

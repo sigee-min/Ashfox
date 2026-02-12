@@ -11,7 +11,6 @@ export function mergeSnapshots(session: SessionState, live: SessionState | null)
   const merged: SessionState = {
     ...session,
     id: live.id ?? session.id,
-    format: live.format ?? session.format,
     formatId: live.formatId ?? session.formatId,
     name: live.name ?? session.name,
     dirty: live.dirty ?? session.dirty,
@@ -107,6 +106,5 @@ function pickSize(primary?: number, fallback?: number): number | undefined {
   if (typeof fallback === 'number' && Number.isFinite(fallback) && fallback > 0) return fallback;
   return primary ?? fallback;
 }
-
 
 

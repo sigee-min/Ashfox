@@ -1,7 +1,7 @@
 {
   "name": "recovery-overlap",
   "project": {
-    "format": "geckolib",
+    "format": "entity_rig",
     "name": "Recovery Overlap",
     "textureResolution": {
       "width": 16,

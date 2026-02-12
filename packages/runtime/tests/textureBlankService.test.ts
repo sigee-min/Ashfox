@@ -14,7 +14,7 @@ const normalizeMessage = (value: string): string => value.replace(/[.]$/, '');
 const capabilities = {
   pluginVersion: 'test',
   blockbenchVersion: 'test',
-  formats: [{ format: 'geckolib', animations: true, enabled: true }],
+  authoring: { animations: true, enabled: true  },
   limits: { maxCubes: 128, maxTextureSize: 32, maxAnimationSeconds: 120 }
 } as const;
 

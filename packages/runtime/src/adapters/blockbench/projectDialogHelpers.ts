@@ -1,11 +1,10 @@
-import type { FormatKind, ToolError } from '@ashfox/contracts/types/internal';
+import type { ToolError } from '@ashfox/contracts/types/internal';
 import { ADAPTER_PROJECT_DIALOG_INPUT_REQUIRED } from '../../shared/messages';
 import { readGlobals } from './blockbenchUtils';
 
 type AutoDialogOptions = {
   dialog?: Record<string, unknown>;
   formatId?: string;
-  formatKind?: FormatKind;
 };
 
 export const tryAutoConfirmProjectDialog = (
@@ -31,7 +30,7 @@ export const tryAutoConfirmProjectDialog = (
     values.project_name = projectName;
   }
   if (allowed.has('format') && isEmptyDialogValue(values.format)) {
-    const formatValue = coerceDialogSelectValue(current.format, options?.formatId, options?.formatKind);
+    const formatValue = coerceDialogSelectValue(current.format, options?.formatId);
     if (formatValue !== undefined) values.format = formatValue;
   }
   if (allowed.has('parent') && isEmptyDialogValue(values.parent) && options?.dialog?.parent !== undefined) {
@@ -46,8 +45,8 @@ export const tryAutoConfirmProjectDialog = (
     const missing = getMissingFields(remaining);
     const fallbackValues = { ...values };
     let appliedFallback = false;
-    if (missing.includes('format') && allowed.has('format') && options?.formatKind) {
-      const fallbackFormat = coerceDialogSelectValue(current.format, undefined, options.formatKind);
+    if (missing.includes('format') && allowed.has('format') && options?.formatId) {
+      const fallbackFormat = coerceDialogSelectValue(current.format, options.formatId);
       if (fallbackFormat !== undefined && !isSameDialogValue(fallbackValues.format, fallbackFormat)) {
         fallbackValues.format = fallbackFormat;
         appliedFallback = true;
@@ -101,20 +100,15 @@ const isSameDialogValue = (a: unknown, b: unknown): boolean => {
 
 const coerceDialogSelectValue = (
   currentValue: unknown,
-  desiredId?: string,
-  desiredLabel?: string
+  desiredId?: string
 ): unknown => {
-  const desired = desiredId ?? desiredLabel;
+  const desired = desiredId;
   if (desired === undefined) return undefined;
   if (currentValue && typeof currentValue === 'object') {
     const record = { ...(currentValue as Record<string, unknown>) };
     if ('id' in record && desiredId) record.id = desiredId;
     if ('value' in record && desiredId) record.value = desiredId;
     if ('key' in record && desiredId) record.key = desiredId;
-    if (desiredLabel) {
-      if ('name' in record) record.name = desiredLabel;
-      if ('label' in record) record.label = desiredLabel;
-    }
     return record;
   }
   return desired;
@@ -127,4 +121,3 @@ const pickDialogFields = (values: Record<string, unknown>, keys: string[]): Reco
   });
   return picked;
 };
-

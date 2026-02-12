@@ -4,8 +4,6 @@ import {
   Capabilities,
   PaintFacesPayload,
   PaintFacesResult,
-  PaintMeshFacePayload,
-  PaintMeshFaceResult,
   PaintTexturePayload,
   PaintTextureResult,
   PreflightTextureResult,
@@ -16,7 +14,7 @@ import {
 import { ProjectSession, SessionState } from '../session';
 import { CubeFaceDirection, EditorPort, FaceUvMap, TextureSource } from '../ports/editor';
 import { TextureMeta } from '@ashfox/contracts/types/texture';
-import { runAutoUvAtlas, runPaintFaces, runPaintMeshFace, runPaintTexture, TextureToolContext } from './textureTools';
+import { runAutoUvAtlas, runPaintFaces, runPaintTexture, TextureToolContext } from './textureTools';
 import { ok, fail, UsecaseResult } from './result';
 import { TextureWriteService } from './textureService/TextureWriteService';
 import { TextureReadService } from './textureService/TextureReadService';
@@ -30,7 +28,6 @@ import { TextureAssignmentService } from './textureService/TextureAssignmentServ
 import { TextureUvService } from './textureService/TextureUvService';
 import { ensureTextureSelector } from './textureService/textureSelector';
 import { runCreateBlankTexture } from './textureService/textureBlank';
-import { TEXTURE_MESH_FACE_UNSUPPORTED_FORMAT } from '../shared/messages';
 
 const selectorError = (id?: string, name?: string) => ensureTextureSelector(id, name);
 
@@ -162,12 +159,6 @@ export class TextureService {
     return runPaintFaces(this.getTextureToolContext(), payload);
   }
 
-  paintMeshFace(payload: PaintMeshFacePayload): UsecaseResult<PaintMeshFaceResult> {
-    const unsupported = this.ensureMeshPaintSupported();
-    if (unsupported) return fail(unsupported);
-    return runPaintMeshFace(this.getTextureToolContext(), payload);
-  }
-
   autoUvAtlas(payload: AutoUvAtlasPayload): UsecaseResult<AutoUvAtlasResult> {
     return runAutoUvAtlas(this.getTextureToolContext(), payload);
   }
@@ -271,20 +262,7 @@ export class TextureService {
       runWithoutRevisionGuard: (fn) => this.runWithoutRevisionGuard?.(fn) ?? fn()
     };
   }
-
-  private ensureMeshPaintSupported(): ToolError | null {
-    const format = this.session.snapshot().format;
-    if (!format) return null;
-    const capability = this.capabilities.formats.find((entry) => entry.format === format);
-    if (!capability || !capability.enabled || !capability.flags?.meshes) {
-      return { code: 'unsupported_format', message: TEXTURE_MESH_FACE_UNSUPPORTED_FORMAT };
-    }
-    return null;
-  }
 }
-
-
-
 
 
 

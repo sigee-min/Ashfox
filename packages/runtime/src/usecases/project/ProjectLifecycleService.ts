@@ -1,12 +1,10 @@
-import type { Capabilities, EnsureProjectAction, FormatKind, ToolError } from '@ashfox/contracts/types/internal';
+import type { EnsureProjectAction, ToolError } from '@ashfox/contracts/types/internal';
 import { ok, fail, type UsecaseResult } from '../result';
 import { ensureNonBlankString } from '../../shared/payloadValidation';
 import {
   PROJECT_CREATE_REQUIREMENTS,
   PROJECT_CREATE_REQUIREMENTS_ON_MISMATCH_FIX,
   PROJECT_CREATE_REQUIREMENTS_ON_MISSING_FIX,
-  PROJECT_FORMAT_UNKNOWN,
-  PROJECT_MATCH_FORMAT_REQUIRED,
   PROJECT_MATCH_NAME_REQUIRED,
   PROJECT_MISMATCH,
   PROJECT_NO_ACTIVE,
@@ -19,14 +17,13 @@ import type { ProjectServiceDeps } from './projectServiceTypes';
 import { runCreateProject } from './projectCreation';
 import { runDeleteProject } from './projectDeletion';
 
-type EnsureMatchMode = 'none' | 'format' | 'name' | 'format_and_name';
+type EnsureMatchMode = 'none' | 'name';
 type EnsureOnMismatch = 'reuse' | 'error' | 'create';
 type EnsureOnMissing = 'create' | 'error';
 
 type EnsureProjectPayload = {
   action?: EnsureProjectAction;
   target?: { name?: string };
-  format?: Capabilities['formats'][number]['format'];
   name?: string;
   match?: EnsureMatchMode;
   onMismatch?: EnsureOnMismatch;
@@ -43,13 +40,11 @@ type EnsureIntent = {
   matchMode: EnsureMatchMode;
   onMismatch: EnsureOnMismatch;
   onMissing: EnsureOnMissing;
-  requiresFormat: boolean;
   requiresName: boolean;
 };
 
 type CreatedProjectResult = {
   id: string;
-  format: FormatKind;
   name: string;
 };
 
@@ -80,56 +75,63 @@ export class ProjectLifecycleService {
 
   ensureProject(payload: EnsureProjectPayload): UsecaseResult<{
     action: 'created' | 'reused' | 'deleted';
-    project: { id: string; format: FormatKind; name: string | null; formatId?: string | null };
+    project: { id: string; name: string | null; formatId?: string | null };
   }> {
+    const normalizedPayload = this.normalizeEnsurePayload(payload);
     const intentRes = this.resolveEnsureIntent(payload);
     if (!intentRes.ok) return fail(intentRes.error);
     const intent = intentRes.value;
     if (intent.action === 'delete') {
-      return runDeleteProject(this.buildDeleteContext(), payload);
+      return runDeleteProject(this.buildDeleteContext(), normalizedPayload);
     }
-    const payloadErr = this.validateEnsurePayload(payload, intent);
+    const payloadErr = this.validateEnsurePayload(normalizedPayload, intent);
     if (payloadErr) return fail(payloadErr);
-    const normalizedUv = this.normalizeUvPixelsPerBlock(payload.uvPixelsPerBlock);
-    if (payload.uvPixelsPerBlock !== undefined && normalizedUv === null) {
+    const normalizedUv = this.normalizeUvPixelsPerBlock(normalizedPayload.uvPixelsPerBlock);
+    if (normalizedPayload.uvPixelsPerBlock !== undefined && normalizedUv === null) {
       return fail({ code: 'invalid_payload', message: PROJECT_UV_PIXELS_PER_BLOCK_INVALID });
     }
     const snapshot = this.getSnapshot();
     const normalized = this.projectState.normalize(snapshot);
     const info = this.projectState.toProjectInfo(normalized);
-    const hasActive = Boolean(info && normalized.format);
+    const hasActive = Boolean(info);
     if (!hasActive) {
-      return this.handleMissingProject(payload, intent.onMissing, normalizedUv);
+      return this.handleMissingProject(normalizedPayload, intent.onMissing, normalizedUv);
     }
-    if (!normalized.format || !info) {
-      return fail({ code: 'invalid_state', message: PROJECT_FORMAT_UNKNOWN });
+    if (!info) {
+      return fail({ code: 'invalid_state', message: PROJECT_NO_ACTIVE });
     }
-    const mismatch = this.isProjectMismatch(payload, intent, normalized.format, info.name ?? null);
+    const mismatch = this.isProjectMismatch(normalizedPayload, intent, info.name ?? null);
     if (!mismatch) {
       return this.reuseProject(normalized, normalizedUv);
     }
     if (intent.onMismatch === 'error') {
       return fail({
-        code: 'invalid_state',
+          code: 'invalid_state',
         message: PROJECT_MISMATCH,
         details: {
-          expected: { format: payload.format ?? null, name: payload.name ?? null, match: intent.matchMode },
-          actual: { format: normalized.format, name: info.name ?? null }
+          expected: {
+            name: normalizedPayload.name ?? null,
+            match: intent.matchMode
+          },
+          actual: { name: info.name ?? null }
         }
       });
     }
     if (intent.onMismatch === 'create') {
-      return this.createProjectFromEnsure(payload, normalizedUv, PROJECT_CREATE_REQUIREMENTS_ON_MISMATCH_FIX);
+      return this.createProjectFromEnsure(
+        normalizedPayload,
+        normalizedUv,
+        PROJECT_CREATE_REQUIREMENTS_ON_MISMATCH_FIX
+      );
     }
     return this.reuseProject(normalized, normalizedUv);
   }
 
   createProject(
-    format: Capabilities['formats'][number]['format'],
     name: string,
     options?: { confirmDiscard?: boolean; dialog?: Record<string, unknown>; ifRevision?: string; uvPixelsPerBlock?: number }
-  ): UsecaseResult<{ id: string; format: FormatKind; name: string }> {
-    const created = runCreateProject(this.buildCreateContext(), format, name, options);
+  ): UsecaseResult<{ id: string; name: string }> {
+    const created = runCreateProject(this.buildCreateContext(), name, options);
     if (created.ok) {
       const normalizedUv = this.normalizeUvPixelsPerBlock(options?.uvPixelsPerBlock);
       if (options?.uvPixelsPerBlock !== undefined && normalizedUv === null) {
@@ -152,23 +154,21 @@ export class ProjectLifecycleService {
       matchMode,
       onMismatch,
       onMissing,
-      requiresFormat: matchMode === 'format' || matchMode === 'format_and_name',
-      requiresName: matchMode === 'name' || matchMode === 'format_and_name'
+      requiresName: matchMode === 'name'
     });
   }
 
   private validateEnsurePayload(payload: EnsureProjectPayload, intent: EnsureIntent): ToolError | null {
-    const formatBlankErr = ensureNonBlankString(payload.format, 'format');
-    if (formatBlankErr) return formatBlankErr;
     const nameBlankErr = ensureNonBlankString(payload.name, 'name');
     if (nameBlankErr) return nameBlankErr;
-    if (intent.requiresFormat && !payload.format) {
-      return { code: 'invalid_payload', message: PROJECT_MATCH_FORMAT_REQUIRED };
-    }
     if (intent.requiresName && !payload.name) {
       return { code: 'invalid_payload', message: PROJECT_MATCH_NAME_REQUIRED };
     }
     return null;
+  }
+
+  private normalizeEnsurePayload(payload: EnsureProjectPayload): EnsureProjectPayload {
+    return { ...payload };
   }
 
   private handleMissingProject(
@@ -177,7 +177,7 @@ export class ProjectLifecycleService {
     normalizedUv: number | null | undefined
   ): UsecaseResult<{
     action: 'created' | 'reused' | 'deleted';
-    project: { id: string; format: FormatKind; name: string | null; formatId?: string | null };
+    project: { id: string; name: string | null; formatId?: string | null };
   }> {
     if (onMissing === 'error') {
       return fail({ code: 'invalid_state', message: PROJECT_NO_ACTIVE });
@@ -188,12 +188,10 @@ export class ProjectLifecycleService {
   private isProjectMismatch(
     payload: EnsureProjectPayload,
     intent: EnsureIntent,
-    activeFormat: FormatKind,
     activeName: string | null
   ): boolean {
-    const formatMismatch = Boolean(intent.requiresFormat && payload.format && activeFormat !== payload.format);
     const nameMismatch = Boolean(intent.requiresName && payload.name && activeName !== payload.name);
-    return formatMismatch || nameMismatch;
+    return nameMismatch;
   }
 
   private createProjectFromEnsure(
@@ -202,16 +200,16 @@ export class ProjectLifecycleService {
     fix: string
   ): UsecaseResult<{
     action: 'created' | 'reused' | 'deleted';
-    project: { id: string; format: FormatKind; name: string | null; formatId?: string | null };
+    project: { id: string; name: string | null; formatId?: string | null };
   }> {
-    if (!payload.format || !payload.name) {
+    if (!payload.name) {
       return fail({
         code: 'invalid_payload',
         message: PROJECT_CREATE_REQUIREMENTS,
         fix
       });
     }
-    const created = runCreateProject(this.buildCreateContext(), payload.format, payload.name, {
+    const created = runCreateProject(this.buildCreateContext(), payload.name, {
       confirmDiscard: payload.confirmDiscard,
       dialog: payload.dialog,
       ifRevision: payload.ifRevision
@@ -225,7 +223,7 @@ export class ProjectLifecycleService {
     normalizedUv: number | null | undefined
   ): UsecaseResult<{
     action: 'created' | 'reused' | 'deleted';
-    project: { id: string; format: FormatKind; name: string | null; formatId?: string | null };
+    project: { id: string; name: string | null; formatId?: string | null };
   }> {
     const uvErr = this.applyUvPixelsPerBlock(normalizedUv);
     if (uvErr) return fail(uvErr);
@@ -235,7 +233,6 @@ export class ProjectLifecycleService {
       action: 'created',
       project: {
         id: created.id,
-        format: created.format,
         name: created.name,
         formatId: sessionState.formatId ?? null
       }
@@ -247,7 +244,7 @@ export class ProjectLifecycleService {
     normalizedUv: number | null | undefined
   ): UsecaseResult<{
     action: 'created' | 'reused' | 'deleted';
-    project: { id: string; format: FormatKind; name: string | null; formatId?: string | null };
+    project: { id: string; name: string | null; formatId?: string | null };
   }> {
     const attachRes = this.session.attach(normalized);
     if (!attachRes.ok) return fail(attachRes.error);
@@ -258,7 +255,6 @@ export class ProjectLifecycleService {
       action: 'reused',
       project: {
         id: attachRes.data.id,
-        format: normalized.format as FormatKind,
         name: attachRes.data.name,
         formatId: normalized.formatId ?? null
       }
@@ -329,4 +325,3 @@ export class ProjectLifecycleService {
     };
   }
 }
-

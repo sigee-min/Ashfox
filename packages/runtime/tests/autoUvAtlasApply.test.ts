@@ -91,8 +91,13 @@ const createHarness = (options?: {
     },
     ensureActive: () => null,
     ensureRevisionMatch: () => null,
-    getSnapshot: () => ({ id: 'p', format: 'geckolib', formatId: 'g', name: 'demo', bones: [], cubes: [], textures: [], animations: [], animationTimePolicy: { fpsDefault: 20, minKeyframeStep: 0.05, maxAnimationSeconds: 600, trimDecimals: 4 } } as never),
-    capabilities: { pluginVersion: 'test', blockbenchVersion: 'test', formats: [], limits: { maxCubes: 64, maxTextureSize: 64, maxAnimationSeconds: 120 } },
+    getSnapshot: () => ({ id: 'p', format: 'entity_rig', formatId: 'g', name: 'demo', bones: [], cubes: [], textures: [], animations: [], animationTimePolicy: { fpsDefault: 20, minKeyframeStep: 0.05, maxAnimationSeconds: 600, trimDecimals: 4 } } as never),
+    capabilities: {
+      pluginVersion: 'test',
+      blockbenchVersion: 'test',
+      authoring: { animations: true, enabled: true },
+      limits: { maxCubes: 64, maxTextureSize: 64, maxAnimationSeconds: 120 }
+    },
     getUvPolicyConfig: () => ({ pixelsPerBlock: 16 }),
     importTexture: () => ({ ok: true, value: { id: 'x', name: 'x' } })
   } as never;

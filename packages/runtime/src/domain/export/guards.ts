@@ -1,53 +1,19 @@
-import type { Capabilities, FormatKind } from '@ashfox/contracts/types/internal';
-import type { SessionState } from '../../session';
-import { matchesFormatKind } from '../formats';
-import type { MatchOverrideKind } from './snapshotResolution';
+import type { Capabilities } from '@ashfox/contracts/types/internal';
 
 export type ExportFormatGuardResult =
   | { ok: true }
   | {
       ok: false;
-      reason: 'format_not_enabled';
-      format: FormatKind;
-    };
-
-export type ExportSnapshotGuardResult =
-  | { ok: true }
-  | {
-      ok: false;
-      reason: 'format_mismatch';
-      needsOverrideHint: boolean;
+      reason: 'authoring_not_enabled';
     };
 
 export const ensureExportFormatEnabled = (
   capabilities: Capabilities,
-  expectedFormat: FormatKind | null
+  requiresAuthoringFormat: boolean
 ): ExportFormatGuardResult => {
-  if (!expectedFormat) return { ok: true };
-  const formatCapability = capabilities.formats.find((entry) => entry.format === expectedFormat);
-  if (!formatCapability || !formatCapability.enabled) {
-    return { ok: false, reason: 'format_not_enabled', format: expectedFormat };
+  if (!requiresAuthoringFormat) return { ok: true };
+  if (!capabilities.authoring.enabled) {
+    return { ok: false, reason: 'authoring_not_enabled' };
   }
   return { ok: true };
 };
-
-export const ensureSnapshotMatchesExportFormat = (
-  snapshot: SessionState,
-  expectedFormat: FormatKind | null,
-  matchOverrideKind: MatchOverrideKind
-): ExportSnapshotGuardResult => {
-  if (!expectedFormat) return { ok: true };
-  if (snapshot.format && snapshot.format !== expectedFormat) {
-    return { ok: false, reason: 'format_mismatch', needsOverrideHint: false };
-  }
-  if (
-    !snapshot.format &&
-    snapshot.formatId &&
-    !matchesFormatKind(expectedFormat, snapshot.formatId) &&
-    matchOverrideKind(snapshot.formatId) !== expectedFormat
-  ) {
-    return { ok: false, reason: 'format_mismatch', needsOverrideHint: true };
-  }
-  return { ok: true };
-};
-

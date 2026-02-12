@@ -15,6 +15,7 @@ export interface ToolPolicies {
   requireRevision?: boolean;
   autoRetryRevision?: boolean;
   autoCreateProjectTexture?: boolean;
+  allowRenderPreview?: boolean;
   animationTimePolicy?: {
     timeEpsilon?: number;
     triggerDedupeByValue?: boolean;
@@ -28,6 +29,5 @@ export interface ToolPolicies {
     autoMaxRetries?: number;
   };
 }
-
 
 

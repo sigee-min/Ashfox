@@ -9,7 +9,7 @@ Use GitHub Issues for:
 When reporting issues, include:
 - ashfox version/commit
 - Blockbench version
-- model format (for example `java_block`, `geckolib`, `animated_java`)
+- authoring profile status and active `formatId` (from `list_capabilities` / `get_project_state`)
 - exact request payload and response (if relevant)
 - minimal reproduction steps
 
@@ -21,4 +21,3 @@ When reporting issues, include:
 ## Security Issues
 Do not open public issues for vulnerabilities.
 Follow `SECURITY.md`.
-

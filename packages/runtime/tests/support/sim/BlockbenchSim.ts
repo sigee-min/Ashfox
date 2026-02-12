@@ -21,7 +21,7 @@ import type {
 } from '../../../src/ports/editor';
 import type { FormatDescriptor } from '../../../src/ports/formats';
 import type { SnapshotPort } from '../../../src/ports/snapshot';
-import type { FormatKind, RenderPreviewResult, ToolError } from '../../../src/types';
+import type { RenderPreviewResult, ToolError } from '../../../src/types';
 import type { CubeInstance, TextureInstance } from '../../../src/types/blockbench';
 import { buildTextureUsageResult } from '../../../src/adapters/blockbench/BlockbenchTextureUsage';
 import { DEFAULT_TEXTURE_SIZE } from './simConstants';
@@ -92,17 +92,17 @@ export class BlockbenchSim {
 
   get editor(): EditorPort {
     return {
-      createProject: (name: string, formatId: string, kind: FormatKind) => {
+      createProject: (name: string, formatId: string) => {
         this.state.project = {
           id: `${Date.now()}`,
           name,
-          format: kind,
+          format: 'entity_rig',
           formatId,
           textureResolution: { width: DEFAULT_TEXTURE_SIZE, height: DEFAULT_TEXTURE_SIZE },
           uvPixelsPerBlock: undefined
         };
         this.resetCollections();
-        this.updateFormatCaps(formatId, kind);
+        this.updateFormatCaps(formatId, 'entity_rig');
         return null;
       },
       closeProject: (_options?: { force?: boolean }) => {
@@ -160,7 +160,7 @@ export class BlockbenchSim {
   }
 
   loadProject(data: {
-    format?: FormatKind;
+    format?: string;
     name?: string | null;
     formatId?: string | null;
     textureResolution?: TextureResolution | null;
@@ -217,7 +217,7 @@ export class BlockbenchSim {
         };
   }
 
-  private updateFormatCaps(formatId?: string | null, format?: FormatKind | null): void {
+  private updateFormatCaps(formatId?: string | null, format?: string | null): void {
     if (!this.resolveFormatCaps) return;
     const next = this.resolveFormatCaps(formatId ?? null, format ?? null);
     if (next !== undefined) {

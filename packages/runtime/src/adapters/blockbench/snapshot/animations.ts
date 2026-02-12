@@ -62,12 +62,17 @@ const collectAnimatorChannels = (
   keyframes.forEach((kf) => {
     if (!isRecord(kf)) return;
     const channel = normalizeAnimationChannel(kf.channel ?? kf.data_channel ?? kf.transform);
-    const value = kf.data_points ?? kf.value ?? kf.data_point;
-    if (!channel || !Array.isArray(value) || value.length < 3) return;
+    const value = readVectorValue(kf);
+    if (!channel || !value) return;
     buckets[channel].push({
       time: normalizeKeyframeTime(Number(kf.time ?? kf.frame ?? 0)),
-      value: [value[0], value[1], value[2]],
-      interp: normalizeInterp(kf.interpolation)
+      value,
+      interp: normalizeInterp(kf.interpolation),
+      easing: normalizeOptionalString(kf.easing),
+      easingArgs: normalizeOptionalArray(kf.easingArgs ?? kf.easing_args),
+      pre: readOptionalVec3(kf.pre),
+      post: readOptionalVec3(kf.post),
+      bezier: normalizeOptionalRecord(kf.bezier)
     });
   });
   return Object.entries(buckets)
@@ -124,4 +129,77 @@ const normalizeInterp = (value: unknown): 'linear' | 'step' | 'catmullrom' | und
   if (interp.includes('catmull')) return 'catmullrom';
   if (interp.includes('linear')) return 'linear';
   return undefined;
+};
+
+const toFiniteNumber = (value: unknown): number | null => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  return numeric;
+};
+
+const normalizeOptionalString = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const normalizeOptionalArray = (value: unknown): unknown[] | undefined => {
+  if (!Array.isArray(value)) return undefined;
+  return [...value];
+};
+
+const normalizeOptionalRecord = (value: unknown): Record<string, unknown> | undefined => {
+  if (!isRecord(value)) return undefined;
+  return value;
+};
+
+const readVec3FromArray = (value: unknown): [number, number, number] | null => {
+  if (!Array.isArray(value) || value.length < 3) return null;
+  const x = toFiniteNumber(value[0]);
+  const y = toFiniteNumber(value[1]);
+  const z = toFiniteNumber(value[2]);
+  if (x === null || y === null || z === null) return null;
+  return [x, y, z];
+};
+
+const readVec3FromPoint = (value: unknown): [number, number, number] | null => {
+  if (!isRecord(value)) return null;
+  const x = toFiniteNumber(value.x);
+  const y = toFiniteNumber(value.y);
+  const z = toFiniteNumber(value.z);
+  if (x === null || y === null || z === null) return null;
+  return [x, y, z];
+};
+
+const readVec3FromDataPoints = (value: unknown): [number, number, number] | null => {
+  if (Array.isArray(value)) {
+    const direct = readVec3FromArray(value);
+    if (direct) return direct;
+    const first = value[0];
+    const fromPoint = readVec3FromPoint(first);
+    if (fromPoint) return fromPoint;
+  }
+  return null;
+};
+
+const readOptionalVec3 = (value: unknown): [number, number, number] | undefined => {
+  return readVec3FromArray(value) ?? readVec3FromPoint(value) ?? undefined;
+};
+
+const readVectorValue = (keyframe: UnknownRecord): [number, number, number] | null => {
+  const fromDataPoints = readVec3FromDataPoints(keyframe.data_points);
+  if (fromDataPoints) return fromDataPoints;
+  const fromValue = readVec3FromArray(keyframe.value);
+  if (fromValue) return fromValue;
+  const fromDataPoint = readVec3FromArray(keyframe.data_point);
+  if (fromDataPoint) return fromDataPoint;
+  if (isRecord(keyframe.value)) {
+    const fromVector = readVec3FromArray(keyframe.value.vector);
+    if (fromVector) return fromVector;
+    const fromPost = readVec3FromArray(keyframe.value.post);
+    if (fromPost) return fromPost;
+    const fromPre = readVec3FromArray(keyframe.value.pre);
+    if (fromPre) return fromPre;
+  }
+  return null;
 };

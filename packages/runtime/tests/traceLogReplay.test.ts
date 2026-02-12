@@ -18,7 +18,7 @@ const createState = (revision: string): ProjectState => ({
   id: 'p1',
   active: true,
   name: 'project',
-  format: 'geckolib',
+  format: 'entity_rig',
   revision,
   counts: { bones: 0, cubes: 1, textures: 1, animations: 0 },
   textureResolution: { width: 16, height: 16 },

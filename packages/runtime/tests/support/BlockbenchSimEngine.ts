@@ -1,5 +1,4 @@
 import type { FormatDescriptor } from '../../src/ports/formats';
-import type { FormatKind } from '../../src/types';
 import type { BlockbenchSimProject } from './sim/BlockbenchSim';
 import { BlockbenchSim } from './sim/BlockbenchSim';
 import {
@@ -13,7 +12,7 @@ type BlockbenchSimEngineOptions = {
   spec?: BlockbenchSpecSnapshot;
   project?: Partial<BlockbenchSimProject>;
   formatCaps?: FormatDescriptor | null;
-  format?: FormatKind | null;
+  format?: string | null;
   formatId?: string | null;
 };
 

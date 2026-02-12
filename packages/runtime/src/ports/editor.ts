@@ -1,4 +1,4 @@
-import { FormatKind, RenderPreviewPayload, RenderPreviewResult, ToolError } from '@ashfox/contracts/types/internal';
+import { RenderPreviewPayload, RenderPreviewResult, ToolError } from '@ashfox/contracts/types/internal';
 import type { AnimationTimePolicy } from '../domain/animation/timePolicy';
 import type { CubeFaceDirection, FaceUvMap } from '../domain/model';
 import type {
@@ -170,52 +170,6 @@ export type DeleteCubeCommand = {
   name?: string;
 };
 
-export type MeshVertexCommand = {
-  id: string;
-  pos: Vec3;
-};
-
-export type MeshFaceUvCommand = {
-  vertexId: string;
-  uv: Vec2;
-};
-
-export type MeshFaceCommand = {
-  id?: string;
-  vertices: string[];
-  uv?: MeshFaceUvCommand[];
-  texture?: string | false;
-};
-
-export type MeshCommand = {
-  id?: string;
-  name: string;
-  bone?: string;
-  origin?: Vec3;
-  rotation?: Vec3;
-  visibility?: boolean;
-  vertices: MeshVertexCommand[];
-  faces: MeshFaceCommand[];
-};
-
-export type UpdateMeshCommand = {
-  id?: string;
-  name?: string;
-  newName?: string;
-  bone?: string | null;
-  boneRoot?: boolean;
-  origin?: Vec3;
-  rotation?: Vec3;
-  visibility?: boolean;
-  vertices?: MeshVertexCommand[];
-  faces?: MeshFaceCommand[];
-};
-
-export type DeleteMeshCommand = {
-  id?: string;
-  name?: string;
-};
-
 export type AnimationCommand = {
   id?: string;
   name: string;
@@ -243,7 +197,16 @@ export type KeyframeCommand = {
   clipId?: string;
   bone: string;
   channel: 'rot' | 'pos' | 'scale';
-  keys: { time: number; value: Vec3; interp?: 'linear' | 'step' | 'catmullrom' }[];
+  keys: {
+    time: number;
+    value: Vec3;
+    interp?: 'linear' | 'step' | 'catmullrom';
+    easing?: string;
+    easingArgs?: unknown[];
+    pre?: Vec3;
+    post?: Vec3;
+    bezier?: Record<string, unknown>;
+  }[];
   timePolicy?: AnimationTimePolicy;
 };
 
@@ -261,7 +224,6 @@ export interface EditorPort {
   createProject: (
     name: string,
     formatId: string,
-    kind: FormatKind,
     options?: { confirmDiscard?: boolean; dialog?: Record<string, unknown> }
   ) => ToolError | null;
   closeProject: (options?: { force?: boolean }) => ToolError | null;
@@ -277,9 +239,6 @@ export interface EditorPort {
   addCube: (params: CubeCommand) => ToolError | null;
   updateCube: (params: UpdateCubeCommand) => ToolError | null;
   deleteCube: (params: DeleteCubeCommand) => ToolError | null;
-  addMesh: (params: MeshCommand) => ToolError | null;
-  updateMesh: (params: UpdateMeshCommand) => ToolError | null;
-  deleteMesh: (params: DeleteMeshCommand) => ToolError | null;
   createAnimation: (params: AnimationCommand) => ToolError | null;
   updateAnimation: (params: UpdateAnimationCommand) => ToolError | null;
   deleteAnimation: (params: DeleteAnimationCommand) => ToolError | null;
@@ -293,6 +252,3 @@ export interface EditorPort {
   setProjectUvPixelsPerBlock: (pixelsPerBlock: number) => ToolError | null;
   getTextureUsage: (params: TextureUsageQuery) => { result?: TextureUsageResult; error?: ToolError };
 }
-
-
-

@@ -40,36 +40,12 @@
     }
   },
   "formats": {
-    "java_block": {
-      "id": "java_block",
-      "name": "Java Block/Item",
-      "notes": "Capabilities are assumed; prefer live Format API when available.",
-      "confidence": "assumed"
-    },
     "geckolib": {
       "id": "geckolib",
       "name": "GeckoLib",
       "perTextureUvSize": true,
       "notes": "Capabilities are assumed; prefer live Format API when available.",
       "confidence": "assumed"
-    },
-    "animated_java": {
-      "id": "animated_java",
-      "name": "Animated Java",
-      "perTextureUvSize": true,
-      "notes": "Capabilities are assumed; prefer live Format API when available.",
-      "confidence": "assumed"
-    },
-    "free": {
-      "id": "free",
-      "name": "Generic Model",
-      "perTextureUvSize": true,
-      "animationMode": true,
-      "boneRig": true,
-      "armatureRig": true,
-      "meshes": true,
-      "notes": "Capabilities align with Blockbench generic format definition.",
-      "confidence": "observed"
     },
     "image": {
       "id": "image",
@@ -82,10 +58,7 @@
     }
   },
   "aliases": {
-    "Java Block/Item": "java_block",
     "geckolib": "geckolib",
-    "animated_java": "animated_java",
-    "Generic Model": "free",
     "Image": "image"
   },
   "defaults": {
@@ -109,12 +82,6 @@
       "url": "https://www.blockbench.net/wiki/api/textures/",
       "checkedAt": "2026-01-31",
       "note": "UV size depends on per_texture_uv_size vs project texture resolution."
-    },
-    {
-      "name": "Blockbench generic format source",
-      "url": "https://github.com/JannisX11/blockbench/blob/master/js/io/formats/generic.ts",
-      "checkedAt": "2026-02-08",
-      "note": "free format enables meshes, armature_rig, bone_rig, per_texture_uv_size, animation_mode."
     },
     {
       "name": "Blockbench image format source",

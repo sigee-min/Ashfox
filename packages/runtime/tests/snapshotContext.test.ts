@@ -5,7 +5,7 @@ import { SnapshotContext } from '../src/usecases/SnapshotContext';
 
 const baseState: SessionState = {
   id: 'p1',
-  format: 'geckolib',
+  format: 'entity_rig',
   formatId: 'geckolib_model',
   name: 'demo',
   dirty: false,

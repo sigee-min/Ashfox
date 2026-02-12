@@ -1,65 +1,55 @@
-import { FormatKind } from '@ashfox/contracts/types/internal';
-import { FormatDescriptor } from '../ports/formats';
+import type { FormatDescriptor } from '../ports/formats';
 
-export type FormatOverrides = Partial<Record<FormatKind, string>>;
+export type FormatOverrides = {
+  formatId?: string;
+};
 
 export function resolveFormatId(
-  kind: FormatKind,
   formats: FormatDescriptor[],
-  overrides?: FormatOverrides
+  overrides?: FormatOverrides,
+  activeFormatId?: string | null
 ): string | null {
-  const overrideId = overrides?.[kind];
-  if (overrideId) {
-    const exists = formats.some((f) => f.id === overrideId);
-    if (exists) return overrideId;
+  const overrideId = normalizeFormatId(overrides?.formatId);
+  if (overrideId && existsFormat(formats, overrideId)) {
+    return overrideId;
   }
-  const direct = formats.find((f) => f.id === kind);
-  if (direct) return direct.id;
 
-  const scored = formats
-    .map((format) => ({ format, score: scoreFormat(kind, format) }))
+  const activeId = normalizeFormatId(activeFormatId);
+  if (activeId && existsFormat(formats, activeId)) {
+    return activeId;
+  }
+
+  if (formats.length === 1) {
+    return formats[0].id;
+  }
+
+  const ranked = formats
+    .map((format) => ({ format, score: scoreFormat(format) }))
     .filter((entry) => entry.score > 0)
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => {
+      if (a.score !== b.score) return b.score - a.score;
+      return a.format.id.localeCompare(b.format.id);
+    });
 
-  if (scored.length === 0) return null;
-  if (scored.length > 1 && scored[0].score === scored[1].score) return null;
-  return scored[0].format.id;
+  if (ranked.length === 0) return null;
+  if (ranked.length > 1 && ranked[0].score === ranked[1].score) return null;
+  return ranked[0].format.id;
 }
 
-function scoreFormat(kind: FormatKind, format: FormatDescriptor): number {
-  const haystack = `${format.id} ${format.name ?? ''}`.toLowerCase();
-  const patterns = getPatterns(kind);
+const normalizeFormatId = (value: string | null | undefined): string | null => {
+  if (!value) return null;
+  const trimmed = String(value).trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const existsFormat = (formats: FormatDescriptor[], id: string): boolean =>
+  formats.some((format) => format.id === id);
+
+const scoreFormat = (format: FormatDescriptor): number => {
   let score = 0;
-  patterns.forEach((pattern, index) => {
-    if (haystack.includes(pattern)) {
-      score += (patterns.length - index) * 10;
-    }
-  });
+  if (format.boneRig) score += 100;
+  if (format.animationMode) score += 50;
+  if (format.armatureRig) score += 25;
+  if (format.perTextureUvSize) score += 5;
   return score;
-}
-
-export function matchesFormatKind(kind: FormatKind, value: string | null | undefined): boolean {
-  if (!value) return false;
-  const haystack = String(value).toLowerCase();
-  const patterns = getPatterns(kind);
-  return patterns.some((pattern) => haystack.includes(pattern));
-}
-
-function getPatterns(kind: FormatKind): string[] {
-  switch (kind) {
-    case 'Java Block/Item':
-      return ['java_block', 'java block', 'java_item', 'java item', 'java-block', 'java block/item'];
-    case 'geckolib':
-      return ['geckolib', 'gecko_lib', 'gecko'];
-    case 'animated_java':
-      return ['animated_java', 'animated java', 'animated-java', 'animatedjava'];
-    case 'Generic Model':
-      return ['free', 'generic model', 'generic', 'unity', 'godot', 'unreal'];
-    default:
-      return [];
-  }
-}
-
-
-
-
+};

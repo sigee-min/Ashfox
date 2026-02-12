@@ -4,7 +4,6 @@
     "read-texture",
     "assign-texture",
     "paint-faces",
-    "paint-mesh-face",
     "delete-texture"
   ]
 }

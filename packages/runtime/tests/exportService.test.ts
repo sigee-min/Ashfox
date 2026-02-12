@@ -7,12 +7,11 @@ import type { NativeCodecTarget } from '../src/ports/exporter';
 import { createEditorStubWithState, createFormatPortStub } from './fakes';
 import { registerAsync } from './helpers';
 import {
+  EXPORT_AUTHORING_NOT_ENABLED,
   EXPORT_CODEC_ID_EMPTY,
   EXPORT_CODEC_ID_FORBIDDEN,
   EXPORT_CODEC_ID_REQUIRED,
-  EXPORT_CODEC_UNSUPPORTED,
-  EXPORT_FORMAT_MISMATCH,
-  EXPORT_FORMAT_NOT_ENABLED
+  EXPORT_CODEC_UNSUPPORTED
 } from '../src/shared/messages';
 
 type HarnessOptions = {
@@ -27,24 +26,18 @@ type HarnessOptions = {
   listFormats?: Array<{ id: string; name: string }>;
   nativeCodecs?: NativeCodecTarget[];
   disableCodecExport?: boolean;
-  matchOverrideKind?: () => 'Java Block/Item' | 'geckolib' | 'animated_java' | 'Generic Model' | null;
 };
 
 const baseCapabilities = (): Capabilities => ({
   pluginVersion: 'test',
   blockbenchVersion: 'test',
-  formats: [
-    { format: 'Java Block/Item', animations: true, enabled: true },
-    { format: 'geckolib', animations: true, enabled: true },
-    { format: 'animated_java', animations: true, enabled: true },
-    { format: 'Generic Model', animations: true, enabled: true }
-  ],
+  authoring: { animations: true, enabled: true  },
   limits: { maxCubes: 64, maxTextureSize: 256, maxAnimationSeconds: 120 }
 });
 
 const createHarness = (options: HarnessOptions = {}) => {
   const session = new ProjectSession();
-  const created = session.create('geckolib', 'dragon', 'geckolib_model');
+  const created = session.create('dragon', 'geckolib_model');
   assert.equal(created.ok, true);
   const calls = { native: 0, gltf: 0, codec: 0 };
   const editorStub = createEditorStubWithState();
@@ -85,9 +78,6 @@ const createHarness = (options: HarnessOptions = {}) => {
             listFormats: () => options.listFormats ?? [],
             getActiveFormatId: () => null
           },
-    projectState: {
-      matchOverrideKind: options.matchOverrideKind ?? (() => null)
-    } as never,
     getSnapshot: () => options.snapshotOverride ?? session.snapshot(),
     ensureActive: () => options.ensureActiveError ?? null,
     policies: {
@@ -209,31 +199,6 @@ registerAsync(
     }
 
     {
-      const genericSnapshot = {
-        ...new ProjectSession().snapshot(),
-        id: 'p_generic_hint',
-        format: 'Generic Model' as const,
-        formatId: 'free',
-        name: 'generic_unit'
-      };
-      const capabilities = baseCapabilities();
-      capabilities.exportTargets = [
-        { kind: 'internal', id: 'generic_model_json', label: 'Generic Model JSON', available: true },
-        { kind: 'gltf', id: 'gltf', label: 'glTF', extensions: ['gltf', 'glb'], available: true }
-      ];
-      const { service } = createHarness({
-        capabilities,
-        snapshotOverride: genericSnapshot
-      });
-      const res = await service.exportModel({ format: 'gecko_geo_anim', destPath: 'out.json' });
-      assert.equal(res.ok, false);
-      if (!res.ok) {
-        const recommended = res.error.details?.recommendedTarget as { id: string } | undefined;
-        assert.equal(recommended?.id, 'generic_model_json');
-      }
-    }
-
-    {
       const { service } = createHarness({
         disableCodecExport: true,
         nativeCodecs: [{ id: 'obj', label: 'OBJ', extensions: ['obj'] }]
@@ -247,23 +212,13 @@ registerAsync(
 
     {
       const capabilities = baseCapabilities();
-      capabilities.formats = [{ format: 'geckolib', animations: true, enabled: false }];
+      capabilities.authoring = { ...capabilities.authoring, enabled: false };
       const { service } = createHarness({ capabilities });
       const res = await service.exportModel({ format: 'gecko_geo_anim', destPath: 'out.json' });
       assert.equal(res.ok, false);
       if (!res.ok) {
         assert.equal(res.error.code, 'unsupported_format');
-        assert.equal(res.error.message, `${EXPORT_FORMAT_NOT_ENABLED('geckolib')}.`);
-      }
-    }
-
-    {
-      const { service } = createHarness();
-      const res = await service.exportModel({ format: 'java_block_item_json', destPath: 'out.json' });
-      assert.equal(res.ok, false);
-      if (!res.ok) {
-        assert.equal(res.error.code, 'invalid_payload');
-        assert.equal(res.error.message, `${EXPORT_FORMAT_MISMATCH}.`);
+        assert.equal(res.error.message, EXPORT_AUTHORING_NOT_ENABLED);
       }
     }
 
@@ -272,23 +227,23 @@ registerAsync(
         snapshotOverride: {
           ...new ProjectSession().snapshot(),
           id: 'p_override',
-          format: null,
           formatId: 'unknown_format'
         }
       });
       const res = await service.exportModel({ format: 'gecko_geo_anim', destPath: 'out.json' });
-      assert.equal(res.ok, false);
-      if (!res.ok) {
-        assert.equal(res.error.code, 'invalid_payload');
+      assert.equal(res.ok, true);
+      if (res.ok) {
+        assert.equal(res.value.selectedTarget?.kind, 'internal');
+        assert.equal(res.value.selectedTarget?.formatId, 'unknown_format');
       }
     }
 
     {
       const { service } = createHarness({
+        exportPolicy: 'strict',
         snapshotOverride: {
           ...new ProjectSession().snapshot(),
           id: 'p1',
-          format: 'geckolib',
           formatId: null,
           name: 'dragon'
         },
@@ -336,11 +291,13 @@ registerAsync(
         options: { includeDiagnostics: true }
       });
       assert.equal(res.ok, true);
-      assert.equal(writes.length, 1);
-      assert.equal(writes[0].path, 'out.json');
+      assert.equal(writes.length, 2);
+      assert.equal(writes[0].path, 'out.geo.json');
+      assert.equal(writes[1].path, 'out.animation.json');
       if (res.ok) {
+        assert.equal(res.value.path, 'out.geo.json');
         assert.equal(res.value.stage, 'fallback');
-        assert.deepEqual(res.value.warnings, ['native unavailable']);
+        assert.equal(res.value.warnings?.includes('native unavailable'), true);
       }
     }
 
@@ -399,39 +356,6 @@ registerAsync(
     }
 
     {
-      const genericSnapshot = {
-        ...new ProjectSession().snapshot(),
-        id: 'p_generic',
-        format: 'Generic Model' as const,
-        formatId: 'free',
-        name: 'generic_unit',
-        meshes: [
-          {
-            name: 'mesh_1',
-            vertices: [
-              { id: 'v0', pos: [0, 0, 0] as [number, number, number] },
-              { id: 'v1', pos: [1, 0, 0] as [number, number, number] },
-              { id: 'v2', pos: [0, 1, 0] as [number, number, number] }
-            ],
-            faces: [{ vertices: ['v0', 'v1', 'v2'] }]
-          }
-        ]
-      };
-      const { service, writes } = createHarness({
-        exportPolicy: 'strict',
-        nativeError: { code: 'not_implemented', message: 'native unavailable' },
-        snapshotOverride: genericSnapshot
-      });
-      const res = await service.exportModel({ format: 'generic_model_json', destPath: 'generic.json' });
-      assert.equal(res.ok, true);
-      assert.equal(writes.length, 1);
-      assert.equal(writes[0].path, 'generic.json');
-      const payload = JSON.parse(writes[0].contents) as { format: string; meshes: unknown[] };
-      assert.equal(payload.format, 'ashfox_generic_model');
-      assert.equal(payload.meshes.length, 1);
-    }
-
-    {
       const { service, calls } = createHarness({ gltfError: null });
       const res = await service.exportModel({ format: 'gltf', destPath: 'model.glb' });
       assert.equal(res.ok, true);
@@ -453,4 +377,3 @@ registerAsync(
     }
   })()
 );
-

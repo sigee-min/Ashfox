@@ -62,7 +62,6 @@ export interface FormatEntry {
   animation_mode?: boolean;
   bone_rig?: boolean;
   armature_rig?: boolean;
-  meshes?: boolean;
 }
 
 export interface FormatSelection {
@@ -382,6 +381,5 @@ export interface BlockbenchGlobals {
 
 export const readBlockbenchGlobals = (): BlockbenchGlobals =>
   globalThis as typeof globalThis & BlockbenchGlobals;
-
 
 

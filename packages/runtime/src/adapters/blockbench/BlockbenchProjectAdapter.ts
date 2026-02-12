@@ -1,4 +1,4 @@
-import type { FormatKind, ToolError } from '@ashfox/contracts/types/internal';
+import type { ToolError } from '@ashfox/contracts/types/internal';
 import type { Logger } from '../../logging';
 import { runCloseProject } from './project/projectClose';
 import { runCreateProject } from './project/projectCreate';
@@ -19,10 +19,9 @@ export class BlockbenchProjectAdapter {
   createProject(
     name: string,
     formatId: string,
-    kind: FormatKind,
     options?: { confirmDiscard?: boolean; dialog?: Record<string, unknown> }
   ): ToolError | null {
-    return runCreateProject(this.log, name, formatId, kind, options);
+    return runCreateProject(this.log, name, formatId, options);
   }
 
   closeProject(options?: { force?: boolean }): ToolError | null {
@@ -45,4 +44,3 @@ export class BlockbenchProjectAdapter {
     return runSetProjectUvPixelsPerBlock(this.log, pixelsPerBlock);
   }
 }
-

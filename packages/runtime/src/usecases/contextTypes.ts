@@ -10,6 +10,7 @@ export interface PolicyContextLike {
   getAutoDiscardUnsaved(): boolean | undefined;
   getAutoAttachActiveProject(): boolean | undefined;
   getAutoCreateProjectTexture(): boolean | undefined;
+  getAllowRenderPreview(): boolean | undefined;
   isRevisionRequired(): boolean;
   isAutoRetryRevisionEnabled(): boolean;
   getUvPolicyConfig(): UvPolicyConfig;
@@ -25,7 +26,6 @@ export interface RevisionContextLike {
   runWithoutRevisionGuard<T>(fn: () => T): T;
   runWithoutRevisionGuardAsync<T>(fn: () => Promise<T> | T): Promise<T>;
 }
-
 
 
 

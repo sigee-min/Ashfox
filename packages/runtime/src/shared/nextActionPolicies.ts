@@ -28,7 +28,7 @@ export const buildEnsureProjectNextActions = (
   return [
     factories.callTool('get_project_state', { detail: 'summary' }, 'Get latest ifRevision before retrying project creation.', 1),
     factories.askUser(
-      `Provide ensure_project.dialog values for: ${missingHint}.${missingSnapshot} Reply with a JSON object only. (Example: {"format":"<id>","parent":"<id>"})`,
+      `Provide ensure_project.dialog values for: ${missingHint}.${missingSnapshot} Reply with a JSON object only. (Example: {"format":"<formatId>","parent":"<id>"})`,
       'Project dialog requires input.',
       2
     ),
@@ -44,4 +44,3 @@ export const buildEnsureProjectNextActions = (
     )
   ];
 };
-

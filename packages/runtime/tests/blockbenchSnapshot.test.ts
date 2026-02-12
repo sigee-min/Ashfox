@@ -62,7 +62,7 @@ const withGlobals = (overrides: TestGlobals, run: () => void) => {
       Blockbench: {
         hasUnsavedChanges: () => true
       },
-      Format: { id: 'geckolib' },
+      Format: { id: 'entity_rig' },
       Outliner: {
         root: [
           {
@@ -117,7 +117,7 @@ const withGlobals = (overrides: TestGlobals, run: () => void) => {
       assert.equal(result?.id, 'project-id');
       assert.equal(result?.name, 'dragon');
       assert.equal(result?.dirty, true);
-      assert.equal(result?.format, 'geckolib');
+      assert.equal(result?.format, undefined);
       assert.equal(result?.uvPixelsPerBlock, 24);
       assert.equal(result?.bones.length, 1);
       assert.equal(result?.cubes.length, 1);
@@ -147,7 +147,7 @@ const withGlobals = (overrides: TestGlobals, run: () => void) => {
     () => {
       const result = snapshot.readSnapshot();
       assert.notEqual(result, null);
-      assert.equal(result?.format, 'Generic Model');
+      assert.equal(result?.format, undefined);
       assert.equal(result?.formatId, 'free');
     }
   );
@@ -219,4 +219,3 @@ const withGlobals = (overrides: TestGlobals, run: () => void) => {
     }
   );
 }
-

@@ -6,12 +6,10 @@ import {
   DeleteAnimationCommand,
   DeleteBoneCommand,
   DeleteCubeCommand,
-  DeleteMeshCommand,
   DeleteTextureCommand,
   EditorPort,
   ImportTextureCommand,
   KeyframeCommand,
-  MeshCommand,
   ReadTextureCommand,
   SetFaceUvCommand,
   TextureSource,
@@ -21,11 +19,10 @@ import {
   UpdateAnimationCommand,
   UpdateBoneCommand,
   UpdateCubeCommand,
-  UpdateMeshCommand,
   UpdateTextureCommand,
   TriggerKeyframeCommand
 } from '../../ports/editor';
-import { RenderPreviewPayload, RenderPreviewResult, ToolError, FormatKind } from '@ashfox/contracts/types/internal';
+import { RenderPreviewPayload, RenderPreviewResult, ToolError } from '@ashfox/contracts/types/internal';
 import { Logger } from '../../logging';
 import { BlockbenchProjectAdapter } from './BlockbenchProjectAdapter';
 import { BlockbenchTextureAdapter } from './BlockbenchTextureAdapter';
@@ -51,10 +48,9 @@ export class BlockbenchEditor implements EditorPort {
   createProject(
     name: string,
     formatId: string,
-    kind: FormatKind,
     options?: { confirmDiscard?: boolean; dialog?: Record<string, unknown> }
   ): ToolError | null {
-    return this.project.createProject(name, formatId, kind, options);
+    return this.project.createProject(name, formatId, options);
   }
 
   closeProject(options?: { force?: boolean }): ToolError | null {
@@ -113,18 +109,6 @@ export class BlockbenchEditor implements EditorPort {
     return this.geometry.deleteCube(params);
   }
 
-  addMesh(params: MeshCommand): ToolError | null {
-    return this.geometry.addMesh(params);
-  }
-
-  updateMesh(params: UpdateMeshCommand): ToolError | null {
-    return this.geometry.updateMesh(params);
-  }
-
-  deleteMesh(params: DeleteMeshCommand): ToolError | null {
-    return this.geometry.deleteMesh(params);
-  }
-
   createAnimation(params: AnimationCommand): ToolError | null {
     return this.animation.createAnimation(params);
   }
@@ -169,6 +153,4 @@ export class BlockbenchEditor implements EditorPort {
     return this.project.setProjectUvPixelsPerBlock(pixelsPerBlock);
   }
 }
-
-
 

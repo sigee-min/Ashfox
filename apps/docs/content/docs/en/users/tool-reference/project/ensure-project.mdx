@@ -37,15 +37,6 @@ Ensures a usable project. Reuses the active project by default and can create a 
         }
       }
     },
-    "format": {
-      "type": "string",
-      "enum": [
-        "Java Block/Item",
-        "geckolib",
-        "animated_java",
-        "Generic Model"
-      ]
-    },
     "name": {
       "type": "string"
     },
@@ -53,9 +44,7 @@ Ensures a usable project. Reuses the active project by default and can create a 
       "type": "string",
       "enum": [
         "none",
-        "format",
-        "name",
-        "format_and_name"
+        "name"
       ]
     },
     "onMismatch": {
@@ -112,9 +101,8 @@ Ensures a usable project. Reuses the active project by default and can create a 
 | `action` | `enum("ensure", "delete")` | ❌ | Selects the operation mode for this request. | enum: "ensure", "delete" |
 | `target` | `object` | ❌ | Container object describing the target selector. | additionalProperties=false |
 | `target.name` | `string` | ❌ | Specifies the target name used for matching. | No extra constraints beyond the declared type. |
-| `format` | `enum("Java Block/Item", "geckolib", "animated_java", "Generic Model")` | ❌ | Specifies the model or export format. | enum: "Java Block/Item", "geckolib", "animated_java", "Generic Model" |
 | `name` | `string` | ❌ | Specifies the target name used for matching. | No extra constraints beyond the declared type. |
-| `match` | `enum("none", "format", "name", "format_and_name")` | ❌ | Request parameter `match`. | enum: "none", "format", "name", "format_and_name" |
+| `match` | `enum("none", "name")` | ❌ | Request parameter `match`. | enum: "none", "name" |
 | `onMismatch` | `enum("reuse", "error", "create")` | ❌ | Request parameter `onMismatch`. | enum: "reuse", "error", "create" |
 | `onMissing` | `enum("create", "error")` | ❌ | Request parameter `onMissing`. | enum: "create", "error" |
 | `confirmDiscard` | `boolean` | ❌ | Confirms that existing state can be discarded. | No extra constraints beyond the declared type. |
@@ -140,7 +128,6 @@ This response is a schematic example. Actual values and optional fields vary by 
     "action": "created",
     "project": {
       "id": "value",
-      "format": "Java Block/Item",
       "name": "value"
     }
   }

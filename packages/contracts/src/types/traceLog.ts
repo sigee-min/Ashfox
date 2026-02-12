@@ -1,5 +1,5 @@
 import type { ProjectDiff, ProjectDiffCountsByKind, ProjectState } from './project';
-import type { FormatKind, ToolError } from './shared';
+import type { ToolError } from './shared';
 
 export type TraceLogRoute = 'tool';
 
@@ -16,7 +16,6 @@ export type TraceLogStateSummary = {
   id: string;
   revision: string;
   name: string | null;
-  format: FormatKind | null;
   formatId?: string | null;
   textureResolution?: { width: number; height: number };
   counts: ProjectState['counts'];

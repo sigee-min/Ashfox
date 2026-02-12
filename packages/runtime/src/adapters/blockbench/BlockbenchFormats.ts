@@ -19,7 +19,6 @@ export class BlockbenchFormats implements FormatPort {
         typeof format?.animation_mode === 'boolean' ? format.animation_mode : undefined;
       const boneRig = typeof format?.bone_rig === 'boolean' ? format.bone_rig : undefined;
       const armatureRig = typeof format?.armature_rig === 'boolean' ? format.armature_rig : undefined;
-      const meshes = typeof format?.meshes === 'boolean' ? format.meshes : undefined;
       return {
         id,
         name: format?.name ?? id,
@@ -30,8 +29,7 @@ export class BlockbenchFormats implements FormatPort {
         ...(uvRotation !== undefined ? { uvRotation } : {}),
         ...(animationMode !== undefined ? { animationMode } : {}),
         ...(boneRig !== undefined ? { boneRig } : {}),
-        ...(armatureRig !== undefined ? { armatureRig } : {}),
-        ...(meshes !== undefined ? { meshes } : {})
+        ...(armatureRig !== undefined ? { armatureRig } : {})
       };
     });
   }
@@ -42,5 +40,4 @@ export class BlockbenchFormats implements FormatPort {
     return active?.id ?? null;
   }
 }
-
 

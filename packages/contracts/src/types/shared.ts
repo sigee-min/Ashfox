@@ -4,12 +4,10 @@ import {
   ENSURE_PROJECT_MATCHES,
   ENSURE_PROJECT_ON_MISMATCH,
   ENSURE_PROJECT_ON_MISSING,
-  FORMAT_KINDS,
   PROJECT_STATE_DETAILS,
   TOOL_NAMES
 } from '../mcpSchemas/constants';
 
-export type FormatKind = typeof FORMAT_KINDS[number];
 export type ProjectStateDetail = typeof PROJECT_STATE_DETAILS[number];
 export type ToolName = typeof TOOL_NAMES[number];
 export type EnsureProjectMatch = typeof ENSURE_PROJECT_MATCHES[number];
@@ -24,7 +22,6 @@ export {
   ENSURE_PROJECT_MATCHES,
   ENSURE_PROJECT_ON_MISMATCH,
   ENSURE_PROJECT_ON_MISSING,
-  FORMAT_KINDS,
   PROJECT_STATE_DETAILS,
   TOOL_NAMES
 };

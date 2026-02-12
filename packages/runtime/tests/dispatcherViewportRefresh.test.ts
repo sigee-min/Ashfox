@@ -20,7 +20,7 @@ import {
 const capabilities: Capabilities = {
   pluginVersion: 'test',
   blockbenchVersion: 'test',
-  formats: [{ format: 'Java Block/Item', animations: true, enabled: true }],
+  authoring: { animations: true, enabled: true  },
   limits: { maxCubes: 32, maxTextureSize: 64, maxAnimationSeconds: 8 }
 };
 
@@ -32,7 +32,7 @@ const capabilities: Capabilities = {
       session,
       capabilities,
       editor: createEditorStub(),
-      formats: createFormatPortStub(),
+      formats: createFormatPortStub('geckolib_model', 'GeckoLib'),
       snapshot: createSnapshotPortStub(session),
       exporter: createExportPortStub('ok'),
       host: createHostPortStub(),
@@ -48,7 +48,7 @@ const capabilities: Capabilities = {
     });
 
     const ensureRes = service.ensureProject({
-      format: 'Java Block/Item',
+      format: 'entity_rig',
       name: 'refresh-test',
       match: 'none',
       onMissing: 'create'

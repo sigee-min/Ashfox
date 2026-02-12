@@ -10,7 +10,7 @@ import { normalizePaintTarget, resolveTextureForPaintFaces } from '../src/usecas
 const capabilities: Capabilities = {
   pluginVersion: 'test',
   blockbenchVersion: 'test',
-  formats: [{ format: 'geckolib', animations: true, enabled: true }],
+  authoring: { animations: true, enabled: true  },
   limits: { maxCubes: 256, maxTextureSize: 64, maxAnimationSeconds: 120 }
 };
 
@@ -43,7 +43,7 @@ const createContext = (options?: {
     ensureRevisionMatch: () => null,
     getSnapshot: () => ({
       id: 'p1',
-      format: 'geckolib',
+      format: 'entity_rig',
       formatId: 'geckolib_model',
       name: 'demo',
       dirty: false,

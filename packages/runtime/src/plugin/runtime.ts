@@ -126,7 +126,7 @@ export const registerPlugin = () => {
     title: 'ashfox',
     author: 'sigee-min',
     icon: PLUGIN_ICON_DATA_URL,
-    description: 'Blockbench MCP bridge scaffold (Java Block/Item default, GeckoLib optional). Latest Blockbench desktop only.',
+    description: 'Blockbench MCP bridge scaffold (single authoring format + multi export codecs). Latest Blockbench desktop only.',
     creation_date: '2024-01-04',
     version: PLUGIN_VERSION,
     native_modules: ['child_process'],
@@ -143,7 +143,7 @@ ashfox exposes a clean MCP-facing tool surface for AI/agents:
 - Modeling is low-level only: add_bone/add_cube (one item per call).
 - UVs are fully internal: assign_texture -> paint_faces (no manual UV tools).
 - Deterministic low-level tools only; no high-level pipelines.
-  - Formats: Java Block/Item enabled by default; GeckoLib/Animated Java gated by capability flags.
+  - Authoring uses a single format; export targets are provided via codec strategies.
 - MCP endpoint: set in Settings (ashfox: Server) or ASHFOX_HOST/PORT/PATH env vars (default 0.0.0.0:8787/mcp).
 - Server starts automatically and restarts on endpoint changes.
 
@@ -205,7 +205,6 @@ Notes:
       globalTraceLogFlushScheduler = traceLogFlushScheduler;
 
       registerCodecs({
-        capabilities,
         session,
         formats,
         formatOverrides,
@@ -231,9 +230,6 @@ Notes:
     }
   });
 };
-
-
-
 
 
 

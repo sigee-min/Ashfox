@@ -26,13 +26,13 @@ const normalizedMessage = (message: string): string => (message.endsWith('.') ? 
 const capabilities: Capabilities = {
   pluginVersion: 'test',
   blockbenchVersion: '5.0.7',
-  formats: [{ format: 'geckolib', animations: true, enabled: true }],
+  authoring: { animations: true, enabled: true  },
   limits: { maxCubes: 64, maxTextureSize: 256, maxAnimationSeconds: 30 }
 };
 
 const createSession = (): ProjectSession => {
   const session = new ProjectSession();
-  const createRes = session.create('geckolib', 'test', 'geckolib');
+  const createRes = session.create('test', 'entity_rig');
   assert.equal(createRes.ok, true);
   session.addBone({ name: 'body', pivot: [0, 0, 0] });
   session.addAnimation({ id: 'anim_idle', name: 'idle', length: 1, loop: true, fps: 20, channels: [] });

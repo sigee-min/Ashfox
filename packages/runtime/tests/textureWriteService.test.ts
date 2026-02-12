@@ -16,7 +16,7 @@ type SetupOptions = {
 
 const createServiceSetup = (options: SetupOptions = {}) => {
   const session = new ProjectSession();
-  session.create('geckolib', 'demo', 'geckolib_model');
+  session.create('demo', 'geckolib_model');
 
   const textures: TextureStat[] = [
     { id: 'tex1', name: 'atlas', width: 16, height: 16 },

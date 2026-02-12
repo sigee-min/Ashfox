@@ -9,12 +9,10 @@ export type FormatDescriptor = {
   animationMode?: boolean;
   boneRig?: boolean;
   armatureRig?: boolean;
-  meshes?: boolean;
 };
 
 export interface FormatPort {
   listFormats: () => FormatDescriptor[];
   getActiveFormatId: () => string | null;
 }
-
 

@@ -1,7 +1,7 @@
 {
   "name": "recovery-bounds",
   "project": {
-    "format": "geckolib",
+    "format": "entity_rig",
     "name": "Recovery Bounds",
     "textureResolution": {
       "width": 16,

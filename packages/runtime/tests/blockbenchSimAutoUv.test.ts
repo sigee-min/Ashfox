@@ -5,8 +5,8 @@ import { BlockbenchSim } from './support/sim/BlockbenchSim';
 const buildSim = (options?: { singleTexture?: boolean }) =>
   new BlockbenchSim({
     project: {
-      format: 'geckolib',
-      formatId: 'geckolib',
+      format: 'entity_rig',
+      formatId: 'entity_rig',
       textureResolution: { width: 16, height: 16 }
     },
     formatCaps: {

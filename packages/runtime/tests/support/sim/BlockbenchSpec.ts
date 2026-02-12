@@ -1,6 +1,5 @@
 import type { TextureResolution } from '../../../src/ports/editor';
 import type { FormatDescriptor } from '../../../src/ports/formats';
-import type { FormatKind } from '../../../src/types';
 
 export type BlockbenchSpecSource = {
   name: string;
@@ -109,7 +108,7 @@ export const getDefaultTextureResolution = (spec: BlockbenchSpecSnapshot = BLOCK
 const resolveFormatKey = (
   spec: BlockbenchSpecSnapshot,
   formatId?: string | null,
-  formatKind?: FormatKind | null
+  formatKind?: string | null
 ): string | null => {
   if (formatId && spec.formats && spec.formats[formatId]) return formatId;
   if (formatKind && spec.aliases && spec.aliases[formatKind]) return spec.aliases[formatKind];
@@ -120,7 +119,7 @@ const resolveFormatKey = (
 export const getFormatSpec = (
   spec: BlockbenchSpecSnapshot,
   formatId?: string | null,
-  formatKind?: FormatKind | null
+  formatKind?: string | null
 ): BlockbenchSpecFormat | null => {
   const key = resolveFormatKey(spec, formatId, formatKind);
   if (!key || !spec.formats) return null;
@@ -130,7 +129,7 @@ export const getFormatSpec = (
 export const getFormatDescriptor = (
   spec: BlockbenchSpecSnapshot,
   formatId?: string | null,
-  formatKind?: FormatKind | null
+  formatKind?: string | null
 ): FormatDescriptor | null => {
   const entry = getFormatSpec(spec, formatId, formatKind);
   const id = entry?.id ?? formatId ?? (formatKind ?? null);
@@ -140,5 +139,4 @@ export const getFormatDescriptor = (
   if (entry?.perTextureUvSize !== undefined) descriptor.perTextureUvSize = entry.perTextureUvSize;
   return descriptor;
 };
-
 

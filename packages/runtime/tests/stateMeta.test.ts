@@ -4,7 +4,7 @@ import { buildStateMeta, type StateMetaDeps } from '../src/domain/project/stateM
 
 const project = {
   id: 'p1',
-  format: 'geckolib',
+  format: 'entity_rig',
   formatId: 'geckolib_model',
   name: 'dragon',
   revision: 'r1',

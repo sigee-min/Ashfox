@@ -20,7 +20,7 @@ type HarnessOptions = {
 
 const createHarness = (options: HarnessOptions = {}) => {
   const session = new ProjectSession();
-  const createRes = session.create('geckolib', 'test');
+  const createRes = session.create('test');
   assert.equal(createRes.ok, true);
   session.addBone({ name: 'root', pivot: [0, 0, 0] });
   if (options.includeCube !== false) {

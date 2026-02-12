@@ -18,17 +18,14 @@ import {
 const capabilities: Capabilities = {
   pluginVersion: 'test',
   blockbenchVersion: 'test',
-  formats: [
-    {
-      format: 'Generic Model',
-      animations: true,
-      enabled: true,
-      flags: {
-        meshes: true,
-        armatureRig: true
-      }
+  authoring: {
+    animations: true,
+    enabled: true,
+    flags: {
+      meshes: true,
+      boneRig: true
     }
-  ],
+  },
   limits: {
     maxCubes: 2048,
     maxTextureSize: 2048,
@@ -50,7 +47,7 @@ const service = new ToolService({
   session,
   capabilities,
   editor: editorState.editor,
-  formats: createFormatPortStub('free', 'Generic Model', {
+  formats: createFormatPortStub('geckolib_model', 'GeckoLib', {
     perTextureUvSize: true
   }),
   snapshot: createSnapshotPortStub(session),
@@ -76,7 +73,6 @@ const service = new ToolService({
 });
 
 const ensureRes = service.ensureProject({
-  format: 'Generic Model',
   name: 'generic_flow',
   match: 'none',
   onMissing: 'create'
@@ -88,24 +84,6 @@ const boneRes = service.addBone({
   pivot: [0, 0, 0]
 });
 assert.equal(boneRes.ok, true);
-
-const meshRes = service.addMesh({
-  name: 'body',
-  bone: 'root',
-  vertices: [
-    { id: 'v0', pos: [0, 0, 0] },
-    { id: 'v1', pos: [1, 0, 0] },
-    { id: 'v2', pos: [1, 1, 0] },
-    { id: 'v3', pos: [0, 1, 0] }
-  ],
-  faces: [
-    {
-      id: 'f0',
-      vertices: ['v0', 'v1', 'v2', 'v3']
-    }
-  ]
-});
-assert.equal(meshRes.ok, true);
 
 const cubeRes = service.addCube({
   name: 'body_cube',
@@ -155,10 +133,8 @@ assert.equal(triggerRes.ok, true);
 const stateRes = service.getProjectState({ detail: 'full' });
 assert.equal(stateRes.ok, true);
 if (stateRes.ok) {
-  const mesh = stateRes.value.project.meshes.find((entry) => entry.name === 'body');
   const cube = stateRes.value.project.cubes.find((entry) => entry.name === 'body_cube');
   const anim = stateRes.value.project.animations.find((entry) => entry.name === 'idle');
-  assert.ok(mesh);
   assert.ok(cube);
   assert.ok(anim);
 }

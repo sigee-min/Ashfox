@@ -13,7 +13,7 @@ type TaggedImage = { tag: string };
 const capabilities: Capabilities = {
   pluginVersion: 'test',
   blockbenchVersion: 'test',
-  formats: [{ format: 'geckolib', animations: true, enabled: true, flags: { singleTexture: true } }],
+  authoring: { animations: true, enabled: true, flags: { singleTexture: true } },
   limits: { maxCubes: 128, maxTextureSize: 256, maxAnimationSeconds: 120 }
 };
 
@@ -88,7 +88,7 @@ const createTransparent = (width: number, height: number): Uint8ClampedArray =>
     ensureRevisionMatch: () => null,
     getSnapshot: () => ({
       id: 'p1',
-      format: 'geckolib',
+      format: 'entity_rig',
       formatId: 'geckolib_model',
       name: 'dup-cube-names',
       bones: [{ name: 'root', pivot: [0, 0, 0] }],
@@ -178,7 +178,7 @@ const createTransparent = (width: number, height: number): Uint8ClampedArray =>
     ensureRevisionMatch: () => null,
     getSnapshot: () => ({
       id: 'p1',
-      format: 'geckolib',
+      format: 'entity_rig',
       formatId: 'geckolib_model',
       name: 'minecraft_dragon',
       bones: [{ name: 'root', pivot: [0, 0, 0] }],

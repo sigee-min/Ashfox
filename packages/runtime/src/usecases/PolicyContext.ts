@@ -35,6 +35,10 @@ export class PolicyContext implements PolicyContextLike {
     return this.policies.autoCreateProjectTexture ?? true;
   }
 
+  getAllowRenderPreview(): boolean | undefined {
+    return this.policies.allowRenderPreview;
+  }
+
   isRevisionRequired(): boolean {
     return Boolean(this.policies.requireRevision);
   }
@@ -56,7 +60,6 @@ export class PolicyContext implements PolicyContextLike {
   }
 
 }
-
 
 
 

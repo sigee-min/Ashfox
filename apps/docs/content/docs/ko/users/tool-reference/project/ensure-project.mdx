@@ -37,15 +37,6 @@ summary: "활성 프로젝트를 재사용하거나 조건에 맞춰 생성/정�
         }
       }
     },
-    "format": {
-      "type": "string",
-      "enum": [
-        "Java Block/Item",
-        "geckolib",
-        "animated_java",
-        "Generic Model"
-      ]
-    },
     "name": {
       "type": "string"
     },
@@ -53,9 +44,7 @@ summary: "활성 프로젝트를 재사용하거나 조건에 맞춰 생성/정�
       "type": "string",
       "enum": [
         "none",
-        "format",
-        "name",
-        "format_and_name"
+        "name"
       ]
     },
     "onMismatch": {
@@ -112,9 +101,8 @@ summary: "활성 프로젝트를 재사용하거나 조건에 맞춰 생성/정�
 | `action` | `enum("ensure", "delete")` | ❌ | 요청에서 수행할 동작 모드를 선택합니다. | enum: "ensure", "delete" |
 | `target` | `object` | ❌ | 대상 선택 정보를 담는 컨테이너 객체입니다. | additionalProperties=false |
 | `target.name` | `string` | ❌ | 매칭에 사용할 대상 이름을 지정합니다. | 선언된 타입 외 추가 제약은 없습니다. |
-| `format` | `enum("Java Block/Item", "geckolib", "animated_java", "Generic Model")` | ❌ | 모델 또는 내보내기 포맷을 지정합니다. | enum: "Java Block/Item", "geckolib", "animated_java", "Generic Model" |
 | `name` | `string` | ❌ | 매칭에 사용할 대상 이름을 지정합니다. | 선언된 타입 외 추가 제약은 없습니다. |
-| `match` | `enum("none", "format", "name", "format_and_name")` | ❌ | `match` 요청 파라미터입니다. | enum: "none", "format", "name", "format_and_name" |
+| `match` | `enum("none", "name")` | ❌ | `match` 요청 파라미터입니다. | enum: "none", "name" |
 | `onMismatch` | `enum("reuse", "error", "create")` | ❌ | `onMismatch` 요청 파라미터입니다. | enum: "reuse", "error", "create" |
 | `onMissing` | `enum("create", "error")` | ❌ | `onMissing` 요청 파라미터입니다. | enum: "create", "error" |
 | `confirmDiscard` | `boolean` | ❌ | 기존 상태 폐기 허용 여부를 확인합니다. | 선언된 타입 외 추가 제약은 없습니다. |
@@ -140,7 +128,6 @@ summary: "활성 프로젝트를 재사용하거나 조건에 맞춰 생성/정�
     "action": "created",
     "project": {
       "id": "value",
-      "format": "Java Block/Item",
       "name": "value"
     }
   }

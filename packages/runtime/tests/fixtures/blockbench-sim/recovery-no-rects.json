@@ -1,7 +1,7 @@
 {
   "name": "recovery-no-rects",
   "project": {
-    "format": "geckolib",
+    "format": "entity_rig",
     "name": "Recovery No Rects",
     "textureResolution": {
       "width": 16,
