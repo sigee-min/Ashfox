@@ -1,14 +1,18 @@
 ---
 title: 내보내기
-description: "내보내기 도구의 입력 스펙과 필드 동작 설명."
+description: "내보내기 도구 레퍼런스. 입력 스키마, 필드 제약, 요청/응답 예시를 제공합니다."
 ---
+
+## 빠른 요약
+대상 포맷으로 결과물을 내보내 파이프라인 후속 단계에 전달합니다.
 
 ## 개요
 - 도구 이름: `export`
 - 카테고리: 프로젝트
+- Strict schema: `true`
 
 ## 도구 설명
-Exports the current project to the requested output format (including native codec targets like glTF/OBJ/FBX when available).
+대상 포맷으로 결과물을 내보내 파이프라인 후속 단계에 전달합니다.
 
 ## 입력 스키마 (JSON)
 ```json
@@ -27,8 +31,7 @@ Exports the current project to the requested output format (including native cod
         "animated_java",
         "generic_model_json",
         "gltf",
-        "native_codec",
-        "auto"
+        "native_codec"
       ]
     },
     "codecId": {
@@ -36,6 +39,22 @@ Exports the current project to the requested output format (including native cod
     },
     "destPath": {
       "type": "string"
+    },
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fallback": {
+          "type": "string",
+          "enum": [
+            "strict",
+            "best_effort"
+          ]
+        },
+        "includeDiagnostics": {
+          "type": "boolean"
+        }
+      }
     },
     "includeState": {
       "type": "boolean"
@@ -48,11 +67,14 @@ Exports the current project to the requested output format (including native cod
 ```
 
 ## 필드 레퍼런스
-| Field | Type | 필수 | Description | Constraints |
+| Field | Type | 필수 | 설명 | 제약 |
 | --- | --- | --- | --- | --- |
-| `format` | `enum("java_block_item_json", "gecko_geo_anim", "animated_java", "generic_model_json", "gltf", "native_codec", "auto")` | ✅ | - | enum: "java_block_item_json", "gecko_geo_anim", "animated_java", "generic_model_json", "gltf", "native_codec", "auto" |
+| `format` | `enum("java_block_item_json", "gecko_geo_anim", "animated_java", "generic_model_json", "gltf", "native_codec")` | ✅ | - | enum: "java_block_item_json", "gecko_geo_anim", "animated_java", "generic_model_json", "gltf", "native_codec" |
 | `codecId` | `string` | ❌ | - | - |
 | `destPath` | `string` | ✅ | - | - |
+| `options` | `object` | ❌ | - | additionalProperties=false |
+| `options.fallback` | `enum("strict", "best_effort")` | ❌ | - | enum: "strict", "best_effort" |
+| `options.includeDiagnostics` | `boolean` | ❌ | - | - |
 | `includeState` | `boolean` | ❌ | - | - |
 | `ifRevision` | `string` | ❌ | - | - |
 
@@ -72,3 +94,8 @@ Exports the current project to the requested output format (including native cod
   }
 }
 ```
+
+## 운영 노트
+- 변경 도구는 `ifRevision` 사용을 권장합니다.
+- 스키마에 없는 필드는 보내지 마세요 (strict schema).
+- `validate`로 최종 상태를 확인한 후 `export`를 수행하세요.

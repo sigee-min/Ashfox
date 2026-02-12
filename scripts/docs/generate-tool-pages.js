@@ -218,6 +218,37 @@ const KO_TOOL_TITLES = {
   set_trigger_keyframes: '트리거 키프레임 설정',
 };
 
+const KO_TOOL_DESCRIPTIONS = {
+  list_capabilities: '런타임에서 사용 가능한 포맷, 제한치, 기능 플래그를 조회합니다.',
+  ensure_project:
+    '활성 프로젝트를 재사용하거나 조건에 맞춰 생성/정리해 작업 가능한 상태를 보장합니다.',
+  get_project_state: '현재 프로젝트의 구조, 텍스처, 애니메이션 상태를 읽기 전용으로 조회합니다.',
+  export_trace_log: '최근 실행 흐름의 진단 로그를 내보내 문제 분석에 활용합니다.',
+  render_preview: '현재 프로젝트를 렌더링해 시각 결과를 빠르게 확인합니다.',
+  validate: '모델/텍스처/UV 규칙을 점검해 릴리즈 전 품질 이슈를 찾습니다.',
+  export: '대상 포맷으로 결과물을 내보내 파이프라인 후속 단계에 전달합니다.',
+  read_texture: '텍스처 원본과 메타데이터를 읽어 디버깅 또는 후속 처리에 사용합니다.',
+  reload_plugins: '플러그인 런타임을 재로드해 변경된 확장 로직을 즉시 반영합니다.',
+  paint_faces: '큐브 타깃에 단일 페인팅 연산을 적용합니다.',
+  paint_mesh_face: '메시 타깃에 단일 페인팅 연산을 적용합니다.',
+  delete_texture: '대상 텍스처를 제거합니다.',
+  assign_texture: '선택한 큐브/페이스에 텍스처를 연결합니다.',
+  add_bone: '새 본을 추가합니다.',
+  update_bone: '기존 본의 이름/부모/변환 값을 갱신합니다.',
+  delete_bone: '기존 본을 삭제합니다.',
+  add_cube: '새 큐브를 추가합니다.',
+  update_cube: '기존 큐브의 형상/변환/소속 정보를 갱신합니다.',
+  delete_cube: '기존 큐브를 삭제합니다.',
+  add_mesh: '새 메시를 추가합니다.',
+  update_mesh: '기존 메시의 정점/면/변환 정보를 갱신합니다.',
+  delete_mesh: '기존 메시를 삭제합니다.',
+  create_animation_clip: '새 애니메이션 클립을 생성합니다.',
+  update_animation_clip: '기존 애니메이션 클립 속성을 수정합니다.',
+  delete_animation_clip: '기존 애니메이션 클립을 삭제합니다.',
+  set_frame_pose: '특정 프레임에 본 포즈 키를 설정합니다.',
+  set_trigger_keyframes: '사운드/파티클/타임라인 트리거 키를 설정합니다.',
+};
+
 function loadToolData() {
   const tmpDir = path.join(repoRoot, '.ashfox', 'tmp');
   const outFile = path.join(tmpDir, 'tool-doc-source.cjs');
@@ -267,18 +298,18 @@ function loadToolResultExamples() {
     options: parsed.options,
   });
   const checker = program.getTypeChecker();
-  const targetSuffix = path.join('packages', 'runtime', 'src', 'types', 'tools', 'results.ts').replace(/\\/g, '/');
+  const targetSuffix = path.join('packages', 'contracts', 'src', 'types', 'tools', 'results.ts').replace(/\\/g, '/');
   const sourceFile = program
     .getSourceFiles()
     .find((sf) => sf.fileName.replace(/\\/g, '/').endsWith(targetSuffix));
   if (!sourceFile) {
-    throw new Error('Cannot locate packages/runtime/src/types/tools/results.ts in TypeScript program.');
+    throw new Error('Cannot locate packages/contracts/src/types/tools/results.ts in TypeScript program.');
   }
   const toolResultMap = sourceFile.statements.find(
     (node) => ts.isInterfaceDeclaration(node) && node.name.text === 'ToolResultMap',
   );
   if (!toolResultMap) {
-    throw new Error('Cannot find ToolResultMap interface in packages/runtime/src/types/tools/results.ts.');
+    throw new Error('Cannot find ToolResultMap interface in packages/contracts/src/types/tools/results.ts.');
   }
 
   const samples = {};
@@ -541,6 +572,13 @@ function toolTitle(locale, tool) {
   return tool.title;
 }
 
+function toolDescription(locale, tool) {
+  if (locale === 'ko') {
+    return KO_TOOL_DESCRIPTIONS[tool.name] || `${toolTitle(locale, tool)} 도구의 동작과 입력 제약을 설명합니다.`;
+  }
+  return tool.description;
+}
+
 function generateToolPage(locale, categoryId, tool, schema, responseExample) {
   const rows = buildFieldRows(schema);
   const rules = conditionalRules(schema);
@@ -548,36 +586,45 @@ function generateToolPage(locale, categoryId, tool, schema, responseExample) {
   const minimalResponse = { structuredContent: responseExample ?? {} };
   const category = categoryMeta(locale, categoryId);
   const title = toolTitle(locale, tool);
+  const localizedToolDescription = toolDescription(locale, tool);
   const description =
     locale === 'ko'
-      ? `${title} 도구의 입력 스펙과 필드 동작 설명.`
-      : `Input schema and field behavior for ${tool.name}.`;
+      ? `${title} 도구 레퍼런스. 입력 스키마, 필드 제약, 요청/응답 예시를 제공합니다.`
+      : `${tool.name} reference with schema, field constraints, and request/response examples.`;
   const strictSchema = schema?.additionalProperties === false;
   const requiredLabel = locale === 'ko' ? '필수' : 'Required';
+  const descriptionLabel = locale === 'ko' ? '설명' : 'Description';
+  const constraintsLabel = locale === 'ko' ? '제약' : 'Constraints';
   const yes = '✅';
   const no = '❌';
 
   const headerLines =
     locale === 'ko'
       ? [
+          '## 빠른 요약',
+          mdxText(localizedToolDescription),
+          '',
           '## 개요',
           `- 도구 이름: \`${tool.name}\``,
           `- 카테고리: ${category.short}`,
           `- Strict schema: \`${strictSchema ? 'true' : 'false/partial'}\``,
           '',
           '## 도구 설명',
-          mdxText(tool.description),
+          mdxText(localizedToolDescription),
           '',
           '## 입력 스키마 (JSON)',
         ]
       : [
+          '## Quick Summary',
+          mdxText(localizedToolDescription),
+          '',
           '## Overview',
           `- Tool name: \`${tool.name}\``,
           `- Category: ${category.short}`,
           `- Strict schema: \`${strictSchema ? 'true' : 'false/partial'}\``,
           '',
           '## Tool Description',
-          mdxText(tool.description),
+          mdxText(localizedToolDescription),
           '',
           '## Input Schema (JSON)',
         ];
@@ -585,7 +632,7 @@ function generateToolPage(locale, categoryId, tool, schema, responseExample) {
   const fieldSection = [];
   if (rows.length > 0) {
     fieldSection.push(locale === 'ko' ? '## 필드 레퍼런스' : '## Field Reference');
-    fieldSection.push('| Field | Type | ' + requiredLabel + ' | Description | Constraints |');
+    fieldSection.push(`| Field | Type | ${requiredLabel} | ${descriptionLabel} | ${constraintsLabel} |`);
     fieldSection.push('| --- | --- | --- | --- | --- |');
     for (const row of rows) {
       fieldSection.push(
@@ -791,4 +838,3 @@ function main() {
 }
 
 main();
-

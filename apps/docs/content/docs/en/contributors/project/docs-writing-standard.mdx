@@ -1,0 +1,91 @@
+---
+title: "Docs Writing Standard"
+description: "Readability-first standards for docs that remain useful for people and discoverable in search."
+---
+
+# Docs Writing Standard
+
+This standard defines how to write and review Ashfox docs so the content stays task-focused for humans while still being indexable by search engines and answer engines.
+
+## 1) Primary Goal
+
+The primary KPI for docs is task success, not raw page views.
+
+- A reader should complete the intended task with this page alone.
+- Search optimization must support comprehension, not replace it.
+- If SEO tactics and clarity conflict, clarity wins.
+
+## 2) Page Scope Rules
+
+- Keep one page focused on one user intent.
+- Use one stable canonical URL per topic.
+- Split pages when content tries to answer multiple unrelated questions.
+- Prefer clear nouns and verbs in headings over marketing wording.
+
+## 3) Body vs. Search Signal Separation
+
+Keep ranking signals in metadata and structure, not as repeated text in the body.
+
+- Use query-aligned phrasing in `title`, `description`, and section headings.
+- Keep body content procedural and example-driven.
+- Avoid repeating keyword variants in paragraphs for ranking purposes.
+- Add structured metadata only when it reflects actual content.
+
+## 4) Writing Templates
+
+Use one of these templates depending on page type.
+
+### Task or Guide Page
+
+1. Purpose (what this page helps you complete)
+2. Prerequisites
+3. Quick start (minimal working flow)
+4. Detailed steps and options
+5. Failure cases and recovery
+6. Related links
+
+### Tool or API Reference Page
+
+1. Overview and tool scope
+2. Input schema
+3. Field reference
+4. Minimal request example
+5. Response example
+6. Known constraints
+
+## 5) Prohibited Patterns
+
+Do not merge docs containing any of the following:
+
+- Keyword stuffing or unnatural repeated phrases
+- Generic filler text without operational value
+- Unverified claims about performance, compatibility, or policy
+- Hidden or duplicated content intended only for crawlers
+- AI-generated bulk text without maintainer review
+
+## 6) Review Gate for PRs
+
+Every docs PR must pass this gate before merge:
+
+- [ ] A first-time reader can finish the target task in under 10 minutes.
+- [ ] The page has valid frontmatter (`title`, `description`).
+- [ ] Internal links resolve.
+- [ ] Examples are runnable or clearly marked as schematic.
+- [ ] Terminology is consistent with existing docs.
+- [ ] Content is written for users first, with no keyword-stuffing patterns.
+
+## 7) Required Validation Commands
+
+Run from the repository root:
+
+```bash
+npm run docs:quality
+npm --workspace ./apps/docs run build
+```
+
+## 8) Locale Policy
+
+- If a page has both `en` and `ko`, keep semantic parity between versions.
+- If only one locale is updated, add a follow-up issue for the paired locale.
+- Keep examples and command names identical unless localization requires changes.
+

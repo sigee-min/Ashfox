@@ -1,11 +1,15 @@
 ---
 title: Delete Texture
-description: "Input schema and field behavior for delete_texture."
+description: "delete_texture reference with schema, field constraints, and request/response examples."
 ---
+
+## Quick Summary
+Deletes a texture by id or name.
 
 ## Overview
 - Tool name: `delete_texture`
 - Category: Texturing
+- Strict schema: `true`
 
 ## Tool Description
 Deletes a texture by id or name.
@@ -68,3 +72,8 @@ Deletes a texture by id or name.
   }
 }
 ```
+
+## Operational Notes
+- Use `ifRevision` for mutation calls when available.
+- Do not send fields outside the declared schema.
+- Run `validate` before `export` for release safety.

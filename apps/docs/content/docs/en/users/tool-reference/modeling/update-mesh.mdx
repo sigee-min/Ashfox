@@ -1,11 +1,15 @@
 ---
 title: Update Mesh
-description: "Input schema and field behavior for update_mesh."
+description: "update_mesh reference with schema, field constraints, and request/response examples."
 ---
+
+## Quick Summary
+Updates mesh geometry/transform by id/name.
 
 ## Overview
 - Tool name: `update_mesh`
 - Category: Modeling
+- Strict schema: `true`
 
 ## Tool Description
 Updates mesh geometry/transform by id/name.
@@ -203,3 +207,8 @@ Updates mesh geometry/transform by id/name.
   }
 }
 ```
+
+## Operational Notes
+- Use `ifRevision` for mutation calls when available.
+- Do not send fields outside the declared schema.
+- Run `validate` before `export` for release safety.

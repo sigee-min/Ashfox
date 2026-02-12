@@ -1,7 +1,6 @@
 {
   "title": "Modeling Tools",
   "pages": [
-    "index",
     "add-bone",
     "update-bone",
     "delete-bone",

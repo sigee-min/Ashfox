@@ -1,11 +1,15 @@
 ---
 title: Paint Mesh Face
-description: "Input schema and field behavior for paint_mesh_face."
+description: "paint_mesh_face reference with schema, field constraints, and request/response examples."
 ---
+
+## Quick Summary
+Paints mesh face UV regions with one drawing op. Use scope=single_face (target.faceId required) or scope=all_faces. Default coordSpace=face; use coordSpace=texture with width/height for texture-space coordinates.
 
 ## Overview
 - Tool name: `paint_mesh_face`
 - Category: Texturing
+- Strict schema: `true`
 
 ## Tool Description
 Paints mesh face UV regions with one drawing op. Use scope=single_face (target.faceId required) or scope=all_faces. Default coordSpace=face; use coordSpace=texture with width/height for texture-space coordinates.
@@ -313,3 +317,8 @@ Paints mesh face UV regions with one drawing op. Use scope=single_face (target.f
   }
 }
 ```
+
+## Operational Notes
+- Use `ifRevision` for mutation calls when available.
+- Do not send fields outside the declared schema.
+- Run `validate` before `export` for release safety.

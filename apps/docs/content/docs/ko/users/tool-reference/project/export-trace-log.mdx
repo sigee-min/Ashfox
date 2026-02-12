@@ -1,14 +1,18 @@
 ---
 title: 트레이스 로그 내보내기
-description: "트레이스 로그 내보내기 도구의 입력 스펙과 필드 동작 설명."
+description: "트레이스 로그 내보내기 도구 레퍼런스. 입력 스키마, 필드 제약, 요청/응답 예시를 제공합니다."
 ---
+
+## 빠른 요약
+최근 실행 흐름의 진단 로그를 내보내 문제 분석에 활용합니다.
 
 ## 개요
 - 도구 이름: `export_trace_log`
 - 카테고리: 프로젝트
+- Strict schema: `true`
 
 ## 도구 설명
-Flushes the trace log to disk (writeFile/export) and returns the resource URI for the in-memory log.
+최근 실행 흐름의 진단 로그를 내보내 문제 분석에 활용합니다.
 
 ## 입력 스키마 (JSON)
 ```json
@@ -35,7 +39,7 @@ Flushes the trace log to disk (writeFile/export) and returns the resource URI fo
 ```
 
 ## 필드 레퍼런스
-| Field | Type | 필수 | Description | Constraints |
+| Field | Type | 필수 | 설명 | 제약 |
 | --- | --- | --- | --- | --- |
 | `mode` | `enum("auto", "writeFile", "export")` | ❌ | - | enum: "auto", "writeFile", "export" |
 | `destPath` | `string` | ❌ | - | - |
@@ -52,3 +56,8 @@ Flushes the trace log to disk (writeFile/export) and returns the resource URI fo
   "structuredContent": {}
 }
 ```
+
+## 운영 노트
+- 변경 도구는 `ifRevision` 사용을 권장합니다.
+- 스키마에 없는 필드는 보내지 마세요 (strict schema).
+- `validate`로 최종 상태를 확인한 후 `export`를 수행하세요.

@@ -52,6 +52,11 @@ export async function generateMetadata({ params }: DocsPageProps): Promise<Metad
   const docsSuffix = slug?.length ? `/docs/${slug.join('/')}` : '/docs';
   const pageUrl = localizedPath(lang, docsSuffix);
   const pageImage = getPageImage(page).url;
+  const summary = typeof page.data.summary === 'string' && page.data.summary.trim().length > 0
+    ? page.data.summary.trim()
+    : undefined;
+  const noindex = page.data.noindex === true;
+  const description = summary ?? page.data.description;
 
   return {
     title:
@@ -60,7 +65,8 @@ export async function generateMetadata({ params }: DocsPageProps): Promise<Metad
             absolute: siteTitle,
           }
         : page.data.title,
-    description: page.data.description,
+    description,
+    robots: noindex ? { index: false, follow: false } : undefined,
     alternates: {
       canonical: pageUrl,
       languages: localizedAlternates(docsSuffix),
@@ -69,7 +75,7 @@ export async function generateMetadata({ params }: DocsPageProps): Promise<Metad
       type: 'article',
       siteName,
       title: page.data.title,
-      description: page.data.description,
+      description,
       url: pageUrl,
       locale: openGraphLocale(lang),
       alternateLocale: openGraphAlternateLocales(lang),
@@ -83,7 +89,7 @@ export async function generateMetadata({ params }: DocsPageProps): Promise<Metad
     twitter: {
       card: 'summary_large_image',
       title: page.data.title,
-      description: page.data.description,
+      description,
       images: [pageImage],
     },
   };

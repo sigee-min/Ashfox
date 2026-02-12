@@ -1,7 +1,6 @@
 {
   "title": "모델링 도구",
   "pages": [
-    "index",
     "add-bone",
     "update-bone",
     "delete-bone",

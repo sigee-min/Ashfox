@@ -1,14 +1,18 @@
 ---
 title: 큐브 수정
-description: "큐브 수정 도구의 입력 스펙과 필드 동작 설명."
+description: "큐브 수정 도구 레퍼런스. 입력 스키마, 필드 제약, 요청/응답 예시를 제공합니다."
 ---
+
+## 빠른 요약
+기존 큐브의 형상/변환/소속 정보를 갱신합니다.
 
 ## 개요
 - 도구 이름: `update_cube`
 - 카테고리: 모델링
+- Strict schema: `true`
 
 ## 도구 설명
-Updates a cube by id/name.
+기존 큐브의 형상/변환/소속 정보를 갱신합니다.
 
 ## 입력 스키마 (JSON)
 ```json
@@ -107,7 +111,7 @@ Updates a cube by id/name.
 ```
 
 ## 필드 레퍼런스
-| Field | Type | 필수 | Description | Constraints |
+| Field | Type | 필수 | 설명 | 제약 |
 | --- | --- | --- | --- | --- |
 | `id` | `string` | ❌ | - | - |
 | `name` | `string` | ❌ | - | - |
@@ -145,3 +149,8 @@ Updates a cube by id/name.
   }
 }
 ```
+
+## 운영 노트
+- 변경 도구는 `ifRevision` 사용을 권장합니다.
+- 스키마에 없는 필드는 보내지 마세요 (strict schema).
+- `validate`로 최종 상태를 확인한 후 `export`를 수행하세요.

@@ -1,11 +1,15 @@
 ---
 title: Render Preview
-description: "Input schema and field behavior for render_preview."
+description: "render_preview reference with schema, field constraints, and request/response examples."
 ---
+
+## Quick Summary
+Renders a preview image. fixed -> single (optional angle). turntable -> sequence. Returns MCP image content blocks (base64 PNG) plus structured metadata without dataUri. Set saveToTmp=true to write snapshots into .ashfox/tmp for manual upload fallback. See ashfox://guide/vision-fallback via resources/read. Single returns result.image; sequence returns result.frames[]. Example(single): \{"mode":"fixed","output":"single","angle":[30,45,0]\} Example(sequence): \{"mode":"turntable","output":"sequence","durationSeconds":2,"fps":12\}
 
 ## Overview
 - Tool name: `render_preview`
 - Category: Project
+- Strict schema: `true`
 
 ## Tool Description
 Renders a preview image. fixed -> single (optional angle). turntable -> sequence. Returns MCP image content blocks (base64 PNG) plus structured metadata without dataUri. Set saveToTmp=true to write snapshots into .ashfox/tmp for manual upload fallback. See ashfox://guide/vision-fallback via resources/read. Single returns result.image; sequence returns result.frames[]. Example(single): \{"mode":"fixed","output":"single","angle":[30,45,0]\} Example(sequence): \{"mode":"turntable","output":"sequence","durationSeconds":2,"fps":12\}
@@ -102,3 +106,8 @@ Renders a preview image. fixed -> single (optional angle). turntable -> sequence
   }
 }
 ```
+
+## Operational Notes
+- Use `ifRevision` for mutation calls when available.
+- Do not send fields outside the declared schema.
+- Run `validate` before `export` for release safety.

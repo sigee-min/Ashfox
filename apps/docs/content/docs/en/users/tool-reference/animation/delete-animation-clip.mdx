@@ -1,11 +1,15 @@
 ---
 title: Delete Animation Clip
-description: "Input schema and field behavior for delete_animation_clip."
+description: "delete_animation_clip reference with schema, field constraints, and request/response examples."
 ---
+
+## Quick Summary
+Deletes an animation clip by id/name (or ids/names for bulk removal).
 
 ## Overview
 - Tool name: `delete_animation_clip`
 - Category: Animation
+- Strict schema: `true`
 
 ## Tool Description
 Deletes an animation clip by id/name (or ids/names for bulk removal).
@@ -89,3 +93,8 @@ Deletes an animation clip by id/name (or ids/names for bulk removal).
   }
 }
 ```
+
+## Operational Notes
+- Use `ifRevision` for mutation calls when available.
+- Do not send fields outside the declared schema.
+- Run `validate` before `export` for release safety.

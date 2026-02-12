@@ -1,11 +1,15 @@
 ---
 title: Add Bone
-description: "Input schema and field behavior for add_bone."
+description: "add_bone reference with schema, field constraints, and request/response examples."
 ---
+
+## Quick Summary
+Adds a bone to the current project.
 
 ## Overview
 - Tool name: `add_bone`
 - Category: Modeling
+- Strict schema: `true`
 
 ## Tool Description
 Adds a bone to the current project.
@@ -110,3 +114,8 @@ Adds a bone to the current project.
   }
 }
 ```
+
+## Operational Notes
+- Use `ifRevision` for mutation calls when available.
+- Do not send fields outside the declared schema.
+- Run `validate` before `export` for release safety.

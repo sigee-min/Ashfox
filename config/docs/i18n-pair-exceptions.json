@@ -1,7 +1,3 @@
 {
-  "ignore": [
-    "contributors/**",
-    "users/guides",
-    "users/guides/**"
-  ]
+  "ignore": []
 }

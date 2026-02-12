@@ -1,11 +1,15 @@
 ---
 title: Create Animation Clip
-description: "Input schema and field behavior for create_animation_clip."
+description: "create_animation_clip reference with schema, field constraints, and request/response examples."
 ---
+
+## Quick Summary
+Creates an animation clip (low-level).
 
 ## Overview
 - Tool name: `create_animation_clip`
 - Category: Animation
+- Strict schema: `true`
 
 ## Tool Description
 Creates an animation clip (low-level).
@@ -89,3 +93,8 @@ Creates an animation clip (low-level).
   }
 }
 ```
+
+## Operational Notes
+- Use `ifRevision` for mutation calls when available.
+- Do not send fields outside the declared schema.
+- Run `validate` before `export` for release safety.

@@ -1,11 +1,15 @@
 ---
 title: Delete Cube
-description: "Input schema and field behavior for delete_cube."
+description: "delete_cube reference with schema, field constraints, and request/response examples."
 ---
+
+## Quick Summary
+Deletes a cube by id/name (or ids/names for bulk removal).
 
 ## Overview
 - Tool name: `delete_cube`
 - Category: Modeling
+- Strict schema: `true`
 
 ## Tool Description
 Deletes a cube by id/name (or ids/names for bulk removal).
@@ -89,3 +93,8 @@ Deletes a cube by id/name (or ids/names for bulk removal).
   }
 }
 ```
+
+## Operational Notes
+- Use `ifRevision` for mutation calls when available.
+- Do not send fields outside the declared schema.
+- Run `validate` before `export` for release safety.

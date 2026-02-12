@@ -1,11 +1,15 @@
 ---
 title: List Capabilities
-description: "Input schema and field behavior for list_capabilities."
+description: "list_capabilities reference with schema, field constraints, and request/response examples."
 ---
+
+## Quick Summary
+Returns plugin capabilities and limits. Tool schemas are strict (extra fields are rejected).
 
 ## Overview
 - Tool name: `list_capabilities`
 - Category: System
+- Strict schema: `true`
 
 ## Tool Description
 Returns plugin capabilities and limits. Tool schemas are strict (extra fields are rejected).
@@ -47,3 +51,8 @@ This tool has no input fields.
   }
 }
 ```
+
+## Operational Notes
+- Use `ifRevision` for mutation calls when available.
+- Do not send fields outside the declared schema.
+- Run `validate` before `export` for release safety.

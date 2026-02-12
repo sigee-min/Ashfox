@@ -1,11 +1,15 @@
 ---
 title: Add Mesh
-description: "Input schema and field behavior for add_mesh."
+description: "add_mesh reference with schema, field constraints, and request/response examples."
 ---
+
+## Quick Summary
+Adds a mesh with explicit vertices/faces (mesh-centered modeling).
 
 ## Overview
 - Tool name: `add_mesh`
 - Category: Modeling
+- Strict schema: `true`
 
 ## Tool Description
 Adds a mesh with explicit vertices/faces (mesh-centered modeling).
@@ -235,3 +239,8 @@ Adds a mesh with explicit vertices/faces (mesh-centered modeling).
   }
 }
 ```
+
+## Operational Notes
+- Use `ifRevision` for mutation calls when available.
+- Do not send fields outside the declared schema.
+- Run `validate` before `export` for release safety.

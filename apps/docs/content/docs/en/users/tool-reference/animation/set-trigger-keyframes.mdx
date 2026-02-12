@@ -1,11 +1,15 @@
 ---
 title: Set Trigger Keyframes
-description: "Input schema and field behavior for set_trigger_keyframes."
+description: "set_trigger_keyframes reference with schema, field constraints, and request/response examples."
 ---
+
+## Quick Summary
+Sets trigger keyframes (sound/particle/timeline), one key per call.
 
 ## Overview
 - Tool name: `set_trigger_keyframes`
 - Category: Animation
+- Strict schema: `true`
 
 ## Tool Description
 Sets trigger keyframes (sound/particle/timeline), one key per call.
@@ -111,3 +115,8 @@ Sets trigger keyframes (sound/particle/timeline), one key per call.
   }
 }
 ```
+
+## Operational Notes
+- Use `ifRevision` for mutation calls when available.
+- Do not send fields outside the declared schema.
+- Run `validate` before `export` for release safety.

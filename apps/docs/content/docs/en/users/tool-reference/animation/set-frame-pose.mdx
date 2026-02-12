@@ -1,11 +1,15 @@
 ---
 title: Set Pose Frame
-description: "Input schema and field behavior for set_frame_pose."
+description: "set_frame_pose reference with schema, field constraints, and request/response examples."
 ---
+
+## Quick Summary
+Sets a pose frame for multiple bones at a single frame (rot/pos/scale).
 
 ## Overview
 - Tool name: `set_frame_pose`
 - Category: Animation
+- Strict schema: `true`
 
 ## Tool Description
 Sets a pose frame for multiple bones at a single frame (rot/pos/scale).
@@ -171,3 +175,8 @@ Sets a pose frame for multiple bones at a single frame (rot/pos/scale).
   }
 }
 ```
+
+## Operational Notes
+- Use `ifRevision` for mutation calls when available.
+- Do not send fields outside the declared schema.
+- Run `validate` before `export` for release safety.

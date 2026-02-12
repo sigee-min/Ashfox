@@ -1,11 +1,15 @@
 ---
 title: Validate
-description: "Input schema and field behavior for validate."
+description: "validate reference with schema, field constraints, and request/response examples."
 ---
+
+## Quick Summary
+Validates the current project.
 
 ## Overview
 - Tool name: `validate`
 - Category: Project
+- Strict schema: `true`
 
 ## Tool Description
 Validates the current project.
@@ -51,3 +55,8 @@ Validates the current project.
   }
 }
 ```
+
+## Operational Notes
+- Use `ifRevision` for mutation calls when available.
+- Do not send fields outside the declared schema.
+- Run `validate` before `export` for release safety.

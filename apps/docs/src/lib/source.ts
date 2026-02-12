@@ -1,7 +1,7 @@
 import { docs } from 'fumadocs-mdx:collections/server';
 import { type InferPageType, loader } from 'fumadocs-core/source';
 import { defaultLocale, docsI18n } from '@/lib/i18n';
-import { withBasePath } from '@/lib/site';
+import { toAbsoluteUrl, withBasePath } from '@/lib/site';
 
 // See https://fumadocs.dev/docs/headless/source-api for more info
 export const source = loader({
@@ -23,8 +23,12 @@ export function getPageImage(page: InferPageType<typeof source>) {
 
 export async function getLLMText(page: InferPageType<typeof source>) {
   const processed = await page.data.getText('processed');
+  const locale = page.locale ?? defaultLocale;
+  const path = `/${locale}/docs${page.slugs.length > 0 ? `/${page.slugs.join('/')}` : ''}`;
 
   return `# ${page.data.title}
+
+URL: ${toAbsoluteUrl(path)}
 
 ${processed}`;
 }

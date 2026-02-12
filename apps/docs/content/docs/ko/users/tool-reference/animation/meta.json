@@ -1,7 +1,6 @@
 {
   "title": "애니메이션 도구",
   "pages": [
-    "index",
     "create-animation-clip",
     "update-animation-clip",
     "delete-animation-clip",

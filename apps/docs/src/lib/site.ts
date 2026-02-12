@@ -25,6 +25,10 @@ export function resolveMetadataBase(): URL {
   }
 }
 
+export function toAbsoluteUrl(pathname: string): string {
+  return new URL(withBasePath(pathname), resolveMetadataBase()).toString();
+}
+
 export function openGraphLocale(locale: Locale): string {
   switch (locale) {
     case 'ko':
@@ -56,4 +60,3 @@ export function localizedAlternates(suffix = ''): Record<string, string> {
 }
 
 export const defaultOpenGraphImage = withBasePath('/ashfox.png');
-

@@ -1,7 +1,6 @@
 {
   "title": "Animation Tools",
   "pages": [
-    "index",
     "create-animation-clip",
     "update-animation-clip",
     "delete-animation-clip",

@@ -1,11 +1,15 @@
 ---
 title: Read Texture
-description: "Input schema and field behavior for read_texture."
+description: "read_texture reference with schema, field constraints, and request/response examples."
 ---
+
+## Quick Summary
+Reads a texture image (dataUri + metadata) or saves a snapshot to .ashfox/tmp.
 
 ## Overview
 - Tool name: `read_texture`
 - Category: Texturing
+- Strict schema: `true`
 
 ## Tool Description
 Reads a texture image (dataUri + metadata) or saves a snapshot to .ashfox/tmp.
@@ -62,3 +66,8 @@ Reads a texture image (dataUri + metadata) or saves a snapshot to .ashfox/tmp.
   }
 }
 ```
+
+## Operational Notes
+- Use `ifRevision` for mutation calls when available.
+- Do not send fields outside the declared schema.
+- Run `validate` before `export` for release safety.

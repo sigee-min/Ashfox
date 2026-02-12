@@ -1,11 +1,15 @@
 ---
 title: Delete Bone
-description: "Input schema and field behavior for delete_bone."
+description: "delete_bone reference with schema, field constraints, and request/response examples."
 ---
+
+## Quick Summary
+Deletes a bone by id/name (or ids/names for bulk removal).
 
 ## Overview
 - Tool name: `delete_bone`
 - Category: Modeling
+- Strict schema: `true`
 
 ## Tool Description
 Deletes a bone by id/name (or ids/names for bulk removal).
@@ -91,3 +95,8 @@ Deletes a bone by id/name (or ids/names for bulk removal).
   }
 }
 ```
+
+## Operational Notes
+- Use `ifRevision` for mutation calls when available.
+- Do not send fields outside the declared schema.
+- Run `validate` before `export` for release safety.
