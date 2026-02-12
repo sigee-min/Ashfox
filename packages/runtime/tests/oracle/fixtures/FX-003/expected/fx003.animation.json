@@ -1,0 +1,44 @@
+{
+  "format_version": "1.8.0",
+  "geckolib_format_version": 2,
+  "animations": {
+    "idle": {
+      "animation_length": 1,
+      "loop": true,
+      "bones": {
+        "root": {
+          "rotation": {
+            "0.5": {
+              "vector": [
+                0,
+                -20,
+                0
+              ],
+              "pre": [
+                0,
+                0,
+                0
+              ],
+              "post": [
+                0,
+                -20,
+                0
+              ],
+              "easing": "easeInOutSine",
+              "easingArgs": [
+                0.42
+              ],
+              "bezier": {
+                "kind": "cubic",
+                "handle": [
+                  0.1,
+                  0.2
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

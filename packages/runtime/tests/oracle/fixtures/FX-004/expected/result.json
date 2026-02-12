@@ -1,0 +1,9 @@
+{
+  "path": "fx004.json",
+  "selectedTarget": {
+    "kind": "native_codec",
+    "id": "java_block_item_json",
+    "codecId": "java_block_item_json"
+  },
+  "stage": "done"
+}

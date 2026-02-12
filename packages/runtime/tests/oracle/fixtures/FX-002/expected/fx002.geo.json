@@ -1,0 +1,59 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": {
+        "identifier": "geometry.fx002",
+        "texture_width": 64,
+        "texture_height": 64
+      },
+      "bones": [
+        {
+          "name": "root",
+          "pivot": [
+            0,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -4,
+                0,
+                0
+              ],
+              "size": [
+                4,
+                4,
+                4
+              ]
+            }
+          ]
+        },
+        {
+          "name": "head",
+          "parent": "root",
+          "pivot": [
+            0,
+            4,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -2,
+                4,
+                0
+              ],
+              "size": [
+                2,
+                2,
+                2
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

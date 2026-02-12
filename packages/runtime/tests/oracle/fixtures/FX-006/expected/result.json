@@ -1,0 +1,13 @@
+{
+  "path": "fx006.geo.json",
+  "selectedTarget": {
+    "kind": "internal",
+    "id": "gecko_geo_anim",
+    "formatId": "geckolib_model"
+  },
+  "stage": "fallback",
+  "warnings": [
+    "export not implemented",
+    "additional artifact written: fx006.animation.json"
+  ]
+}

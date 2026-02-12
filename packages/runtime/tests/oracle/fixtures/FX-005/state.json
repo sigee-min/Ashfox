@@ -1,0 +1,19 @@
+{
+  "id": "fx005_id",
+  "formatId": "geckolib_model",
+  "name": "fx005",
+  "bones": [{ "name": "root", "pivot": [0, 0, 0] }],
+  "cubes": [
+    {
+      "name": "cube",
+      "bone": "root",
+      "from": [0, 0, 0],
+      "to": [4, 4, 4],
+      "uv": [0, 0]
+    }
+  ],
+  "meshes": [],
+  "textures": [{ "name": "atlas", "width": 64, "height": 64 }],
+  "animations": [],
+  "animationTimePolicy": { "timeEpsilon": 1e-9, "triggerDedupeByValue": true }
+}

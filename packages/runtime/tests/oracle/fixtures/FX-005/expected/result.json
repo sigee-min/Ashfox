@@ -1,0 +1,9 @@
+{
+  "path": "fx005.json",
+  "selectedTarget": {
+    "kind": "native_codec",
+    "id": "animated_java",
+    "codecId": "animated_java"
+  },
+  "stage": "done"
+}

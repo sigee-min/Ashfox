@@ -1,0 +1,35 @@
+{
+  "id": "fx002_id",
+  "formatId": "geckolib_model",
+  "name": "fx002",
+  "bones": [
+    { "name": "root", "pivot": [0, 0, 0] },
+    { "name": "head", "parent": "root", "pivot": [0, 4, 0] }
+  ],
+  "cubes": [
+    { "name": "body", "bone": "root", "from": [0, 0, 0], "to": [4, 4, 4] },
+    { "name": "head_cube", "bone": "head", "from": [0, 4, 0], "to": [2, 6, 2] }
+  ],
+  "meshes": [],
+  "textures": [{ "name": "atlas", "width": 64, "height": 64 }],
+  "animations": [
+    {
+      "name": "walk",
+      "length": 2,
+      "loop": true,
+      "fps": 20,
+      "channels": [
+        {
+          "bone": "head",
+          "channel": "rot",
+          "keys": [{ "time": 1, "value": [5, 0, 0] }]
+        }
+      ],
+      "triggers": [
+        { "type": "sound", "keys": [{ "time": 0.25, "value": "step" }] },
+        { "type": "timeline", "keys": [{ "time": 1.25, "value": "beat" }] }
+      ]
+    }
+  ],
+  "animationTimePolicy": { "timeEpsilon": 1e-9, "triggerDedupeByValue": true }
+}
