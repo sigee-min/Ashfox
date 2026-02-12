@@ -199,7 +199,8 @@ const createBaseState = (name: string): SessionState => ({
           easing: 'easeInOutSine',
           easingArgs: [0.42],
           pre: [0, 0, 0],
-          post: [0, 20, 0]
+          post: [0, 20, 0],
+          bezier: { kind: 'cubic', handle: [0.1, 0.2] }
         }
       ]
     }
@@ -213,7 +214,8 @@ const createBaseState = (name: string): SessionState => ({
     pre: [0, 0, 0],
     post: [0, -20, 0],
     easing: 'easeInOutSine',
-    easingArgs: [0.42]
+    easingArgs: [0.42],
+    bezier: { kind: 'cubic' }
   });
 }
 
