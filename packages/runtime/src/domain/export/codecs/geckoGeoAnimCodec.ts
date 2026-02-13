@@ -277,8 +277,9 @@ const buildGeoCube = (cube: CanonicalExportModel['cubes'][number]): Record<strin
     size: sanitizeVec3(size)
   };
 
-  if (cube.uv) {
-    entry.uv = [sanitizeNumber(cube.uv[0]), sanitizeNumber(cube.uv[1])];
+  const uvBase = cube.uvOffset ?? cube.uv;
+  if (uvBase) {
+    entry.uv = [sanitizeNumber(uvBase[0]), sanitizeNumber(uvBase[1])];
   }
 
   const inflate = cube.inflate !== undefined ? sanitizeNumber(cube.inflate) : 0;

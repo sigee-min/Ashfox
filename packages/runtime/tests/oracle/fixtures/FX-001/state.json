@@ -9,7 +9,7 @@
       "bone": "root",
       "from": [0, 0, 0],
       "to": [4, 4, 4],
-      "uv": [0, 0]
+      "uvOffset": [0, 0]
     }
   ],
   "meshes": [],
