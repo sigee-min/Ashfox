@@ -8,6 +8,16 @@ const path = require('path');
 const repoRoot = path.resolve(__dirname, '..', '..');
 
 const readText = (filePath) => fs.readFileSync(filePath, 'utf8');
+const readModuleSpecifiers = (source) => {
+  const specifiers = [];
+  const pattern =
+    /(?:\bfrom\s+|\bimport\s*(?:\(\s*)?|\brequire\s*\(\s*)['"]([^'"]+)['"]/g;
+  let match;
+  while ((match = pattern.exec(source)) !== null) {
+    specifiers.push(match[1]);
+  }
+  return specifiers;
+};
 
 const walk = (dir, predicate) => {
   /** @type {string[]} */
@@ -74,6 +84,9 @@ const assertTrackDependencies = () => {
   const webPackage = JSON.parse(
     readText(path.join(repoRoot, 'apps', 'web', 'package.json'))
   );
+  const sitePackage = JSON.parse(
+    readText(path.join(repoRoot, 'apps', 'site', 'package.json'))
+  );
   const workspaces = new Set(rootPackage.workspaces ?? []);
   const forbiddenWorkspaces = [
     'apps/mcp-gateway',
@@ -99,6 +112,55 @@ const assertTrackDependencies = () => {
     throw new Error(
       `quality: Web Studio cannot depend on ${forbiddenWebDependency}`
     );
+  }
+
+  if (!workspaces.has('apps/site')) {
+    throw new Error('quality: static public site workspace is missing.');
+  }
+  const siteDependencies = Object.keys({
+    ...(sitePackage.dependencies ?? {}),
+    ...(sitePackage.devDependencies ?? {})
+  });
+  const forbiddenSiteDependency = siteDependencies.find(
+    (dependency) => dependency !== 'marked'
+  );
+  if (forbiddenSiteDependency) {
+    throw new Error(
+      `quality: static public site cannot depend on ${forbiddenSiteDependency}`
+    );
+  }
+  const siteSourceFiles = walk(
+    path.join(repoRoot, 'apps', 'site'),
+    (filePath) => /\.(?:js|mjs)$/.test(filePath)
+  );
+  for (const filePath of siteSourceFiles) {
+    const crossesProductBoundary = readModuleSpecifiers(readText(filePath)).some(
+      (specifier) => {
+        if (
+          specifier.startsWith('@ashfox/') ||
+          /^(?:react|three)(?:\/|$)/.test(specifier)
+        ) {
+          return true;
+        }
+        if (!specifier.startsWith('.')) {
+          return false;
+        }
+        const targetPath = path.resolve(path.dirname(filePath), specifier);
+        return [
+          path.join(repoRoot, 'apps', 'web'),
+          path.join(repoRoot, 'packages', 'engine-core')
+        ].some(
+          (productRoot) =>
+            targetPath === productRoot ||
+            targetPath.startsWith(`${productRoot}${path.sep}`)
+        );
+      }
+    );
+    if (crossesProductBoundary) {
+      throw new Error(
+        `quality: static public site crosses the product boundary: ${rel(filePath)}`
+      );
+    }
   }
 };
 

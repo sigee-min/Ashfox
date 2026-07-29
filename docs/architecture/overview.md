@@ -6,13 +6,13 @@ Status: **Accepted**
 
 ```mermaid
 flowchart LR
-    Codex["Codex in-app browser"] --> Web["Ashfox Web Studio"]
+    AgentIDE["AI IDE browser surface"] --> Web["Ashfox Web Studio"]
     User["Creator"] --> Web
     Web --> Engine["engine-core"]
     Web --> BrowserStore["Browser-local project store"]
     Web --> Files["File import / export"]
     Engine --> Inspect["Bounded inspect"]
-    Inspect --> Codex
+    Inspect --> AgentIDE
 
     McpClient["MCP client"] --> Sidecar["Blockbench MCP sidecar"]
     Sidecar --> Plugin["Ashfox Blockbench plugin"]
@@ -24,6 +24,10 @@ flowchart LR
 The tracks are separate products. Web Studio runs on `engine-core` and
 browser-local adapters. The Blockbench integration operates its own live
 project.
+
+The public landing and documentation site is a third deployment surface, not
+a product runtime. `apps/site` reads this directory at build time and emits
+static CDN files without importing Web Studio or engine code.
 
 ## Web Studio
 
@@ -81,6 +85,7 @@ handles, React state, and Three.js objects stay in Web Studio.
 
 | Area | Responsibility |
 | --- | --- |
+| `apps/site` | Dependency-free static landing and documentation output |
 | `apps/web` | Zero-install Web Studio |
 | `packages/engine-core` | Canonical web domain and exporters |
 | `apps/blockbench-plugin` | Optional Blockbench plugin bundle entry |
@@ -94,7 +99,7 @@ handles, React state, and Three.js objects stay in Web Studio.
 ### Web edit
 
 1. The browser derives a bounded inspection for the current revision.
-2. The user or Codex submits one coarse canonical command batch.
+2. The user or AI IDE submits one coarse canonical command batch.
 3. `engine-core` validates and applies the immutable transition atomically.
 4. Browser persistence commits the new revision.
 5. The viewport rebuilds affected projections.

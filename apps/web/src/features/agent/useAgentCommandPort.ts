@@ -103,7 +103,7 @@ export const useAgentCommandPort = ({
         dispatch({
           type: 'execute',
           batch,
-          actorId: 'codex',
+          actorId: 'ai-ide',
           source: 'agent',
           committedAt: new Date().toISOString()
         });

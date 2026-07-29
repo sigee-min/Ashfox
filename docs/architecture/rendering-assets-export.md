@@ -25,7 +25,7 @@ Three.js objects are disposable. Canonical IDs remain in `ProjectDocument`.
 - selection and transform controls;
 - grid, origin, pivot, and bounds overlays;
 - animation playback against a stable document revision;
-- responsive sizing for narrow Codex panes;
+- responsive sizing for narrow AI IDE panes;
 - explicit disposal of GPU resources.
 
 ## Deterministic preview

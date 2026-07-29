@@ -5,15 +5,12 @@ import {
   useRef,
   type PointerEvent as ReactPointerEvent
 } from 'react';
-import * as THREE from 'three';
-
 import { applyAnimationPose } from './viewport/animationPose';
 import { projectToThreeScene } from './viewport/projectSceneProjection';
 import { useViewportRuntime } from './viewport/useViewportRuntime';
 import {
   applyCameraCommand,
-  configureTransformControls,
-  disposeSelectionBox
+  configureTransformControls
 } from './viewport/viewportRuntime';
 import type { ViewportProps } from './viewport/viewportTypes';
 
@@ -62,7 +59,6 @@ export function Viewport({
     if (!runtime) return;
 
     runtime.transform.detach();
-    disposeSelectionBox(runtime);
     if (runtime.projection) {
       runtime.scene.remove(runtime.projection.root);
       runtime.projection.dispose();
@@ -90,8 +86,11 @@ export function Viewport({
     const runtime = runtimeRef.current;
     const projection = runtime?.projection;
     if (!runtime || !projection) return;
+    if (playing) {
+      runtime.transform.detach();
+    }
     applyAnimationPose(document, projection, activeClipId, playhead);
-  }, [activeClipId, document, playhead, runtimeRef]);
+  }, [activeClipId, document, playhead, playing, runtimeRef]);
 
   useEffect(() => {
     const runtime = runtimeRef.current;
@@ -99,18 +98,10 @@ export function Viewport({
     if (!runtime || !projection) return;
 
     runtime.transform.detach();
-    disposeSelectionBox(runtime);
-    if (!selectedNodeId) return;
+    if (!selectedNodeId || playing) return;
     const object = projection.objectsByNodeId.get(selectedNodeId);
     if (!object) return;
-
-    runtime.selectionBox = new THREE.BoxHelper(object, '#f1b24c');
-    runtime.selectionBox.material.depthTest = false;
-    runtime.selectionBox.material.transparent = true;
-    runtime.selectionBox.material.opacity = 0.9;
-    runtime.selectionBox.renderOrder = 6;
-    runtime.scene.add(runtime.selectionBox);
-    if (!playing) runtime.transform.attach(object);
+    runtime.transform.attach(object);
   }, [document, playing, runtimeRef, selectedNodeId]);
 
   useEffect(() => {

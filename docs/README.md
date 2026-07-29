@@ -20,6 +20,7 @@ Each document distinguishes implemented contracts from planned runtime work. Cur
 ### Architecture
 
 - [System overview](architecture/overview.md)
+- [Static public site](architecture/public-site.md)
 - [Authority boundaries](architecture/authority-boundaries.md)
 - [Web state management](architecture/web-state-management.md)
 - [Canonical project document](architecture/project-document.md)
@@ -60,7 +61,7 @@ Each document distinguishes implemented contracts from planned runtime work. Cur
 4. `ProjectDocument` contains canonical asset state.
 5. The two tracks share format contracts and deterministic snapshots.
 6. A delivery gate passes only when Web and Blockbench compatibility tests run independently.
-7. Codex writes through validated canonical commands.
+7. AI IDE writes through validated canonical commands.
 8. Integrity and target checks run locally and never require another AI turn.
 9. A schema change updates every reader, writer, validator, fixture, and test
    in the same change.

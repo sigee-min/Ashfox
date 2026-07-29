@@ -15,7 +15,6 @@ export interface ViewportRuntime {
   orbit: OrbitControls;
   transform: TransformControls;
   projection: ProjectSceneProjection | null;
-  selectionBox: THREE.BoxHelper | null;
   grid: THREE.GridHelper;
   axes: THREE.AxesHelper;
   floor: THREE.Mesh<THREE.PlaneGeometry, THREE.ShadowMaterial>;
@@ -51,7 +50,7 @@ export const createViewportRuntime = (
   scene.fog = new THREE.Fog('#171b20', 46, 92);
 
   const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 300);
-  camera.position.set(27, 21, -31);
+  camera.position.set(30, 23, -35);
 
   const renderer = new THREE.WebGLRenderer({
     canvas,
@@ -67,7 +66,7 @@ export const createViewportRuntime = (
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
   const orbit = new OrbitControls(camera, canvas);
-  orbit.target.set(0, 9, 0);
+  orbit.target.set(0, 12, 0);
   orbit.enableDamping = true;
   orbit.dampingFactor = 0.08;
   orbit.minDistance = 8;
@@ -110,23 +109,12 @@ export const createViewportRuntime = (
     orbit,
     transform,
     projection: null,
-    selectionBox: null,
     grid,
     axes,
     floor,
     pointerStart: new THREE.Vector2(),
     transformDragging: false
   };
-};
-
-export const disposeSelectionBox = (
-  runtime: ViewportRuntime
-): void => {
-  if (!runtime.selectionBox) return;
-  runtime.scene.remove(runtime.selectionBox);
-  runtime.selectionBox.geometry.dispose();
-  runtime.selectionBox.material.dispose();
-  runtime.selectionBox = null;
 };
 
 const disposeMaterials = (
@@ -143,7 +131,6 @@ export const disposeViewportRuntime = (
   runtime.transform.dispose();
   runtime.orbit.dispose();
   runtime.projection?.dispose();
-  disposeSelectionBox(runtime);
   runtime.grid.geometry.dispose();
   disposeMaterials(runtime.grid.material);
   runtime.axes.geometry.dispose();
@@ -170,21 +157,21 @@ export const applyCameraCommand = (
   runtime: ViewportRuntime,
   command: CameraCommand
 ): void => {
-  const target = new THREE.Vector3(0, 9, 0);
+  const target = new THREE.Vector3(0, 12, 0);
   runtime.camera.up.set(0, 1, 0);
   switch (command.mode) {
     case 'front':
-      runtime.camera.position.set(0, 9, -38);
+      runtime.camera.position.set(0, 10, -48);
       break;
     case 'side':
-      runtime.camera.position.set(38, 9, 0);
+      runtime.camera.position.set(48, 10, 0);
       break;
     case 'top':
       runtime.camera.up.set(0, 0, -1);
-      runtime.camera.position.set(0, 44, 0.01);
+      runtime.camera.position.set(0, 54, 0.01);
       break;
     case 'perspective':
-      runtime.camera.position.set(27, 21, -31);
+      runtime.camera.position.set(30, 23, -35);
       break;
   }
   runtime.orbit.target.copy(target);

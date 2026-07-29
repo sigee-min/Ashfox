@@ -9,8 +9,8 @@ Implementation: **Planned**
 ```mermaid
 flowchart LR
     Document["ProjectDocument"] --> Inspect["Bounded inspect"]
-    Inspect --> Codex["Codex"]
-    Codex --> Run["Atomic batch"]
+    Inspect --> AgentIDE["AI IDE"]
+    AgentIDE --> Run["Atomic batch"]
     Run --> Engine["Command registry"]
     Engine --> Document
     Document --> Viewport["Live viewport"]
@@ -18,7 +18,7 @@ flowchart LR
 ```
 
 `ProjectDocument` is the project authority. The command registry is the
-mutation authority. React and Codex use the same commands.
+mutation authority. The UI and any connected AI IDE use the same commands.
 
 The browser surface is defined in
 [Agent Command Port](agent-command-port.md).
@@ -62,7 +62,7 @@ code and path. Success returns revision and affected IDs.
 
 ## Observation
 
-Every committed batch renders immediately. Codex observes the viewport only
+Every committed batch renders immediately. AI IDE observes the viewport only
 after a visual change or when requested by the creator. Normal edits use zero
 or one screenshot.
 

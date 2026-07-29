@@ -6,7 +6,7 @@ Reviewed: 2026-07-28
 
 ## Conclusion
 
-For one Codex agent, Ashfox should optimize the representation and tools before
+For one AI IDE agent, Ashfox should optimize the representation and tools before
 adding more reasoning loops.
 
 The practical high-quality path is:
@@ -30,9 +30,9 @@ Quality comes primarily from:
 
 ## Research evidence
 
-OpenAI's current Codex guidance recommends providing the goal, relevant
+Current agentic coding guidance recommends providing the goal, relevant
 context, constraints, and completion condition, keeping durable guidance
-short, and letting Codex run and verify the relevant checks. The Browser guide
+short, and letting the AI IDE run and verify the relevant checks. Browser-use guidance
 also recommends small, reviewable browser tasks followed by another rendered
 review. These principles support a compact project projection and explicit
 completion gate rather than a long operating manual.
@@ -43,7 +43,7 @@ allow parameter changes while preserving part attachments.
 
 [CAD-Recode](https://arxiv.org/abs/2412.14042) represents CAD construction as
 executable Python and shows that an off-the-shelf language model can understand
-and edit the resulting program. This supports giving Codex composable
+and edit the resulting program. This supports giving AI IDE composable
 operations rather than raw vertex or document dumps.
 
 [Code as Policies](https://arxiv.org/abs/2209.07753) shows that code-oriented
@@ -70,11 +70,11 @@ rendered evidence.
 The existing `ProjectDocument` remains the editable result. A canonical command
 batch acts as the compact temporary program, and deterministic commands expand
 it into document entities. This retains one project authority while making
-Codex output shorter and more reliable.
+AI IDE output shorter and more reliable.
 
 ## High-leverage tools
 
-The quality ceiling depends on the operations available to Codex. The following
+The quality ceiling depends on the operations available to AI IDE. The following
 commands remove repetitive arithmetic and preserve relationships by
 construction.
 
@@ -115,14 +115,14 @@ construction.
 - bake only explicitly required target differences;
 - export through the current deterministic compiler.
 
-These are canonical product tools used by both React and Codex.
+These are canonical product tools used by both React and AI IDE.
 
 ## Single-agent operating policy
 
-The user request is the creative brief. Ashfox should not ask Codex to rewrite
+The user request is the creative brief. Ashfox should not ask AI IDE to rewrite
 it into another stored format.
 
-Codex receives only:
+AI IDE receives only:
 
 - requested outcome;
 - current target;
@@ -153,7 +153,7 @@ One visual observation must answer one question:
 - animation: is the decisive pose readable at the selected time?
 
 Ashfox supplies a deterministic camera, neutral lighting, target sampling, and
-the currently affected selection. Codex uses one relevant view and expands the
+the currently affected selection. AI IDE uses one relevant view and expands the
 review only when the user requests it.
 
 A final screenshot is unnecessary when the operation is numeric and the local
@@ -167,7 +167,7 @@ Stop when:
 2. the requested shape, material, or motion is visible;
 3. the current observation exposes no specific defect worth another command.
 
-Codex continues only when it can name a concrete correction.
+AI IDE continues only when it can name a concrete correction.
 
 ## Token policy
 
@@ -207,7 +207,7 @@ Ashfox has:
 
 ## Evaluation
 
-Use the same Codex model and user request for both paths:
+Use the same AI IDE model and user request for both paths:
 
 - baseline: field-level UI or commands;
 - proposed: high-leverage commands with bounded inspection;
@@ -232,7 +232,7 @@ and equal target validity.
 The recommended Ashfox strategy is:
 
 ```text
-one strong Codex agent
+one strong AI IDE agent
 + compact context
 + powerful deterministic operations
 + one live viewport
@@ -241,7 +241,7 @@ one strong Codex agent
 
 ## Sources
 
-- [OpenAI Codex best practices](https://learn.chatgpt.com/guides/best-practices)
+- [Agentic coding best practices](https://learn.chatgpt.com/guides/best-practices)
 - [OpenAI prompting guidance](https://learn.chatgpt.com/docs/prompting)
 - [OpenAI Browser guidance](https://learn.chatgpt.com/docs/browser)
 - [ShapeAssembly](https://arxiv.org/abs/2009.08026)

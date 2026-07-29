@@ -6,7 +6,7 @@ Date: 2026-07-28
 
 ## Context
 
-Ashfox Studio provides complete asset authoring and delivery in the Codex
+Ashfox Studio provides complete asset authoring and delivery in the AI IDE
 in-app browser. The Web Studio owns its editor, renderer, project state,
 validation, and exporters.
 

@@ -40,7 +40,7 @@ Web Studio must provide the user outcomes without reproducing MCP:
 | Understand structure | Scene overlay and semantic project summary |
 | Inspect geometry | Responsive WebGL viewport and selection |
 | Correct values | Inspector overlay and canonical commands |
-| Review Codex work | Receipts, affected entities, findings, undo |
+| Review AI IDE work | Receipts, affected entities, findings, undo |
 | Edit textures and UVs | Texture/UV workspace |
 | Inspect motion | Timeline and live playback |
 | Deliver assets | Target validation and browser materializer |

@@ -10,7 +10,7 @@ const sourceLabel = (source: CommandSource): string => {
     case 'web':
       return 'UI';
     case 'agent':
-      return 'Codex';
+      return 'AI IDE';
     case 'import':
       return 'Import';
     case 'system':
@@ -88,7 +88,7 @@ export function ActivityPanel({
           <div className="activity-empty">
             <Icon name="spark" />
             <strong>No commands yet</strong>
-            <span>UI and Codex edits will appear here.</span>
+            <span>UI and AI IDE edits will appear here.</span>
           </div>
         )}
       </div>

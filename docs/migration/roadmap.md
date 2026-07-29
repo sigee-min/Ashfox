@@ -41,7 +41,7 @@ Gate:
 Progress: **In progress**
 
 - one command-definition registry shared by runtime validation, React actions,
-  and Codex;
+  and AI IDE;
 - schema validation and atomic apply;
 - multi-entity create, transform, mirror, repeat, align, pivot, and hierarchy
   commands;
@@ -76,7 +76,7 @@ Gate:
 - local validation consumes zero AI turns;
 - ordinary modeling uses at most one screenshot when a visual decision is
   required;
-- Codex discovers the needed command directly from the open page;
+- AI IDE discovers the needed command directly from the open page;
 - browser QA covers inspection, run, rendering, failure, and undo.
 
 ## Phase 5: Production delivery

@@ -4,7 +4,7 @@ Status: **Accepted**
 
 ## Product statement
 
-Ashfox Studio is a zero-install browser 3D workspace where Codex creates the
+Ashfox Studio is a zero-install browser 3D workspace where AI IDE creates the
 asset and a creator observes, corrects, validates, and exports the result.
 
 The public product is the web URL. Blockbench MCP is a separate optional
@@ -16,7 +16,7 @@ A user can:
 
 1. open Ashfox Studio;
 2. start immediately or grant access to an existing asset;
-3. let Codex perform structured edits through browser-observable controls;
+3. let AI IDE perform structured edits through browser-observable controls;
 4. inspect every geometry, texture, UV, and animation result live;
 5. export a valid Bedrock, GeckoLib 5, glTF, GLB, or Java artifact.
 
@@ -41,7 +41,7 @@ findings, and an undo path.
 
 ### Sparse AI context
 
-Codex receives a compact summary tied to one project revision. Entity, texture,
+AI IDE receives a compact summary tied to one project revision. Entity, texture,
 clip, or validation detail is loaded only when it is needed for the next
 command. Integrity and target checks execute locally without another model
 turn. The viewport is observed only when the next decision is genuinely visual.
@@ -58,7 +58,7 @@ Target profiles and exporters produce stable, fixture-tested artifacts.
 ### Semantic browser operation
 
 Important state and actions have accessible DOM representations. Canvas pixels
-are never the only way for Codex to understand or operate the project.
+are never the only way for AI IDE to understand or operate the project.
 
 ## Web release scope
 
@@ -66,7 +66,7 @@ are never the only way for Codex to understand or operate the project.
 - bone, cube, mesh, locator, texture, UV, and animation editing;
 - responsive full-area viewport and compact overlays;
 - browser Agent Command Port over canonical command batches;
-- bounded command inspection for Codex;
+- bounded command inspection for AI IDE;
 - visible deterministic scene, UV, animation, validation, and export tools;
 - bounded agent inspection and direct canonical command batches;
 - linked validation findings and deterministic previews;

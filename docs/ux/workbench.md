@@ -4,9 +4,9 @@ Status: **Proposed**
 
 ## Experience goal
 
-The workbench gives creators a complete visual understanding of the canonical project while making Codex operations easy to review, correct, and continue.
+The workbench gives creators a complete visual understanding of the canonical project while making AI IDE operations easy to review, correct, and continue.
 
-It is desktop-first and designed to run in the Codex in-app browser as well as a regular browser.
+It is desktop-first and designed to run in the AI IDE in-app browser as well as a regular browser.
 
 ## Primary route structure
 
@@ -42,15 +42,15 @@ aspect. Tool groups scroll inside their own strip, overlays fit the available
 width, and the bottom workspace changes from columns to stacked rows rather
 than forcing a minimum page width.
 
-## Codex activity
+## AI IDE activity
 
 The Agent Command Port submits one batch automatically. A read-only viewport
-status shows `Codex Connected` or `Codex Working`. After commit, the viewport
+status shows `AI IDE Connected` or `AI IDE Working`. After commit, the viewport
 focuses affected entities and Activity shows the receipt and Undo action.
 Validation surfaces show failures.
 
 The workbench root exposes command-port status and revision as semantic state.
-This gives Codex a discoverable entry point without changing the viewport
+This gives AI IDE a discoverable entry point without changing the viewport
 layout.
 
 ## Deterministic tools
@@ -67,10 +67,10 @@ immediately understandable:
   actions.
 
 Only actions valid for the current selection and target are enabled. Each
-action has a stable accessible name and canonical command ID. React and Codex
+action has a stable accessible name and canonical command ID. React and AI IDE
 submit the same command definition.
 
-Creative judgment stays with Codex and the creator.
+Creative judgment stays with AI IDE and the creator.
 
 ## Global header
 
@@ -135,7 +135,7 @@ An input draft is local until committed. Multi-field edits should commit as one 
 
 `Generate Minecraft texture` applies one canonical command to all textured cube
 faces. The result is visible immediately in the permanent 3D viewport, appears
-as one Activity receipt, and can be reverted with Undo. Codex can invoke the
+as one Activity receipt, and can be reverted with Undo. AI IDE can invoke the
 same command through the Agent Command Port without a product-side JSON panel.
 
 ## Animation workspace
@@ -155,7 +155,7 @@ Creating or moving keys commits stable keyframe IDs. Playback itself is browser-
 
 Every command creates a receipt containing:
 
-- actor and source, such as user, Codex, import, or system;
+- actor and source, such as user, AI IDE, import, or system;
 - readable action summary;
 - completion state and duration;
 - before and after revisions;
@@ -192,7 +192,7 @@ When a command returns a revision mismatch:
 
 The UI never silently overwrites a newer project revision.
 
-## Codex browser operability
+## AI IDE browser operability
 
 To make the workbench reliable in the in-app browser:
 
@@ -218,7 +218,7 @@ names.
 
 ## Empty and loading states
 
-- Empty project: explain how to create a bone, cube, mesh, or ask Codex.
+- Empty project: explain how to create a bone, cube, mesh, or ask AI IDE.
 - Empty texture set: offer create, import, or generate actions.
 - Empty animation set: offer clip creation and a short explanation.
 - Loading project: retain the project shell and display the target project ID.

@@ -1,0 +1,13 @@
+{
+  "name": "@ashfox/site",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node scripts/build.mjs && node scripts/check.mjs"
+  },
+  "devDependencies": {
+    "marked": "^18.0.7"
+  }
+}

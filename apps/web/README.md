@@ -12,7 +12,7 @@ Current scope:
 - validation, textures, animation timeline, activity, undo, and redo;
 - cancellable project file operations with stale-completion protection;
 - self-contained `.ashfox` project archives with verified texture bytes;
-- automatic bounded Codex inspect/run port backed by reducer outcomes;
+- automatic bounded AI IDE inspect/run port backed by reducer outcomes;
 - static production build with no application server routes.
 
 Run locally:

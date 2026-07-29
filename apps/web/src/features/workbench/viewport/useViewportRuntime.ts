@@ -122,7 +122,6 @@ export const useViewportRuntime = (
     let lastStatsUpdate = 0;
     const render = (time: number): void => {
       runtime.orbit.update();
-      runtime.selectionBox?.update();
       runtime.renderer.render(runtime.scene, runtime.camera);
       if (time - lastStatsUpdate > 500) {
         lastStatsUpdate = time;

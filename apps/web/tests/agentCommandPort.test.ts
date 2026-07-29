@@ -32,7 +32,7 @@ const receipt = (
   schemaVersion: 1,
   commandId,
   projectId: 'project-test',
-  actorId: 'codex',
+  actorId: 'ai-ide',
   source: 'agent',
   summary: 'Rename project',
   beforeRevision: 'local-0001',

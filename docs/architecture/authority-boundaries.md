@@ -48,7 +48,7 @@ storage adapter.
 - A project session selects exactly one host: Web Studio or Blockbench.
 - Format parity is measured with shared fixtures.
 - Canonical command sources use host-independent domain names.
-- Codex writes project state through canonical commands.
+- AI IDE writes project state through canonical commands.
 - Agent projections are read-only, capped, and tied to the revision from which
   they were derived.
 - A contract change updates its type, reader, writer, validator, fixture, and

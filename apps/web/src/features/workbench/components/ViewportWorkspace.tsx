@@ -131,10 +131,10 @@ export function ViewportWorkspace({
           <div
             className={`agent-connection-state is-${agentStatus}`}
             role="status"
-            aria-label={`Codex ${agentStatus}`}
+            aria-label={`AI IDE ${agentStatus}`}
           >
             <span aria-hidden="true" />
-            Codex {agentStatus === 'working' ? 'Working' : 'Connected'}
+            AI IDE {agentStatus === 'working' ? 'Working' : 'Connected'}
           </div>
           <button
             type="button"

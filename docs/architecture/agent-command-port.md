@@ -4,7 +4,7 @@ Status: **Implemented**
 
 ## Purpose
 
-The open Ashfox page gives Codex one local, automatic command port:
+The open Ashfox page gives AI IDE one local, automatic command port:
 
 ```text
 inspect bounded state
@@ -94,7 +94,7 @@ commands execute immediately without a confirmation step.
 
 ## Product surface
 
-The viewport shows a read-only `Codex Connected` or `Codex Working` status.
+The viewport shows a read-only `AI IDE Connected` or `AI IDE Working` status.
 Applied work is reviewed in existing product surfaces:
 
 - the viewport renders the committed revision and focuses the first affected
@@ -135,7 +135,7 @@ apps/web/src/features/agent/
 
 ## Acceptance criteria
 
-- Codex discovers `inspect` and `run` from the open page;
+- AI IDE discovers `inspect` and `run` from the open page;
 - one submitted batch is applied automatically;
 - reducer rejection and receipt data are returned without reconstruction;
 - deterministic operations are discoverable through bounded inspection;

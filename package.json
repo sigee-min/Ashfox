@@ -5,6 +5,7 @@
   "workspaces": [
     "apps/blockbench-mcp-sidecar",
     "apps/blockbench-plugin",
+    "apps/site",
     "apps/web",
     "packages/blockbench-contracts",
     "packages/blockbench-runtime",
@@ -12,7 +13,8 @@
     "packages/engine-core"
   ],
   "scripts": {
-    "build": "npm run build:web && npm run build:blockbench",
+    "build": "npm run build:site && npm run build:web && npm run build:blockbench",
+    "build:site": "npm --workspace @ashfox/site run build",
     "build:web": "npm --workspace @ashfox/web run build",
     "build:blockbench": "node scripts/build-blockbench.js",
     "dev:web": "npm --workspace @ashfox/web run dev",
@@ -21,7 +23,8 @@
     "test:blockbench:conformance": "npm --workspace @ashfox/blockbench-conformance run test",
     "test:engine-core": "npm --workspace @ashfox/engine-core run test",
     "test:practical:blockbench": "npm --workspace @ashfox/blockbench-runtime run test:practical && npm --workspace @ashfox/blockbench-conformance run test:practical",
-    "test": "npm run typecheck && npm run test:web && npm run test:blockbench",
+    "test": "npm run typecheck && npm run test:site && npm run test:web && npm run test:blockbench",
+    "test:site": "npm --workspace @ashfox/site run test",
     "test:cov:blockbench": "npm --workspace @ashfox/blockbench-runtime run test:cov",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "quality:check": "npm run typecheck && node scripts/quality/check.js",
@@ -29,7 +32,7 @@
     "quality:deadcode": "node scripts/quality/deadcode.js",
     "quality:coverage": "node scripts/quality/coverage.js",
     "release:validate": "node scripts/release/validate.js",
-    "quality": "npm run test:cov:blockbench && npm run test:blockbench:conformance && npm run test:web && npm run build && npm run quality:check && npm run quality:deadcode && npm run quality:coverage && npm run quality:audit && npm run release:validate"
+    "quality": "npm run test:cov:blockbench && npm run test:blockbench:conformance && npm run test:site && npm run test:web && npm run build && npm run quality:check && npm run quality:deadcode && npm run quality:coverage && npm run quality:audit && npm run release:validate"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
