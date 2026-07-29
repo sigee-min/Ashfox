@@ -249,9 +249,11 @@ const executeBatch = (
   }
 
   const serial = state.serial + 1;
+  const replacesProject = result.document.id !== state.present.id;
+  const nextSerial = replacesProject ? 1 : serial;
   const present = stampDocument(
     result.document,
-    serial,
+    nextSerial,
     action.committedAt
   );
   const receipt = createCommandReceipt({
@@ -268,11 +270,15 @@ const executeBatch = (
   });
 
   return {
-    past: [...state.past.slice(-(HISTORY_LIMIT - 1)), state.present],
+    past: replacesProject
+      ? []
+      : [...state.past.slice(-(HISTORY_LIMIT - 1)), state.present],
     present,
     future: [],
-    serial,
-    activity: prependActivity(state, receipt),
+    serial: nextSerial,
+    activity: replacesProject
+      ? [receipt]
+      : prependActivity(state, receipt),
     lastCommandOutcome: {
       status: 'committed',
       commandId: action.batch.batchId,

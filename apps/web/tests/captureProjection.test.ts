@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 import {
+  createProjectFromInput,
   executeCommandBatch
 } from '@ashfox/engine-core';
 
@@ -8,24 +9,20 @@ import {
   createCaptureProjection
 } from '../src/features/capture/createCaptureProjection';
 import {
-  createNewProjectDocument
-} from '../src/features/workbench/newProject';
-import {
   createWorkbenchProject
 } from '../src/features/workbench/sampleProject';
 
-const empty = createNewProjectDocument(
+const empty = createProjectFromInput(
   {
+    id: 'project-capture-fixture',
     name: 'Capture fixture',
     target: 'glb',
     namespace: 'ashfox',
     modelPath: 'capture_fixture',
-    textureResolution: 16
-  },
-  {
-    id: 'project-capture-fixture',
+    textureResolution: 16,
     createdAt: '2026-07-29T00:00:00.000Z'
-  }
+  },
+  'local-0001'
 );
 const created = executeCommandBatch(empty, {
   batchId: 'capture-fixture-bone',

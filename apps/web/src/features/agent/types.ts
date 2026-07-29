@@ -49,9 +49,39 @@ export interface RunFailure {
 
 export type RunResult = RunSuccess | RunFailure;
 
+export interface PresentRequest {
+  kind: 'animation';
+  clipId: string;
+  playing: boolean;
+  timeSeconds?: number;
+}
+
+export interface PresentSuccess {
+  ok: true;
+  revision: string;
+  data: {
+    clipId: string;
+    playing: boolean;
+    timeSeconds: number;
+  };
+}
+
+export interface PresentFailure {
+  ok: false;
+  revision: string;
+  error: {
+    code: 'invalid_request' | 'not_found';
+    path?: string;
+    expected?: string;
+  };
+}
+
+export type PresentResult = PresentSuccess | PresentFailure;
+
 export interface AgentCommandPortApi {
   inspect(request?: InspectRequest): InspectResult;
   run(batch: CommandBatch): Promise<RunResult>;
+  present(request: PresentRequest): PresentResult;
 }
 
 declare global {

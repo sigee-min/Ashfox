@@ -17,22 +17,36 @@ export const renameProjectCommand = defineCommand({
   label: 'Rename project',
   purpose: 'Set the canonical project and export display name.',
   inputSchema,
-  apply: (document, payload) => ({
-    ok: true,
-    value: {
-      document: document.name === payload.name
-        ? document
-        : {
-            ...document,
-            name: payload.name
-          },
-      summary: `Rename project to ${payload.name}`,
-      effects: {
-        createdEntityIds: [],
-        changedEntityIds: [document.id],
-        removedEntityIds: [],
-        invalidated: ['validation', 'preview']
+  apply: (document, payload) => {
+    const name = payload.name.trim();
+    if (name.length === 0) {
+      return {
+        ok: false,
+        error: {
+          code: 'invalid_payload',
+          message: 'Project name cannot be empty.',
+          path: 'payload.name',
+          expected: 'non-empty text'
+        }
       }
     }
-  })
+    return {
+      ok: true,
+      value: {
+        document: document.name === name
+          ? document
+          : {
+              ...document,
+              name
+            },
+        summary: `Rename project to ${name}`,
+        effects: {
+          createdEntityIds: [],
+          changedEntityIds: [document.id],
+          removedEntityIds: [],
+          invalidated: ['validation', 'preview']
+        }
+      }
+    };
+  }
 });

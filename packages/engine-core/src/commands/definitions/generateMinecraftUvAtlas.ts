@@ -13,6 +13,10 @@ import {
   type UvAtlasPlacement,
   type UvAtlasRect
 } from '../../textures/uvAtlas';
+import {
+  createTextureAsset,
+  implicitTextureId
+} from '../../textures/createTextureAsset';
 import { stableTextureSeed } from '../../textures/minecraftShading';
 import { defineCommand } from '../definition';
 import { entityIdsSchema } from './schemas';
@@ -182,6 +186,81 @@ const hasGeneratedFace = (
       })
     );
   });
+
+interface PreparedGenerateTargets {
+  document: ProjectDocument;
+  createdTextureId: string | null;
+}
+
+const prepareGenerateTargets = (
+  document: ProjectDocument,
+  nodeIds: readonly string[]
+): PreparedGenerateTargets | null => {
+  if (hasGeneratedFace(document, nodeIds)) {
+    return {
+      document,
+      createdTextureId: null
+    };
+  }
+  const hasUntexturedFace = nodeIds.some((nodeId) => {
+    const node = document.scene.nodes[nodeId];
+    return (
+      node?.kind === 'cube' &&
+      CUBE_FACE_DIRECTIONS.some(
+        (direction) =>
+          node.faces[direction].enabled &&
+          node.faces[direction].textureId === null
+      )
+    );
+  });
+  if (!hasUntexturedFace) return null;
+
+  const existing = Object.values(document.textures).find(
+    (texture) => texture.atlasMode === 'generate'
+  );
+  const created = existing
+    ? null
+    : createTextureAsset(document, {
+        id: implicitTextureId(document),
+        name: 'Base texture'
+      });
+  const texture = existing ?? created;
+  if (!texture) return null;
+  const withTexture = created
+    ? {
+        ...document,
+        textures: {
+          ...document.textures,
+          [created.id]: created
+        }
+      }
+    : document;
+  const withFaces = nodeIds.reduce(
+    (current, nodeId) =>
+      updateSceneNode(current, nodeId, (node) => {
+        if (node.kind !== 'cube') return node;
+        return {
+          ...node,
+          faces: Object.fromEntries(
+            CUBE_FACE_DIRECTIONS.map((direction) => {
+              const face = node.faces[direction];
+              return [
+                direction,
+                face.enabled && face.textureId === null
+                  ? { ...face, textureId: texture.id }
+                  : face
+              ];
+            })
+          ) as typeof node.faces
+        };
+      }),
+    withTexture
+  );
+  return {
+    document: withFaces,
+    createdTextureId: created?.id ?? null
+  };
+};
 
 const collectRects = (
   document: ProjectDocument,
@@ -369,19 +448,22 @@ export const generateMinecraftUvAtlasCommand = defineCommand({
         }
       };
     }
-    if (!hasGeneratedFace(document, nodeIds)) {
+    const prepared = prepareGenerateTargets(document, nodeIds);
+    if (!prepared) {
       return {
         ok: false,
         error: {
           code: 'invalid_state',
-          message: 'UV atlas target contains no generate-mode texture faces.',
+          message:
+            'UV atlas target contains no generate-mode or untextured faces.',
           path: 'payload.target',
-          expected: 'at least one face whose texture atlasMode is generate'
+          expected:
+            'at least one generate-mode face or one enabled face with textureId null'
         }
       };
     }
     const plan = buildPlan(
-      document,
+      prepared.document,
       nodeIds,
       payload.pixelsPerBlock,
       payload.padding,
@@ -398,7 +480,7 @@ export const generateMinecraftUvAtlasCommand = defineCommand({
         }
       };
     }
-    const withFaces = updateFaces(document, plan);
+    const withFaces = updateFaces(prepared.document, plan);
     const textures = { ...withFaces.textures };
     for (const [textureId, placements] of plan.placementsByTexture) {
       const texture = textures[textureId];
@@ -454,7 +536,7 @@ export const generateMinecraftUvAtlasCommand = defineCommand({
               height: plan.height
             },
             uvPixelsPerUnit:
-              plan.pixelsPerBlock / modelUnitsPerBlock(document)
+              plan.pixelsPerBlock / modelUnitsPerBlock(prepared.document)
           },
           textures
         },
@@ -462,8 +544,15 @@ export const generateMinecraftUvAtlasCommand = defineCommand({
           `Generated ${plan.width} × ${plan.height} Minecraft UV atlas at ` +
           `${plan.pixelsPerBlock} px/block`,
         effects: {
-          createdEntityIds: [],
-          changedEntityIds: [...changedNodeIds, ...changedTextureIds],
+          createdEntityIds: prepared.createdTextureId
+            ? [prepared.createdTextureId]
+            : [],
+          changedEntityIds: [
+            ...changedNodeIds,
+            ...changedTextureIds.filter(
+              (id) => id !== prepared.createdTextureId
+            )
+          ],
           removedEntityIds: [],
           invalidated: ['scene', 'textures', 'uv', 'validation', 'preview']
         }

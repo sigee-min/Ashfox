@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import {
   BLANK_WORKBENCH_PROJECT_ID,
   createBlankWorkbenchProject,
-  createNewProjectDocument
+  createProjectOperation
 } from '../src/features/workbench/newProject';
 
-const project = createNewProjectDocument(
+const operation = createProjectOperation(
   {
     name: 'Copper Golem',
     target: 'geckolib5',
@@ -20,18 +20,17 @@ const project = createNewProjectDocument(
   }
 );
 
-assert.equal(project.id, 'project-copper-golem');
-assert.equal(project.revision, 'local-0001');
-assert.equal(project.formatProfile.id, 'minecraft.java.geckolib5');
-assert.equal(Object.keys(project.animations).length, 1);
-assert.equal(
-  project.animations['animation-rest-pose'].name,
-  'animation.copper_golem.rest_pose'
-);
-assert.deepEqual(project.scene, { roots: [], nodes: {} });
-assert.deepEqual(project.settings.textureResolution, {
-  width: 128,
-  height: 128
+assert.deepEqual(operation, {
+  name: 'project.create',
+  payload: {
+    id: 'project-copper-golem',
+    name: 'Copper Golem',
+    target: 'geckolib5',
+    namespace: 'ashfox',
+    modelPath: 'copper_golem',
+    textureResolution: 128,
+    createdAt: '2026-07-29T00:00:00.000Z'
+  }
 });
 
 const blank = createBlankWorkbenchProject('2026-07-29T00:00:00.000Z');

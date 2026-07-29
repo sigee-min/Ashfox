@@ -9,11 +9,25 @@ const staticFiles = [
   'workbench/agent-manifest.json',
   'workbench/index.html'
 ];
+const copiedStaticFiles = ['workbench/index.html'];
+
+const loadAgentManifest = () => {
+  require('ts-node').register({
+    transpileOnly: true,
+    compilerOptions: {
+      module: 'CommonJS',
+      moduleResolution: 'Node'
+    }
+  });
+  return require(
+    '../src/features/agent/agentManifest'
+  ).agentManifest;
+};
 
 const prepareOutput = () => {
   fs.rmSync(outdir, { recursive: true, force: true });
   fs.mkdirSync(outdir, { recursive: true });
-  for (const destination of staticFiles) {
+  for (const destination of copiedStaticFiles) {
     const target = path.join(outdir, destination);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.copyFileSync(
@@ -21,6 +35,16 @@ const prepareOutput = () => {
       target
     );
   }
+  const manifestTarget = path.join(
+    outdir,
+    'workbench',
+    'agent-manifest.json'
+  );
+  fs.mkdirSync(path.dirname(manifestTarget), { recursive: true });
+  fs.writeFileSync(
+    manifestTarget,
+    `${JSON.stringify(loadAgentManifest(), null, 2)}\n`
+  );
   fs.cpSync(brandSource, path.join(outdir, 'brand'), {
     recursive: true
   });

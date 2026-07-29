@@ -4,11 +4,19 @@ import {
   type FormEvent
 } from 'react';
 
-import type { ProjectDocument } from '@ashfox/engine-core';
+import {
+  PROJECT_TEXTURE_RESOLUTIONS,
+  type ProjectDocument,
+  type ProjectTextureResolution
+} from '@ashfox/engine-core';
+
+import type {
+  ProjectSettingsInput
+} from '../projectSettings';
 
 interface ProjectSettingsMenuProps {
   document: ProjectDocument;
-  onRename: (name: string) => void;
+  onSave: (input: ProjectSettingsInput) => void;
 }
 
 const coordinateLabel = (document: ProjectDocument): string => {
@@ -18,20 +26,47 @@ const coordinateLabel = (document: ProjectDocument): string => {
 
 export function ProjectSettingsMenu({
   document,
-  onRename
+  onSave
 }: ProjectSettingsMenuProps) {
   const [name, setName] = useState(document.name);
+  const currentResolution = document.settings.textureResolution;
+  const resolutionOption = (
+    currentResolution.width === currentResolution.height &&
+    PROJECT_TEXTURE_RESOLUTIONS.includes(
+      currentResolution.width as ProjectTextureResolution
+    )
+  )
+    ? currentResolution.width as ProjectTextureResolution
+    : null;
+  const [resolution, setResolution] =
+    useState<ProjectTextureResolution | null>(resolutionOption);
 
-  useEffect(() => setName(document.name), [document.name]);
+  useEffect(() => {
+    setName(document.name);
+    setResolution(resolutionOption);
+  }, [document.name, resolutionOption]);
 
   const trimmedName = name.trim();
   const canSave =
-    trimmedName.length > 0 && trimmedName !== document.name;
+    trimmedName.length > 0 &&
+    (
+      trimmedName !== document.name ||
+      (
+        resolution !== null &&
+        (
+          resolution !== currentResolution.width ||
+          resolution !== currentResolution.height
+        )
+      )
+    );
 
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     if (!canSave) return;
-    onRename(trimmedName);
+    onSave({
+      name: trimmedName,
+      ...(resolution === null ? {} : { textureResolution: resolution })
+    });
   };
 
   return (
@@ -52,14 +87,28 @@ export function ProjectSettingsMenu({
           onChange={(event) => setName(event.target.value)}
         />
       </label>
+      <label className="popover-field">
+        <span>Texture canvas</span>
+        <select
+          aria-label="Project texture resolution"
+          value={resolution ?? ''}
+          onChange={(event) => setResolution(
+            Number(event.target.value) as ProjectTextureResolution
+          )}
+        >
+          {resolution === null ? (
+            <option value="" disabled>
+              {currentResolution.width} × {currentResolution.height}
+            </option>
+          ) : null}
+          {PROJECT_TEXTURE_RESOLUTIONS.map((size) => (
+            <option value={size} key={size}>
+              {size} × {size}
+            </option>
+          ))}
+        </select>
+      </label>
       <div className="project-facts">
-        <span>
-          <small>Texture canvas</small>
-          <strong>
-            {document.settings.textureResolution.width} ×{' '}
-            {document.settings.textureResolution.height}
-          </strong>
-        </span>
         <span>
           <small>Coordinates</small>
           <strong>{coordinateLabel(document)}</strong>

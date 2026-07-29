@@ -33,6 +33,10 @@ import type { ProjectArchiveFile } from '../files/projectArchive';
 import {
   useAgentCommandPort
 } from '../agent/useAgentCommandPort';
+import type {
+  PresentRequest,
+  PresentResult
+} from '../agent/types';
 import { agentCommandProtocol } from '../agent/agentCommandProtocol';
 import {
   resolveDemoDefinition
@@ -58,7 +62,6 @@ import {
 } from './state/workbenchViewState';
 import {
   createBlankWorkbenchProject,
-  createNewProjectDocument,
   type NewProjectInput
 } from './newProject';
 import type {
@@ -175,28 +178,6 @@ export function Workbench() {
     setPlaying
   } = useAnimationPlayback(activeClip);
 
-  const createProject = useCallback((input: NewProjectInput): void => {
-    const createdAt = new Date().toISOString();
-    const nextDocument = createNewProjectDocument(input, {
-      id: `project-${crypto.randomUUID()}`,
-      createdAt
-    });
-    dispatchProject({
-      type: 'replace',
-      record: createLocalProjectRecord({
-        document: nextDocument,
-        assets: {},
-        activity: [],
-        savedAt: createdAt
-      })
-    });
-    dispatchView({ type: 'node.select', nodeId: null });
-    dispatchView({ type: 'clip.select', clipId: null });
-    dispatchView({ type: 'overlay.set', overlay: null });
-    setPlaying(false);
-    setPlayhead(0);
-  }, [setPlayhead, setPlaying]);
-
   const hydrateProject = useCallback((record: LocalProjectRecord): void => {
     dispatchProject({ type: 'hydrate', record });
   }, []);
@@ -237,7 +218,8 @@ export function Workbench() {
     onLoad: loadProject
   });
   const {
-    renameProject,
+    createProject: executeCreateProject,
+    updateProjectSettings,
     generateMinecraftTexture,
     exportProject,
     commitNodeTransform,
@@ -254,6 +236,14 @@ export function Workbench() {
     onSelectNode: selectNode,
     exportTargetFile: projectFiles.exportTarget
   });
+  const createProject = useCallback((input: NewProjectInput): void => {
+    executeCreateProject(input);
+    dispatchView({ type: 'node.select', nodeId: null });
+    dispatchView({ type: 'clip.select', clipId: null });
+    dispatchView({ type: 'overlay.set', overlay: null });
+    setPlaying(false);
+    setPlayhead(0);
+  }, [executeCreateProject, setPlayhead, setPlaying]);
   const togglePlayback = useCallback((): void => {
     if (!activeClip) return;
     setPlaying((current) => !current);
@@ -294,6 +284,41 @@ export function Workbench() {
     },
     [setPlayhead]
   );
+  const presentAgentView = useCallback(
+    (request: PresentRequest): PresentResult => {
+      const clip = document.animations[request.clipId];
+      if (!clip) {
+        return {
+          ok: false,
+          revision: document.revision,
+          error: {
+            code: 'not_found',
+            path: 'clipId',
+            expected: 'existing animation clip ID'
+          }
+        };
+      }
+      const timeSeconds = Math.min(
+        request.timeSeconds ?? 0,
+        clip.durationSeconds
+      );
+      dispatchView({ type: 'clip.select', clipId: clip.id });
+      dispatchView({ type: 'bottom.set', mode: 'animation' });
+      dispatchView({ type: 'overlay.set', overlay: null });
+      setPlayhead(timeSeconds);
+      setPlaying(request.playing);
+      return {
+        ok: true,
+        revision: document.revision,
+        data: {
+          clipId: clip.id,
+          playing: request.playing,
+          timeSeconds
+        }
+      };
+    },
+    [document.animations, document.revision, setPlayhead, setPlaying]
+  );
 
   const agentStatus = useAgentCommandPort({
     document,
@@ -301,7 +326,8 @@ export function Workbench() {
     selectedNodeId,
     report,
     dispatch,
-    onFocusEntity: selectNode
+    onFocusEntity: selectNode,
+    onPresent: presentAgentView
   });
 
   return (
@@ -329,7 +355,7 @@ export function Workbench() {
         onCreateProject={createProject}
         onOpen={projectFiles.open}
         onSave={projectFiles.save}
-        onRenameProject={renameProject}
+        onUpdateProject={updateProjectSettings}
         onExport={exportProject}
         onActiveClipChange={changeActiveClip}
         onCapture={projectFiles.captureGif}

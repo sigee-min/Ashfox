@@ -2,11 +2,17 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { validateProjectDocument } from '@ashfox/engine-core';
+import {
+  listCommandDefinitions,
+  validateProjectDocument
+} from '@ashfox/engine-core';
 
-import { createGltfProject } from '../../../packages/engine-core/tests/helpers';
-import manifest from '../agent-manifest.json';
+import {
+  createGeckoLib5Project,
+  createGltfProject
+} from '../../../packages/engine-core/tests/helpers';
 import { agentCommandProtocol } from '../src/features/agent/agentCommandProtocol';
+import { agentManifest as manifest } from '../src/features/agent/agentManifest';
 import { inspectProject } from '../src/features/agent/inspect';
 
 const webRoot = path.resolve(__dirname, '..');
@@ -22,6 +28,7 @@ const readSourceTree = (directory: string): string =>
     .map((entry) => {
       const target = path.join(directory, entry.name);
       if (entry.isDirectory()) return readSourceTree(target);
+      if (target.endsWith('features/agent/agentManifest.ts')) return '';
       return /\.[cm]?[jt]sx?$/.test(entry.name)
         ? fs.readFileSync(target, 'utf8')
         : '';
@@ -59,15 +66,114 @@ assert.equal(manifest.protocol, 'ashfox.agent-command-port');
 assert.equal(manifest.workbench, '/workbench/');
 assert.equal(manifest.href, '/workbench/agent-manifest.json');
 assert.equal(manifest.pageApi.global, 'ashfox');
+assert.equal(manifest.pageApi.presentMethod, 'present');
+assert.match(manifest.pageApi.present.call, /window\.ashfox\.present/);
+assert.match(manifest.pageApi.inspect.current, /typed scene/);
+assert.match(manifest.completionContract.defaultScope.model, /Required/);
+assert.match(
+  manifest.completionContract.defaultScope.texture,
+  /non-placeholder/
+);
+assert.match(
+  manifest.completionContract.defaultScope.idleAnimation,
+  /animation\.<asset>\.idle/
+);
+assert.equal(
+  manifest.completionContract.highQuality.minimumCubeCount,
+  120
+);
+assert.match(
+  manifest.completionContract.highQuality.countSource,
+  /visibleCubes/
+);
+assert.match(
+  manifest.completionContract.highQuality.meaningfulGeometry,
+  /Hidden filler/
+);
+assert.match(
+  manifest.completionContract.subjectFidelity.eyes,
+  /When visible eyes define the subject/
+);
+assert.match(
+  manifest.completionContract.subjectFidelity.general,
+  /never substitute a familiar generic body or rig/
+);
+assert.match(
+  manifest.completionContract.subjectFidelity.bodyPlan,
+  /human shoulder or pelvis layout/
+);
+assert.match(
+  manifest.completionContract.defaultScope.idleAnimation,
+  /identical hold keys/
+);
+assert.match(
+  manifest.completionContract.reviewGates.form,
+  /z-fighting/
+);
+assert.match(
+  manifest.completionContract.reviewGates.form,
+  /coarse stage/
+);
+assert.match(manifest.exportContract.precondition, /completionContract/);
 assert.ok(
   manifest.rules.some((rule) =>
     rule.includes('atlasMode preserve')
   ),
   'the AI workflow must preserve authored texture meaning'
 );
+assert.match(manifest.setup.manifest, /such as curl/);
+assert.match(manifest.setup.manifest, /Never navigate/);
+assert.match(manifest.setup.authority, /complete ashfox operating guide/);
+assert.equal(
+  manifest.setup.ready,
+  'After the page API is connected and the current project is inspected, ask exactly: "What would you like to create?" Do not mutate the project before the user answers.'
+);
+assert.deepEqual(
+  manifest.commands.map((command) => ({
+    name: command.name,
+    purpose: command.purpose,
+    inputSchema: command.inputSchema
+  })),
+  listCommandDefinitions().map((definition) => ({
+    name: definition.name,
+    purpose: definition.purpose,
+    inputSchema: definition.inputSchema
+  })),
+  'the manifest command catalog must be generated from the canonical registry'
+);
+assert.match(manifest.authoringModel.coordinates, /right-handed Y-up/);
+assert.match(
+  manifest.authoringModel.cubes,
+  /scene\.cubes\.geometry\.update/
+);
+assert.match(
+  manifest.authoringModel.hierarchy,
+  /scene\.locators\.create/
+);
+assert.match(manifest.authoringModel.hierarchy, /scene\.nodes\.delete/);
+assert.match(manifest.authoringModel.textures, /textures\.delete/);
+assert.match(
+  manifest.authoringModel.animation,
+  /animation\.tracks\.delete/
+);
+assert.match(
+  manifest.authoringModel.project,
+  /project\.textureResolution\.set/
+);
+assert.deepEqual(
+  Object.keys(manifest.authoringModel.targets),
+  ['bedrock', 'geckolib5', 'gltf', 'glb']
+);
+assert.match(manifest.exportContract.precondition, /productionReady/);
+assert.deepEqual(
+  Object.keys(manifest.exportContract.outputs),
+  ['geckolib5', 'bedrock', 'gltf', 'glb']
+);
 for (const [name, selector] of Object.entries(manifest.domActions)) {
   assertSelectorIsRendered(`domActions.${name}`, selector);
 }
+assert.ok(!Object.hasOwn(manifest.domActions, 'newProject'));
+assert.ok(!Object.hasOwn(manifest.domActions, 'createProject'));
 assert.ok(!Object.hasOwn(manifest.domActions, 'downloadCapture'));
 const artifactAction = manifest.domActions.downloadArtifact;
 const artifactActionMarkup =
@@ -183,28 +289,38 @@ assertAttributeIsRendered(
 );
 
 assert.ok(
-  Buffer.byteLength(JSON.stringify(manifest)) <= 6_144,
-  'the complete agent manual must stay concise'
+  Buffer.byteLength(JSON.stringify(manifest)) <= 65_536,
+  'the complete machine guide must remain practical to fetch in one request'
 );
 assert.deepEqual(
   manifest.workflow.map((step) => step.stage),
-  ['start', 'author', 'review', 'produce', 'deliver']
+  ['start', 'prove', 'author', 'review', 'produce', 'deliver']
 );
 for (const step of manifest.workflow) {
   assert.ok(
-    JSON.stringify(step).length <= 420,
-    `workflow.${step.stage} must stay concise`
+    JSON.stringify(step).length <= 520,
+    `workflow.${step.stage} must remain focused`
   );
 }
+const startStage = manifest.workflow.find((step) => step.stage === 'start');
+assert.ok(startStage && 'instruction' in startStage);
+assert.match(startStage.instruction, /project\.create/);
+assert.match(startStage.instruction, /do not operate the New Project UI/);
+const proveStage = manifest.workflow.find((step) => step.stage === 'prove');
+assert.ok(proveStage && 'instruction' in proveStage);
+assert.match(proveStage.instruction, /first real model part/);
+assert.match(proveStage.instruction, /not completion or quality proof/);
+assert.doesNotMatch(proveStage.instruction, /productionReady/);
 const authorStage = manifest.workflow.find((step) => step.stage === 'author');
-assert.ok(authorStage && 'inspect' in authorStage);
-assert.equal(authorStage.inspect, 'window.ashfox.inspect()');
-assert.match(authorStage.schema, /inspect\(\{kind:"command"/);
-assert.match(authorStage.run, /await window\.ashfox\.run/);
+assert.ok(authorStage && 'instruction' in authorStage);
+assert.match(authorStage.instruction, /command schemas in this manifest/);
+assert.match(authorStage.instruction, /coarse-to-fine/);
+assert.match(authorStage.instruction, /locked body-plan silhouette/);
+assert.match(manifest.pageApi.inspect.command, /inspect\(\{kind:"command"/);
+assert.match(manifest.pageApi.run.call, /await window\.ashfox\.run/);
 const produceStage = manifest.workflow.find((step) => step.stage === 'produce');
 assert.ok(produceStage && 'instruction' in produceStage);
 assert.match(produceStage.instruction, /same operation ID/);
-assert.match(produceStage.instruction, /no artifact downloads automatically/);
 const deliverStage = manifest.workflow.find((step) => step.stage === 'deliver');
 assert.ok(deliverStage && 'instruction' in deliverStage);
 assert.match(deliverStage.instruction, /Activate downloadArtifact/);
@@ -224,9 +340,9 @@ assert.match(deliveryContract, /verify the file exists/);
 assert.match(deliveryContract, /actual workspace-relative path/);
 assert.match(deliveryContract, /last completed boundary exactly/);
 assert.match(deliveryContract, /never claim a workspace save/);
-assert.ok(manifest.rules.length <= 8);
+assert.ok(manifest.rules.length <= 10);
 for (const rule of manifest.rules) {
-  assert.ok(rule.length <= 140, 'manual rules must stay concise');
+  assert.ok(rule.length <= 180, 'manual rules must stay focused');
 }
 
 const document = createGltfProject();
@@ -250,6 +366,23 @@ if (result.ok) {
         name: string;
       };
     };
+    counts: {
+      nodes: number;
+      bones: number;
+      cubes: number;
+      visibleCubes: number;
+      meshes: number;
+      locators: number;
+      enabledVisibleFaces: number;
+      texturedVisibleFaces: number;
+      untexturedVisibleFaces: number;
+      textures: number;
+      clips: number;
+      channels: number;
+      triggers: number;
+      idleClips: number;
+      idleChannels: number;
+    };
     commands: readonly string[];
   };
   assert.equal(data.protocol.workbench, manifest.workbench);
@@ -259,5 +392,139 @@ if (result.ok) {
     name: '<commands entry>'
   });
   assert.ok(data.commands.includes('scene.cubes.create'));
+  assert.ok(data.commands.includes('scene.cubes.geometry.update'));
+  assert.ok(data.commands.includes('scene.nodes.rename'));
+  assert.ok(data.commands.includes('scene.nodes.delete'));
   assert.ok(data.commands.includes('scene.cubes.uv.fit'));
+  assert.ok(data.commands.includes('textures.create'));
+  assert.equal(data.counts.nodes, 3);
+  assert.equal(data.counts.bones, 1);
+  assert.equal(data.counts.cubes, 1);
+  assert.equal(data.counts.visibleCubes, 1);
+  assert.equal(data.counts.meshes, 0);
+  assert.equal(data.counts.locators, 1);
+  assert.equal(data.counts.enabledVisibleFaces, 6);
+  assert.equal(data.counts.texturedVisibleFaces, 6);
+  assert.equal(data.counts.untexturedVisibleFaces, 0);
+  assert.equal(data.counts.textures, 1);
+  assert.equal(data.counts.clips, 1);
+  assert.equal(data.counts.channels, 1);
+  assert.equal(data.counts.triggers, 0);
+  assert.equal(data.counts.idleClips, 1);
+  assert.equal(data.counts.idleChannels, 1);
+  assert.deepEqual(
+    data.commands,
+    listCommandDefinitions().map((definition) => definition.name),
+    'command discovery must not depend on the visible selection'
+  );
+}
+
+const hiddenRootProject = structuredClone(document);
+(
+  hiddenRootProject.scene.nodes['bone-root'] as {
+    visible: boolean;
+  }
+).visible = false;
+const hiddenRootResult = inspectProject(
+  hiddenRootProject,
+  null,
+  validateProjectDocument(hiddenRootProject)
+);
+assert.equal(hiddenRootResult.ok, true);
+if (hiddenRootResult.ok) {
+  assert.equal(
+    (
+      hiddenRootResult.data as {
+        counts: {
+          visibleCubes: number;
+          enabledVisibleFaces: number;
+        };
+      }
+    ).counts.visibleCubes,
+    0,
+    'quality counts must exclude cubes hidden by their hierarchy'
+  );
+  assert.equal(
+    (
+      hiddenRootResult.data as {
+        counts: { enabledVisibleFaces: number };
+      }
+    ).counts.enabledVisibleFaces,
+    0
+  );
+}
+
+const untexturedGecko = structuredClone(createGeckoLib5Project());
+const untexturedCube = untexturedGecko.scene.nodes['cube-body'];
+assert.equal(untexturedCube.kind, 'cube');
+if (untexturedCube.kind !== 'cube') {
+  throw new Error('GeckoLib fixture cube missing');
+}
+for (const face of Object.values(untexturedCube.faces)) {
+  (face as { textureId: null }).textureId = null;
+}
+(untexturedGecko as {
+  textures: Record<string, never>;
+}).textures = {};
+const readiness = inspectProject(
+  untexturedGecko,
+  null,
+  validateProjectDocument(untexturedGecko),
+  { kind: 'target' }
+);
+assert.equal(readiness.ok, true);
+if (readiness.ok) {
+  const data = readiness.data as {
+    valid: boolean;
+    productionReady: boolean;
+    counts: {
+      warnings: number;
+      textures: number;
+    };
+    firstReadinessFinding: {
+      code: string;
+    };
+  };
+  assert.equal(data.valid, true);
+  assert.equal(data.productionReady, false);
+  assert.equal(data.counts.warnings, 1);
+  assert.equal(data.counts.textures, 0);
+  assert.equal(
+    data.firstReadinessFinding.code,
+    'format.texture_missing'
+  );
+}
+
+const untexturedCoverage = inspectProject(
+  untexturedGecko,
+  null,
+  validateProjectDocument(untexturedGecko)
+);
+assert.equal(untexturedCoverage.ok, true);
+if (untexturedCoverage.ok) {
+  const counts = (
+    untexturedCoverage.data as {
+      counts: {
+        enabledVisibleFaces: number;
+        texturedVisibleFaces: number;
+        untexturedVisibleFaces: number;
+      };
+    }
+  ).counts;
+  assert.equal(counts.enabledVisibleFaces, 6);
+  assert.equal(counts.texturedVisibleFaces, 0);
+  assert.equal(counts.untexturedVisibleFaces, 6);
+}
+
+const unselectedResult = inspectProject(
+  document,
+  null,
+  validateProjectDocument(document)
+);
+assert.equal(unselectedResult.ok, true);
+if (result.ok && unselectedResult.ok) {
+  assert.deepEqual(
+    (unselectedResult.data as { commands: readonly string[] }).commands,
+    (result.data as { commands: readonly string[] }).commands
+  );
 }

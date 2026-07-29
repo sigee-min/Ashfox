@@ -8,7 +8,8 @@ Current scope:
 - on-demand scene and inspector overlays;
 - responsive full-area viewport from desktop down to narrow in-app panes;
 - IndexedDB project persistence with revisioned command receipts;
-- DOM-native new project, archive input, save, export, and capture workflows;
+- canonical new-project command plus browser-native open, save, export, and
+  capture boundaries;
 - cross-tab revision notification through `BroadcastChannel`;
 - validation, textures, animation timeline, activity, undo, and redo;
 - shared Studio, Day, Evening, and Night viewport/capture environments;
@@ -16,8 +17,8 @@ Current scope:
 - cancellable project file operations with stale-completion protection;
 - self-contained `.ashfox` project archives with verified texture bytes;
 - one persistent browser artifact handoff for save, export, and capture;
-- single machine-readable AI agent workflow in `agent-manifest.json`, backed by
-  reducer outcomes;
+- one generated machine-readable AI agent workflow with canonical command
+  schemas and reducer outcomes;
 - static production build with no application server routes.
 
 Run locally:

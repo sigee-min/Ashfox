@@ -7,6 +7,10 @@ import {
   type ProjectDocument
 } from '../../model';
 import { addSceneNode } from '../../scene';
+import {
+  createTextureAsset,
+  implicitTextureId
+} from '../../textures/createTextureAsset';
 import { defineCommand } from '../definition';
 import {
   nullableEntityIdSchema,
@@ -150,7 +154,8 @@ const addCubeToScene = (
 export const createCubesCommand = defineCommand({
   name: 'scene.cubes.create',
   label: 'Create cubes',
-  purpose: 'Create one or more textured cube primitives.',
+  purpose:
+    'Create cube primitives; omitted textureId reuses a texture or creates one generate-mode base texture, while null stays untextured.',
   inputSchema,
   apply: (document, payload) => {
     const ids = payload.cubes.map((cube) => cube.id);
@@ -169,6 +174,24 @@ export const createCubesCommand = defineCommand({
       };
     }
 
+    const missingTexture = payload.cubes.find(
+      (cube) =>
+        typeof cube.textureId === 'string' &&
+        document.textures[cube.textureId] === undefined
+    );
+    if (missingTexture) {
+      return {
+        ok: false,
+        error: {
+          code: 'invalid_state',
+          message:
+            `Texture "${missingTexture.textureId}" does not exist.`,
+          path: `payload.cubes.${missingTexture.id}.textureId`,
+          expected: 'existing texture ID, null, or omitted textureId'
+        }
+      };
+    }
+
     const invalidParent = findInvalidParent(document, payload.cubes);
     if (invalidParent) {
       return {
@@ -182,9 +205,27 @@ export const createCubesCommand = defineCommand({
       };
     }
 
+    const shouldCreateTexture =
+      Object.keys(document.textures).length === 0 &&
+      payload.cubes.some((cube) => cube.textureId === undefined);
+    const implicitTexture = shouldCreateTexture
+      ? createTextureAsset(document, {
+          id: implicitTextureId(document),
+          name: 'Base texture'
+        })
+      : null;
+    const prepared = implicitTexture
+      ? {
+          ...document,
+          textures: {
+            ...document.textures,
+            [implicitTexture.id]: implicitTexture
+          }
+        }
+      : document;
     const next = payload.cubes.reduce(
       (current, input) => addCubeToScene(current, input),
-      document
+      prepared
     );
     return {
       ok: true,
@@ -195,7 +236,9 @@ export const createCubesCommand = defineCommand({
             ? `Create ${payload.cubes[0].name}`
             : `Create ${payload.cubes.length} cubes`,
         effects: {
-          createdEntityIds: ids,
+          createdEntityIds: implicitTexture
+            ? [implicitTexture.id, ...ids]
+            : ids,
           changedEntityIds: [],
           removedEntityIds: [],
           invalidated: [

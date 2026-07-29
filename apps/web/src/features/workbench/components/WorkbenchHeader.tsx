@@ -20,6 +20,7 @@ import { ExportMenu } from './ExportMenu';
 import { NewProjectMenu } from './NewProjectMenu';
 import { ProjectSettingsMenu } from './ProjectSettingsMenu';
 import type { NewProjectInput } from '../newProject';
+import type { ProjectSettingsInput } from '../projectSettings';
 
 type HeaderMenu = 'new' | 'project' | 'export' | 'capture' | null;
 
@@ -36,7 +37,7 @@ interface WorkbenchHeaderProps {
   onCreateProject: (input: NewProjectInput) => void;
   onOpen: (file: File) => void;
   onSave: () => void;
-  onRenameProject: (name: string) => void;
+  onUpdateProject: (input: ProjectSettingsInput) => void;
   onExport: (target: ProjectExportTarget) => void;
   onActiveClipChange: (clipId: string | null) => void;
   onCapture: (request: GifCaptureRequest) => void;
@@ -76,7 +77,7 @@ export function WorkbenchHeader({
   onCreateProject,
   onOpen,
   onSave,
-  onRenameProject,
+  onUpdateProject,
   onExport,
   onActiveClipChange,
   onCapture,
@@ -235,8 +236,8 @@ export function WorkbenchHeader({
       {activeMenu === 'project' ? (
         <ProjectSettingsMenu
           document={document}
-          onRename={(name) => {
-            onRenameProject(name);
+          onSave={(input) => {
+            onUpdateProject(input);
             setActiveMenu(null);
           }}
         />

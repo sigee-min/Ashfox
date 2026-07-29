@@ -1,24 +1,35 @@
 import assert from 'node:assert/strict';
 
 import {
+  createProjectFromInput,
   executeCommandBatch,
+  exportProject,
   getCommandDefinition,
   listCommandDefinitions,
   type CommandBatch
 } from '../src';
-import { createGltfProject } from './helpers';
+import {
+  createAnimatedBedrockProject,
+  createBedrockProject,
+  createGltfProject
+} from './helpers';
 
 const project = createGltfProject();
 
 assert.deepEqual(
   listCommandDefinitions().map((definition) => definition.name),
   [
+    'project.create',
     'project.rename',
     'project.target.set',
+    'project.textureResolution.set',
     'scene.bones.create',
+    'scene.locators.create',
     'scene.nodes.transform',
     'scene.nodes.visibility',
     'scene.cubes.create',
+    'scene.cubes.geometry.update',
+    'scene.nodes.rename',
     'scene.nodes.delete',
     'scene.cubes.duplicate',
     'scene.cubes.mirror',
@@ -28,13 +39,16 @@ assert.deepEqual(
     'scene.nodes.reparent',
     'scene.cubes.uv.fit',
     'scene.cubes.material',
+    'textures.create',
     'textures.preview.set',
     'textures.rename',
     'textures.raster.set',
+    'textures.delete',
     'textures.uvAtlas.generate',
     'animation.clip.upsert',
     'animation.channels.upsert',
     'animation.triggers.upsert',
+    'animation.tracks.delete',
     'animation.channels.phase',
     'animation.channels.mirror',
     'animation.clip.closeLoop',
@@ -45,6 +59,462 @@ assert.equal(
   getCommandDefinition('scene.nodes.transform')?.inputSchema.type,
   'object'
 );
+
+{
+  const result = executeCommandBatch(project, {
+    batchId: 'batch-create-project',
+    baseRevision: project.revision,
+    operations: [
+      {
+        name: 'project.create',
+        payload: {
+          id: 'project-firefly',
+          name: 'Firefly',
+          target: 'geckolib5',
+          namespace: 'ashfox',
+          modelPath: 'firefly',
+          textureResolution: 32,
+          createdAt: '2026-07-29T00:00:00.000Z'
+        }
+      },
+      {
+        name: 'scene.bones.create',
+        payload: {
+          bones: [{
+            id: 'bone-firefly-root',
+            name: 'root',
+            parentId: null
+          }]
+        }
+      },
+      {
+        name: 'scene.cubes.create',
+        payload: {
+          cubes: [{
+            id: 'cube-firefly-body',
+            name: 'body',
+            parentId: 'bone-firefly-root',
+            bounds: {
+              from: [-2, 0, -3],
+              to: [2, 3, 3]
+            }
+          }]
+        }
+      }
+    ]
+  });
+  if (!result.ok) throw new Error(result.error.message);
+  assert.equal(result.document.id, 'project-firefly');
+  assert.equal(result.document.name, 'Firefly');
+  assert.equal(
+    result.document.formatProfile.id,
+    'minecraft.java.geckolib5'
+  );
+  assert.deepEqual(result.document.settings.textureResolution, {
+    width: 32,
+    height: 32
+  });
+  assert.equal(
+    result.document.scene.nodes['cube-firefly-body'].parentId,
+    'bone-firefly-root'
+  );
+  const fireflyCube =
+    result.document.scene.nodes['cube-firefly-body'];
+  assert.equal(fireflyCube.kind, 'cube');
+  if (fireflyCube.kind !== 'cube') throw new Error('Firefly cube missing');
+  assert.deepEqual(Object.keys(result.document.textures), ['texture-base']);
+  assert.equal(fireflyCube.faces.north.textureId, 'texture-base');
+  assert.equal(
+    result.document.textures['texture-base'].atlasMode,
+    'generate'
+  );
+  assert.equal(
+    result.document.animations['animation-rest-pose'].name,
+    'animation.firefly.rest_pose'
+  );
+  assert.equal(project.scene.nodes['bone-firefly-root'], undefined);
+}
+
+{
+  const result = executeCommandBatch(project, {
+    batchId: 'batch-create-project-same-id',
+    baseRevision: project.revision,
+    operations: [{
+      name: 'project.create',
+      payload: {
+        id: ` ${project.id} `,
+        name: 'Replacement',
+        target: 'glb',
+        namespace: 'ashfox',
+        modelPath: 'replacement',
+        textureResolution: 64,
+        createdAt: '2026-07-29T00:00:00.000Z'
+      }
+    }]
+  });
+  assert.equal(result.ok, false);
+  if (result.ok) throw new Error('Same-ID project creation must fail');
+  assert.equal(result.error.code, 'invalid_state');
+  assert.equal(project.name, 'ashfox_crate');
+}
+
+{
+  const result = executeCommandBatch(project, {
+    batchId: 'batch-create-project-empty-name',
+    baseRevision: project.revision,
+    operations: [{
+      name: 'project.create',
+      payload: {
+        id: 'project-empty-name',
+        name: '   ',
+        target: 'glb',
+        namespace: 'ashfox',
+        modelPath: 'empty_name',
+        textureResolution: 64,
+        createdAt: '2026-07-29T00:00:00.000Z'
+      }
+    }]
+  });
+  assert.equal(result.ok, false);
+  if (result.ok) throw new Error('Blank project name must fail');
+  assert.equal(result.error.code, 'invalid_payload');
+  assert.equal(result.error.path, 'operations[0].payload.name');
+}
+
+{
+  const empty = createProjectFromInput(
+    {
+      id: 'project-texture-contract',
+      name: 'Texture contract',
+      target: 'geckolib5',
+      namespace: 'ashfox',
+      modelPath: 'texture_contract',
+      textureResolution: 64,
+      createdAt: '2026-07-29T00:00:00.000Z'
+    },
+    'revision-texture-contract'
+  );
+  const explicit = executeCommandBatch(empty, {
+    batchId: 'batch-create-explicit-texture',
+    baseRevision: empty.revision,
+    operations: [{
+      name: 'textures.create',
+      payload: {
+        textures: [{
+          id: 'texture-shell',
+          name: 'Shell',
+          width: 32,
+          height: 16,
+          atlasMode: 'preserve',
+          background: '#c06020'
+        }]
+      }
+    }]
+  });
+  if (!explicit.ok) throw new Error(explicit.error.message);
+  const texture = explicit.document.textures['texture-shell'];
+  assert.equal(texture.width, 32);
+  assert.equal(texture.height, 16);
+  assert.equal(texture.atlasMode, 'preserve');
+  assert.equal(texture.raster?.background, '#c06020');
+  assert.deepEqual(texture.minecraft?.resource, {
+    namespace: 'ashfox',
+    path: 'entity/texture_contract'
+  });
+  const deleted = executeCommandBatch(explicit.document, {
+    batchId: 'batch-delete-explicit-texture',
+    baseRevision: explicit.document.revision,
+    operations: [{
+      name: 'textures.delete',
+      payload: {
+        textureIds: ['texture-shell']
+      }
+    }]
+  });
+  if (!deleted.ok) throw new Error(deleted.error.message);
+  assert.equal(deleted.document.textures['texture-shell'], undefined);
+}
+
+{
+  const result = executeCommandBatch(project, {
+    batchId: 'batch-delete-referenced-texture',
+    baseRevision: project.revision,
+    operations: [{
+      name: 'textures.delete',
+      payload: {
+        textureIds: ['texture-base']
+      }
+    }]
+  });
+  assert.equal(result.ok, false);
+  if (result.ok) throw new Error('Referenced texture deletion must fail');
+  assert.equal(result.error.code, 'invalid_state');
+  assert.match(result.error.message, /cube-body/);
+  assert.ok(project.textures['texture-base']);
+}
+
+{
+  const empty = createProjectFromInput(
+    {
+      id: 'project-implicit-atlas',
+      name: 'Implicit atlas',
+      target: 'geckolib5',
+      namespace: 'ashfox',
+      modelPath: 'implicit_atlas',
+      textureResolution: 32,
+      createdAt: '2026-07-29T00:00:00.000Z'
+    },
+    'revision-implicit-atlas'
+  );
+  const untextured = executeCommandBatch(empty, {
+    batchId: 'batch-explicit-untextured-cube',
+    baseRevision: empty.revision,
+    operations: [
+      {
+        name: 'scene.bones.create',
+        payload: {
+          bones: [{
+            id: 'bone-root-implicit',
+            name: 'root',
+            parentId: null
+          }]
+        }
+      },
+      {
+        name: 'scene.cubes.create',
+        payload: {
+          cubes: [{
+            id: 'cube-implicit',
+            name: 'body',
+            parentId: 'bone-root-implicit',
+            bounds: {
+              from: [-2, 0, -2],
+              to: [2, 4, 2]
+            },
+            textureId: null
+          }]
+        }
+      }
+    ]
+  });
+  if (!untextured.ok) throw new Error(untextured.error.message);
+  assert.deepEqual(untextured.document.textures, {});
+  assert.ok(
+    untextured.findings.some(
+      (finding) => finding.code === 'format.texture_missing'
+    )
+  );
+  const generated = executeCommandBatch(untextured.document, {
+    batchId: 'batch-provision-implicit-atlas',
+    baseRevision: untextured.document.revision,
+    operations: [{
+      name: 'textures.uvAtlas.generate',
+      payload: {
+        target: { scope: 'all' },
+        pixelsPerBlock: 16,
+        padding: 1,
+        maxResolution: 128,
+        seed: 7,
+        intensity: 0.22,
+        edge: 0.12,
+        noise: 0.06,
+        lightDir: 'tl_br'
+      }
+    }]
+  });
+  if (!generated.ok) throw new Error(generated.error.message);
+  assert.deepEqual(Object.keys(generated.document.textures), ['texture-base']);
+  const cube = generated.document.scene.nodes['cube-implicit'];
+  assert.equal(cube.kind, 'cube');
+  if (cube.kind !== 'cube') throw new Error('Implicit atlas cube missing');
+  assert.equal(cube.faces.north.textureId, 'texture-base');
+  assert.ok(
+    !generated.findings.some(
+      (finding) => finding.code === 'format.texture_missing'
+    )
+  );
+  const bundle = exportProject(generated.document);
+  assert.ok(
+    bundle.files.some(
+      (file) => file.kind === 'blob-copy' && file.path.endsWith('.png')
+    ),
+    'production-ready GeckoLib export must include its generated texture'
+  );
+  assert.ok(
+    bundle.files.length >= 3,
+    'GeckoLib export must include geometry, animation, and texture output'
+  );
+}
+
+{
+  const glbProject = createProjectFromInput(
+    {
+      id: 'project-target-gecko',
+      name: 'Target Gecko',
+      target: 'glb',
+      namespace: 'ashfox',
+      modelPath: 'target_gecko',
+      textureResolution: 64,
+      createdAt: '2026-07-30T00:00:00.000Z'
+    },
+    'revision-target-gecko'
+  );
+  const result = executeCommandBatch(glbProject, {
+    batchId: 'batch-target-gecko',
+    baseRevision: glbProject.revision,
+    operations: [{
+      name: 'project.target.set',
+      payload: {
+        target: 'geckolib5',
+        namespace: ' ashfox ',
+        modelPath: ' target_gecko '
+      }
+    }]
+  });
+  if (!result.ok) throw new Error(result.error.message);
+  assert.equal(
+    result.document.animations['animation-rest-pose'].name,
+    'animation.target_gecko.rest_pose'
+  );
+  assert.equal(
+    result.document.formatProfile.id,
+    'minecraft.java.geckolib5'
+  );
+  const glb = executeCommandBatch(result.document, {
+    batchId: 'batch-target-gecko-to-glb',
+    baseRevision: result.document.revision,
+    operations: [{
+      name: 'project.target.set',
+      payload: {
+        target: 'glb',
+        namespace: 'ashfox',
+        modelPath: 'target_gecko'
+      }
+    }]
+  });
+  if (!glb.ok) throw new Error(glb.error.message);
+  assert.equal(
+    glb.document.animations['animation-rest-pose'],
+    undefined
+  );
+  assert.deepEqual(
+    glb.effects.removedEntityIds,
+    ['animation-rest-pose']
+  );
+}
+
+{
+  const result = executeCommandBatch(project, {
+    batchId: 'batch-forward-bone-reference',
+    baseRevision: project.revision,
+    operations: [{
+      name: 'scene.bones.create',
+      payload: {
+        bones: [
+          {
+            id: 'bone-forward-child',
+            name: 'forward_child',
+            parentId: 'bone-forward-parent'
+          },
+          {
+            id: 'bone-forward-parent',
+            name: 'forward_parent',
+            parentId: 'bone-root'
+          }
+        ]
+      }
+    }]
+  });
+  if (!result.ok) throw new Error(result.error.message);
+  assert.equal(
+    result.document.scene.nodes['bone-forward-child'].parentId,
+    'bone-forward-parent'
+  );
+}
+
+{
+  const geometryProject = createBedrockProject();
+  const result = executeCommandBatch(geometryProject, {
+    batchId: 'batch-update-existing-geometry',
+    baseRevision: geometryProject.revision,
+    operations: [
+      {
+        name: 'scene.cubes.geometry.update',
+        payload: {
+          updates: [{
+            nodeId: 'cube-body',
+            bounds: {
+              from: [-5, 0, -4],
+              to: [5, 9, 4]
+            },
+            inflate: 0.25,
+            mirror: true,
+            boxUv: true,
+            uvOffset: [4, 6],
+            faceUv: [0, 0, 10, 9]
+          }]
+        }
+      },
+      {
+        name: 'scene.nodes.rename',
+        payload: {
+          renames: [
+            {
+              nodeId: 'bone-root',
+              name: 'vehicle_root'
+            },
+            {
+              nodeId: 'cube-body',
+              name: 'vehicle_body'
+            }
+          ]
+        }
+      }
+    ]
+  });
+  if (!result.ok) throw new Error(result.error.message);
+  const cube = result.document.scene.nodes['cube-body'];
+  assert.equal(cube.kind, 'cube');
+  if (cube.kind !== 'cube') throw new Error('Updated cube missing');
+  assert.deepEqual(cube.bounds, {
+    from: [-5, 0, -4],
+    to: [5, 9, 4]
+  });
+  assert.equal(cube.inflate, 0.25);
+  assert.equal(cube.mirror, true);
+  assert.equal(cube.boxUv, true);
+  assert.deepEqual(cube.uvOffset, [4, 6]);
+  assert.deepEqual(cube.faces.north.uv, [0, 0, 10, 9]);
+  assert.equal(cube.name, 'vehicle_body');
+  assert.equal(
+    result.document.scene.nodes['bone-root'].name,
+    'vehicle_root'
+  );
+  assert.notDeepEqual(
+    geometryProject.scene.nodes['cube-body'],
+    result.document.scene.nodes['cube-body']
+  );
+}
+
+{
+  const result = executeCommandBatch(project, {
+    batchId: 'batch-update-missing-geometry',
+    baseRevision: project.revision,
+    operations: [{
+      name: 'scene.cubes.geometry.update',
+      payload: {
+        updates: [{
+          nodeId: 'cube-missing',
+          inflate: 1
+        }]
+      }
+    }]
+  });
+  assert.equal(result.ok, false);
+  if (result.ok) throw new Error('Missing cube update must fail');
+  assert.equal(result.error.code, 'invalid_state');
+  assert.deepEqual(project, createGltfProject());
+}
 
 {
   const payload = {
@@ -113,6 +583,12 @@ assert.equal(
           namespace: 'ashfox',
           modelPath: 'renamed_crate'
         }
+      },
+      {
+        name: 'project.textureResolution.set',
+        payload: {
+          size: 128
+        }
       }
     ]
   };
@@ -123,12 +599,38 @@ assert.equal(
     result.document.formatProfile.id,
     'minecraft.java.geckolib5'
   );
+  assert.deepEqual(result.document.settings.textureResolution, {
+    width: 128,
+    height: 128
+  });
+  assert.equal(result.document.textures['texture-base'].width, 128);
+  assert.equal(result.document.textures['texture-base'].height, 128);
   assert.deepEqual(
     result.document.textures['texture-base'].minecraft?.resource,
     {
       namespace: 'ashfox',
       path: 'entity/renamed_crate'
     }
+  );
+}
+
+{
+  const result = executeCommandBatch(project, {
+    batchId: 'batch-invalid-project-resolution',
+    baseRevision: project.revision,
+    operations: [{
+      name: 'project.textureResolution.set',
+      payload: {
+        size: 48
+      }
+    }]
+  });
+  assert.equal(result.ok, false);
+  if (result.ok) throw new Error('Unsupported resolution must fail');
+  assert.equal(result.error.code, 'invalid_payload');
+  assert.equal(
+    result.error.path,
+    'operations[0].payload.size'
   );
 }
 
@@ -184,6 +686,57 @@ assert.equal(
   );
   assert.deepEqual(result.effects.createdEntityIds, ['bone-leg']);
   assert.equal(project.scene.nodes['bone-leg'], undefined);
+}
+
+{
+  const result = executeCommandBatch(project, {
+    batchId: 'batch-create-locators',
+    baseRevision: project.revision,
+    operations: [{
+      name: 'scene.locators.create',
+      payload: {
+        locators: [{
+          id: 'locator-muzzle',
+          name: 'muzzle',
+          parentId: 'bone-root',
+          transform: {
+            position: [0, 6, -5],
+            rotation: [0, 15, 0]
+          },
+          ignoreInheritedScale: true
+        }]
+      }
+    }]
+  });
+  if (!result.ok) throw new Error(result.error.message);
+  const locator = result.document.scene.nodes['locator-muzzle'];
+  assert.equal(locator.kind, 'locator');
+  if (locator.kind !== 'locator') {
+    throw new Error('Locator creation failed');
+  }
+  assert.deepEqual(locator.transform.position, [0, 6, -5]);
+  assert.equal(locator.ignoreInheritedScale, true);
+  assert.deepEqual(result.effects.createdEntityIds, ['locator-muzzle']);
+}
+
+{
+  const result = executeCommandBatch(project, {
+    batchId: 'batch-create-invalid-locator',
+    baseRevision: project.revision,
+    operations: [{
+      name: 'scene.locators.create',
+      payload: {
+        locators: [{
+          id: 'locator-invalid-parent',
+          name: 'invalid',
+          parentId: 'cube-body'
+        }]
+      }
+    }]
+  });
+  assert.equal(result.ok, false);
+  if (result.ok) throw new Error('Invalid locator parent must fail');
+  assert.equal(result.error.code, 'invalid_state');
 }
 
 {
@@ -456,6 +1009,60 @@ assert.equal(
   assert.equal(
     deleted.document.animations['clip-walk'],
     undefined
+  );
+}
+
+{
+  const animated = createAnimatedBedrockProject();
+  const result = executeCommandBatch(animated, {
+    batchId: 'batch-delete-animation-tracks',
+    baseRevision: animated.revision,
+    operations: [{
+      name: 'animation.tracks.delete',
+      payload: {
+        clipId: 'clip-idle',
+        tracks: [
+          {
+            kind: 'channel',
+            id: 'channel-root-rotation'
+          },
+          {
+            kind: 'trigger',
+            id: 'trigger-particle'
+          }
+        ]
+      }
+    }]
+  });
+  if (!result.ok) throw new Error(result.error.message);
+  const clip = result.document.animations['clip-idle'];
+  assert.deepEqual(clip.channels, {});
+  assert.equal(clip.triggers['trigger-particle'], undefined);
+  assert.ok(clip.triggers['trigger-timeline']);
+  assert.deepEqual(
+    result.effects.removedEntityIds,
+    ['channel-root-rotation', 'trigger-particle']
+  );
+
+  const missing = executeCommandBatch(animated, {
+    batchId: 'batch-delete-missing-animation-track',
+    baseRevision: animated.revision,
+    operations: [{
+      name: 'animation.tracks.delete',
+      payload: {
+        clipId: 'clip-idle',
+        tracks: [{
+          kind: 'trigger',
+          id: 'trigger-missing'
+        }]
+      }
+    }]
+  });
+  assert.equal(missing.ok, false);
+  if (missing.ok) throw new Error('Missing animation track must fail');
+  assert.equal(missing.error.code, 'invalid_state');
+  assert.ok(
+    animated.animations['clip-idle'].triggers['trigger-particle']
   );
 }
 

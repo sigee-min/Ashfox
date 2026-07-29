@@ -8,7 +8,7 @@ export const landingContent = {
     body:
       'Your agent opens ashfox, prepares the empty project, then asks what you want to create. Answer in your own words and it starts building.',
     prompt:
-      'Open https://ashfox.io/workbench/ in your in-app browser. If that is unavailable, use a browser you can connect to and control. Read https://ashfox.io/workbench/agent-manifest.json and use it as the single authority for creating, editing, reviewing, saving, and exporting ashfox projects. Inspect the current project and the relevant command schemas. When setup is complete, ask me exactly: "What would you like to create?" Treat my next message as the complete asset brief and begin unless one required target detail is missing. Do not change the project until I answer.'
+      'Open https://ashfox.io/workbench/ in your in-app browser, or a browser you can connect to and control. Fetch https://ashfox.io/workbench/agent-manifest.json with the direct HTTP request tool available in your environment, such as curl; never navigate the browser to it. Follow that manifest as the complete and only ashfox operating guide.'
   },
   demo: {
     sequences: [

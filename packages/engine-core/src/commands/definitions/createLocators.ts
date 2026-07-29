@@ -1,17 +1,17 @@
 import {
   IDENTITY_TRANSFORM,
-  type BoneNode,
+  type LocatorNode,
   type ProjectDocument
 } from '../../model';
 import { addSceneNode } from '../../scene';
 import { defineCommand } from '../definition';
+import type { LocatorCreateInput } from '../types';
 import {
   nullableEntityIdSchema,
   partialTransformSchema
 } from './schemas';
-import type { BoneCreateInput } from '../types';
 
-const boneSchema = {
+const locatorSchema = {
   type: 'object',
   properties: {
     id: {
@@ -23,7 +23,10 @@ const boneSchema = {
       minLength: 1
     },
     parentId: nullableEntityIdSchema,
-    transform: partialTransformSchema
+    transform: partialTransformSchema,
+    ignoreInheritedScale: {
+      type: 'boolean'
+    }
   },
   required: ['id', 'name', 'parentId'],
   additionalProperties: false
@@ -32,34 +35,39 @@ const boneSchema = {
 const inputSchema = {
   type: 'object',
   properties: {
-    bones: {
+    locators: {
       type: 'array',
-      items: boneSchema,
+      items: locatorSchema,
       minItems: 1,
       maxItems: 128
     }
   },
-  required: ['bones'],
+  required: ['locators'],
   additionalProperties: false
 } as const;
 
-const createBone = (input: BoneCreateInput): BoneNode => ({
+const createLocator = (
+  input: LocatorCreateInput
+): LocatorNode => ({
   id: input.id,
-  kind: 'bone',
+  kind: 'locator',
   name: input.name,
   parentId: input.parentId,
   transform: {
     ...IDENTITY_TRANSFORM,
     ...input.transform
   },
-  visible: true
+  visible: true,
+  ...(input.ignoreInheritedScale === undefined
+    ? {}
+    : { ignoreInheritedScale: input.ignoreInheritedScale })
 });
 
-const addBone = (
+const addLocator = (
   document: ProjectDocument,
-  input: BoneCreateInput
+  input: LocatorCreateInput
 ): ProjectDocument => {
-  const next = addSceneNode(document, createBone(input));
+  const next = addSceneNode(document, createLocator(input));
   if (input.parentId !== null) return next;
   return {
     ...next,
@@ -70,24 +78,23 @@ const addBone = (
   };
 };
 
-export const createBonesCommand = defineCommand({
-  name: 'scene.bones.create',
-  label: 'Create bones',
+export const createLocatorsCommand = defineCommand({
+  name: 'scene.locators.create',
+  label: 'Create locators',
   purpose:
-    'Create animation-ready bones; parentId may reference any bone in the same payload regardless of declaration order.',
+    'Create attachment points for exported particle and sound events.',
   inputSchema,
   apply: (document, payload) => {
-    const ids = payload.bones.map((bone) => bone.id);
+    const ids = payload.locators.map((locator) => locator.id);
     const duplicateId = ids.find(
       (id, index) =>
-        ids.indexOf(id) !== index || document.scene.nodes[id] !== undefined
+        ids.indexOf(id) !== index ||
+        document.scene.nodes[id] !== undefined
     );
-    const payloadIds = new Set(ids);
-    const invalidParent = payload.bones.find(
-      (bone) =>
-        bone.parentId !== null &&
-        document.scene.nodes[bone.parentId]?.kind !== 'bone' &&
-        !payloadIds.has(bone.parentId)
+    const invalidParent = payload.locators.find(
+      (locator) =>
+        locator.parentId !== null &&
+        document.scene.nodes[locator.parentId]?.kind !== 'bone'
     );
     if (duplicateId || invalidParent) {
       return {
@@ -96,31 +103,35 @@ export const createBonesCommand = defineCommand({
           code: 'invalid_state',
           message: duplicateId
             ? `Scene node ID "${duplicateId}" is already in use.`
-            : 'Bone parent must reference an existing bone.',
+            : 'Locator parent must reference an existing bone.',
           path: duplicateId
-            ? 'payload.bones'
-            : `payload.bones.${invalidParent?.id}.parentId`,
+            ? 'payload.locators'
+            : `payload.locators.${invalidParent?.id}.parentId`,
           expected: duplicateId
             ? undefined
-            : 'existing bone ID, a bone ID in this payload, or null'
+            : 'existing bone ID or null'
         }
       };
     }
-
-    const next = payload.bones.reduce(addBone, document);
+    const next = payload.locators.reduce(addLocator, document);
     return {
       ok: true,
       value: {
         document: next,
         summary:
-          payload.bones.length === 1
-            ? `Create ${payload.bones[0].name}`
-            : `Create ${payload.bones.length} bones`,
+          payload.locators.length === 1
+            ? `Create ${payload.locators[0].name}`
+            : `Create ${payload.locators.length} locators`,
         effects: {
           createdEntityIds: ids,
           changedEntityIds: [],
           removedEntityIds: [],
-          invalidated: ['scene', 'animations', 'validation', 'preview']
+          invalidated: [
+            'scene',
+            'animations',
+            'validation',
+            'preview'
+          ]
         }
       }
     };

@@ -7,10 +7,13 @@ import type {
 } from '../workbench/state/commandOutcome';
 import { parseCommandBatch } from './parseCommandBatch';
 import { parseInspectRequest } from './parseInspectRequest';
+import { parsePresentRequest } from './parsePresentRequest';
 import type {
   AgentCommandPortApi,
   InspectRequest,
   InspectResult,
+  PresentRequest,
+  PresentResult,
   RunResult
 } from './types';
 import { agentCommandProtocol } from './agentCommandProtocol';
@@ -21,6 +24,7 @@ export interface AgentCommandPortDependencies {
   inspect: (request?: InspectRequest) => InspectResult;
   currentRevision: () => string;
   submit: (batch: CommandBatch) => Promise<CommandOutcome>;
+  present?: (request: PresentRequest) => PresentResult;
   onStatusChange?: (status: AgentCommandPortStatus) => void;
 }
 
@@ -39,7 +43,7 @@ const COMPLETED_BATCH_LIMIT = 32;
 
 interface AgentCommandInput {
   requestId: string;
-  method: 'inspect' | 'run';
+  method: 'inspect' | 'run' | 'present';
   payload?: unknown;
 }
 
@@ -54,7 +58,11 @@ const parseAgentCommandInput = (
   if (
     !isRecord(value) ||
     typeof value.requestId !== 'string' ||
-    (value.method !== 'inspect' && value.method !== 'run')
+    (
+      value.method !== 'inspect' &&
+      value.method !== 'run' &&
+      value.method !== 'present'
+    )
   ) {
     return null;
   }
@@ -199,6 +207,13 @@ export class AgentCommandPort implements AgentCommandPortApi {
         );
         return;
       }
+      if (request.method === 'present') {
+        respond(
+          request.requestId,
+          port.present(request.payload as PresentRequest)
+        );
+        return;
+      }
       void port.run(request.payload as CommandBatch)
         .then((result) => respond(request.requestId, result));
     }
@@ -245,6 +260,54 @@ export class AgentCommandPort implements AgentCommandPortApi {
           code: 'invalid_request',
           path: '$',
           expected: 'valid inspect request'
+        }
+      };
+    }
+  }
+
+  present(input: PresentRequest): PresentResult {
+    const revision = this.dependencies.currentRevision();
+    let parsed: ReturnType<typeof parsePresentRequest>;
+    try {
+      parsed = parsePresentRequest(input);
+    } catch {
+      parsed = {
+        ok: false,
+        error: {
+          code: 'invalid_request',
+          path: '$',
+          expected: 'plain presentation request data'
+        }
+      };
+    }
+    if (!parsed.ok) {
+      return {
+        ok: false,
+        revision,
+        error: parsed.error
+      };
+    }
+    if (!this.dependencies.present) {
+      return {
+        ok: false,
+        revision,
+        error: {
+          code: 'invalid_request',
+          path: '$',
+          expected: 'connected presentation adapter'
+        }
+      };
+    }
+    try {
+      return this.dependencies.present(parsed.request);
+    } catch {
+      return {
+        ok: false,
+        revision,
+        error: {
+          code: 'invalid_request',
+          path: '$',
+          expected: 'valid presentation request'
         }
       };
     }

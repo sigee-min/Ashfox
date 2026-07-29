@@ -3,7 +3,7 @@ import type {
   ProjectDocument
 } from '@ashfox/engine-core';
 
-export type VisibleExportPreset = Exclude<ExportPreset, 'java'>;
+export type VisibleExportPreset = ExportPreset;
 
 export interface ProjectExportTarget {
   target: VisibleExportPreset;

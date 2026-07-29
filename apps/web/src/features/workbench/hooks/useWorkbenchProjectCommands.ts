@@ -15,9 +15,17 @@ import {
   createMinecraftTextureOperation
 } from '../../textures/minecraftTextureCommand';
 import {
+  createProjectOperation,
+  type NewProjectInput
+} from '../newProject';
+import {
   projectUsesExportTarget,
   type ProjectExportTarget
 } from '../presentation/projectExportTarget';
+import {
+  createProjectSettingsOperations,
+  type ProjectSettingsInput
+} from '../projectSettings';
 import type { HistoryAction } from '../state/historyReducer';
 import { LOCAL_COMMAND_ACTOR_ID } from '../state/localCommandActor';
 
@@ -31,7 +39,8 @@ interface UseWorkbenchProjectCommandsInput {
 }
 
 interface WorkbenchProjectCommands {
-  renameProject: (name: string) => void;
+  createProject: (input: NewProjectInput) => void;
+  updateProjectSettings: (input: ProjectSettingsInput) => void;
   generateMinecraftTexture: () => void;
   exportProject: (target: ProjectExportTarget) => void;
   commitNodeTransform: (nodeId: string, transform: Transform) => void;
@@ -70,12 +79,23 @@ export const useWorkbenchProjectCommands = ({
     [dispatch, document.revision]
   );
 
-  const renameProject = useCallback(
-    (name: string): void => {
-      execute([{
-        name: 'project.rename',
-        payload: { name }
-      }]);
+  const updateProjectSettings = useCallback(
+    (input: ProjectSettingsInput): void => {
+      const operations =
+        createProjectSettingsOperations(document, input);
+      if (operations.length > 0) execute(operations);
+    },
+    [document, execute]
+  );
+
+  const createProject = useCallback(
+    (input: NewProjectInput): void => {
+      execute([
+        createProjectOperation(input, {
+          id: `project-${crypto.randomUUID()}`,
+          createdAt: new Date().toISOString()
+        })
+      ]);
     },
     [execute]
   );
@@ -210,7 +230,8 @@ export const useWorkbenchProjectCommands = ({
   }, [dispatch]);
 
   return {
-    renameProject,
+    createProject,
+    updateProjectSettings,
     generateMinecraftTexture,
     exportProject,
     commitNodeTransform,

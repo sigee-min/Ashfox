@@ -71,6 +71,15 @@ export const test = (async (): Promise<void> => {
       submits += 1;
       return committed(value.batchId);
     },
+    present: (request) => ({
+      ok: true,
+      revision: 'local-0001',
+      data: {
+        clipId: request.clipId,
+        playing: request.playing,
+        timeSeconds: request.timeSeconds ?? 0
+      }
+    }),
     onStatusChange: (status) => statuses.push(status)
   });
 
@@ -88,6 +97,32 @@ export const test = (async (): Promise<void> => {
   assert.equal(invalidInspect.ok, false);
   if (!invalidInspect.ok) {
     assert.equal(invalidInspect.error.code, 'invalid_request');
+  }
+  assert.deepEqual(
+    port.present({
+      kind: 'animation',
+      clipId: 'clip-idle',
+      playing: true,
+      timeSeconds: 0.25
+    }),
+    {
+      ok: true,
+      revision: 'local-0001',
+      data: {
+        clipId: 'clip-idle',
+        playing: true,
+        timeSeconds: 0.25
+      }
+    }
+  );
+  const invalidPresent = port.present({
+    kind: 'animation',
+    clipId: '',
+    playing: true
+  });
+  assert.equal(invalidPresent.ok, false);
+  if (!invalidPresent.ok) {
+    assert.equal(invalidPresent.error.code, 'invalid_request');
   }
   assert.deepEqual(await port.run(batch('commit')), {
     ok: true,

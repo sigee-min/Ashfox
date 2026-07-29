@@ -32,8 +32,22 @@ const importedWithoutAtlasModes = {
     })
   )
 };
+const importedWithoutTextures = structuredClone(document);
+for (const node of Object.values(importedWithoutTextures.scene.nodes)) {
+  if (node.kind !== 'cube') continue;
+  for (const face of Object.values(node.faces)) {
+    (face as { textureId: null }).textureId = null;
+  }
+}
+(importedWithoutTextures as {
+  textures: Record<string, never>;
+}).textures = {};
 
 assert.ok(operation);
+assert.ok(
+  createMinecraftTextureOperation(importedWithoutTextures),
+  'an untextured project must be eligible for implicit texture generation'
+);
 assert.equal(
   createMinecraftTextureOperation(importedWithoutAtlasModes),
   null,

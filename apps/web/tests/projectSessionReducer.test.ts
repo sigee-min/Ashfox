@@ -88,3 +88,49 @@ const hydrated = projectSessionReducer(replaced, {
 assert.equal(hydrated.history.present, replaced.history.present);
 assert.equal(hydrated.assets, hydratedAssets);
 assert.equal(hydrated.storage, replaced.storage);
+
+const created = projectSessionReducer(hydrated, {
+  type: 'execute',
+  batch: {
+    batchId: 'batch-create-clean-project',
+    baseRevision: hydrated.history.present.revision,
+    operations: [{
+      name: 'project.create',
+      payload: {
+        id: 'project-clean',
+        name: 'Clean project',
+        target: 'glb',
+        namespace: 'ashfox',
+        modelPath: 'clean_project',
+        textureResolution: 64,
+        createdAt: '2026-07-29T01:00:00.000Z'
+      }
+    }]
+  },
+  actorId: 'agent-test',
+  source: 'agent',
+  committedAt: '2026-07-29T01:00:01.000Z'
+});
+assert.equal(created.history.present.id, 'project-clean');
+assert.equal(created.history.present.revision, 'local-0001');
+assert.deepEqual(created.history.past, []);
+assert.deepEqual(created.history.future, []);
+assert.equal(created.history.activity.length, 1);
+assert.equal(created.history.activity[0].projectId, 'project-clean');
+assert.equal(created.history.lastCommandOutcome?.status, 'committed');
+assert.deepEqual(created.assets, {});
+assert.deepEqual(created.storage, {
+  generation: 2,
+  restoreFromStorage: false
+});
+
+const undoCreatedProject = projectSessionReducer(created, {
+  type: 'undo',
+  commandId: 'undo-project-create',
+  committedAt: '2026-07-29T01:00:02.000Z'
+});
+assert.equal(
+  undoCreatedProject,
+  created,
+  'creating a new project must not leave the previous project in Undo history'
+);

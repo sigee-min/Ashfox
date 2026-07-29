@@ -186,6 +186,23 @@ if (
 ) {
   failures.push('landing must teach the copy, paste, and describe workflow');
 }
+if (
+  !landingContent.quickStart.prompt.includes(
+    'direct HTTP request tool available in your environment'
+  ) ||
+  !landingContent.quickStart.prompt.includes(
+    'never navigate the browser to it'
+  ) ||
+  !landingContent.quickStart.prompt.includes(
+    'complete and only ashfox operating guide'
+  ) ||
+  landingContent.quickStart.prompt.includes('Inspect the current project') ||
+  landingContent.quickStart.prompt.includes('What would you like to create?')
+) {
+  failures.push(
+    'setup prompt must delegate the complete workflow to the direct-HTTP manifest'
+  );
+}
 const agentDestinationCount = (
   landingHtml.match(/\sclass="agent-destination"/g) ?? []
 ).length;

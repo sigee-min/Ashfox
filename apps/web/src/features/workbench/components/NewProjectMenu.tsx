@@ -4,6 +4,11 @@ import {
 } from 'react';
 
 import {
+  PROJECT_TEXTURE_RESOLUTIONS,
+  type ProjectTextureResolution
+} from '@ashfox/engine-core';
+
+import {
   isMinecraftExportTarget,
   PROJECT_EXPORT_TARGETS,
   projectResourceToken,
@@ -16,8 +21,6 @@ interface NewProjectMenuProps {
   onCreate: (input: NewProjectInput) => void;
 }
 
-const TEXTURE_RESOLUTIONS = [16, 32, 64, 128, 256] as const;
-
 export function NewProjectMenu({
   onCreate
 }: NewProjectMenuProps) {
@@ -26,7 +29,8 @@ export function NewProjectMenu({
   const [namespace, setNamespace] = useState('ashfox');
   const [modelPath, setModelPath] = useState('untitled_project');
   const [modelPathEdited, setModelPathEdited] = useState(false);
-  const [resolution, setResolution] = useState(64);
+  const [resolution, setResolution] =
+    useState<ProjectTextureResolution>(64);
 
   const trimmedName = name.trim();
   const trimmedNamespace = namespace.trim();
@@ -93,9 +97,11 @@ export function NewProjectMenu({
         <select
           aria-label="Texture resolution"
           value={resolution}
-          onChange={(event) => setResolution(Number(event.target.value))}
+          onChange={(event) => setResolution(
+            Number(event.target.value) as ProjectTextureResolution
+          )}
         >
-          {TEXTURE_RESOLUTIONS.map((size) => (
+          {PROJECT_TEXTURE_RESOLUTIONS.map((size) => (
             <option value={size} key={size}>
               {size} × {size}
             </option>

@@ -1,8 +1,9 @@
 import {
+  CUBE_FACE_DIRECTIONS,
   getCommandDefinition,
   listCommandDefinitions,
-  type CommandName,
   type ProjectDocument,
+  type SceneNode,
   type ValidationReport
 } from '@ashfox/engine-core';
 
@@ -16,49 +17,6 @@ import type {
 const DEFAULT_LIMIT = 2048;
 const DETAIL_LIMIT = 4096;
 const ID_LIMIT = 10;
-
-const selectedCommandNames = (
-  document: ProjectDocument,
-  selectedNodeId: string | null
-): ReadonlySet<CommandName> => {
-  const selected = selectedNodeId
-    ? document.scene.nodes[selectedNodeId]
-    : undefined;
-  const names = new Set<CommandName>([
-    'project.rename',
-    'project.target.set',
-    'scene.bones.create',
-    'scene.cubes.create',
-    'animation.clip.upsert',
-    'textures.preview.set',
-    'textures.rename',
-    'textures.raster.set',
-    'textures.uvAtlas.generate'
-  ]);
-  if (selected) {
-    names.add('scene.nodes.transform');
-    names.add('scene.nodes.visibility');
-    names.add('scene.nodes.delete');
-    names.add('scene.nodes.align');
-    names.add('scene.nodes.pivot');
-    names.add('scene.nodes.reparent');
-  }
-  if (selected?.kind === 'cube') {
-    names.add('scene.cubes.duplicate');
-    names.add('scene.cubes.mirror');
-    names.add('scene.cubes.repeat');
-    names.add('scene.cubes.uv.fit');
-    names.add('scene.cubes.material');
-  }
-  if (Object.keys(document.animations).length > 0) {
-    names.add('animation.channels.upsert');
-    names.add('animation.channels.phase');
-    names.add('animation.channels.mirror');
-    names.add('animation.clip.closeLoop');
-    names.add('animation.clip.delete');
-  }
-  return names;
-};
 
 const invalidRequest = (
   revision: string,
@@ -83,15 +41,62 @@ const selectedValues = <T>(
     .map((id) => record[id])
     .filter((value): value is T => value !== undefined);
 
+const isEffectivelyVisible = (
+  document: ProjectDocument,
+  nodeId: string
+): boolean => {
+  const visited = new Set<string>();
+  let currentId: string | null = nodeId;
+  while (currentId !== null) {
+    if (visited.has(currentId)) return false;
+    visited.add(currentId);
+    const node: SceneNode | undefined =
+      document.scene.nodes[currentId];
+    if (!node || !node.visible) return false;
+    currentId = node.parentId;
+  }
+  return true;
+};
+
+const isIdleClipName = (name: string): boolean => {
+  const normalized = name.trim().toLowerCase();
+  return (
+    normalized === 'idle' ||
+    /^animation\.[a-z0-9_.-]+\.idle$/.test(normalized)
+  );
+};
+
 const inspectDefault = (
   document: ProjectDocument,
   selectedNodeId: string | null,
   report: ValidationReport
 ): InspectResult => {
-  const available = selectedCommandNames(document, selectedNodeId);
   const commands = listCommandDefinitions()
-    .filter((definition) => available.has(definition.name))
     .map((definition) => definition.name);
+  const nodes = Object.values(document.scene.nodes);
+  const clips = Object.values(document.animations);
+  const visibleNodes = nodes.filter((node) =>
+    isEffectivelyVisible(document, node.id)
+  );
+  const visibleFaceTextureIds = visibleNodes.flatMap((node) => {
+    if (node.kind === 'cube') {
+      return CUBE_FACE_DIRECTIONS
+        .map((direction) => node.faces[direction])
+        .filter((face) => face.enabled)
+        .map((face) => face.textureId);
+    }
+    return node.kind === 'mesh'
+      ? Object.values(node.faces).map((face) => face.textureId)
+      : [];
+  });
+  const texturedVisibleFaces = visibleFaceTextureIds.filter(
+    (textureId) =>
+      textureId !== null &&
+      document.textures[textureId] !== undefined
+  ).length;
+  const idleClips = clips.filter((clip) =>
+    isIdleClipName(clip.name)
+  );
   return boundedSuccess(
     document.revision,
     {
@@ -112,9 +117,35 @@ const inspectDefault = (
       },
       selection: selectedNodeId,
       counts: {
-        nodes: Object.keys(document.scene.nodes).length,
+        nodes: nodes.length,
+        bones: nodes.filter((node) => node.kind === 'bone').length,
+        cubes: nodes.filter((node) => node.kind === 'cube').length,
+        visibleCubes: nodes.filter(
+          (node) =>
+            node.kind === 'cube' &&
+            isEffectivelyVisible(document, node.id)
+        ).length,
+        meshes: nodes.filter((node) => node.kind === 'mesh').length,
+        locators: nodes.filter((node) => node.kind === 'locator').length,
+        enabledVisibleFaces: visibleFaceTextureIds.length,
+        texturedVisibleFaces,
+        untexturedVisibleFaces:
+          visibleFaceTextureIds.length - texturedVisibleFaces,
         textures: Object.keys(document.textures).length,
-        clips: Object.keys(document.animations).length
+        clips: clips.length,
+        channels: clips.reduce(
+          (count, clip) => count + Object.keys(clip.channels).length,
+          0
+        ),
+        triggers: clips.reduce(
+          (count, clip) => count + Object.keys(clip.triggers).length,
+          0
+        ),
+        idleClips: idleClips.length,
+        idleChannels: idleClips.reduce(
+          (count, clip) => count + Object.keys(clip.channels).length,
+          0
+        )
       },
       commands,
       blockingFinding: report.findings.find(
@@ -197,16 +228,31 @@ export const inspectProject = (
         selectedValues(document.animations, request.ids),
         DETAIL_LIMIT
       );
-    case 'target':
+    case 'target': {
+      const errors = report.findings.filter(
+        (finding) => finding.severity === 'error'
+      );
+      const warnings = report.findings.filter(
+        (finding) => finding.severity === 'warning'
+      );
       return boundedSuccess(
         document.revision,
         {
           formatProfile: document.formatProfile,
           settings: document.settings,
-          valid: report.valid
+          valid: report.valid,
+          productionReady:
+            errors.length === 0 && warnings.length === 0,
+          counts: {
+            errors: errors.length,
+            warnings: warnings.length,
+            textures: Object.keys(document.textures).length
+          },
+          firstReadinessFinding: errors[0] ?? warnings[0] ?? null
         },
         DETAIL_LIMIT
       );
+    }
     case 'finding': {
       const finding = report.findings.find(
         (candidate) => candidate.path === request.path

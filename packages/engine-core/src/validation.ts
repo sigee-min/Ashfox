@@ -64,6 +64,7 @@ export type InvariantCode =
   | 'format.unbaked_transform'
   | 'format.coordinate_overflow'
   | 'format.rotation_unsupported'
+  | 'format.texture_missing'
   | 'format.texture_binding_missing'
   | 'format.texture_key_duplicate'
   | 'format.texture_path_duplicate'
@@ -1282,6 +1283,18 @@ const validateMinecraftActorProfile = (
       fix: 'Add an animation clip, including a rest pose clip when the asset is static.'
     });
   }
+  const textureCount = Object.keys(document.textures).length;
+  if (textureCount === 0) {
+    add({
+      code: 'format.texture_missing',
+      severity: 'warning',
+      message:
+        `${targetName} project has no texture and is not production ready.`,
+      path: 'textures',
+      fix:
+        'Create a texture explicitly or omit cube textureId to provision the default texture.'
+    });
+  }
 
   const boneNames = new Map<string, string>();
   const locatorNames = new Map<string, string>();
@@ -1396,6 +1409,22 @@ const validateMinecraftActorProfile = (
           });
         }
       }
+    }
+    const hasTexturedFace = CUBE_FACE_DIRECTIONS.some((direction) => {
+      const face = node.faces[direction];
+      return face.enabled && face.textureId !== null;
+    });
+    if (textureCount > 0 && node.visible && !hasTexturedFace) {
+      add({
+        code: 'format.texture_missing',
+        severity: 'warning',
+        message:
+          `${targetName} cube "${node.name}" has no texture and will export without visible surface art.`,
+        path: `${path}.faces`,
+        entityIds: [nodeId],
+        fix:
+          'Create or generate a texture and bind it to the enabled cube faces.'
+      });
     }
   }
   const hasVisibleLooseCube = Object.values(document.scene.nodes).some(

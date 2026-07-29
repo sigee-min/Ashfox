@@ -1,8 +1,7 @@
-import manifest from '../../../agent-manifest.json';
-
 export const agentCommandProtocol = {
-  workbench: manifest.workbench,
-  href: manifest.href,
-  inputAttribute: manifest.domBridge.input.attribute,
-  resultAttribute: manifest.domBridge.result.attribute
+  protocol: 'ashfox.agent-command-port',
+  workbench: '/workbench/',
+  href: '/workbench/agent-manifest.json',
+  inputAttribute: 'data-agent-command-port-input',
+  resultAttribute: 'data-agent-command-port-result'
 } as const;

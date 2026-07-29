@@ -3,6 +3,10 @@ import type {
   ProjectDocument,
   ProjectFormatProfile
 } from '../../model';
+import { resourceToken } from '../../resourceToken';
+import {
+  createMinecraftTextureBinding
+} from '../../textures/createTextureAsset';
 import { defineCommand } from '../definition';
 import type { ExportPreset } from '../types';
 
@@ -12,7 +16,7 @@ const inputSchema = {
   type: 'object',
   properties: {
     target: {
-      enum: ['gltf', 'glb', 'bedrock', 'geckolib5', 'java']
+      enum: ['gltf', 'glb', 'bedrock', 'geckolib5']
     },
     namespace: {
       type: 'string',
@@ -73,23 +77,8 @@ const profileFor = (
         animationPath: modelPath,
         geometryIdentifier: `geometry.${modelPath.split('/').join('.')}`
       };
-    case 'java':
-      return {
-        id: 'minecraft.java_block',
-        version: '1.21.11',
-        namespace,
-        modelPath,
-        modelKind: 'block'
-      };
   }
 };
-
-const resourceToken = (value: string): string =>
-  value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_.-]+/g, '_')
-    .replace(/^[._-]+|[._-]+$/g, '') || 'clip';
 
 const actorAnimationName = (
   clip: AnimationClip,
@@ -102,24 +91,54 @@ const actorAnimationName = (
   ) {
     return clip.name;
   }
-  const prefix = `animation.${resourceToken(modelPath.split('/').join('.'))}`;
-  const preferred = `${prefix}.${resourceToken(clip.name)}`;
+  const prefix =
+    `animation.${resourceToken(modelPath.split('/').join('.'), 'model')}`;
+  const preferred = `${prefix}.${resourceToken(clip.name, 'clip')}`;
   return usedNames.has(preferred)
-    ? `${preferred}.${resourceToken(clip.id)}`
+    ? `${preferred}.${resourceToken(clip.id, 'clip')}`
     : preferred;
 };
+
+const withoutImplicitRestPose = (
+  animations: ProjectDocument['animations']
+): ProjectDocument['animations'] =>
+  Object.fromEntries(
+    Object.entries(animations).filter(([id, clip]) =>
+      id !== 'animation-rest-pose' ||
+      Object.keys(clip.channels).length > 0 ||
+      Object.keys(clip.triggers).length > 0
+    )
+  );
 
 const animationsFor = (
   document: ProjectDocument,
   target: ExportPreset,
   modelPath: string
 ): ProjectDocument['animations'] => {
+  const sourceAnimations = target === 'geckolib5'
+    ? document.animations
+    : withoutImplicitRestPose(document.animations);
   if (target !== 'bedrock' && target !== 'geckolib5') {
-    return document.animations;
+    return sourceAnimations;
   }
+  const animations =
+    target === 'geckolib5' &&
+    Object.keys(sourceAnimations).length === 0
+      ? {
+          'animation-rest-pose': {
+            id: 'animation-rest-pose',
+            name: 'Rest pose',
+            durationSeconds: 1,
+            fps: 20,
+            loop: 'loop' as const,
+            channels: {},
+            triggers: {}
+          }
+        }
+      : sourceAnimations;
   const usedNames = new Set<string>();
   return Object.fromEntries(
-    Object.entries(document.animations).map(([id, clip]) => {
+    Object.entries(animations).map(([id, clip]) => {
       const name = actorAnimationName(clip, modelPath, usedNames);
       usedNames.add(name);
       return [id, name === clip.name ? clip : { ...clip, name }];
@@ -133,7 +152,10 @@ const texturesFor = (
   namespace: string,
   modelPath: string
 ): ProjectDocument['textures'] => {
-  if (target !== 'bedrock' && target !== 'geckolib5') {
+  if (
+    target !== 'bedrock' &&
+    target !== 'geckolib5'
+  ) {
     return document.textures;
   }
   const textures = Object.entries(document.textures)
@@ -144,15 +166,15 @@ const texturesFor = (
       {
         ...texture,
         minecraft: {
-          key: resourceToken(id),
-          resource: {
-            namespace,
-            path: index === 0
-              ? `entity/${modelPath}`
-              : `entity/${modelPath}_${resourceToken(texture.name)}`
-          },
-          extension: 'png' as const,
-          particle: index === 0
+          ...createMinecraftTextureBinding(
+            {
+              namespace,
+              kind: 'entity',
+              modelPath
+            },
+            id,
+            index
+          )
         }
       }
     ])
@@ -164,35 +186,67 @@ export const setProjectTargetCommand = defineCommand({
   label: 'Set export target',
   purpose: 'Select one canonical target preset and its resource location.',
   inputSchema,
-  apply: (document, payload) => ({
-    ok: true,
-    value: {
-      document: {
-        ...document,
-        formatProfile: profileFor(
-          payload.target,
-          payload.namespace,
-          payload.modelPath
-        ),
-        animations: animationsFor(
-          document,
-          payload.target,
-          payload.modelPath
-        ),
-        textures: texturesFor(
-          document,
-          payload.target,
-          payload.namespace,
-          payload.modelPath
-        )
-      },
-      summary: `Set ${payload.target} export target`,
-      effects: {
-        createdEntityIds: [],
-        changedEntityIds: [document.id],
-        removedEntityIds: [],
-        invalidated: ['validation', 'preview']
+  apply: (document, payload) => {
+    const namespace = payload.namespace.trim();
+    const modelPath = payload.modelPath.trim();
+    const emptyField = namespace.length === 0
+      ? 'namespace'
+      : modelPath.length === 0
+        ? 'modelPath'
+        : null;
+    if (emptyField) {
+      return {
+        ok: false,
+        error: {
+          code: 'invalid_payload',
+          message: `Project ${emptyField} cannot be empty.`,
+          path: `payload.${emptyField}`,
+          expected: 'non-empty text'
+        }
       }
     }
-  })
+    const animations = animationsFor(
+      document,
+      payload.target,
+      modelPath
+    );
+    const createdAnimationIds = Object.keys(animations).filter(
+      (id) => document.animations[id] === undefined
+    );
+    const removedAnimationIds = Object.keys(document.animations).filter(
+      (id) => animations[id] === undefined
+    );
+    return {
+      ok: true,
+      value: {
+        document: {
+          ...document,
+          formatProfile: profileFor(
+            payload.target,
+            namespace,
+            modelPath
+          ),
+          animations,
+          textures: texturesFor(
+            document,
+            payload.target,
+            namespace,
+            modelPath
+          )
+        },
+        summary: `Set ${payload.target} export target`,
+        effects: {
+          createdEntityIds: createdAnimationIds,
+          changedEntityIds: [document.id],
+          removedEntityIds: removedAnimationIds,
+          invalidated: [
+            'textures',
+            'animations',
+            'validation',
+            'preview'
+          ]
+        }
+      }
+    };
+  }
 });

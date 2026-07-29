@@ -128,6 +128,27 @@ const clone = <T>(value: T): T => structuredClone(value);
 
 {
   const project = clone(createGeckoLib5Project()) as ProjectDocument;
+  const cube = project.scene.nodes['cube-body'];
+  if (cube.kind !== 'cube') throw new Error('fixture cube missing');
+  for (const face of Object.values(cube.faces)) {
+    (face as { textureId: null }).textureId = null;
+  }
+  (project as {
+    textures: Record<string, never>;
+  }).textures = {};
+  const report = validateProjectDocument(project);
+  assert.equal(report.valid, true);
+  assert.ok(
+    report.findings.some(
+      (finding) =>
+        finding.code === 'format.texture_missing' &&
+        finding.severity === 'warning'
+    )
+  );
+}
+
+{
+  const project = clone(createGeckoLib5Project()) as ProjectDocument;
   (project as { animations: Record<string, never> }).animations = {};
   const report = validateProjectDocument(project);
   assert.equal(report.valid, false);

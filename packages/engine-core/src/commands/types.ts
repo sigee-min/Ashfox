@@ -15,6 +15,9 @@ import type {
   Vec3
 } from '../model';
 import type { InvariantFinding } from '../validation';
+import type {
+  ProjectTextureResolution
+} from './projectTextureResolution';
 
 export type CommandSource = 'web' | 'agent' | 'import' | 'system';
 export type SceneAxis = 'x' | 'y' | 'z';
@@ -23,14 +26,31 @@ export type ExportPreset =
   | 'gltf'
   | 'glb'
   | 'bedrock'
-  | 'geckolib5'
-  | 'java';
+  | 'geckolib5';
+
+export interface ProjectCreateInput {
+  id: ProjectId;
+  name: string;
+  target: ExportPreset;
+  namespace: string;
+  modelPath: string;
+  textureResolution: ProjectTextureResolution;
+  createdAt: string;
+}
 
 export interface BoneCreateInput {
   id: EntityId;
   name: string;
   parentId: EntityId | null;
   transform?: Partial<Transform>;
+}
+
+export interface LocatorCreateInput {
+  id: EntityId;
+  name: string;
+  parentId: EntityId | null;
+  transform?: Partial<Transform>;
+  ignoreInheritedScale?: boolean;
 }
 
 export interface CubeCreateInput {
@@ -56,6 +76,33 @@ export interface CubeDuplicateInput {
   id: EntityId;
   name?: string;
   offset?: Vec3;
+}
+
+export interface CubeGeometryUpdateInput {
+  nodeId: EntityId;
+  bounds?: {
+    from: Vec3;
+    to: Vec3;
+  };
+  inflate?: number;
+  mirror?: boolean;
+  boxUv?: boolean;
+  uvOffset?: Vec2 | null;
+  faceUv?: UvRect;
+}
+
+export interface NodeRenameInput {
+  nodeId: EntityId;
+  name: string;
+}
+
+export interface TextureCreateInput {
+  id: AssetId;
+  name: string;
+  width?: number;
+  height?: number;
+  atlasMode?: 'generate' | 'preserve';
+  background?: string;
 }
 
 export interface TransformKeyInput {
@@ -97,6 +144,7 @@ export type AnimationTriggerInput =
   | AnimationTimelineTriggerInput;
 
 export interface CommandPayloadMap {
+  'project.create': ProjectCreateInput;
   'project.rename': {
     name: string;
   };
@@ -105,8 +153,14 @@ export interface CommandPayloadMap {
     namespace: string;
     modelPath: string;
   };
+  'project.textureResolution.set': {
+    size: ProjectTextureResolution;
+  };
   'scene.bones.create': {
     bones: readonly BoneCreateInput[];
+  };
+  'scene.locators.create': {
+    locators: readonly LocatorCreateInput[];
   };
   'scene.nodes.transform': {
     nodeIds: readonly EntityId[];
@@ -118,6 +172,12 @@ export interface CommandPayloadMap {
   };
   'scene.cubes.create': {
     cubes: readonly CubeCreateInput[];
+  };
+  'scene.cubes.geometry.update': {
+    updates: readonly CubeGeometryUpdateInput[];
+  };
+  'scene.nodes.rename': {
+    renames: readonly NodeRenameInput[];
   };
   'scene.nodes.delete': {
     nodeIds: readonly EntityId[];
@@ -158,6 +218,9 @@ export interface CommandPayloadMap {
     shade?: boolean;
     lightEmission?: number;
   };
+  'textures.create': {
+    textures: readonly TextureCreateInput[];
+  };
   'textures.preview.set': {
     textureId: AssetId;
     color: string;
@@ -177,6 +240,9 @@ export interface CommandPayloadMap {
       height: number;
       color: string;
     }[];
+  };
+  'textures.delete': {
+    textureIds: readonly AssetId[];
   };
   'textures.uvAtlas.generate': {
     target:
@@ -205,6 +271,13 @@ export interface CommandPayloadMap {
   'animation.triggers.upsert': {
     clipId: string;
     triggers: readonly AnimationTriggerInput[];
+  };
+  'animation.tracks.delete': {
+    clipId: string;
+    tracks: readonly {
+      kind: 'channel' | 'trigger';
+      id: string;
+    }[];
   };
   'animation.channels.phase': {
     clipId: string;

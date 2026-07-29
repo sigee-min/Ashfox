@@ -71,5 +71,16 @@ export const projectSessionReducer = (
     return applyProjectRecord(state, action);
   }
   const history = historyReducer(state.history, action);
-  return history === state.history ? state : { ...state, history };
+  if (history === state.history) return state;
+  if (history.present.id !== state.history.present.id) {
+    return {
+      history,
+      assets: {},
+      storage: {
+        generation: state.storage.generation + 1,
+        restoreFromStorage: false
+      }
+    };
+  }
+  return { ...state, history };
 };

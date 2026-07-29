@@ -25,6 +25,10 @@ import {
   type AgentCommandPortStatus
 } from './AgentCommandPort';
 import { inspectProject } from './inspect';
+import type {
+  PresentRequest,
+  PresentResult
+} from './types';
 
 interface UseAgentCommandPortInput {
   document: ProjectDocument;
@@ -33,6 +37,7 @@ interface UseAgentCommandPortInput {
   report: ValidationReport;
   dispatch: Dispatch<HistoryAction>;
   onFocusEntity: (nodeId: string) => void;
+  onPresent: (request: PresentRequest) => PresentResult;
 }
 
 interface PendingCommand {
@@ -65,7 +70,8 @@ export const useAgentCommandPort = ({
   selectedNodeId,
   report,
   dispatch,
-  onFocusEntity
+  onFocusEntity,
+  onPresent
 }: UseAgentCommandPortInput): AgentCommandPortStatus => {
   const [status, setStatus] =
     useState<AgentCommandPortStatus>('connected');
@@ -75,6 +81,7 @@ export const useAgentCommandPort = ({
   const selectedNodeIdRef = useLatestValue(selectedNodeId);
   const reportRef = useLatestValue(report);
   const onFocusEntityRef = useLatestValue(onFocusEntity);
+  const onPresentRef = useLatestValue(onPresent);
 
   const submit = useCallback(
     (batch: CommandBatch): Promise<CommandOutcome> =>
@@ -122,6 +129,7 @@ export const useAgentCommandPort = ({
           ),
         currentRevision: () => documentRef.current.revision,
         submit,
+        present: (request) => onPresentRef.current(request),
         onStatusChange: (nextStatus) => {
           if (mountedRef.current) setStatus(nextStatus);
         }

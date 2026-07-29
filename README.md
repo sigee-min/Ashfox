@@ -15,9 +15,15 @@ animation, validation, preview, and export. The Blockbench plugin remains a
 fully supported part of this repository.
 
 <p align="center">
+  <a href="https://ashfox.io"><strong>Explore ashfox.io →</strong></a>
+  <br>
+  <sub>Build complete low-poly assets with your AI agent—no modeling app required.</sub>
+</p>
+
+<p align="center">
   <a href="#connect-blockbench"><strong>Connect Blockbench</strong></a>
   &nbsp;·&nbsp;
-  <a href="#use-without-blockbench"><strong>Use without Blockbench</strong></a>
+  <a href="https://ashfox.io/workbench/"><strong>Open the web workbench</strong></a>
   &nbsp;·&nbsp;
   <a href="https://ashfox.io/docs/"><strong>Read the guides</strong></a>
 </p>
@@ -141,14 +147,11 @@ agent. The agent opens the workbench, reads its operating contract, and prepares
 the empty project for your request.
 
 ```text
-Open https://ashfox.io/workbench/ in your in-app browser. If that is
-unavailable, use a browser you can connect to and control. Read
-https://ashfox.io/workbench/agent-manifest.json and use it as the single
-authority for creating, editing, reviewing, saving, and exporting ashfox
-projects. Inspect the current project and the relevant command schemas. When
-setup is complete, ask me exactly: "What would you like to create?" Treat my
-next message as the complete asset brief and begin unless one required target
-detail is missing. Do not change the project until I answer.
+Open https://ashfox.io/workbench/ in your in-app browser, or a browser you can
+connect to and control. Fetch https://ashfox.io/workbench/agent-manifest.json
+with the direct HTTP request tool available in your environment, such as curl;
+never navigate the browser to it. Follow that manifest as the complete and only
+ashfox operating guide.
 ```
 
 The workbench keeps its editable project in the browser. Files leave it only
