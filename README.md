@@ -6,6 +6,16 @@
   >
 </p>
 
+<p align="center">
+  <img
+    src="apps/site/public/media/showcase/aether-spear-rocket-animation.gif"
+    alt="Aether Spear Rocket launch animation created in ashfox"
+    width="900"
+  >
+  <br>
+  <sub><strong>GPT-5.6 Sol xhigh · 3 minutes</strong> · modeled, textured, rigged, and animated · 131 bones · 166 cubes</sub>
+</p>
+
 # Blockbench MCP, ready in minutes
 
 Connect your AI agent to Blockbench for deterministic modeling, texturing,
@@ -159,10 +169,10 @@ project.
   <sub>One agent · 131 bones · 166 cubes · animated launch rig</sub>
 </p>
 
-| Fantasy creature | Arcane tractor | Exploration rocket |
-| --- | --- | --- |
-| ![Moonveil Kirin animation](apps/site/public/media/showcase/moonveil-kirin-animation.gif) | ![Ironroot Tractor animation](apps/site/public/media/showcase/ironroot-tractor-animation.gif) | ![Aether Spear Rocket animation](apps/site/public/media/showcase/aether-spear-rocket-animation.gif) |
-| 113 bones · 131 cubes | 108 bones · 125 cubes | 131 bones · 166 cubes |
+| Fantasy creature | Arcane tractor |
+| --- | --- |
+| ![Moonveil Kirin animation](apps/site/public/media/showcase/moonveil-kirin-animation.gif) | ![Ironroot Tractor animation](apps/site/public/media/showcase/ironroot-tractor-animation.gif) |
+| 113 bones · 131 cubes | 108 bones · 125 cubes |
 
 ## Local data and source
 
