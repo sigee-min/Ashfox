@@ -15,6 +15,33 @@ inspect bounded state
 The user reviews normal modeling changes through the live viewport, Activity
 receipt, and Undo.
 
+## Discovery
+
+The page advertises the
+[agent manifest](https://github.com/sigee-min/ashfox/blob/main/apps/web/agent-manifest.json)
+at `/agent-manifest.json` through one machine-readable
+`alternate` link and the `data-ashfox-agent-manifest` document attribute. The
+static manifest defines both supported transports:
+
+- direct page calls through `window.ashfox`;
+- selector-based browser automation through the hidden DOM bridge.
+
+The same manifest publishes stable selectors for project creation, archive
+input, save, export, capture, and one shared artifact handoff. These selectors address
+normal product controls with accessible names; they do not introduce a JSON
+console or a second mutation path.
+
+The manifest is part of the CDN build and requires no server, vendor extension,
+or Ashfox-specific IDE integration. An AI IDE still needs access to the open
+browser tab or to its own browser runtime.
+
+The manifest is also the machine authority for file-operation state and
+artifact delivery. Ashfox workbench retains one prepared artifact behind a persistent
+download anchor. It directs the AI IDE host to use a requested
+workspace-relative directory or `artifacts/`, verify the result, and report the
+actual relative path. When a workspace write cannot be verified, the host
+reports the artifact as ready for browser download instead.
+
 ## Page API
 
 ```ts
@@ -32,10 +59,11 @@ declare global {
 
 `inspect()` without arguments returns only the compact current context:
 
+- the canonical protocol manifest and command-schema request shape;
 - project ID, name, revision, and target;
 - selected entity;
 - node, texture, and clip counts;
-- deterministic commands valid for the current context;
+- names of deterministic commands valid for the current context;
 - one blocking validation path when present.
 
 The default result is capped at 2 KB.
@@ -82,6 +110,11 @@ outcome. It contains no project mutation implementation.
 The page binds actor, source, and completion time. Registered canonical
 commands execute immediately without a confirmation step.
 
+Browser tools without page-JavaScript evaluation submit the same request by
+setting the manifest-declared input value and dispatching its `input` event.
+The result meta attribute returns the matching request ID and the exact port
+result. This transport contains no mutation implementation.
+
 ## Atomic termination
 
 - invalid input is rejected before reducer submission;
@@ -94,7 +127,6 @@ commands execute immediately without a confirmation step.
 
 ## Product surface
 
-The viewport shows a read-only `AI IDE Connected` or `AI IDE Working` status.
 Applied work is reviewed in existing product surfaces:
 
 - the viewport renders the committed revision and focuses the first affected
@@ -103,8 +135,8 @@ Applied work is reviewed in existing product surfaces:
 - validation shows blocking findings;
 - Undo reverses the committed batch.
 
-The workbench root exposes `data-agent-command-port` and the active revision as
-semantic state.
+The workbench root exposes `data-agent-command-port`, the active revision, and
+the terminal file-operation phase as semantic state.
 
 ## Authority
 
@@ -136,6 +168,7 @@ apps/web/src/features/agent/
 ## Acceptance criteria
 
 - AI IDE discovers `inspect` and `run` from the open page;
+- the production build publishes the advertised agent manifest;
 - one submitted batch is applied automatically;
 - reducer rejection and receipt data are returned without reconstruction;
 - deterministic operations are discoverable through bounded inspection;

@@ -1,8 +1,8 @@
-# AI-Native Authoring
+# AI-Native Low-Poly Authoring
 
 Status: **Accepted**
 
-Implementation: **Planned**
+Implementation: **Implemented**
 
 ## Loop
 
@@ -40,9 +40,10 @@ It is capped at 2 KB. A requested command schema or entity detail is capped at
 
 ## Commands
 
-A batch represents one meaningful change. Coarse deterministic commands handle
-primitive creation, multi-node transforms, duplication, mirroring, hierarchy,
-UV operations, animation keys, validation, and export.
+A batch represents one meaningful change. Registered deterministic commands
+handle project settings, bones and cubes, node transforms and hierarchy,
+materials and textures, UV operations, and animation clips, channels, and
+triggers.
 
 The browser binds session identity. The AI sends only base revision and command
 inputs.
@@ -55,7 +56,7 @@ The browser rejects:
 - missing or cyclic references;
 - non-finite geometry, UV, or animation values;
 - unsupported target features;
-- unresolved required assets or export paths.
+- unresolved assets required by the submitted command.
 
 The checks are deterministic and consume no AI turn. Failure returns one error
 code and path. Success returns revision and affected IDs.

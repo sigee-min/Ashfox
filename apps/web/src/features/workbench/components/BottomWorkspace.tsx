@@ -6,10 +6,11 @@ import type {
 
 import { Icon } from '../Icon';
 import type { StorageStatus } from '../persistence/useLocalProjectPersistence';
+import type {
+  BottomWorkspaceMode
+} from '../state/workbenchViewState';
 import { ActivityPanel } from './ActivityPanel';
 import { AnimationTimeline } from './AnimationTimeline';
-
-export type BottomWorkspaceMode = 'animation' | 'activity';
 
 interface BottomWorkspaceProps {
   mode: BottomWorkspaceMode;

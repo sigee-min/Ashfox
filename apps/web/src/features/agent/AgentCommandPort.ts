@@ -1,9 +1,10 @@
 import type {
-  CommandBatch,
-  CommandError,
-  CommandReceipt
+  CommandBatch
 } from '@ashfox/engine-core';
 
+import type {
+  CommandOutcome
+} from '../workbench/state/commandOutcome';
 import { parseCommandBatch } from './parseCommandBatch';
 import { parseInspectRequest } from './parseInspectRequest';
 import type {
@@ -12,26 +13,14 @@ import type {
   InspectResult,
   RunResult
 } from './types';
+import { agentCommandProtocol } from './agentCommandProtocol';
 
 export type AgentCommandPortStatus = 'connected' | 'working';
-
-export type AgentCommandOutcome =
-  | {
-      status: 'committed';
-      commandId: string;
-      receipt: CommandReceipt;
-    }
-  | {
-      status: 'rejected';
-      commandId: string;
-      revision: string;
-      error: CommandError;
-    };
 
 export interface AgentCommandPortDependencies {
   inspect: (request?: InspectRequest) => InspectResult;
   currentRevision: () => string;
-  submit: (batch: CommandBatch) => Promise<AgentCommandOutcome>;
+  submit: (batch: CommandBatch) => Promise<CommandOutcome>;
   onStatusChange?: (status: AgentCommandPortStatus) => void;
 }
 
@@ -47,8 +36,6 @@ interface CompletedBatch {
 }
 
 const COMPLETED_BATCH_LIMIT = 32;
-const AGENT_COMMAND_INPUT_ATTRIBUTE = 'data-agent-command-port-input';
-const AGENT_COMMAND_RESULT_ATTRIBUTE = 'data-agent-command-port-result';
 
 interface AgentCommandInput {
   requestId: string;
@@ -130,7 +117,7 @@ const isAbortError = (error: unknown): boolean =>
   'name' in error &&
   error.name === 'AbortError';
 
-const resultFromOutcome = (outcome: AgentCommandOutcome): RunResult => {
+const resultFromOutcome = (outcome: CommandOutcome): RunResult => {
   if (outcome.status === 'rejected') {
     return {
       ok: false,
@@ -154,7 +141,7 @@ export class AgentCommandPort implements AgentCommandPortApi {
   connect(host: Window): () => void {
     const port = this;
     const resultElement = host.document.createElement('meta');
-    resultElement.setAttribute(AGENT_COMMAND_RESULT_ATTRIBUTE, '');
+    resultElement.setAttribute(agentCommandProtocol.resultAttribute, '');
     host.document.head.append(resultElement);
     let input: HTMLInputElement;
     const createInput = (): HTMLInputElement => {
@@ -163,7 +150,7 @@ export class AgentCommandPort implements AgentCommandPortApi {
       next.tabIndex = -1;
       next.setAttribute('aria-hidden', 'true');
       next.setAttribute('role', 'none');
-      next.setAttribute(AGENT_COMMAND_INPUT_ATTRIBUTE, '');
+      next.setAttribute(agentCommandProtocol.inputAttribute, '');
       Object.assign(next.style, {
         position: 'fixed',
         top: '0',
@@ -185,7 +172,7 @@ export class AgentCommandPort implements AgentCommandPortApi {
       previous.removeEventListener('input', receive);
       previous.remove();
       resultElement.setAttribute(
-        AGENT_COMMAND_RESULT_ATTRIBUTE,
+        agentCommandProtocol.resultAttribute,
         JSON.stringify({ requestId, result: commandResult })
       );
     }

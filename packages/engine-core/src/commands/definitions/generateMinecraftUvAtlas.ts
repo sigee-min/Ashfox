@@ -164,6 +164,25 @@ const targetNodeIds = (
         .map((node) => node.id)
     : target.nodeIds;
 
+const hasGeneratedFace = (
+  document: ProjectDocument,
+  nodeIds: readonly string[]
+): boolean =>
+  nodeIds.some((nodeId) => {
+    const node = document.scene.nodes[nodeId];
+    return (
+      node?.kind === 'cube' &&
+      CUBE_FACE_DIRECTIONS.some((direction) => {
+        const face = node.faces[direction];
+        return (
+          face.enabled &&
+          face.textureId !== null &&
+          document.textures[face.textureId]?.atlasMode === 'generate'
+        );
+      })
+    );
+  });
+
 const collectRects = (
   document: ProjectDocument,
   nodeIds: readonly string[],
@@ -178,6 +197,7 @@ const collectRects = (
       if (!face.enabled || face.textureId === null) continue;
       const texture = document.textures[face.textureId];
       if (!texture) return null;
+      if (texture.atlasMode !== 'generate') continue;
       const size = faceTexelSize(
         cubeFaceDimensions(node.bounds.from, node.bounds.to, direction),
         modelUnitsPerBlock(document),
@@ -349,6 +369,17 @@ export const generateMinecraftUvAtlasCommand = defineCommand({
         }
       };
     }
+    if (!hasGeneratedFace(document, nodeIds)) {
+      return {
+        ok: false,
+        error: {
+          code: 'invalid_state',
+          message: 'UV atlas target contains no generate-mode texture faces.',
+          path: 'payload.target',
+          expected: 'at least one face whose texture atlasMode is generate'
+        }
+      };
+    }
     const plan = buildPlan(
       document,
       nodeIds,
@@ -406,6 +437,11 @@ export const generateMinecraftUvAtlasCommand = defineCommand({
       };
     }
     const changedTextureIds = [...plan.placementsByTexture.keys()];
+    const changedNodeIds = [...new Set(
+      [...plan.placementsByTexture.values()]
+        .flat()
+        .map((placement) => placement.value.nodeId)
+    )];
     return {
       ok: true,
       value: {
@@ -427,7 +463,7 @@ export const generateMinecraftUvAtlasCommand = defineCommand({
           `${plan.pixelsPerBlock} px/block`,
         effects: {
           createdEntityIds: [],
-          changedEntityIds: [...nodeIds, ...changedTextureIds],
+          changedEntityIds: [...changedNodeIds, ...changedTextureIds],
           removedEntityIds: [],
           invalidated: ['scene', 'textures', 'uv', 'validation', 'preview']
         }

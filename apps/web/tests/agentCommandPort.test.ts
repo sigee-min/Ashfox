@@ -7,9 +7,11 @@ import type {
 
 import {
   AgentCommandPort,
-  type AgentCommandOutcome,
   type AgentCommandPortStatus
 } from '../src/features/agent/AgentCommandPort';
+import type {
+  CommandOutcome
+} from '../src/features/workbench/state/commandOutcome';
 
 const batch = (
   batchId: string,
@@ -48,7 +50,7 @@ const receipt = (
   findings: []
 });
 
-const committed = (commandId: string): AgentCommandOutcome => ({
+const committed = (commandId: string): CommandOutcome => ({
   status: 'committed',
   commandId,
   receipt: receipt(commandId)
@@ -172,7 +174,7 @@ export const test = (async (): Promise<void> => {
 }
 
 {
-  let resolveSubmit: ((outcome: AgentCommandOutcome) => void) | undefined;
+  let resolveSubmit: ((outcome: CommandOutcome) => void) | undefined;
   let submits = 0;
   const statuses: AgentCommandPortStatus[] = [];
   const port = new AgentCommandPort({
@@ -184,7 +186,7 @@ export const test = (async (): Promise<void> => {
     currentRevision: () => 'local-0001',
     submit: (value) => {
       submits += 1;
-      return new Promise<AgentCommandOutcome>((resolve) => {
+      return new Promise<CommandOutcome>((resolve) => {
         resolveSubmit = resolve;
       });
     },

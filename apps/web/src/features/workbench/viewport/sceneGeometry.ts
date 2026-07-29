@@ -7,12 +7,12 @@ import type {
 } from '@ashfox/engine-core';
 
 import { subtractVectors } from './sceneTransform';
+import type { ProjectMaterialLibrary } from './sceneMaterials';
 import type { ProjectSceneOptions } from './sceneTypes';
 
 interface GeometryBuildContext {
-  materialByTextureId: ReadonlyMap<string, THREE.MeshStandardMaterial>;
+  materials: ProjectMaterialLibrary;
   textures: ProjectDocument['textures'];
-  fallbackMaterial: THREE.MeshStandardMaterial;
   options: ProjectSceneOptions;
   selectable: THREE.Object3D[];
 }
@@ -102,10 +102,7 @@ const addCubeGeometry = (
   ];
   const materials = CUBE_MATERIAL_ORDER.map((direction) => {
     const textureId = node.faces[direction].textureId;
-    return textureId === null
-      ? context.fallbackMaterial
-      : context.materialByTextureId.get(textureId) ??
-          context.fallbackMaterial;
+    return context.materials.resolve(textureId, node.lightEmission);
   });
   const mesh = new THREE.Mesh(geometry, materials);
   mesh.position.fromArray(center);
@@ -179,11 +176,7 @@ const addMeshGeometry = (
       );
     }
     geometry.computeVertexNormals();
-    const material =
-      face.textureId === null
-        ? context.fallbackMaterial
-        : context.materialByTextureId.get(face.textureId) ??
-          context.fallbackMaterial;
+    const material = context.materials.resolve(face.textureId);
     const mesh = new THREE.Mesh(geometry, material);
     mesh.castShadow = true;
     mesh.receiveShadow = true;

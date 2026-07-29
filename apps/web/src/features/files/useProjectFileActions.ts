@@ -8,15 +8,22 @@ import {
 import type { ProjectDocument } from '@ashfox/engine-core';
 
 import {
-  downloadProjectFile,
-  downloadTargetExport,
-  openProjectFile,
+  createProjectArtifact,
+  createTargetArtifact,
   parseProjectFile
 } from './browserFileWorkflow';
+import type { ArtifactFile } from './artifactFile';
 import type { FileOperationState } from './fileOperationState';
 import type { AshfoxProjectFile } from './projectArchive';
 import type { ProjectAssets } from './projectAssets';
 import { useFileOperation } from './useFileOperation';
+import { createAnimatedGif } from '../capture/createAnimatedGif';
+import { createBuildGif } from '../capture/createBuildGif';
+import {
+  isGifCaptureFile,
+  type GifCaptureFile
+} from '../capture/gifCaptureFile';
+import type { GifCaptureRequest } from '../capture/gifCaptureRequest';
 
 interface UseProjectFileActionsInput {
   document: ProjectDocument;
@@ -25,11 +32,15 @@ interface UseProjectFileActionsInput {
 }
 
 interface ProjectFileActions {
-  operation: FileOperationState;
-  open: () => void;
+  operation: FileOperationState<ArtifactFile>;
+  artifactFile: ArtifactFile | null;
+  captureFile: GifCaptureFile | null;
+  open: (file: File) => void;
   drop: (event: DragEvent<HTMLElement>) => void;
   save: () => void;
   exportTarget: (source?: ProjectDocument) => void;
+  captureGif: (request: GifCaptureRequest) => void;
+  cancel: () => void;
 }
 
 export const useProjectFileActions = ({
@@ -39,21 +50,16 @@ export const useProjectFileActions = ({
 }: UseProjectFileActionsInput): ProjectFileActions => {
   const {
     state: operation,
-    run
-  } = useFileOperation();
+    run,
+    cancel
+  } = useFileOperation<ArtifactFile>();
 
-  const open = useCallback((): void => {
+  const open = useCallback((file: File): void => {
     void run({
       kind: 'open',
       pendingMessage: 'Opening project',
-      execute: openProjectFile,
+      execute: () => parseProjectFile(file),
       complete: (project) => {
-        if (!project) {
-          return {
-            phase: 'cancelled',
-            message: 'Open cancelled'
-          };
-        }
         onLoad(project);
         return {
           phase: 'succeeded',
@@ -86,11 +92,12 @@ export const useProjectFileActions = ({
   const save = useCallback((): void => {
     void run({
       kind: 'save',
-      pendingMessage: 'Saving project',
-      execute: () => downloadProjectFile(document, assets),
-      complete: () => ({
+      pendingMessage: 'Preparing project file',
+      execute: () => createProjectArtifact(document, assets),
+      complete: (artifact) => ({
         phase: 'succeeded',
-        message: `Saved ${document.name}.ashfox`
+        message: `Ready · ${artifact.name}`,
+        result: artifact
       }),
       failureMessage: 'Project save failed'
     });
@@ -100,20 +107,67 @@ export const useProjectFileActions = ({
     void run({
       kind: 'export',
       pendingMessage: 'Building target export',
-      execute: () => downloadTargetExport(source, assets),
-      complete: (bundle) => ({
+      execute: () => createTargetArtifact(source, assets),
+      complete: (artifact) => ({
         phase: 'succeeded',
-        message: `Exported ${bundle.files.length} file${bundle.files.length === 1 ? '' : 's'}`
+        message: `Ready · ${artifact.name} · ${artifact.sourceFileCount} file${artifact.sourceFileCount === 1 ? '' : 's'}`,
+        result: artifact
       }),
       failureMessage: 'Target export failed'
     });
   }, [assets, document, run]);
 
+  const captureGif = useCallback(
+    (request: GifCaptureRequest): void => {
+      void run({
+        kind: 'capture',
+        pendingMessage:
+          request.kind === 'build'
+            ? 'Preparing build process GIF'
+            : 'Preparing animation GIF',
+        execute: ({ signal, reportProgress }) =>
+          request.kind === 'build'
+            ? createBuildGif(assets, request, {
+                signal,
+                onProgress: (completed, total) => {
+                  reportProgress(`Captured ${completed}/${total} frames`);
+                }
+              })
+            : createAnimatedGif(document, assets, request, {
+                signal,
+                onProgress: (completed, total) => {
+                  reportProgress(`Captured ${completed}/${total} frames`);
+                }
+              }),
+        complete: (capture) => ({
+          phase: 'succeeded',
+          message: 'GIF ready',
+          result: capture
+        }),
+        failureMessage: 'GIF capture failed',
+        cancelledMessage: 'GIF capture cancelled'
+      });
+    },
+    [assets, document, run]
+  );
+
   return {
     operation,
+    artifactFile:
+      operation.phase === 'succeeded'
+        ? operation.result
+        : null,
+    captureFile:
+      operation.phase === 'succeeded' &&
+      operation.kind === 'capture' &&
+      isGifCaptureFile(operation.result)
+        ? operation.result
+        : null,
     open,
     drop,
     save,
-    exportTarget
+    exportTarget,
+    captureGif,
+    cancel
   };
 };

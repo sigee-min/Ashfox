@@ -1,5 +1,6 @@
 export * from './model';
 export * from './projectFile';
+export * from './project/createProjectDocument';
 export * from './commands';
 export * from './scene';
 export * from './validation';

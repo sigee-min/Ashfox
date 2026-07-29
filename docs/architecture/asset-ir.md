@@ -201,5 +201,4 @@ Asset IR never stores:
 - Three.js objects, WebGL buffers, or shader instances;
 - Blockbench objects or codec state;
 - derived scores or AI evaluation history;
-- browser file handles;
 - generated target JSON as canonical state.

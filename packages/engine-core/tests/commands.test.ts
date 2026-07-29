@@ -34,6 +34,7 @@ assert.deepEqual(
     'textures.uvAtlas.generate',
     'animation.clip.upsert',
     'animation.channels.upsert',
+    'animation.triggers.upsert',
     'animation.channels.phase',
     'animation.channels.mirror',
     'animation.clip.closeLoop',
@@ -422,6 +423,10 @@ assert.equal(
   assert.equal(
     result.document.textures['texture-base'].name,
     'Crate atlas'
+  );
+  assert.equal(
+    result.document.textures['texture-base'].atlasMode,
+    'preserve'
   );
   const walk = result.document.animations['clip-walk'];
   const channel = walk.channels['channel-copy-position'];

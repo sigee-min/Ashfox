@@ -6,7 +6,7 @@ Date: 2026-07-28
 
 ## Context
 
-Web Studio and Blockbench MCP have different runtime authorities. Web Studio
+Ashfox workbench and Blockbench MCP have different runtime authorities. Ashfox workbench
 owns a browser-local `ProjectDocument`. Blockbench owns the live project in the
 compatibility integration.
 
@@ -14,7 +14,7 @@ compatibility integration.
 
 Ashfox ships two independent runtime tracks.
 
-### Web Studio
+### Ashfox workbench
 
 - runs in the browser;
 - stores project state through browser adapters;
@@ -32,7 +32,7 @@ exporters, validation, and fixtures.
 
 ## Consequences
 
-- Web Studio opens directly from a URL.
+- Ashfox workbench opens directly from a URL.
 - Blockbench compatibility can evolve on its own release gate.
 - CI, builds, packages, and fixtures identify their product track.
 - File import and export are the compatibility boundary.

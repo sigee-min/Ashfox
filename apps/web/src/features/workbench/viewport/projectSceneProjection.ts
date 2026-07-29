@@ -4,7 +4,6 @@ import type { ProjectDocument } from '@ashfox/engine-core';
 
 import { addNodeGeometry } from './sceneGeometry';
 import {
-  createFallbackMaterial,
   createProjectMaterials,
   disposeMaterial
 } from './sceneMaterials';
@@ -39,11 +38,11 @@ export const projectToThreeScene = (
   root.name = 'AshfoxProjectScene';
   const objectsByNodeId = new Map<string, THREE.Group>();
   const selectable: THREE.Object3D[] = [];
-  const materialByTextureId = createProjectMaterials(
+  const materials = createProjectMaterials(
     document,
-    options.assets
+    options.assets,
+    options.untexturedColor
   );
-  const fallbackMaterial = createFallbackMaterial();
   const orderedNodes = orderedSceneNodes(document);
 
   for (const node of orderedNodes) {
@@ -55,9 +54,8 @@ export const projectToThreeScene = (
     applyNodeTransform(document, node, group);
     objectsByNodeId.set(node.id, group);
     addNodeGeometry(node, group, {
-      materialByTextureId,
+      materials,
       textures: document.textures,
-      fallbackMaterial,
       options,
       selectable
     });
@@ -77,10 +75,7 @@ export const projectToThreeScene = (
     selectable,
     dispose: () => {
       root.traverse(disposeObject);
-      for (const material of materialByTextureId.values()) {
-        disposeMaterial(material);
-      }
-      fallbackMaterial.dispose();
+      materials.dispose();
     }
   };
 };

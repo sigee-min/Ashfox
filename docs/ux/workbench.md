@@ -1,4 +1,4 @@
-# Web Workbench UX
+# Ashfox Workbench UX
 
 Status: **Proposed**
 
@@ -44,10 +44,9 @@ than forcing a minimum page width.
 
 ## AI IDE activity
 
-The Agent Command Port submits one batch automatically. A read-only viewport
-status shows `AI IDE Connected` or `AI IDE Working`. After commit, the viewport
-focuses affected entities and Activity shows the receipt and Undo action.
-Validation surfaces show failures.
+The Agent Command Port submits one batch automatically. After commit, the
+viewport focuses affected entities and Activity shows the receipt and Undo
+action. Validation surfaces show failures.
 
 The workbench root exposes command-port status and revision as semantic state.
 This gives AI IDE a discoverable entry point without changing the viewport
@@ -76,6 +75,7 @@ Creative judgment stays with AI IDE and the creator.
 
 The header shows:
 
+- new project creation with name, target, resource path, and texture size;
 - project name and format profile;
 - saved, saving, offline, or conflicted state;
 - current revision in a copyable form;
@@ -110,6 +110,7 @@ The viewport supports:
 - move, rotate, and scale gizmos;
 - grid and snapping controls;
 - texture, wireframe, normal, UV, and validation overlays;
+- Studio, Day, Evening, and Night environment presets;
 - isolated selection and visibility control;
 - animation playback and frame stepping.
 
@@ -150,6 +151,18 @@ Animation mode shows:
 - viewport pose at the selected time.
 
 Creating or moving keys commits stable keyframe IDs. Playback itself is browser-local presentation state.
+
+The header Capture action offers only `Build process` and `Animation`.
+
+- Build process turns the current branch's committed document snapshots into
+  semantic construction events. It groups burst changes and ends on a moving
+  final review.
+- Animation samples the selected clip and places sound, particle, and timeline
+  triggers on their captured frame.
+
+Both modes produce a 10fps GIF, reuse the current camera and environment, show
+a bounded frame/event summary before capture, report frame progress, and expose
+only Cancel while running. Capture never modifies project history.
 
 ## Activity and diff panel
 
@@ -198,6 +211,10 @@ To make the workbench reliable in the in-app browser:
 
 - all buttons, fields, tabs, and tree rows have accessible names;
 - important controls are standard DOM elements;
+- project creation, archive input, save, export, capture, and artifact handoff
+  expose stable `data-ashfox-action` selectors;
+- opening a project uses a persistent DOM file input, so choosing no file never
+  enters a working operation state;
 - entity rows expose stable `data-ashfox-entity-id` attributes;
 - command receipts expose `data-ashfox-command-id`;
 - loading, error, empty, and conflict states have explicit text;
@@ -206,10 +223,11 @@ To make the workbench reliable in the in-app browser:
 - destructive actions identify the exact project or entities in the confirmation;
 - test selectors describe domain identity rather than layout position.
 
-The in-app browser is sufficient for visual inspection, selection, numeric
-editing, playback, and command review. Precise AI-authored mutations enter
-through the same command contract and surface in the same activity receipts;
-the browser does not maintain a separate project model.
+The in-app browser is sufficient for project creation, archive input, save,
+export, capture, visual inspection, selection, numeric editing, playback, and
+command review without coordinate-based mouse automation. Precise AI-authored
+mutations enter through the same command contract and surface in the same
+activity receipts; the browser does not maintain a separate project model.
 
 The page-local surface is defined in
 [Agent Command Port](../architecture/agent-command-port.md). Port status,

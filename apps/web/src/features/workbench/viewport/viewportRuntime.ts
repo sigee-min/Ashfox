@@ -7,6 +7,13 @@ import {
 
 import type { ProjectSceneProjection } from './sceneTypes';
 import type { CameraCommand } from './viewportTypes';
+import { applyCameraPreset } from './cameraPresets';
+import {
+  addViewportLighting,
+  createViewportEnvironment,
+  type ViewportEnvironment,
+  type ViewportEnvironmentId
+} from './viewportEnvironment';
 
 export interface ViewportRuntime {
   renderer: THREE.WebGLRenderer;
@@ -15,39 +22,21 @@ export interface ViewportRuntime {
   orbit: OrbitControls;
   transform: TransformControls;
   projection: ProjectSceneProjection | null;
+  environment: ViewportEnvironment;
   grid: THREE.GridHelper;
   axes: THREE.AxesHelper;
-  floor: THREE.Mesh<THREE.PlaneGeometry, THREE.ShadowMaterial>;
   pointerStart: THREE.Vector2;
   transformDragging: boolean;
 }
 
-const addLighting = (scene: THREE.Scene): void => {
-  scene.add(new THREE.HemisphereLight('#dfe9ff', '#22242a', 1.45));
-
-  const keyLight = new THREE.DirectionalLight('#fff3df', 2.7);
-  keyLight.position.set(14, 26, -18);
-  keyLight.castShadow = true;
-  keyLight.shadow.mapSize.set(1024, 1024);
-  keyLight.shadow.camera.near = 0.1;
-  keyLight.shadow.camera.far = 80;
-  keyLight.shadow.camera.left = -24;
-  keyLight.shadow.camera.right = 24;
-  keyLight.shadow.camera.top = 28;
-  keyLight.shadow.camera.bottom = -8;
-  scene.add(keyLight);
-
-  const rimLight = new THREE.DirectionalLight('#7fa8ff', 1.1);
-  rimLight.position.set(-18, 12, 16);
-  scene.add(rimLight);
-};
-
 export const createViewportRuntime = (
-  canvas: HTMLCanvasElement
+  canvas: HTMLCanvasElement,
+  environmentId: ViewportEnvironmentId = 'studio'
 ): ViewportRuntime => {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#171b20');
-  scene.fog = new THREE.Fog('#171b20', 46, 92);
+  const environment = createViewportEnvironment(environmentId);
+  scene.background = environment.background;
+  scene.fog = environment.fog;
 
   const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 300);
   camera.position.set(30, 23, -35);
@@ -88,19 +77,7 @@ export const createViewportRuntime = (
   axes.position.set(-10, 0.03, 10);
   scene.add(axes);
 
-  addLighting(scene);
-
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(64, 64),
-    new THREE.ShadowMaterial({
-      color: '#000000',
-      opacity: 0.2
-    })
-  );
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.y = -0.015;
-  floor.receiveShadow = true;
-  scene.add(floor);
+  addViewportLighting(scene);
 
   return {
     renderer,
@@ -109,9 +86,9 @@ export const createViewportRuntime = (
     orbit,
     transform,
     projection: null,
+    environment,
     grid,
     axes,
-    floor,
     pointerStart: new THREE.Vector2(),
     transformDragging: false
   };
@@ -135,9 +112,20 @@ export const disposeViewportRuntime = (
   disposeMaterials(runtime.grid.material);
   runtime.axes.geometry.dispose();
   disposeMaterials(runtime.axes.material);
-  runtime.floor.geometry.dispose();
-  runtime.floor.material.dispose();
+  runtime.environment.dispose();
   runtime.renderer.dispose();
+};
+
+export const applyViewportEnvironment = (
+  runtime: ViewportRuntime,
+  environmentId: ViewportEnvironmentId
+): void => {
+  if (runtime.environment.id === environmentId) return;
+  runtime.environment.dispose();
+  runtime.environment = createViewportEnvironment(environmentId);
+  runtime.scene.background = runtime.environment.background;
+  runtime.scene.fog = runtime.environment.fog;
+  runtime.grid.material.opacity = environmentId === 'studio' ? 0.62 : 0.14;
 };
 
 export const configureTransformControls = (
@@ -157,24 +145,11 @@ export const applyCameraCommand = (
   runtime: ViewportRuntime,
   command: CameraCommand
 ): void => {
-  const target = new THREE.Vector3(0, 12, 0);
-  runtime.camera.up.set(0, 1, 0);
-  switch (command.mode) {
-    case 'front':
-      runtime.camera.position.set(0, 10, -48);
-      break;
-    case 'side':
-      runtime.camera.position.set(48, 10, 0);
-      break;
-    case 'top':
-      runtime.camera.up.set(0, 0, -1);
-      runtime.camera.position.set(0, 54, 0.01);
-      break;
-    case 'perspective':
-      runtime.camera.position.set(30, 23, -35);
-      break;
-  }
+  const target = applyCameraPreset(
+    runtime.camera,
+    command.mode,
+    runtime.projection?.root
+  );
   runtime.orbit.target.copy(target);
-  runtime.camera.lookAt(target);
   runtime.orbit.update();
 };

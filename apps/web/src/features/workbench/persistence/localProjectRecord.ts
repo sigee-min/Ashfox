@@ -9,8 +9,10 @@ import {
   type ProjectAssets
 } from '../../files/projectAssets';
 
+export const LOCAL_PROJECT_SCHEMA_VERSION = 1;
+
 export interface LocalProjectRecord {
-  schemaVersion: 1;
+  schemaVersion: typeof LOCAL_PROJECT_SCHEMA_VERSION;
   projectId: string;
   revision: string;
   document: ProjectDocument;
@@ -18,6 +20,28 @@ export interface LocalProjectRecord {
   activity: readonly CommandReceipt[];
   savedAt: string;
 }
+
+interface CreateLocalProjectRecordInput {
+  document: ProjectDocument;
+  assets: ProjectAssets;
+  activity: readonly CommandReceipt[];
+  savedAt: string;
+}
+
+export const createLocalProjectRecord = ({
+  document,
+  assets,
+  activity,
+  savedAt
+}: CreateLocalProjectRecordInput): LocalProjectRecord => ({
+  schemaVersion: LOCAL_PROJECT_SCHEMA_VERSION,
+  projectId: document.id,
+  revision: document.revision,
+  document,
+  assets,
+  activity,
+  savedAt
+});
 
 export interface ProjectRevisionMessage {
   projectId: string;
@@ -58,7 +82,7 @@ export const isValidLocalProjectRecord = (
   record: LocalProjectRecord,
   projectId: string
 ): boolean =>
-  record.schemaVersion === 1 &&
+  record.schemaVersion === LOCAL_PROJECT_SCHEMA_VERSION &&
   record.projectId === projectId &&
   record.document.id === projectId &&
   record.revision === record.document.revision &&

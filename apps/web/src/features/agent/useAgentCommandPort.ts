@@ -13,10 +13,13 @@ import {
   type ValidationReport
 } from '@ashfox/engine-core';
 
-import {
-  type CommandOutcome,
-  type HistoryAction
+import type {
+  CommandOutcome
+} from '../workbench/state/commandOutcome';
+import type {
+  HistoryAction
 } from '../workbench/state/historyReducer';
+import { useLatestValue } from '../../hooks/useLatestValue';
 import {
   AgentCommandPort,
   type AgentCommandPortStatus
@@ -68,14 +71,10 @@ export const useAgentCommandPort = ({
     useState<AgentCommandPortStatus>('connected');
   const mountedRef = useRef(true);
   const pendingRef = useRef<PendingCommand | null>(null);
-  const documentRef = useRef(document);
-  const selectedNodeIdRef = useRef(selectedNodeId);
-  const reportRef = useRef(report);
-  const onFocusEntityRef = useRef(onFocusEntity);
-  documentRef.current = document;
-  selectedNodeIdRef.current = selectedNodeId;
-  reportRef.current = report;
-  onFocusEntityRef.current = onFocusEntity;
+  const documentRef = useLatestValue(document);
+  const selectedNodeIdRef = useLatestValue(selectedNodeId);
+  const reportRef = useLatestValue(report);
+  const onFocusEntityRef = useLatestValue(onFocusEntity);
 
   const submit = useCallback(
     (batch: CommandBatch): Promise<CommandOutcome> =>

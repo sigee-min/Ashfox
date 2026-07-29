@@ -10,7 +10,6 @@ import {
 } from '@ashfox/engine-core';
 
 import { renderTextureRaster } from '../textures/renderTextureRaster';
-import { selectProjectFile } from './browserFilePicker';
 import {
   createProjectArchive,
   readProjectArchive,
@@ -21,42 +20,17 @@ import {
   type ProjectAssets
 } from './projectAssets';
 import { createStoredZip } from './zip';
+import {
+  safeArtifactName,
+  type ArtifactFile
+} from './artifactFile';
 
 const ASHFOX_CONTENT_TYPE = 'application/vnd.ashfox.project+zip';
 
-const safeFileName = (value: string): string => {
-  const normalized = value.trim().replace(/[^A-Za-z0-9_.-]+/g, '-');
-  return normalized || 'ashfox-project';
-};
-
-const downloadBytes = (
-  name: string,
-  bytes: Uint8Array,
-  contentType: string
-): void => {
-  const copy = new Uint8Array(bytes);
-  const blob = new Blob([copy.buffer], { type: contentType });
-  const url = URL.createObjectURL(blob);
-  const anchor = window.document.createElement('a');
-  anchor.href = url;
-  anchor.download = name;
-  window.document.body.append(anchor);
-  try {
-    anchor.click();
-  } catch (error: unknown) {
-    URL.revokeObjectURL(url);
-    throw error;
-  } finally {
-    anchor.remove();
-  }
-  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
-};
-
-export const openProjectFile = async (): Promise<AshfoxProjectFile | null> => {
-  const file = await selectProjectFile();
-  if (!file) return null;
-  return parseProjectFile(file);
-};
+export interface TargetArtifactFile extends ArtifactFile {
+  kind: 'target';
+  sourceFileCount: number;
+}
 
 export const parseProjectFile = async (
   file: File
@@ -67,19 +41,20 @@ export const parseProjectFile = async (
   return readProjectArchive(new Uint8Array(await file.arrayBuffer()));
 };
 
-export const downloadProjectFile = async (
+export const createProjectArtifact = async (
   document: ProjectDocument,
   assets: ProjectAssets
-): Promise<void> => {
+): Promise<ArtifactFile> => {
   const bytes = await createProjectArchive(
     document,
     (texture) => resolveTextureAsset(texture, assets)
   );
-  downloadBytes(
-    `${safeFileName(document.name)}.ashfox`,
+  return {
+    kind: 'project',
+    name: `${safeArtifactName(document.name)}.ashfox`,
     bytes,
-    ASHFOX_CONTENT_TYPE
-  );
+    contentType: ASHFOX_CONTENT_TYPE
+  };
 };
 
 const textureForSource = (
@@ -203,10 +178,10 @@ const extensionForBundle = (bundle: ExportBundle): string =>
     ? bundle.files[0].path.split('.').at(-1) ?? 'bin'
     : 'zip';
 
-export const downloadTargetExport = async (
+export const createTargetArtifact = async (
   document: ProjectDocument,
   assets: ProjectAssets
-): Promise<ExportBundle> => {
+): Promise<TargetArtifactFile> => {
   const bundle = await createExportBundle(document, assets);
   const entries = await Promise.all(
     bundle.files.map(async (file) => ({
@@ -214,20 +189,22 @@ export const downloadTargetExport = async (
       bytes: await fileBytes(document, assets, file)
     }))
   );
-  const name = safeFileName(document.name);
+  const name = safeArtifactName(document.name);
   if (entries.length === 1) {
     const file = bundle.files[0];
-    downloadBytes(
-      `${name}.${extensionForBundle(bundle)}`,
-      entries[0].bytes,
-      file.contentType
-    );
-    return bundle;
+    return {
+      kind: 'target',
+      name: `${name}.${extensionForBundle(bundle)}`,
+      bytes: entries[0].bytes,
+      contentType: file.contentType,
+      sourceFileCount: 1
+    };
   }
-  downloadBytes(
-    `${name}-${safeFileName(bundle.target.id)}.zip`,
-    createStoredZip(entries),
-    'application/zip'
-  );
-  return bundle;
+  return {
+    kind: 'target',
+    name: `${name}-${safeArtifactName(bundle.target.id)}.zip`,
+    bytes: createStoredZip(entries),
+    contentType: 'application/zip',
+    sourceFileCount: entries.length
+  };
 };

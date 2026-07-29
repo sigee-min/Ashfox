@@ -43,7 +43,8 @@ for (const file of htmlFiles) {
   for (const href of hrefs) {
     if (
       /^(?:https?:|mailto:)/.test(href) ||
-      href.startsWith('/studio/')
+      href === '/' ||
+      href.startsWith('/?')
     ) {
       continue;
     }

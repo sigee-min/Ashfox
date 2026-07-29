@@ -17,14 +17,14 @@ import type {
   ViewportOptions,
   ViewportStats
 } from '../viewport/viewportTypes';
-import type {
-  AgentCommandPortStatus
-} from '../../agent/AgentCommandPort';
+import type { ViewportEnvironmentId } from '../viewport/viewportEnvironment';
 import type { ProjectAssets } from '../../files/projectAssets';
+import type {
+  WorkbenchOverlay
+} from '../state/workbenchViewState';
 import { InspectorOverlay } from './InspectorOverlay';
 import { SceneOverlay } from './SceneOverlay';
-
-export type ViewportOverlay = 'scene' | 'inspector' | null;
+import { ViewportEnvironmentToggle } from './ViewportEnvironmentToggle';
 
 interface ViewportWorkspaceProps {
   document: ProjectDocument;
@@ -34,14 +34,15 @@ interface ViewportWorkspaceProps {
   transformMode: TransformControlsMode;
   snapEnabled: boolean;
   viewportOptions: ViewportOptions;
+  environment: ViewportEnvironmentId;
   cameraCommand: CameraCommand;
   viewportStats: ViewportStats;
   activeClipId: string | null;
   playhead: number;
   playing: boolean;
-  agentStatus: AgentCommandPortStatus;
-  activeOverlay: ViewportOverlay;
-  onOverlayChange: (overlay: ViewportOverlay) => void;
+  activeOverlay: WorkbenchOverlay;
+  onEnvironmentChange: (environment: ViewportEnvironmentId) => void;
+  onOverlayChange: (overlay: WorkbenchOverlay) => void;
   onSelectNode: (nodeId: string | null) => void;
   onAddCube: () => void;
   onToggleVisibility: (nodeId: string) => void;
@@ -62,13 +63,14 @@ export function ViewportWorkspace({
   transformMode,
   snapEnabled,
   viewportOptions,
+  environment,
   cameraCommand,
   viewportStats,
   activeClipId,
   playhead,
   playing,
-  agentStatus,
   activeOverlay,
+  onEnvironmentChange,
   onOverlayChange,
   onSelectNode,
   onAddCube,
@@ -83,7 +85,7 @@ export function ViewportWorkspace({
     : undefined;
 
   const toggleOverlay = (
-    overlay: Exclude<ViewportOverlay, null>
+    overlay: Exclude<WorkbenchOverlay, null>
   ): void => {
     onOverlayChange(activeOverlay === overlay ? null : overlay);
   };
@@ -98,6 +100,7 @@ export function ViewportWorkspace({
           transformMode={transformMode}
           snapEnabled={snapEnabled}
           options={viewportOptions}
+          environment={environment}
           cameraCommand={cameraCommand}
           activeClipId={activeClipId}
           playhead={playhead}
@@ -128,14 +131,10 @@ export function ViewportWorkspace({
             <span>{viewportStats.triangles.toLocaleString()} tris</span>
             <span>{viewportStats.calls} draws</span>
           </div>
-          <div
-            className={`agent-connection-state is-${agentStatus}`}
-            role="status"
-            aria-label={`AI IDE ${agentStatus}`}
-          >
-            <span aria-hidden="true" />
-            AI IDE {agentStatus === 'working' ? 'Working' : 'Connected'}
-          </div>
+          <ViewportEnvironmentToggle
+            value={environment}
+            onChange={onEnvironmentChange}
+          />
           <button
             type="button"
             className={`panel-trigger${activeOverlay === 'inspector' ? ' is-active' : ''}`}

@@ -1,5 +1,6 @@
 import type {
   AssetId,
+  AnimationEffect,
   AnimationLoopMode,
   AnimationVec3,
   EntityId,
@@ -70,6 +71,30 @@ export interface TransformChannelInput {
   property: TransformChannelProperty;
   keys: readonly TransformKeyInput[];
 }
+
+export interface AnimationEffectTriggerInput {
+  id: string;
+  type: 'sound' | 'particle';
+  keys: readonly {
+    id: string;
+    timeSeconds: number;
+    value: AnimationEffect;
+  }[];
+}
+
+export interface AnimationTimelineTriggerInput {
+  id: string;
+  type: 'timeline';
+  keys: readonly {
+    id: string;
+    timeSeconds: number;
+    value: string;
+  }[];
+}
+
+export type AnimationTriggerInput =
+  | AnimationEffectTriggerInput
+  | AnimationTimelineTriggerInput;
 
 export interface CommandPayloadMap {
   'project.rename': {
@@ -144,6 +169,7 @@ export interface CommandPayloadMap {
   'textures.raster.set': {
     textureId: AssetId;
     background: string;
+    atlasMode?: 'generate' | 'preserve';
     rectangles: readonly {
       x: number;
       y: number;
@@ -175,6 +201,10 @@ export interface CommandPayloadMap {
   'animation.channels.upsert': {
     clipId: string;
     channels: readonly TransformChannelInput[];
+  };
+  'animation.triggers.upsert': {
+    clipId: string;
+    triggers: readonly AnimationTriggerInput[];
   };
   'animation.channels.phase': {
     clipId: string;

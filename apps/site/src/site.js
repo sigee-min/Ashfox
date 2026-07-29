@@ -6,24 +6,12 @@ for (const target of document.querySelectorAll('[data-current-year]')) {
 const agentDemo = document.querySelector('[data-agent-demo]');
 if (agentDemo instanceof HTMLElement) {
   const input = agentDemo.querySelector('[data-demo-input]');
-  const form = agentDemo.querySelector('[data-demo-form]');
-  const submit = agentDemo.querySelector('[data-demo-submit]');
-  const phaseLabel = agentDemo.querySelector('[data-demo-phase]');
-  const detailLabel = agentDemo.querySelector('[data-demo-detail]');
-  const commandLabel = agentDemo.querySelector('[data-demo-command]');
   const reel = agentDemo.querySelector('[data-demo-reel]');
-  const stepIndicators = [
-    ...agentDemo.querySelectorAll('[data-demo-step]')
-  ];
-  const prompts = JSON.parse(agentDemo.dataset.prompts ?? '[]');
-  const phases = JSON.parse(agentDemo.dataset.phases ?? '[]');
-  const phaseDelays = JSON.parse(agentDemo.dataset.phaseDelays ?? '[]');
-  const duration = Number(agentDemo.dataset.duration ?? 0);
+  const sequences = JSON.parse(agentDemo.dataset.sequences ?? '[]');
   const reduceMotion = window.matchMedia(
     '(prefers-reduced-motion: reduce)'
   ).matches;
-  let promptIndex = 0;
-  let autoplay = !reduceMotion;
+  let sequenceIndex = 0;
   let timers = [];
 
   const clearTimers = () => {
@@ -36,20 +24,6 @@ if (agentDemo instanceof HTMLElement) {
     timers.push(timer);
   };
 
-  const setPhase = (index) => {
-    const phase = phases[index];
-    if (!phase) return;
-    agentDemo.dataset.phase = String(index);
-    if (phaseLabel) phaseLabel.textContent = phase[0];
-    if (detailLabel) detailLabel.textContent = phase[1];
-    if (commandLabel) {
-      commandLabel.textContent = phase[2] ?? 'Canonical batch applied';
-    }
-    for (const [stepIndex, indicator] of stepIndicators.entries()) {
-      indicator.classList.toggle('is-complete', stepIndex <= index);
-    }
-  };
-
   const setReelSource = (source) => {
     if (!(reel instanceof HTMLImageElement) || !source) return;
     reel.src = source;
@@ -57,22 +31,33 @@ if (agentDemo instanceof HTMLElement) {
 
   const restartReel = () => {
     if (!(reel instanceof HTMLImageElement)) return;
-    const source = reel.dataset.reelSrc;
+    const sequence = sequences[sequenceIndex];
+    const source = sequence?.reel;
     if (!source) return;
+    reel.alt = `Ashfox building ${sequence.name} from an empty scene`;
+    agentDemo.dataset.demo = sequence.name;
     const separator = source.includes('?') ? '&' : '?';
     reel.src = `${source}${separator}run=${Date.now()}`;
   };
 
-  const typePrompt = (prompt) => {
+  const typePrompt = () => {
     if (!(input instanceof HTMLTextAreaElement)) return;
+    const sequence = sequences[sequenceIndex];
+    if (!sequence) return;
     clearTimers();
+    agentDemo.dataset.busy = 'false';
+    agentDemo.dataset.stage = 'typing';
+    agentDemo.dataset.demo = sequence.name;
+    setReelSource(reel?.dataset.emptySrc);
+    if (reel instanceof HTMLImageElement) {
+      reel.alt = `Empty Ashfox scene prepared for ${sequence.name}`;
+    }
     input.value = '';
     let characterIndex = 0;
     const typeNext = () => {
-      if (!autoplay) return;
-      input.value = prompt.slice(0, characterIndex + 1);
+      input.value = sequence.prompt.slice(0, characterIndex + 1);
       characterIndex += 1;
-      if (characterIndex < prompt.length) {
+      if (characterIndex < sequence.prompt.length) {
         schedule(typeNext, 22);
         return;
       }
@@ -83,55 +68,62 @@ if (agentDemo instanceof HTMLElement) {
 
   const runSequence = () => {
     clearTimers();
+    const sequence = sequences[sequenceIndex];
+    if (!sequence) return;
     agentDemo.dataset.busy = 'true';
-    if (submit instanceof HTMLButtonElement) submit.disabled = true;
+    agentDemo.dataset.stage = 'playing';
     restartReel();
-    for (let index = 0; index < phases.length; index += 1) {
-      schedule(() => setPhase(index), phaseDelays[index] ?? index * 1_200);
-    }
     schedule(() => {
+      setReelSource(sequence.poster);
       agentDemo.dataset.busy = 'false';
-      if (submit instanceof HTMLButtonElement) submit.disabled = false;
-      if (!autoplay || prompts.length < 2) return;
-      promptIndex = (promptIndex + 1) % prompts.length;
-      schedule(() => typePrompt(prompts[promptIndex]), 1_550);
-    }, duration || phases.length * 1_200);
-  };
-
-  const stopAutoplay = () => {
-    autoplay = false;
-    clearTimers();
-    agentDemo.dataset.busy = 'false';
-    if (submit instanceof HTMLButtonElement) submit.disabled = false;
+      agentDemo.dataset.stage = 'cooldown';
+      if (sequences.length < 2) return;
+      sequenceIndex = (sequenceIndex + 1) % sequences.length;
+      schedule(typePrompt, sequence.cooldownMs);
+    }, sequence.playbackMs);
   };
 
   if (
     input instanceof HTMLTextAreaElement &&
-    form instanceof HTMLFormElement &&
-    prompts.length > 0 &&
-    phases.length > 0
+    sequences.length > 0
   ) {
     if (reduceMotion) {
-      input.value = prompts[0];
-      setReelSource(reel?.dataset.posterSrc);
-      setPhase(phases.length - 1);
+      input.value = sequences[0].prompt;
+      setReelSource(sequences[0].poster);
+      agentDemo.dataset.demo = sequences[0].name;
+      agentDemo.dataset.stage = 'complete';
     } else {
-      typePrompt(prompts[0]);
+      typePrompt();
     }
-    input.addEventListener('focus', stopAutoplay);
-    input.addEventListener('input', () => {
-      stopAutoplay();
-      setReelSource(reel?.dataset.emptySrc);
-      setPhase(0);
-      if (phaseLabel) phaseLabel.textContent = 'Ready';
-      if (detailLabel) detailLabel.textContent = 'Your prompt stays local';
-    });
-    form.addEventListener('submit', (event) => {
-      event.preventDefault();
-      stopAutoplay();
-      runSequence();
-    });
   }
+}
+
+const quickStartButton = document.querySelector(
+  '[data-copy-quick-start]'
+);
+const quickStartPrompt = document.querySelector(
+  '[data-quick-start-prompt]'
+);
+if (
+  quickStartButton instanceof HTMLButtonElement &&
+  quickStartPrompt instanceof HTMLElement
+) {
+  quickStartButton.addEventListener('click', async () => {
+    const prompt = quickStartPrompt.textContent?.trim();
+    if (!prompt) return;
+    quickStartButton.disabled = true;
+    try {
+      await navigator.clipboard.writeText(prompt);
+      quickStartButton.textContent = 'Copied';
+    } catch {
+      quickStartButton.textContent = 'Copy failed';
+    } finally {
+      window.setTimeout(() => {
+        quickStartButton.disabled = false;
+        quickStartButton.textContent = 'Copy prompt';
+      }, 1_200);
+    }
+  });
 }
 
 const searchInput = document.querySelector('#docs-search');

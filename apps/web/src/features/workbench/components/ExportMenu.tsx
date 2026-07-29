@@ -7,22 +7,18 @@ import {
 import type { ProjectDocument } from '@ashfox/engine-core';
 
 import {
+  isMinecraftExportTarget,
   PROJECT_EXPORT_TARGETS,
   projectExportTargetFor,
   type ProjectExportTarget,
-  type VisibleExportPreset
 } from '../presentation/projectExportTarget';
+import { ProjectTargetFields } from './ProjectTargetFields';
 
 interface ExportMenuProps {
   document: ProjectDocument;
   busy: boolean;
   onExport: (target: ProjectExportTarget) => void;
 }
-
-const isMinecraftTarget = (
-  target: VisibleExportPreset
-): boolean =>
-  target === 'bedrock' || target === 'geckolib5';
 
 export function ExportMenu({
   document,
@@ -45,7 +41,7 @@ export function ExportMenu({
   const trimmedModelPath = modelPath.trim();
   const valid =
     trimmedModelPath.length > 0 &&
-    (!isMinecraftTarget(target) || trimmedNamespace.length > 0);
+    (!isMinecraftExportTarget(target) || trimmedNamespace.length > 0);
 
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
@@ -67,44 +63,18 @@ export function ExportMenu({
         <strong>Export</strong>
         <span>Choose one target</span>
       </div>
-      <div className="export-target-list" role="radiogroup" aria-label="Format">
-        {PROJECT_EXPORT_TARGETS.map((option) => (
-          <button
-            key={option.id}
-            type="button"
-            role="radio"
-            aria-checked={target === option.id}
-            className={target === option.id ? 'is-selected' : ''}
-            onClick={() => setTarget(option.id)}
-          >
-            <strong>{option.label}</strong>
-            <small>{option.detail}</small>
-          </button>
-        ))}
-      </div>
-      <div className="export-fields">
-        {isMinecraftTarget(target) ? (
-          <label className="popover-field">
-            <span>Namespace</span>
-            <input
-              aria-label="Export namespace"
-              value={namespace}
-              onChange={(event) => setNamespace(event.target.value)}
-            />
-          </label>
-        ) : null}
-        <label className="popover-field">
-          <span>Model path</span>
-          <input
-            aria-label="Export model path"
-            value={modelPath}
-            onChange={(event) => setModelPath(event.target.value)}
-          />
-        </label>
-      </div>
+      <ProjectTargetFields
+        target={target}
+        namespace={namespace}
+        modelPath={modelPath}
+        onTargetChange={setTarget}
+        onNamespaceChange={setNamespace}
+        onModelPathChange={setModelPath}
+      />
       <button
         type="submit"
         className="popover-primary"
+        data-ashfox-action="project.export.submit"
         disabled={!valid || busy}
       >
         {busy ? 'Exporting…' : `Export ${PROJECT_EXPORT_TARGETS.find(

@@ -7,12 +7,14 @@ export type IconName =
   | 'check'
   | 'chevron'
   | 'cube'
+  | 'download'
   | 'eye'
   | 'eyeOff'
   | 'grid'
   | 'key'
   | 'locator'
   | 'mesh'
+  | 'moon'
   | 'move'
   | 'pause'
   | 'play'
@@ -21,6 +23,9 @@ export type IconName =
   | 'scale'
   | 'search'
   | 'spark'
+  | 'studio'
+  | 'sun'
+  | 'sunset'
   | 'texture'
   | 'undo'
   | 'warning'
@@ -47,6 +52,12 @@ const paths: Record<IconName, ReactNode> = {
     <>
       <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z" />
       <path d="m4.3 7.5 7.7 4.4 7.7-4.4M12 12v9" />
+    </>
+  ),
+  download: (
+    <>
+      <path d="M12 3v12M7 10l5 5 5-5" />
+      <path d="M4 19h16" />
     </>
   ),
   eye: (
@@ -82,6 +93,7 @@ const paths: Record<IconName, ReactNode> = {
       <path d="m4 18 3-12 10-2 3 13-9 3zM7 6l4 14M17 4l-6 16M7 6l13 11M4 18l13-14" />
     </>
   ),
+  moon: <path d="M19 15.2A8 8 0 0 1 8.8 5 8 8 0 1 0 19 15.2Z" />,
   move: (
     <>
       <path d="M12 2v20M2 12h20" />
@@ -121,6 +133,23 @@ const paths: Record<IconName, ReactNode> = {
     <>
       <path d="m12 2 1.7 6.3L20 10l-6.3 1.7L12 18l-1.7-6.3L4 10l6.3-1.7z" />
       <path d="m19 17 .7 2.3L22 20l-2.3.7L19 23l-.7-2.3L16 20l2.3-.7z" />
+    </>
+  ),
+  studio: (
+    <>
+      <path d="M4 5h16v14H4z" />
+      <path d="M8 9h8v6H8z" />
+    </>
+  ),
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" />
+    </>
+  ),
+  sunset: (
+    <>
+      <path d="M3 17h18M5 21h14M8 17a4 4 0 0 1 8 0M12 5v4M5.6 8.6l2.1 2.1M18.4 8.6l-2.1 2.1" />
     </>
   ),
   texture: (

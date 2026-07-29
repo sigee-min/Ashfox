@@ -5,7 +5,7 @@ Status: **Implemented**
 ## Purpose
 
 The Web UI and Agent Command Port use one canonical mutation contract.
-MCP is not a Web Studio command source; it belongs to the independent
+MCP is not an Ashfox workbench command source; it belongs to the independent
 Blockbench compatibility track.
 
 ## Command source
@@ -95,7 +95,7 @@ The AI path submits the same canonical engine commands in one bounded
 
 The agent protocol contains bounded inspection, a command batch, and a receipt.
 See
-[AI-native authoring](ai-native-authoring.md) and
+[AI-native low-poly authoring](ai-native-authoring.md) and
 [Agent Command Port](agent-command-port.md).
 
 ## Command definition authority

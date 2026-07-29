@@ -24,6 +24,7 @@ import { setTextureRasterCommand } from './definitions/setTextureRaster';
 import { transformNodesCommand } from './definitions/transformNodes';
 import { upsertAnimationChannelsCommand } from './definitions/upsertAnimationChannels';
 import { upsertAnimationClipCommand } from './definitions/upsertAnimationClip';
+import { upsertAnimationTriggersCommand } from './definitions/upsertAnimationTriggers';
 import type { CommandName } from './types';
 
 const definitions: Readonly<Record<CommandName, CommandDefinition>> = {
@@ -48,6 +49,7 @@ const definitions: Readonly<Record<CommandName, CommandDefinition>> = {
   'textures.uvAtlas.generate': generateMinecraftUvAtlasCommand,
   'animation.clip.upsert': upsertAnimationClipCommand,
   'animation.channels.upsert': upsertAnimationChannelsCommand,
+  'animation.triggers.upsert': upsertAnimationTriggersCommand,
   'animation.channels.phase': phaseAnimationChannelsCommand,
   'animation.channels.mirror': mirrorAnimationChannelsCommand,
   'animation.clip.closeLoop': closeAnimationLoopCommand,

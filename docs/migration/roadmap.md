@@ -2,7 +2,7 @@
 
 Status: **Accepted**
 
-The Web Studio is the primary product. Blockbench MCP is maintained as an
+The Ashfox workbench is the primary product. Blockbench MCP is maintained as an
 isolated compatibility track.
 
 ## Phase 1: Browser project foundation
@@ -10,9 +10,9 @@ isolated compatibility track.
 Progress: **In progress**
 
 - complete canonical command coverage;
-- move command orchestration behind one Web Studio boundary;
+- move command orchestration behind one Ashfox workbench boundary;
 - preserve revision history, undo, receipts, and validation;
-- define storage adapters for IndexedDB, OPFS, and user file handles;
+- keep revisioned IndexedDB behind one persistence boundary;
 - prevent multiple writable stores in one project session.
 
 Gate:
@@ -28,13 +28,15 @@ Progress: **In progress**
 - drag-and-drop and file picker import;
 - self-contained `.ashfox` open/save;
 - format and target-profile auto-detection;
-- download fallback for unsupported browser capabilities.
+- deterministic artifact handoff for save, export, and capture;
+- manifest-directed AI IDE host delivery.
 
 Gate:
 
 - blank work requires no permission;
-- an existing project requires one explicit access action;
-- export can write to a selected target or download deterministically.
+- an existing project opens through one user-selected archive;
+- every browser file operation reaches a terminal state;
+- AI IDE delivery satisfies the published agent manifest.
 
 ## Phase 3: Deterministic authoring core
 

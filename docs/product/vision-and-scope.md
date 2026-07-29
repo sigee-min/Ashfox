@@ -4,8 +4,9 @@ Status: **Accepted**
 
 ## Product statement
 
-Ashfox Studio is a zero-install browser 3D workspace where AI IDE creates the
-asset and a creator observes, corrects, validates, and exports the result.
+Ashfox is an AI-native low-poly workbench where an AI IDE creates consistent
+modeling, texture, and animation results while the creator observes, corrects,
+validates, and exports the asset.
 
 The public product is the web URL. Blockbench MCP is a separate optional
 compatibility integration for existing users.
@@ -14,7 +15,7 @@ compatibility integration for existing users.
 
 A user can:
 
-1. open Ashfox Studio;
+1. ask an AI IDE to open `https://ashfox.io` in its in-app browser;
 2. start immediately or grant access to an existing asset;
 3. let AI IDE perform structured edits through browser-observable controls;
 4. inspect every geometry, texture, UV, and animation result live;
@@ -32,7 +33,7 @@ activity surfaces appear only when relevant.
 ### Immediate value
 
 A sample or blank project renders before any setup. Existing assets use drag
-and drop, file selection, or an explicitly authorized project folder.
+and drop or file selection.
 
 ### Inspectable results
 
@@ -60,6 +61,11 @@ Target profiles and exporters produce stable, fixture-tested artifacts.
 Important state and actions have accessible DOM representations. Canvas pixels
 are never the only way for AI IDE to understand or operate the project.
 
+### AI-native delivery
+
+Ashfox workbench prepares one persistent browser artifact. AI IDE host delivery is
+defined by the [Agent Command Port](../architecture/agent-command-port.md).
+
 ## Web release scope
 
 - project creation, import, persistence, recovery, and revision history;
@@ -71,8 +77,7 @@ are never the only way for AI IDE to understand or operate the project.
 - bounded agent inspection and direct canonical command batches;
 - linked validation findings and deterministic previews;
 - Bedrock, GeckoLib 5, glTF, GLB, and Java export;
-- single-file and multi-file delivery;
-- optional File System Access workspace integration.
+- single-file download and ZIP delivery for multi-file targets.
 
 ## Blockbench compatibility scope
 
@@ -80,13 +85,14 @@ are never the only way for AI IDE to understand or operate the project.
 - preserve current Blockbench adapters and exporter behavior;
 - build and test the plugin and sidecar independently;
 - accept compatibility fixes;
-- keep Web Studio features on the browser track.
+- keep Ashfox workbench features on the browser track.
 
 ## Success criteria
 
 - first scene renders without setup;
-- Web Studio builds from browser and `engine-core` packages;
-- direct local folder access requires at most one explicit permission action;
+- Ashfox workbench builds from browser and `engine-core` packages;
+- every save, export, and capture ends as one deterministic artifact handoff;
+- AI IDE delivery satisfies the published agent manifest;
 - exporters pass deterministic fixtures;
 - narrow and desktop layouts preserve the complete viewport and timeline;
 - Blockbench MCP compatibility builds and tests on its own track;

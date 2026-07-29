@@ -255,6 +255,7 @@ export interface TextureAsset {
   colorSpace: 'srgb' | 'linear';
   renderMode: 'default' | 'emissive' | 'additive' | 'layered';
   renderSides: 'auto' | 'front' | 'double';
+  atlasMode?: 'generate' | 'preserve';
   pbrChannel?: 'color' | 'normal' | 'height' | 'mer';
   minecraft?: MinecraftTextureBinding;
   raster?: TextureRaster;

@@ -6,47 +6,42 @@ import {
   projectUsesExportTarget
 } from '../src/features/workbench/presentation/projectExportTarget';
 
-const glbProject = createWorkbenchProject();
-const glbTarget = projectExportTargetFor(glbProject);
-assert.deepEqual(glbTarget, {
-  target: 'glb',
+const geckoProject = createWorkbenchProject();
+const geckoTarget = projectExportTargetFor(geckoProject);
+assert.deepEqual(geckoTarget, {
+  target: 'geckolib5',
   namespace: 'ashfox',
-  modelPath: 'copper_fox'
+  modelPath: 'moonveil_celestial_kirin'
 });
-assert.equal(projectUsesExportTarget(glbProject, glbTarget), true);
+assert.equal(projectUsesExportTarget(geckoProject, geckoTarget), true);
 assert.equal(
-  projectUsesExportTarget(glbProject, {
-    ...glbTarget,
-    target: 'gltf'
+  projectUsesExportTarget(geckoProject, {
+    ...geckoTarget,
+    namespace: 'other'
   }),
   false
 );
 
-const geckoProject = {
-  ...glbProject,
+const glbProject = {
+  ...geckoProject,
   formatProfile: {
-    id: 'minecraft.java.geckolib5' as const,
-    version: '5' as const,
-    minecraftVersion: '1.21.1',
-    geometryFormatVersion: '1.21.0',
-    animationFormatVersion: '1.8.0' as const,
-    namespace: 'ashfox',
-    assetKind: 'entity' as const,
-    modelPath: 'golden_fox',
-    animationPath: 'golden_fox',
-    geometryIdentifier: 'geometry.golden_fox'
+    id: 'gltf.2' as const,
+    version: '2.0' as const,
+    container: 'glb' as const,
+    imageStorage: 'embedded' as const,
+    modelPath: 'moonveil_celestial_kirin'
   }
 };
-assert.deepEqual(projectExportTargetFor(geckoProject), {
-  target: 'geckolib5',
+assert.deepEqual(projectExportTargetFor(glbProject), {
+  target: 'glb',
   namespace: 'ashfox',
-  modelPath: 'golden_fox'
+  modelPath: 'moonveil_celestial_kirin'
 });
 assert.equal(
-  projectUsesExportTarget(geckoProject, {
-    target: 'geckolib5',
-    namespace: 'other',
-    modelPath: 'golden_fox'
+  projectUsesExportTarget(glbProject, {
+    target: 'gltf',
+    namespace: 'ashfox',
+    modelPath: 'moonveil_celestial_kirin'
   }),
   false
 );

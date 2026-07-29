@@ -40,7 +40,7 @@ export const PROJECT_EXPORT_TARGETS: readonly ProjectExportTargetOption[] = [
   }
 ];
 
-const resourceToken = (value: string): string =>
+export const projectResourceToken = (value: string): string =>
   value
     .trim()
     .toLowerCase()
@@ -77,10 +77,15 @@ export const projectExportTargetFor = (
         : 'ashfox',
     modelPath:
       profile.id === 'ashfox.generic'
-        ? resourceToken(document.name)
+        ? projectResourceToken(document.name)
         : profile.modelPath
   };
 };
+
+export const isMinecraftExportTarget = (
+  target: VisibleExportPreset
+): boolean =>
+  target === 'bedrock' || target === 'geckolib5';
 
 export const projectUsesExportTarget = (
   document: ProjectDocument,

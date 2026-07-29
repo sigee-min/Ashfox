@@ -34,6 +34,9 @@ const inputSchema = {
       minLength: 1
     },
     background: colorSchema,
+    atlasMode: {
+      enum: ['generate', 'preserve']
+    },
     rectangles: {
       type: 'array',
       items: rectangleSchema,
@@ -93,6 +96,7 @@ export const setTextureRasterCommand = defineCommand({
             ...document.textures,
             [texture.id]: {
               ...texture,
+              atlasMode: payload.atlasMode ?? 'preserve',
               raster: {
                 background: payload.background,
                 rectangles: payload.rectangles

@@ -1,0 +1,120 @@
+{
+  "protocol": "ashfox.agent-command-port",
+  "href": "/agent-manifest.json",
+  "description": "AI-native low-poly workbench for consistent modeling, texturing, and animation.",
+  "pageApi": {
+    "global": "ashfox",
+    "inspectMethod": "inspect",
+    "runMethod": "run"
+  },
+  "domBridge": {
+    "input": {
+      "selector": "[data-agent-command-port-input]",
+      "attribute": "data-agent-command-port-input",
+      "event": "input"
+    },
+    "result": {
+      "selector": "meta[data-agent-command-port-result]",
+      "attribute": "data-agent-command-port-result"
+    },
+    "encoding": "json",
+    "request": {
+      "requestId": "unique string",
+      "method": "inspect or run",
+      "payload": "method input"
+    },
+    "response": {
+      "requestId": "matching request ID",
+      "result": "InspectResult or RunResult"
+    }
+  },
+  "domActions": {
+    "newProject": "[data-ashfox-action=\"project.new.open\"]",
+    "createProject": "[data-ashfox-action=\"project.new.create\"]",
+    "openProject": "[data-ashfox-action=\"project.open\"]",
+    "openProjectInput": "[data-ashfox-action=\"project.open.input\"]",
+    "saveProject": "[data-ashfox-action=\"project.save\"]",
+    "openExport": "[data-ashfox-action=\"project.export.open\"]",
+    "submitExport": "[data-ashfox-action=\"project.export.submit\"]",
+    "openCapture": "[data-ashfox-action=\"project.capture.open\"]",
+    "startCapture": "[data-ashfox-action=\"project.capture.start\"]",
+    "cancelCapture": "[data-ashfox-action=\"project.capture.cancel\"]",
+    "downloadArtifact": "[data-ashfox-action=\"artifact.download\"]"
+  },
+  "domFields": {
+    "format": "[role=\"radiogroup\"][aria-label=\"Format\"]",
+    "projectName": "[aria-label=\"New project name\"]",
+    "namespace": "[aria-label=\"Project namespace\"]",
+    "modelPath": "[aria-label=\"Project model path\"]",
+    "textureResolution": "[aria-label=\"Texture resolution\"]"
+  },
+  "domState": {
+    "root": "[data-agent-command-port]",
+    "statusAttribute": "data-agent-command-port",
+    "revisionAttribute": "data-ashfox-revision",
+    "artifact": {
+      "action": "downloadArtifact",
+      "nameAttribute": "data-ashfox-artifact-name",
+      "contentTypeAttribute": "data-ashfox-artifact-content-type",
+      "byteLengthAttribute": "data-ashfox-artifact-byte-length"
+    },
+    "fileOperation": {
+      "phaseAttribute": "data-ashfox-file-operation",
+      "kindAttribute": "data-ashfox-file-kind",
+      "operationIdAttribute": "data-ashfox-file-operation-id",
+      "messageSelector": "[data-ashfox-file-message]",
+      "terminalPhases": [
+        "idle",
+        "succeeded",
+        "cancelled",
+        "failed"
+      ]
+    }
+  },
+  "workflow": [
+    {
+      "stage": "start",
+      "instruction": "Create a project with domActions and domFields, or ask the user to choose a file through openProject. Choosing no file starts no operation and must never enter running; never claim to inject a file."
+    },
+    {
+      "stage": "author",
+      "inspect": "window.ashfox.inspect()",
+      "schema": "window.ashfox.inspect({kind:\"command\",name:\"<command name>\"})",
+      "run": "await window.ashfox.run({batchId:\"<unique ID>\",baseRevision:\"<inspect revision>\",operations:[{name:\"<command name>\",payload:{}}]})"
+    },
+    {
+      "stage": "review",
+      "validate": "window.ashfox.inspect({kind:\"target\"})",
+      "instruction": "Inspect again, require a valid target with no blocking finding, and review the viewport, Activity receipt, and Undo."
+    },
+    {
+      "stage": "produce",
+      "instruction": "Use saveProject for .ashfox; for a target file use openExport, set domFields, then submitExport; for GIF use openCapture then startCapture. Wait for file phase succeeded with the same operation ID; no artifact downloads automatically."
+    },
+    {
+      "stage": "deliver",
+      "instruction": "Activate downloadArtifact, then follow delivery."
+    }
+  ],
+  "delivery": {
+    "requestedPath": "workspace-relative directory",
+    "defaultDirectory": "artifacts/",
+    "owner": "AI IDE host",
+    "steps": [
+      "Reject paths outside the active workspace.",
+      "Activate the persistent artifact anchor, then transfer the download directly into the requested directory; never rely on auto-download and never copy its bytes through model context.",
+      "Verify the file exists, then report only its actual workspace-relative path and format."
+    ],
+    "fallback": "If the host cannot download, write, or verify the file, report the last completed boundary exactly; never claim a workspace save."
+  },
+  "rules": [
+    "Inspect before authoring and use the returned current revision.",
+    "Inspect each command schema before filling its payload.",
+    "Set authored or emissive pixel art to atlasMode preserve. Omitted modes are preserved; only explicit generate modes enter UV generation.",
+    "Submit related operations as one atomic batch.",
+    "Retry a stale revision only after inspecting again.",
+    "All project changes must use run; the port delegates to the canonical reducer.",
+    "If pageApi is unavailable, send the same inspect or run request through domBridge.",
+    "A started file operation is complete only at a terminal phase with the same operation ID."
+  ]
+}

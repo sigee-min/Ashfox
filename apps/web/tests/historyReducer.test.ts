@@ -28,6 +28,21 @@ assert.equal(committed.present.name, 'State test');
 assert.equal(committed.lastCommandOutcome?.status, 'committed');
 assert.equal(committed.lastCommandOutcome?.commandId, 'test-commit');
 
+const identicalHydration = historyReducer(committed, {
+  type: 'hydrate',
+  record: {
+    schemaVersion: 1,
+    projectId: committed.present.id,
+    revision: committed.present.revision,
+    document: committed.present,
+    assets: {},
+    activity: committed.activity,
+    savedAt: '2026-01-01T00:00:00.500Z'
+  }
+});
+assert.deepEqual(identicalHydration.past, committed.past);
+assert.equal(identicalHydration.present, committed.present);
+
 const rejected = historyReducer(committed, {
   type: 'execute',
   batch: {

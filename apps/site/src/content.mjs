@@ -1,83 +1,100 @@
 export const landingContent = {
-  eyebrow: 'Free · open source · local',
-  title: 'Type it. Watch it become game-ready.',
+  eyebrow: 'AI-native low-poly workbench',
+  title: 'Consistent models, textures, and animation.',
   summary:
-    'Your AI IDE authors through Ashfox’s deterministic 3D tools while geometry, texture, UV, and animation changes appear live.',
+    'Ashfox gives your AI IDE one visual, deterministic workspace for complete low-poly assets.',
   proof: [
-    'MIT licensed',
-    'Free to use',
-    'No account',
-    'No server'
+    'AI IDE native',
+    'Deterministic edits',
+    'Local files'
   ],
-  demo: {
-    label: 'AI IDE-native workflow',
-    prompts: [
-      'Build a golden fox with a soft idle animation.',
-      'Make the tail fuller and keep the Minecraft pixel density.',
-      'Validate it for GeckoLib 5 and export one portable file.'
-    ],
-    phases: [
-      ['Ready', 'Empty local scene', 'Batch received'],
-      ['Rig', '12 animation bones created', 'Rig committed'],
-      ['Geometry', '50 voxel cubes committed', 'Geometry committed'],
-      ['Details', 'Face, ruff, paws, and tail refined', 'Details committed'],
-      ['Texture + UV', '512 × 512 deterministic atlas', 'UV atlas committed'],
-      ['Export-ready', '3 animation clips validated', 'Batch complete']
-    ],
-    phaseDelays: [0, 900, 1800, 3000, 4200, 5700],
-    duration: 7900
-  },
-  workflow: [
-    {
-      step: '01',
-      title: 'Ask',
-      body:
-        'Describe the asset in your AI IDE with normal language. Start from an idea, a reference, or an existing project.'
-    },
-    {
-      step: '02',
-      title: 'Watch',
-      body:
-        'Geometry, UVs, texture, and animation update in the live viewport while receipts record every change.'
-    },
-    {
-      step: '03',
-      title: 'Ship',
-      body:
-        'Undo anything you dislike, then export a validated game-ready asset without leaving the browser.'
-    }
-  ],
-  principles: [
-    {
-      label: 'Local by design',
-      title: 'Your project stays in the browser.',
-      body:
-        'No database, daemon, account, or background service is required. Open, edit, validate, and save locally.'
-    },
-    {
-      label: 'Agent-native',
-      title: 'One command path. Fully inspectable.',
-      body:
-        'The interface and any connected AI IDE use the same validated reducer. Every committed change has a revision and receipt.'
-    },
-    {
-      label: 'Target-correct',
-      title: 'Outputs are part of the model.',
-      body:
-        'Format constraints are explicit before export, so target validation is deterministic instead of improvised.'
-    }
-  ],
-  openSource: {
-    label: 'MIT licensed',
-    title: 'Free. Open source. Yours.',
+  quickStart: {
+    title: 'Start with one prompt.',
     body:
-      'Use it, modify it, fork it, and ship with it. Ashfox runs locally in the browser without an account, paid tier, hosted database, or private backend.',
-    facts: [
-      ['$0', 'to start and keep using'],
-      ['MIT', 'permission to build on it'],
-      ['Local', 'your files stay with you']
+      'Paste this into your AI IDE. It opens Ashfox in the in-app browser and builds a complete first asset.',
+    prompt:
+      'Open https://ashfox.io in the in-app browser. Create a new Ashfox project and build a highly detailed low-poly truck with consistent modeling, texturing, and animation. Review the result in the live viewport.'
+  },
+  demo: {
+    sequences: [
+      {
+        name: 'Moonveil Kirin',
+        prompt:
+          'Open https://ashfox.io in the in-app browser and create a Minecraft-style fantasy kirin.',
+        poster: '/media/showcase/moonveil-kirin.jpg',
+        reel: '/media/showcase/moonveil-kirin-build.gif',
+        playbackMs: 6000,
+        cooldownMs: 2400
+      },
+      {
+        name: 'Ironroot Tractor',
+        prompt:
+          'Open https://ashfox.io in the in-app browser and create a Minecraft-style arcane field tractor.',
+        poster: '/media/showcase/ironroot-tractor.jpg',
+        reel: '/media/showcase/ironroot-tractor-build.gif',
+        playbackMs: 5400,
+        cooldownMs: 2400
+      },
+      {
+        name: 'Aether Spear Rocket',
+        prompt:
+          'Open https://ashfox.io in the in-app browser and create a Minecraft-style runic exploration rocket.',
+        poster: '/media/showcase/aether-spear-rocket.jpg',
+        reel: '/media/showcase/aether-spear-rocket-build.gif',
+        playbackMs: 5800,
+        cooldownMs: 2400
+      }
     ]
   },
+  showcase: [
+    {
+      name: 'Moonveil Kirin',
+      kind: 'Celestial creature',
+      detail: '113 bones · 131 cubes · 2 clips',
+      image: '/media/showcase/moonveil-kirin.jpg',
+      animation: '/media/showcase/moonveil-kirin-animation.gif',
+      studioSlug: 'moonveil-kirin'
+    },
+    {
+      name: 'Ironroot Tractor',
+      kind: 'Arcane machinery',
+      detail: '108 bones · 125 cubes · articulated drivetrain',
+      image: '/media/showcase/ironroot-tractor.jpg',
+      animation: '/media/showcase/ironroot-tractor-animation.gif',
+      studioSlug: 'ironroot-tractor'
+    },
+    {
+      name: 'Aether Spear',
+      kind: 'Exploration rocket',
+      detail: '131 bones · 166 cubes · launch sequence',
+      image: '/media/showcase/aether-spear-rocket.jpg',
+      animation: '/media/showcase/aether-spear-rocket-animation.gif',
+      studioSlug: 'aether-spear-rocket'
+    }
+  ],
+  guides: [
+    {
+      index: '01',
+      label: 'Start here',
+      title: 'AI IDE quick start',
+      body: 'Open Ashfox in the in-app browser and build the first asset.',
+      href: '/docs/guides/ai-ide-quick-start/'
+    },
+    {
+      index: '02',
+      label: 'Author',
+      title: 'Model, refine, animate',
+      body: 'Use short prompts and exact tools for geometry, pixels, and motion.',
+      href: '/docs/guides/authoring-and-review/'
+    },
+    {
+      index: '03',
+      label: 'Deliver',
+      title: 'Save and export',
+      body: 'Save the editable project or export the target artifact.',
+      href: '/docs/guides/save-and-export/'
+    }
+  ],
   formats: [
     ['GeckoLib 5', 'Geometry, animation, and textures for Minecraft Java.'],
     ['Bedrock', 'Geometry and actor animation for Bedrock workflows.'],
@@ -88,6 +105,7 @@ export const landingContent = {
 
 export const sectionOrder = [
   'overview',
+  'guides',
   'product',
   'architecture',
   'ux',
@@ -98,6 +116,7 @@ export const sectionOrder = [
 
 export const sectionLabels = {
   overview: 'Overview',
+  guides: 'Guides',
   product: 'Product',
   architecture: 'Architecture',
   ux: 'Experience',

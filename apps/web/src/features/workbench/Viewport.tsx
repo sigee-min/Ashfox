@@ -5,11 +5,13 @@ import {
   useRef,
   type PointerEvent as ReactPointerEvent
 } from 'react';
+import { useLatestValue } from '../../hooks/useLatestValue';
 import { applyAnimationPose } from './viewport/animationPose';
 import { projectToThreeScene } from './viewport/projectSceneProjection';
 import { useViewportRuntime } from './viewport/useViewportRuntime';
 import {
   applyCameraCommand,
+  applyViewportEnvironment,
   configureTransformControls
 } from './viewport/viewportRuntime';
 import type { ViewportProps } from './viewport/viewportTypes';
@@ -21,6 +23,7 @@ export function Viewport({
   transformMode,
   snapEnabled,
   options,
+  environment,
   cameraCommand,
   activeClipId,
   playhead,
@@ -32,19 +35,12 @@ export function Viewport({
 }: ViewportProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const documentRef = useRef(document);
-  const selectedNodeIdRef = useRef(selectedNodeId);
-  const onSelectNodeRef = useRef(onSelectNode);
-  const onCommitTransformRef = useRef(onCommitTransform);
-  const onRenderedRevisionRef = useRef(onRenderedRevision);
-  const onStatsRef = useRef(onStats);
-
-  documentRef.current = document;
-  selectedNodeIdRef.current = selectedNodeId;
-  onSelectNodeRef.current = onSelectNode;
-  onCommitTransformRef.current = onCommitTransform;
-  onRenderedRevisionRef.current = onRenderedRevision;
-  onStatsRef.current = onStats;
+  const documentRef = useLatestValue(document);
+  const selectedNodeIdRef = useLatestValue(selectedNodeId);
+  const onSelectNodeRef = useLatestValue(onSelectNode);
+  const onCommitTransformRef = useLatestValue(onCommitTransform);
+  const onRenderedRevisionRef = useLatestValue(onRenderedRevision);
+  const onStatsRef = useLatestValue(onStats);
 
   const runtimeRef = useViewportRuntime(hostRef, canvasRef, {
     document: documentRef,
@@ -71,10 +67,8 @@ export function Viewport({
     });
     runtime.projection = projection;
     runtime.scene.add(projection.root);
-    applyAnimationPose(document, projection, activeClipId, playhead);
     onRenderedRevisionRef.current(document.revision);
   }, [
-    activeClipId,
     assets,
     document,
     options.showSkeleton,
@@ -102,7 +96,15 @@ export function Viewport({
     const object = projection.objectsByNodeId.get(selectedNodeId);
     if (!object) return;
     runtime.transform.attach(object);
-  }, [document, playing, runtimeRef, selectedNodeId]);
+  }, [
+    assets,
+    document,
+    options.showSkeleton,
+    options.showWireframe,
+    playing,
+    runtimeRef,
+    selectedNodeId
+  ]);
 
   useEffect(() => {
     const runtime = runtimeRef.current;
@@ -115,6 +117,11 @@ export function Viewport({
     runtime.grid.visible = options.showGrid;
     runtime.axes.visible = options.showGrid;
   }, [options.showGrid, runtimeRef]);
+
+  useEffect(() => {
+    const runtime = runtimeRef.current;
+    if (runtime) applyViewportEnvironment(runtime, environment);
+  }, [environment, runtimeRef]);
 
   useEffect(() => {
     const runtime = runtimeRef.current;

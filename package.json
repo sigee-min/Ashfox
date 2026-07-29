@@ -13,10 +13,12 @@
     "packages/engine-core"
   ],
   "scripts": {
-    "build": "npm run build:site && npm run build:web && npm run build:blockbench",
+    "build": "npm run build:public && npm run build:blockbench",
+    "build:public": "npm run build:web && npm run build:site && node scripts/build-public.js",
     "build:site": "npm --workspace @ashfox/site run build",
     "build:web": "npm --workspace @ashfox/web run build",
     "build:blockbench": "node scripts/build-blockbench.js",
+    "preview:public": "node scripts/serve-public.js",
     "dev:web": "npm --workspace @ashfox/web run dev",
     "test:web": "npm --workspace @ashfox/web run test && npm run test:engine-core",
     "test:blockbench": "npm --workspace @ashfox/blockbench-runtime run test && npm run test:blockbench:conformance",

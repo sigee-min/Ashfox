@@ -7,6 +7,7 @@ import {
 } from '@ashfox/engine-core';
 
 import { boundedSuccess } from './boundedResult';
+import { agentCommandProtocol } from './agentCommandProtocol';
 import type {
   InspectRequest,
   InspectResult
@@ -88,10 +89,20 @@ const inspectDefault = (
   report: ValidationReport
 ): InspectResult => {
   const available = selectedCommandNames(document, selectedNodeId);
+  const commands = listCommandDefinitions()
+    .filter((definition) => available.has(definition.name))
+    .map((definition) => definition.name);
   return boundedSuccess(
     document.revision,
     {
       commandPort: 'connected',
+      protocol: {
+        manifest: agentCommandProtocol.href,
+        commandSchema: {
+          kind: 'command',
+          name: '<commands entry>'
+        }
+      },
       project: {
         id: document.id,
         name: document.name,
@@ -104,12 +115,7 @@ const inspectDefault = (
         textures: Object.keys(document.textures).length,
         clips: Object.keys(document.animations).length
       },
-      commands: listCommandDefinitions()
-        .filter((definition) => available.has(definition.name))
-        .map((definition) => ({
-          name: definition.name,
-          label: definition.label
-        })),
+      commands,
       blockingFinding: report.findings.find(
         (finding) => finding.severity === 'error'
       )?.path

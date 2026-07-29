@@ -6,7 +6,7 @@ Status: **Accepted**
 
 ```mermaid
 flowchart LR
-    AgentIDE["AI IDE browser surface"] --> Web["Ashfox Web Studio"]
+    AgentIDE["AI IDE browser surface"] --> Web["Ashfox workbench"]
     User["Creator"] --> Web
     Web --> Engine["engine-core"]
     Web --> BrowserStore["Browser-local project store"]
@@ -21,15 +21,16 @@ flowchart LR
     Engine -. "pure asset algorithms" .-> Plugin
 ```
 
-The tracks are separate products. Web Studio runs on `engine-core` and
+The tracks are separate products. Ashfox workbench runs on `engine-core` and
 browser-local adapters. The Blockbench integration operates its own live
 project.
 
-The public landing and documentation site is a third deployment surface, not
-a product runtime. `apps/site` reads this directory at build time and emits
-static CDN files without importing Web Studio or engine code.
+The public landing and documentation site is a separate source boundary, not a
+separate deployment. `apps/site` reads this directory at build time and emits
+static files without importing Ashfox workbench or engine code. The public
+packager combines both outputs under one origin.
 
-## Web Studio
+## Ashfox workbench
 
 `apps/web` is the primary product.
 
@@ -52,8 +53,8 @@ It owns:
 - host-independent UV packing and deterministic texture shading;
 - deterministic Bedrock, GeckoLib 5, glTF, GLB, and Java exporters.
 
-Web Studio may use browser APIs such as IndexedDB, OPFS, Web Workers, and File
-System Access through explicit adapters. `engine-core` cannot import those APIs.
+Ashfox workbench uses IndexedDB for revisioned local persistence and may use Web
+Workers for browser computation. `engine-core` cannot import browser APIs.
 
 ## Blockbench MCP compatibility
 
@@ -78,15 +79,15 @@ Only host-independent asset semantics may cross tracks:
 - import/export adapters;
 - golden fixtures and tolerance rules.
 
-MCP schemas and Blockbench globals stay in the Blockbench track. Browser
-handles, React state, and Three.js objects stay in Web Studio.
+MCP schemas and Blockbench globals stay in the Blockbench track. React state
+and Three.js objects stay in Ashfox workbench.
 
 ## Repository map
 
 | Area | Responsibility |
 | --- | --- |
 | `apps/site` | Dependency-free static landing and documentation output |
-| `apps/web` | Zero-install Web Studio |
+| `apps/web` | AI-native low-poly workbench |
 | `packages/engine-core` | Canonical web domain and exporters |
 | `apps/blockbench-plugin` | Optional Blockbench plugin bundle entry |
 | `apps/blockbench-mcp-sidecar` | Optional Blockbench MCP sidecar entry |
@@ -106,15 +107,16 @@ handles, React state, and Three.js objects stay in Web Studio.
 6. One compact receipt returns affected IDs or a blocking finding.
 
 The detailed contracts are defined in
-[AI-native authoring](ai-native-authoring.md) and
+[AI-native low-poly authoring](ai-native-authoring.md) and
 [commands and results](commands-and-results.md).
 
 ### Web export
 
 1. A committed `ProjectDocument` is validated for a target profile.
 2. The matching `engine-core` exporter creates deterministic files.
-3. Web Studio downloads a single artifact or writes a bundle through a
-   user-authorized browser file handle.
+3. Ashfox workbench prepares one downloadable file, using ZIP for multi-file targets.
+4. AI IDE host delivery follows the
+   [Agent Command Port](agent-command-port.md).
 
 ### Blockbench MCP call
 

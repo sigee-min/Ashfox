@@ -5,6 +5,8 @@ import type {
   Transform
 } from '@ashfox/engine-core';
 import type { ProjectAssets } from '../../files/projectAssets';
+import type { CameraMode } from './cameraPresets';
+import type { ViewportEnvironmentId } from './viewportEnvironment';
 
 export interface ViewportOptions {
   showGrid: boolean;
@@ -13,7 +15,7 @@ export interface ViewportOptions {
 }
 
 export interface CameraCommand {
-  mode: 'perspective' | 'front' | 'side' | 'top';
+  mode: CameraMode;
   nonce: number;
 }
 
@@ -29,6 +31,7 @@ export interface ViewportProps {
   transformMode: TransformControlsMode;
   snapEnabled: boolean;
   options: ViewportOptions;
+  environment: ViewportEnvironmentId;
   cameraCommand: CameraCommand;
   activeClipId: string | null;
   playhead: number;

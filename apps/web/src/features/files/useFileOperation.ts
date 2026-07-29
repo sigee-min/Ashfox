@@ -13,41 +13,53 @@ import {
   type FileOperationState
 } from './fileOperationState';
 
-interface FileOperationCompletion {
+interface FileOperationCompletion<TResult> {
   phase: 'succeeded' | 'cancelled';
   message: string;
+  result?: TResult | null;
 }
 
-interface FileOperationSpec<T> {
+export interface FileOperationContext {
+  signal: AbortSignal;
+  reportProgress: (message: string) => void;
+}
+
+interface FileOperationSpec<T, TResult> {
   kind: FileOperationKind;
   pendingMessage: string;
-  execute: () => T | Promise<T>;
-  complete: (value: T) => FileOperationCompletion;
+  execute: (context: FileOperationContext) => T | Promise<T>;
+  complete: (value: T) => FileOperationCompletion<TResult>;
   failureMessage: string;
+  cancelledMessage?: string;
 }
 
-interface FileOperationController {
-  state: FileOperationState;
-  run: <T>(spec: FileOperationSpec<T>) => Promise<void>;
+interface FileOperationController<TResult> {
+  state: FileOperationState<TResult>;
+  run: <T>(spec: FileOperationSpec<T, TResult>) => Promise<void>;
+  cancel: () => void;
 }
 
 const errorMessage = (error: unknown, fallback: string): string =>
   error instanceof Error ? error.message : fallback;
 
-export const useFileOperation = (): FileOperationController => {
+export const useFileOperation = <TResult>(): FileOperationController<TResult> => {
   const [state, dispatch] = useReducer(
-    fileOperationReducer,
+    fileOperationReducer<TResult>,
     INITIAL_FILE_OPERATION
   );
   const serialRef = useRef(0);
-  const activeIdRef = useRef<number | null>(null);
+  const activeRef = useRef<{
+    operationId: number;
+    controller: AbortController;
+  } | null>(null);
 
   const run = useCallback(
-    async <T,>(spec: FileOperationSpec<T>): Promise<void> => {
-      if (activeIdRef.current !== null) return;
+    async <T,>(spec: FileOperationSpec<T, TResult>): Promise<void> => {
+      if (activeRef.current !== null) return;
       const operationId = serialRef.current + 1;
       serialRef.current = operationId;
-      activeIdRef.current = operationId;
+      const controller = new AbortController();
+      activeRef.current = { operationId, controller };
       dispatch({
         type: 'start',
         operationId,
@@ -55,29 +67,45 @@ export const useFileOperation = (): FileOperationController => {
         message: spec.pendingMessage
       });
       try {
-        const value = await spec.execute();
+        const value = await spec.execute({
+          signal: controller.signal,
+          reportProgress: (message) => {
+            dispatch({ type: 'progress', operationId, message });
+          }
+        });
         const completion = spec.complete(value);
         dispatch({
           type: 'settle',
           operationId,
           phase: completion.phase,
-          message: completion.message
+          message: completion.message,
+          result: completion.result ?? null
         });
       } catch (error: unknown) {
+        const cancelled =
+          controller.signal.aborted ||
+          (error instanceof DOMException && error.name === 'AbortError');
         dispatch({
           type: 'settle',
           operationId,
-          phase: 'failed',
-          message: errorMessage(error, spec.failureMessage)
+          phase: cancelled ? 'cancelled' : 'failed',
+          message: cancelled
+            ? spec.cancelledMessage ?? 'Operation cancelled'
+            : errorMessage(error, spec.failureMessage),
+          result: null
         });
       } finally {
-        if (activeIdRef.current === operationId) {
-          activeIdRef.current = null;
+        if (activeRef.current?.operationId === operationId) {
+          activeRef.current = null;
         }
       }
     },
     []
   );
 
-  return { state, run };
+  const cancel = useCallback((): void => {
+    activeRef.current?.controller.abort();
+  }, []);
+
+  return { state, run, cancel };
 };

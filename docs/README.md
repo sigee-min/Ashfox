@@ -1,13 +1,24 @@
-# Ashfox Studio Planning
+# Ashfox
 
-This directory defines Ashfox as two physically separated product tracks:
+Ashfox is an AI-native low-poly workbench built around consistent modeling,
+texturing, and animation. This directory defines its two physically separated
+product tracks:
 
-- a zero-install Web Studio;
+- the AI-native low-poly workbench;
 - an optional Blockbench MCP compatibility integration.
 
-Each document distinguishes implemented contracts from planned runtime work. Current implementation evidence remains in source code and tests.
+The documents explain product and architecture boundaries. The published
+[agent manifest](https://github.com/sigee-min/ashfox/blob/main/apps/web/agent-manifest.json)
+is the single machine-readable authority for AI IDE discovery, operation, and
+artifact delivery.
 
 ## Navigation
+
+### Guides
+
+- [AI IDE quick start](guides/ai-ide-quick-start.md)
+- [Authoring and review](guides/authoring-and-review.md)
+- [Save and export](guides/save-and-export.md)
 
 ### Product
 
@@ -26,14 +37,14 @@ Each document distinguishes implemented contracts from planned runtime work. Cur
 - [Canonical project document](architecture/project-document.md)
 - [Canonical Asset IR](architecture/asset-ir.md)
 - [Commands and results](architecture/commands-and-results.md)
-- [AI-native authoring](architecture/ai-native-authoring.md)
+- [AI-native low-poly authoring](architecture/ai-native-authoring.md)
 - [Agent Command Port](architecture/agent-command-port.md)
 - [Rendering, assets, and export](architecture/rendering-assets-export.md)
 - [Export target architecture](architecture/export-targets.md)
 
 ### Experience
 
-- [Web workbench UX](ux/workbench.md)
+- [Ashfox workbench UX](ux/workbench.md)
 
 ### Migration
 
@@ -42,7 +53,7 @@ Each document distinguishes implemented contracts from planned runtime work. Cur
 
 ### Decisions
 
-- [ADR-0001: Build a standalone web studio](decisions/0001-standalone-web-studio.md)
+- [ADR-0001: Build the browser workbench](decisions/0001-browser-workbench.md)
 - [ADR-0002: Separate Web and Blockbench product tracks](decisions/0002-product-tracks.md)
 - [ADR-0003: Single-agent authoring](decisions/0003-single-agent-authoring.md)
 
@@ -56,7 +67,7 @@ Each document distinguishes implemented contracts from planned runtime work. Cur
 ## Working rules
 
 1. `engine-core` owns canonical web model, validation, and exporters.
-2. Web Studio imports browser and `engine-core` packages.
+2. Ashfox workbench imports browser and `engine-core` packages.
 3. Blockbench compatibility packages serve the Blockbench product track.
 4. `ProjectDocument` contains canonical asset state.
 5. The two tracks share format contracts and deterministic snapshots.

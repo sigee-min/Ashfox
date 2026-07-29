@@ -2,8 +2,8 @@
 
 import {
   useEffect,
+  useReducer,
   useRef,
-  useState
 } from 'react';
 
 import {
@@ -19,6 +19,7 @@ import type { LocalProjectRecord } from './localProjectRecord';
 import {
   areProjectDocumentsEqual,
   compareProjectRevisions,
+  createLocalProjectRecord,
   isValidLocalProjectRecord,
   localProjectRevisionForSerial,
   projectRevisionSerial
@@ -31,10 +32,18 @@ import {
   areProjectAssetsEqual,
   type ProjectAssets
 } from '../../files/projectAssets';
+import { useLatestValue } from '../../../hooks/useLatestValue';
+import {
+  createPersistenceSessionState,
+  isPersistenceSession,
+  persistenceSessionReducer,
+  type StorageStatus
+} from './persistenceSessionState';
 
-export type StorageStatus = 'loading' | 'saving' | 'saved' | 'error';
+export type { StorageStatus } from './persistenceSessionState';
 
 interface UseLocalProjectPersistenceInput {
+  enabled?: boolean;
   projectId: string;
   projectGeneration: number;
   restoreFromStorage: boolean;
@@ -50,13 +59,6 @@ interface LocalProjectPersistenceState {
   lastSavedAt: string | null;
 }
 
-interface PersistenceSessionState extends LocalProjectPersistenceState {
-  projectId: string;
-  projectGeneration: number;
-  authoritative: boolean;
-  ready: boolean;
-}
-
 const rebaseLocalProject = (
   document: ProjectDocument,
   assets: ProjectAssets,
@@ -69,10 +71,7 @@ const rebaseLocalProject = (
     projectRevisionSerial(existing.revision)
   ) + 1;
   const revision = localProjectRevisionForSerial(serial);
-  return {
-    schemaVersion: 1,
-    projectId: document.id,
-    revision,
+  return createLocalProjectRecord({
     document: {
       ...document,
       revision,
@@ -81,7 +80,7 @@ const rebaseLocalProject = (
     assets,
     activity,
     savedAt
-  };
+  });
 };
 
 const requiresAuthoritativeRebase = (
@@ -104,6 +103,7 @@ const requiresAuthoritativeRebase = (
 };
 
 export const useLocalProjectPersistence = ({
+  enabled = true,
   projectId,
   projectGeneration,
   restoreFromStorage,
@@ -113,22 +113,20 @@ export const useLocalProjectPersistence = ({
   onHydrate,
   onExternal
 }: UseLocalProjectPersistenceInput): LocalProjectPersistenceState => {
-  const [persistence, setPersistence] = useState<PersistenceSessionState>({
-    projectId,
-    projectGeneration,
-    authoritative: !restoreFromStorage,
-    ready: false,
-    status: 'loading',
-    lastSavedAt: null
-  });
-  const currentDocumentRef = useRef(document);
-  const currentAssetsRef = useRef(assets);
-  const currentActivityRef = useRef(activity);
+  const session = { projectId, projectGeneration };
+  const [persistence, dispatchPersistence] = useReducer(
+    persistenceSessionReducer,
+    undefined,
+    () => createPersistenceSessionState(
+      session,
+      !restoreFromStorage
+    )
+  );
+  const currentDocumentRef = useLatestValue(document);
+  const currentAssetsRef = useLatestValue(assets);
+  const currentActivityRef = useLatestValue(activity);
   const sessionRef = useRef(0);
   const saveRequestRef = useRef(0);
-  currentDocumentRef.current = document;
-  currentAssetsRef.current = assets;
-  currentActivityRef.current = activity;
 
   useEffect(() => {
     const sessionId = sessionRef.current + 1;
@@ -137,27 +135,29 @@ export const useLocalProjectPersistence = ({
     let disposed = false;
     const baselineDocument = currentDocumentRef.current;
     const authoritative = !restoreFromStorage;
-    setPersistence({
-      projectId,
-      projectGeneration,
+    dispatchPersistence({
+      type: 'begin',
+      session,
       authoritative,
-      ready: false,
-      status: 'loading',
-      lastSavedAt: null
     });
+    if (!enabled) {
+      dispatchPersistence({
+        type: 'ready',
+        session,
+        lastSavedAt: null
+      });
+      return;
+    }
 
     void loadLocalProject(projectId)
       .then((record) => {
         if (disposed || sessionId !== sessionRef.current) return;
         if (record) {
           if (!isValidLocalProjectRecord(record, projectId)) {
-            setPersistence({
-              projectId,
-              projectGeneration,
-              authoritative,
-              ready: true,
-              status: 'error',
-              lastSavedAt: null
+            dispatchPersistence({
+              type: 'error',
+              session,
+              ready: true
             });
             return;
           }
@@ -186,12 +186,9 @@ export const useLocalProjectPersistence = ({
             onHydrate(record);
           }
         }
-        setPersistence({
-          projectId,
-          projectGeneration,
-          authoritative,
-          ready: true,
-          status: 'saved',
+        dispatchPersistence({
+          type: 'ready',
+          session,
           lastSavedAt: authoritative ? null : record?.savedAt ?? null
         });
       })
@@ -200,13 +197,10 @@ export const useLocalProjectPersistence = ({
           !disposed &&
           sessionId === sessionRef.current
         ) {
-          setPersistence({
-            projectId,
-            projectGeneration,
-            authoritative,
-            ready: false,
-            status: 'error',
-            lastSavedAt: null
+          dispatchPersistence({
+            type: 'error',
+            session,
+            ready: false
           });
         }
       });
@@ -225,12 +219,9 @@ export const useLocalProjectPersistence = ({
         return;
       }
       onExternal(record);
-      setPersistence({
-        projectId,
-        projectGeneration,
-        authoritative: false,
-        ready: true,
-        status: 'saved',
+      dispatchPersistence({
+        type: 'saved',
+        session,
         lastSavedAt: record.savedAt
       });
     });
@@ -242,6 +233,7 @@ export const useLocalProjectPersistence = ({
   }, [
     onExternal,
     onHydrate,
+    enabled,
     projectGeneration,
     projectId,
     restoreFromStorage
@@ -249,6 +241,7 @@ export const useLocalProjectPersistence = ({
 
   useEffect(() => {
     if (
+      !enabled ||
       persistence.projectId !== projectId ||
       persistence.projectGeneration !== projectGeneration ||
       !persistence.ready
@@ -262,21 +255,14 @@ export const useLocalProjectPersistence = ({
 
     const timer = window.setTimeout(() => {
       if (disposed || sessionId !== sessionRef.current) return;
-      setPersistence((current) =>
-        current.projectId === projectId
-          ? { ...current, status: 'saving' }
-          : current
-      );
+      dispatchPersistence({ type: 'saving', session });
       const savedAt = new Date().toISOString();
-      const record: LocalProjectRecord = {
-        schemaVersion: 1,
-        projectId,
-        revision: document.revision,
+      const record = createLocalProjectRecord({
         document,
         assets,
         activity,
         savedAt
-      };
+      });
 
       void saveLocalProject(record)
         .then((result) => {
@@ -307,29 +293,19 @@ export const useLocalProjectPersistence = ({
               ) > 0
             ) {
               onExternal(result.current);
-              setPersistence({
-                projectId,
-                projectGeneration,
-                authoritative: false,
-                ready: true,
-                status: 'saved',
+              dispatchPersistence({
+                type: 'saved',
+                session,
                 lastSavedAt: result.current.savedAt
               });
               return;
             }
-            setPersistence((current) =>
-              current.projectId === projectId
-                ? { ...current, status: 'error' }
-                : current
-            );
+            dispatchPersistence({ type: 'error', session });
             return;
           }
-          setPersistence({
-            projectId,
-            projectGeneration,
-            authoritative: false,
-            ready: true,
-            status: 'saved',
+          dispatchPersistence({
+            type: 'saved',
+            session,
             lastSavedAt: result.current.savedAt
           });
           if (result.status === 'stored') {
@@ -345,11 +321,7 @@ export const useLocalProjectPersistence = ({
             sessionId === sessionRef.current &&
             requestId === saveRequestRef.current
           ) {
-            setPersistence((current) =>
-              current.projectId === projectId
-                ? { ...current, status: 'error' }
-                : current
-            );
+            dispatchPersistence({ type: 'error', session });
           }
         });
     }, 140);
@@ -362,6 +334,7 @@ export const useLocalProjectPersistence = ({
     activity,
     assets,
     document,
+    enabled,
     onExternal,
     onHydrate,
     persistence.projectId,
@@ -372,10 +345,7 @@ export const useLocalProjectPersistence = ({
     projectId
   ]);
 
-  return (
-    persistence.projectId === projectId &&
-    persistence.projectGeneration === projectGeneration
-  )
+  return isPersistenceSession(persistence, session)
     ? {
         status: persistence.status,
         lastSavedAt: persistence.lastSavedAt

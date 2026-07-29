@@ -179,8 +179,13 @@ kbd {
   border-radius: 5px;
 }
 
-.file-actions button {
+.file-actions button,
+.file-actions a {
+  display: flex;
   height: 24px;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   padding: 0 8px;
   border: 0;
   border-left: 1px solid #343b42;
@@ -189,13 +194,15 @@ kbd {
   cursor: pointer;
   font-size: 9px;
   font-weight: 600;
+  text-decoration: none;
 }
 
-.file-actions button:first-child {
+.file-actions > :first-child {
   border-left: 0;
 }
 
-.file-actions button:hover:not(:disabled) {
+.file-actions button:hover:not(:disabled),
+.file-actions a:hover {
   background: #292f35;
   color: var(--text);
 }
@@ -203,6 +210,21 @@ kbd {
 .file-actions button.is-primary {
   background: var(--accent-soft);
   color: #e4ae5d;
+}
+
+.file-actions button.is-capture {
+  color: #9bc9e8;
+}
+
+.file-actions .artifact-download-action {
+  width: 25px;
+  padding: 0;
+  color: var(--green);
+}
+
+.artifact-download-action svg {
+  width: 13px;
+  height: 13px;
 }
 
 .file-actions button:disabled {
@@ -356,7 +378,12 @@ kbd {
   left: 92px;
 }
 
-.export-menu {
+.new-project-menu {
+  right: 12px;
+}
+
+.export-menu,
+.capture-menu {
   right: 12px;
 }
 
@@ -392,7 +419,8 @@ kbd {
   text-transform: uppercase;
 }
 
-.popover-field input {
+.popover-field input,
+.popover-field select {
   width: 100%;
   height: 30px;
   padding: 0 9px;
@@ -405,7 +433,12 @@ kbd {
   font-size: 10px;
 }
 
-.popover-field input:focus {
+.popover-field select {
+  color-scheme: dark;
+}
+
+.popover-field input:focus,
+.popover-field select:focus {
   border-color: #8a6534;
   box-shadow: 0 0 0 2px rgba(225, 164, 74, 0.1);
 }
@@ -443,6 +476,13 @@ kbd {
   white-space: nowrap;
 }
 
+.new-project-note {
+  margin: -2px 0 0;
+  color: #747f88;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
 .popover-primary {
   height: 30px;
   border: 1px solid #805d30;
@@ -461,6 +501,115 @@ kbd {
 .popover-primary:disabled {
   cursor: default;
   opacity: 0.42;
+}
+
+.popover-secondary {
+  height: 30px;
+  border: 1px solid #4a535c;
+  border-radius: 5px;
+  background: #252b31;
+  color: #c4cbd1;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 680;
+}
+
+.popover-secondary:hover {
+  border-color: #80634a;
+  color: #efd5b0;
+}
+
+.popover-label {
+  display: block;
+  margin-bottom: 5px;
+  color: #89939c;
+  font-size: 8px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.capture-mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 2px;
+  border: 1px solid #343b42;
+  border-radius: 6px;
+  background: #171b1f;
+}
+
+.capture-mode-switch button {
+  height: 28px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #76818a;
+  cursor: pointer;
+  font-size: 8px;
+  font-weight: 650;
+}
+
+.capture-mode-switch button:hover:not(:disabled) {
+  color: #bbc4cb;
+}
+
+.capture-mode-switch button.is-active {
+  background: #2a3036;
+  color: #e3e7ea;
+  box-shadow: inset 0 0 0 1px #3c454d;
+}
+
+.capture-mode-switch button:disabled {
+  cursor: default;
+  opacity: 0.58;
+}
+
+.capture-summary {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid #343b42;
+  border-radius: 5px;
+}
+
+.capture-summary span {
+  flex: 1;
+  padding: 7px 5px;
+  border-left: 1px solid #343b42;
+  color: #87919a;
+  font-family: var(--font-mono);
+  font-size: 7px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.capture-summary span:first-child {
+  border-left: 0;
+}
+
+.capture-status {
+  min-height: 28px;
+  margin: 0;
+  color: #76818a;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.capture-status.is-error {
+  color: #d58a87;
+}
+
+.capture-ready-actions {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 6px;
+}
+
+.capture-download-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  text-decoration: none;
 }
 
 .export-target-list {
@@ -826,32 +975,44 @@ kbd {
   transform-origin: top right;
 }
 
-.agent-connection-state {
+.viewport-environment-toggle {
   display: flex;
   align-items: center;
-  gap: 6px;
-  height: 28px;
-  padding: 0 8px;
+  height: 30px;
+  overflow: hidden;
   border: 1px solid rgba(70, 78, 87, 0.72);
-  border-radius: 5px;
+  border-radius: 6px;
   background: rgba(24, 29, 34, 0.82);
-  color: #9aa5ae;
-  font-size: 9px;
-  font-weight: 650;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(12px);
 }
 
-.agent-connection-state > span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--green);
+.viewport-environment-toggle button {
+  display: grid;
+  width: 30px;
+  height: 100%;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-left: 1px solid rgba(70, 78, 87, 0.72);
+  background: transparent;
+  color: #8e98a1;
+  cursor: pointer;
 }
 
-.agent-connection-state.is-working > span {
-  background: var(--accent);
-  box-shadow: 0 0 0 3px rgba(229, 157, 65, 0.14);
+.viewport-environment-toggle button:first-child {
+  border-left: 0;
+}
+
+.viewport-environment-toggle button:hover,
+.viewport-environment-toggle button.is-active {
+  background: rgba(79, 61, 39, 0.88);
+  color: #f0b765;
+}
+
+.viewport-environment-toggle svg {
+  width: 13px;
+  height: 13px;
 }
 
 .panel-heading {
@@ -1999,6 +2160,7 @@ kbd {
   .header-divider,
   .project-path .muted,
   .project-path > svg,
+  .storage-state,
   .sync-state,
   .target-badge {
     display: none;
@@ -2021,10 +2183,6 @@ kbd {
 
   .project-path {
     max-width: min(42vw, 220px);
-  }
-
-  .storage-state {
-    margin-right: 0;
   }
 
   .tool-strip {
@@ -2112,10 +2270,6 @@ kbd {
     max-width: 36vw;
   }
 
-  .storage-state {
-    padding: 0 6px;
-  }
-
   .view-chip,
   .axis-cube {
     display: none;
@@ -2193,20 +2347,6 @@ kbd {
 @media (max-width: 390px) {
   .project-path {
     max-width: 29vw;
-  }
-
-  .storage-state {
-    border-color: transparent;
-    background: transparent;
-  }
-
-  .storage-state {
-    font-size: 0;
-  }
-
-  .storage-dot {
-    width: 7px;
-    height: 7px;
   }
 
   .bottom-workspace-switch {

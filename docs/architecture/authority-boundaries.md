@@ -36,7 +36,7 @@ logic belongs in `engine-core`.
 | MCP schemas and response DTOs | `packages/blockbench-contracts` |
 | MCP transport | `packages/blockbench-runtime/src/transport/mcp` |
 
-`historyReducer.present` is the active Web Studio project authority. IndexedDB
+`historyReducer.present` is the active Ashfox workbench project authority. IndexedDB
 is a guarded durable snapshot store. A project session selects one writable
 storage adapter.
 
@@ -44,8 +44,8 @@ storage adapter.
 
 - Web runtime dependencies stay inside `apps/web` and `packages/engine-core`.
 - Blockbench runtime may use host-independent `engine-core` algorithms but
-  cannot use Web Studio state, presentation, or browser adapters.
-- A project session selects exactly one host: Web Studio or Blockbench.
+  cannot use Ashfox workbench state, presentation, or browser adapters.
+- A project session selects exactly one host: Ashfox workbench or Blockbench.
 - Format parity is measured with shared fixtures.
 - Canonical command sources use host-independent domain names.
 - AI IDE writes project state through canonical commands.

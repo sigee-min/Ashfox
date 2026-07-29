@@ -4,7 +4,7 @@ Status: **In progress**
 
 ## Purpose
 
-`ProjectDocument` is the Web Studio source of truth consumed by the engine, UI,
+`ProjectDocument` is the Ashfox workbench source of truth consumed by the engine, UI,
 renderer, validation, and exporters.
 
 The canonical types and invariant validator are implemented in

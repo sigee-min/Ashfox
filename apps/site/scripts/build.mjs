@@ -23,19 +23,8 @@ const sourceRoot = path.join(siteRoot, 'src');
 const publicRoot = path.join(siteRoot, 'public');
 const outputRoot = path.join(siteRoot, 'dist');
 
-const normalizeOrigin = (value) => {
-  if (!value) return '';
-  const url = new URL(value);
-  if (!['http:', 'https:'].includes(url.protocol)) {
-    throw new Error('ASHFOX_SITE_ORIGIN must use HTTP or HTTPS.');
-  }
-  return url.origin;
-};
-
-const studioUrl = process.env.ASHFOX_STUDIO_URL?.trim() || '/studio/';
-const siteOrigin = normalizeOrigin(
-  process.env.ASHFOX_SITE_ORIGIN?.trim() || ''
-);
+const studioUrl = '/';
+const siteOrigin = 'https://ashfox.io';
 
 const hashedAsset = async (sourceName) => {
   const bytes = await readFile(path.join(sourceRoot, sourceName));
@@ -66,7 +55,7 @@ const assets = {
 const config = { siteOrigin, studioUrl };
 const documents = await loadDocumentation(docsRoot);
 
-await writeRoute('/', renderLandingPage({ assets, config }));
+await writeRoute('/home/', renderLandingPage({ assets, config }));
 for (const document of documents) {
   await writeRoute(
     document.route,

@@ -2,7 +2,6 @@ import {
   executeCommandBatch,
   validateProjectDocument,
   type CommandBatch,
-  type CommandError,
   type CommandReceipt,
   type CommandSource,
   type ProjectDocument
@@ -16,24 +15,12 @@ import {
   projectRevisionSerial,
   type LocalProjectRecord
 } from '../persistence/localProjectRecord';
+import type { CommandOutcome } from './commandOutcome';
 import { createCommandReceipt } from './createCommandReceipt';
+import { LOCAL_COMMAND_ACTOR_ID } from './localCommandActor';
 
 const HISTORY_LIMIT = 50;
 const ACTIVITY_LIMIT = 100;
-const LOCAL_ACTOR_ID = 'local-user';
-
-export type CommandOutcome =
-  | {
-      status: 'committed';
-      commandId: string;
-      receipt: CommandReceipt;
-    }
-  | {
-      status: 'rejected';
-      commandId: string;
-      revision: string;
-      error: CommandError;
-    };
 
 export interface HistoryState {
   past: ProjectDocument[];
@@ -97,7 +84,7 @@ const historyReceipt = (
     commandId,
     projectId: present.id,
     source: 'web',
-    actorId: LOCAL_ACTOR_ID,
+    actorId: LOCAL_COMMAND_ACTOR_ID,
     summary,
     beforeRevision: state.present.revision,
     revision: present.revision,
@@ -130,6 +117,14 @@ const hydrateHistory = (
         : stampDocument(record.document, serial, record.savedAt),
       future: [],
       serial,
+      activity: [...record.activity],
+      lastCommandOutcome: null
+    };
+  }
+
+  if (areProjectDocumentsEqual(record.document, state.present)) {
+    return {
+      ...state,
       activity: [...record.activity],
       lastCommandOutcome: null
     };

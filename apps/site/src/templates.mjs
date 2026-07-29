@@ -15,18 +15,21 @@ const escapeHtml = (value) =>
 const absoluteUrl = (origin, pathname) =>
   origin ? new URL(pathname, origin).toString() : pathname;
 
+const studioDemoUrl = (studioUrl, slug) =>
+  `${studioUrl}${studioUrl.includes('?') ? '&' : '?'}demo=${encodeURIComponent(slug)}`;
+
 const siteHeader = ({ active, studioUrl }) => `
   <header class="site-header">
-    <a class="brand" href="/" aria-label="Ashfox home">
+    <a class="brand" href="/home/" aria-label="Ashfox home">
       <span class="brand-mark" aria-hidden="true">✦</span>
       <span>ashfox</span>
     </a>
     <nav class="primary-nav" aria-label="Primary navigation">
-      <a href="/#demo">Demo</a>
-      <a href="/#open-source">Open source</a>
+      <a href="/home/#quick-start">Quick start</a>
+      <a href="/home/#showcase">Examples</a>
       <a ${active === 'docs' ? 'aria-current="page"' : ''} href="/docs/">Docs</a>
     </nav>
-    <a class="header-cta" href="${escapeHtml(studioUrl)}">Open Studio <span aria-hidden="true">↗</span></a>
+    <a class="header-cta" href="${escapeHtml(studioUrl)}">Open Ashfox <span aria-hidden="true">↗</span></a>
   </header>
 `;
 
@@ -40,7 +43,7 @@ const pageShell = ({
   title
 }) => {
   const pageTitle = title === 'Ashfox'
-    ? 'Ashfox — AI-native 3D asset authoring'
+    ? 'Ashfox — AI-native low-poly workbench'
     : `${title} — Ashfox`;
   const canonical = absoluteUrl(config.siteOrigin, path);
   const socialImage = absoluteUrl(config.siteOrigin, '/og.png');
@@ -70,11 +73,11 @@ const pageShell = ({
     ${siteHeader({ active, studioUrl: config.studioUrl })}
     ${body}
     <footer class="site-footer">
-      <a class="brand footer-brand" href="/">
+      <a class="brand footer-brand" href="/home/">
         <span class="brand-mark" aria-hidden="true">✦</span>
         <span>ashfox</span>
       </a>
-      <p>Free, open-source 3D asset authoring for AI IDE workflows.</p>
+      <p>AI-native low-poly workbench.</p>
       <div class="footer-links">
         <a href="/docs/">Documentation</a>
         <a href="https://github.com/sigee-min/ashfox">GitHub</a>
@@ -90,75 +93,47 @@ const landingDemo = (demo) => `
     class="agent-demo"
     id="demo"
     data-agent-demo
-    data-prompts="${escapeHtml(JSON.stringify(demo.prompts))}"
-    data-phases="${escapeHtml(JSON.stringify(demo.phases))}"
-    data-phase-delays="${escapeHtml(JSON.stringify(demo.phaseDelays))}"
-    data-duration="${demo.duration}"
+    data-sequences="${escapeHtml(JSON.stringify(demo.sequences))}"
   >
     <div class="studio-capture">
       <img
-        src="/media/ai-ide-build/00-empty.png"
+        src="${escapeHtml(demo.sequences[0].poster)}"
         data-demo-reel
-        data-reel-src="/media/ai-ide-build/auric-fox-build.gif"
-        data-poster-src="/media/ai-ide-build/05-animated.png"
-        data-empty-src="/media/ai-ide-build/00-empty.png"
+        data-empty-src="/media/showcase/empty-workspace.jpg"
         width="1280"
         height="720"
-        alt="A real Ashfox session building the Auric Fox from an empty scene"
+        alt="${escapeHtml(`Ashfox building ${demo.sequences[0].name} from an empty scene`)}"
         decoding="async"
         fetchpriority="high"
       >
       <span class="capture-live"><i></i> Live viewport</span>
       <div class="capture-scan" aria-hidden="true"></div>
-      <div class="activity-receipt" aria-live="polite">
-        <i aria-hidden="true">✓</i>
-        <span>
-          <strong data-demo-phase>Ready</strong>
-          <small data-demo-detail>Empty local scene</small>
-        </span>
+    </div>
+    <div class="ai-ide-dock">
+      <div class="ai-ide-work-status" aria-live="polite">
+        <span>Working…</span>
+        <i aria-hidden="true">›</i>
+      </div>
+      <div class="ai-ide-composer" aria-label="Automated prompt preview">
+        <button class="ai-ide-add" type="button" tabindex="-1" disabled aria-label="Add context">＋</button>
+        <label class="sr-only" for="demo-prompt">Ask anything</label>
+        <textarea
+          id="demo-prompt"
+          data-demo-input
+          rows="2"
+          readonly
+          tabindex="-1"
+          aria-readonly="true"
+          spellcheck="false"
+          placeholder="Ask anything"
+        >${escapeHtml(demo.sequences[0].prompt)}</textarea>
+        <span class="ai-ide-model">AI IDE <b>Agent mode</b> <i>⌄</i></span>
+        <span class="ai-ide-mic" aria-hidden="true"></span>
+        <button class="ai-ide-send" type="button" tabindex="-1" disabled aria-label="Prompt runs automatically">
+          <b aria-hidden="true">↑</b>
+        </button>
       </div>
     </div>
-    <div class="ai-ide-window">
-      <div class="ai-ide-bar">
-        <span><i aria-hidden="true">✦</i> AI IDE workspace</span>
-        <small>Working in ashfox</small>
-      </div>
-      <div class="ai-ide-body">
-        <p class="ai-ide-kicker">${escapeHtml(demo.label)}</p>
-        <form class="prompt-composer" data-demo-form>
-          <label class="sr-only" for="demo-prompt">Describe an asset</label>
-          <textarea
-            id="demo-prompt"
-            data-demo-input
-            rows="3"
-            spellcheck="false"
-          >${escapeHtml(demo.prompts[0])}</textarea>
-          <div>
-            <span><i></i> Local workspace</span>
-            <button type="submit" data-demo-submit>
-              Build <b aria-hidden="true">↑</b>
-            </button>
-          </div>
-        </form>
-        <div
-          class="demo-progress"
-          style="--demo-steps: ${demo.phases.length}"
-          aria-hidden="true"
-        >
-          ${demo.phases.map((phase, index) => `
-            <i data-demo-step="${index}"></i>
-          `).join('')}
-        </div>
-        <p class="ai-ide-note">
-          <span data-demo-command>Batch received</span>
-          <span>Undo available</span>
-        </p>
-      </div>
-    </div>
-    <p class="demo-caption">
-      <span>Real Ashfox workspace</span>
-      Submit the prompt to replay the actual build from an empty scene.
-    </p>
   </div>
 `;
 
@@ -172,8 +147,8 @@ export const renderLandingPage = ({ assets, config }) => {
           <h1>${content.title}</h1>
           <p class="hero-summary">${content.summary}</p>
           <div class="hero-actions">
-            <a class="button button-primary" href="${escapeHtml(config.studioUrl)}">Open Studio — free <span>↗</span></a>
-            <a class="button button-secondary" href="https://github.com/sigee-min/ashfox">View source <span>↗</span></a>
+            <a class="button button-primary" href="#quick-start">Quick start <span>↓</span></a>
+            <a class="button button-secondary" href="/docs/guides/ai-ide-quick-start/">Read the guide <span>→</span></a>
           </div>
           <ul class="proof-list">
             ${content.proof.map((item) => `<li><span>✓</span>${item}</li>`).join('')}
@@ -182,74 +157,77 @@ export const renderLandingPage = ({ assets, config }) => {
         <div class="hero-visual">${landingDemo(content.demo)}</div>
       </section>
 
-      <section class="format-rail freedom-rail" aria-label="Open-source project facts">
-        <span>Built in the open</span>
-        <strong>MIT licensed</strong>
-        <strong>Zero accounts</strong>
-        <strong>Zero servers</strong>
-        <strong>Zero paywalls</strong>
-      </section>
-
-      <section class="section workflow" id="workflow">
-        <div class="section-heading">
-          <p class="eyebrow"><span></span>The shortest path to a finished asset</p>
-          <h2>Intent in. Validated artifact out.</h2>
-          <p>No setup maze between the idea and the viewport.</p>
+      <section class="quick-start-section" id="quick-start">
+        <div class="quick-start-copy">
+          <p class="eyebrow"><span></span>Quick start</p>
+          <h2>${escapeHtml(content.quickStart.title)}</h2>
+          <p>${escapeHtml(content.quickStart.body)}</p>
+          <a href="https://ashfox.io">https://ashfox.io <span>↗</span></a>
         </div>
-        <div class="workflow-grid">
-          ${content.workflow.map((item) => `
-            <article class="workflow-card">
-              <span class="step">${item.step}</span>
-              <h3>${item.title}</h3>
-              <p>${item.body}</p>
-            </article>
-          `).join('')}
+        <div class="quick-start-prompt">
+          <div>
+            <span>Prompt for your AI IDE</span>
+            <button type="button" data-copy-quick-start>Copy prompt</button>
+          </div>
+          <p data-quick-start-prompt>${escapeHtml(content.quickStart.prompt)}</p>
         </div>
       </section>
 
-      <section class="open-source-section" id="open-source">
-        <div class="open-source-mark" aria-hidden="true">OPEN<br>SOURCE</div>
-        <div class="open-source-copy">
-          <p class="eyebrow"><span></span>${content.openSource.label}</p>
-          <h2>${content.openSource.title}</h2>
-          <p>${content.openSource.body}</p>
-          <a class="button button-primary" href="https://github.com/sigee-min/ashfox">
-            Explore on GitHub <span>↗</span>
-          </a>
-        </div>
-        <div class="source-facts">
-          ${content.openSource.facts.map(([value, label]) => `
-            <div><strong>${value}</strong><span>${label}</span></div>
-          `).join('')}
-        </div>
-      </section>
-
-      <section class="section product-section" id="product">
+      <section class="section showcase-section" id="showcase">
         <div class="section-heading split-heading">
           <div>
-            <p class="eyebrow"><span></span>Built around the work</p>
-            <h2>Less interface.<br>More visible progress.</h2>
+            <p class="eyebrow"><span></span>Working projects</p>
+            <h2>One consistent asset pipeline.</h2>
           </div>
-          <p>Ashfox keeps the viewport permanent and reveals exact controls only when they help you inspect or correct the result.</p>
+          <p>Modeling, texture density, and motion stay coherent across every asset.</p>
         </div>
-        <div class="principle-grid">
-          ${content.principles.map((item, index) => `
-            <article class="principle-card">
-              <div class="principle-number">0${index + 1}</div>
-              <p class="card-label">${item.label}</p>
-              <h3>${item.title}</h3>
-              <p>${item.body}</p>
-            </article>
+        <div class="showcase-grid">
+          ${content.showcase.map((item) => `
+            <a class="showcase-card" href="${escapeHtml(studioDemoUrl(config.studioUrl, item.studioSlug))}">
+              <picture>
+                <source srcset="${escapeHtml(item.animation)}" type="image/gif">
+                <img
+                  src="${escapeHtml(item.image)}"
+                  width="1280"
+                  height="720"
+                  alt="${escapeHtml(`${item.name} animated in Ashfox`)}"
+                  loading="lazy"
+                >
+              </picture>
+              <span>${escapeHtml(item.kind)}</span>
+              <strong>${escapeHtml(item.name)}</strong>
+              <small>${escapeHtml(item.detail)}</small>
+            </a>
+          `).join('')}
+        </div>
+      </section>
+
+      <section class="section guide-section" id="guides">
+        <div class="section-heading split-heading">
+          <div>
+            <p class="eyebrow"><span></span>Technical guides</p>
+            <h2>Build with your AI IDE.</h2>
+          </div>
+          <p>Quick start, visual review, and deterministic file delivery.</p>
+        </div>
+        <div class="guide-grid">
+          ${content.guides.map((guide) => `
+            <a class="guide-card" href="${escapeHtml(guide.href)}">
+              <span>${escapeHtml(guide.index)} · ${escapeHtml(guide.label)}</span>
+              <strong>${escapeHtml(guide.title)}</strong>
+              <p>${escapeHtml(guide.body)}</p>
+              <b aria-hidden="true">Read guide →</b>
+            </a>
           `).join('')}
         </div>
       </section>
 
       <section class="section output-section" id="outputs">
         <div class="output-copy">
-          <p class="eyebrow"><span></span>Target-aware from the start</p>
-          <h2>One project.<br>Four clean exits.</h2>
-          <p>Geometry, animation, textures, and target constraints stay together until the final file is written.</p>
-          <a class="text-link" href="/docs/architecture/export-targets/">Explore export architecture <span>→</span></a>
+          <p class="eyebrow"><span></span>Export</p>
+          <h2>Target formats</h2>
+          <p>Validation runs before Ashfox prepares the file.</p>
+          <a class="text-link" href="/docs/guides/save-and-export/">Save and export guide <span>→</span></a>
         </div>
         <div class="format-grid">
           ${content.formats.map(([name, description], index) => `
@@ -262,13 +240,13 @@ export const renderLandingPage = ({ assets, config }) => {
         </div>
       </section>
 
-      <section class="closing-cta">
-        <p class="eyebrow"><span></span>Free. Local. Open source.</p>
-        <h2>Ask for the asset.<br>Leave with the file.</h2>
-        <div class="hero-actions">
-          <a class="button button-primary" href="${escapeHtml(config.studioUrl)}">Open Ashfox — free <span>↗</span></a>
-          <a class="button button-secondary" href="/docs/">Read the docs <span>→</span></a>
+      <section class="source-banner" id="open-source">
+        <div>
+          <p class="eyebrow"><span></span>MIT licensed</p>
+          <h2>Browser-local and open source.</h2>
+          <p>No account, database, or private application server.</p>
         </div>
+        <a class="button button-secondary" href="https://github.com/sigee-min/ashfox">GitHub <span>↗</span></a>
       </section>
     </main>
   `;
@@ -278,7 +256,7 @@ export const renderLandingPage = ({ assets, config }) => {
     body,
     config,
     description: content.summary,
-    path: '/',
+    path: '/home/',
     title: 'Ashfox'
   });
 };
@@ -382,7 +360,7 @@ export const renderNotFoundPage = ({ assets, config }) =>
         <h1>That page left the viewport.</h1>
         <p>Return to the product or continue through the documentation.</p>
         <div class="hero-actions">
-          <a class="button button-primary" href="/">Go home <span>→</span></a>
+          <a class="button button-primary" href="/home/">Go home <span>→</span></a>
           <a class="button button-secondary" href="/docs/">Open docs <span>→</span></a>
         </div>
       </main>

@@ -7,12 +7,12 @@ they share live projects, UI, transports, or storage.
 
 ## Product ownership
 
-| Capability | Web Studio | Blockbench MCP |
+| Capability | Ashfox workbench | Blockbench MCP |
 | --- | --- | --- |
 | Primary user entry | URL | Blockbench plugin |
 | Project authority | `ProjectDocument` in browser | Active Blockbench project |
 | Agent interaction | Semantic browser controls / Agent Command Port | MCP tools |
-| Persistence | IndexedDB, OPFS, file handles | Blockbench project lifecycle |
+| Persistence | Revisioned IndexedDB snapshots | Blockbench project lifecycle |
 | Viewport | Ashfox Three.js renderer | Blockbench viewport |
 | MCP | None | Preserved |
 | Install required | No | Yes |
@@ -33,7 +33,7 @@ Their schemas and result shapes remain protected by
 
 ## Web outcome parity
 
-Web Studio must provide the user outcomes without reproducing MCP:
+Ashfox workbench must provide the user outcomes without reproducing MCP:
 
 | Outcome | Web surface |
 | --- | --- |
@@ -43,7 +43,7 @@ Web Studio must provide the user outcomes without reproducing MCP:
 | Review AI IDE work | Receipts, affected entities, findings, undo |
 | Edit textures and UVs | Texture/UV workspace |
 | Inspect motion | Timeline and live playback |
-| Deliver assets | Target validation and browser materializer |
+| Deliver assets | Target validation, artifact handoff, and AI IDE host delivery |
 
 ## Export checkpoint
 
@@ -58,7 +58,7 @@ Web Studio must provide the user outcomes without reproducing MCP:
 
 ## Track-specific behavior
 
-- Web Studio has no plugin reload or Blockbench settings.
+- Ashfox workbench has no plugin reload or Blockbench settings.
 - Web revision IDs do not synchronize with Blockbench sessions.
 - Web uses stable IDs even when a target exports names.
 - Blockbench MCP keeps compatibility selectors and responses.

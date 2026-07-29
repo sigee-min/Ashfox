@@ -46,6 +46,7 @@ export type InvariantCode =
   | 'mesh.uv_vertex_missing'
   | 'texture.invalid_dimensions'
   | 'texture.invalid_blob'
+  | 'texture.invalid_atlas_mode'
   | 'texture.invalid_raster'
   | 'animation.invalid_timing'
   | 'animation.target_missing'
@@ -2169,6 +2170,19 @@ export const validateProjectDocument = (
         severity: 'error',
         message: 'Texture dimensions must be positive integers.',
         path,
+        assetIds: [texture.id]
+      });
+    }
+    if (
+      texture.atlasMode !== undefined &&
+      texture.atlasMode !== 'generate' &&
+      texture.atlasMode !== 'preserve'
+    ) {
+      add({
+        code: 'texture.invalid_atlas_mode',
+        severity: 'error',
+        message: 'Texture atlas mode must be generate or preserve.',
+        path: `${path}.atlasMode`,
         assetIds: [texture.id]
       });
     }

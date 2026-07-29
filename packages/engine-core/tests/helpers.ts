@@ -101,6 +101,7 @@ export const createJavaProject = (): ProjectDocument => ({
       colorSpace: 'srgb',
       renderMode: 'default',
       renderSides: 'front',
+      atlasMode: 'generate',
       minecraft: {
         key: 'base',
         resource: {

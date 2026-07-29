@@ -5,6 +5,7 @@ export interface ProjectSceneOptions {
   assets: ProjectAssets;
   showSkeleton: boolean;
   showWireframe: boolean;
+  untexturedColor?: string;
 }
 
 export interface ProjectSceneProjection {

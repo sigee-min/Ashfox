@@ -12,10 +12,17 @@ import { createWorkbenchProject } from '../src/features/workbench/sampleProject'
 
 const document = createWorkbenchProject();
 const pngHeader = [137, 80, 78, 71, 13, 10, 26, 10];
-const textureBytes: Record<string, Uint8Array> = {
-  'texture-copper': new Uint8Array([...pngHeader, 1]),
-  'texture-cream': new Uint8Array([...pngHeader, 2])
-};
+const textureIds = Object.keys(document.textures).sort(
+  (left, right) => left.localeCompare(right)
+);
+const textureBytes: Record<string, Uint8Array> = Object.fromEntries(
+  textureIds.map((textureId, index) => [
+    textureId,
+    new Uint8Array([...pngHeader, index + 1])
+  ])
+);
+const firstTextureId = textureIds[0];
+if (!firstTextureId) throw new Error('Fixture texture is missing.');
 
 export const test = (async (): Promise<void> => {
   const resolveTexture = async (texture: { id: string }) => ({
@@ -32,24 +39,26 @@ export const test = (async (): Promise<void> => {
     [
       'manifest.json',
       'project.json',
-      'assets/texture-0001.png',
-      'assets/texture-0002.png'
+      ...textureIds.map(
+        (_, index) =>
+          `assets/texture-${String(index + 1).padStart(4, '0')}.png`
+      )
     ]
   );
 
   const project = await readProjectArchive(first);
   assert.equal(project.document.id, document.id);
   assert.match(
-    project.document.textures['texture-copper'].source.contentHash,
+    project.document.textures[firstTextureId].source.contentHash,
     /^sha256:[0-9a-f]{64}$/
   );
   assert.equal(
-    project.document.textures['texture-copper'].source.byteLength,
-    textureBytes['texture-copper'].length
+    project.document.textures[firstTextureId].source.byteLength,
+    textureBytes[firstTextureId].length
   );
   assert.deepEqual(
-    project.assets['texture-copper'].bytes,
-    textureBytes['texture-copper']
+    project.assets[firstTextureId].bytes,
+    textureBytes[firstTextureId]
   );
 
   const tampered = createStoredZip(
