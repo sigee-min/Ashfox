@@ -8,5 +8,6 @@ fragment used by the single ashfox static deployment.
 - The site imports no product or engine package.
 - `dist/` contains the site fragment consumed by `npm run build:public`.
 
-The copied agent setup prompt targets `/workbench/` on the same origin.
+The copied agent instruction points only to
+`/workbench/agent-manifest.json`; that manifest owns the complete workflow.
 Canonical and social metadata use `https://ashfox.io`.

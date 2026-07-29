@@ -4,11 +4,11 @@ export const landingContent = {
   summary:
     'Your AI agent models, textures, rigs, and animates your asset live in ashfox—ready for your game.',
   quickStart: {
-    title: 'Copy once. Paste into your agent. Describe the asset.',
+    title: 'One instruction. Then describe what you want.',
     body:
-      'Your agent opens ashfox, prepares the empty project, then asks what you want to create. Answer in your own words and it starts building.',
-    prompt:
-      'Open https://ashfox.io/workbench/ in your in-app browser, or a browser you can connect to and control. Fetch https://ashfox.io/workbench/agent-manifest.json with the direct HTTP request tool available in your environment, such as curl; never navigate the browser to it. Follow that manifest as the complete and only ashfox operating guide.'
+      'Paste one line into your agent. The manifest handles the workspace and your agent asks what you want to create.',
+    instruction:
+      'Fetch and follow https://ashfox.io/workbench/agent-manifest.json using a direct HTTP request such as curl.'
   },
   demo: {
     sequences: [

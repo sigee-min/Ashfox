@@ -189,16 +189,16 @@ const copyText = async (text) => {
   if (!copied) throw new Error('Clipboard unavailable.');
 };
 
-const setupPromptButtons = [
-  ...document.querySelectorAll('[data-copy-setup-prompt]')
+const agentInstructionButtons = [
+  ...document.querySelectorAll('[data-copy-agent-instruction]')
 ].filter((button) => button instanceof HTMLButtonElement);
-const setupPromptFeedback = [
+const agentInstructionFeedback = [
   ...document.querySelectorAll('[data-copy-feedback]')
 ].filter((feedback) => feedback instanceof HTMLElement);
-let setupPromptResetTimer = 0;
+let agentInstructionResetTimer = 0;
 
-const resetSetupPromptState = () => {
-  for (const button of setupPromptButtons) {
+const resetAgentInstructionState = () => {
+  for (const button of agentInstructionButtons) {
     button.dataset.copied = 'false';
     button.disabled = false;
     const state = button.querySelector('[data-copy-state]');
@@ -207,14 +207,14 @@ const resetSetupPromptState = () => {
         state.dataset.defaultState ?? state.textContent ?? 'Copy';
     }
   }
-  for (const feedback of setupPromptFeedback) {
+  for (const feedback of agentInstructionFeedback) {
     delete feedback.dataset.state;
     feedback.textContent = feedback.dataset.defaultFeedback ?? '';
   }
 };
 
-const setSetupPromptState = (status) => {
-  for (const button of setupPromptButtons) {
+const setAgentInstructionState = (status) => {
+  for (const button of agentInstructionButtons) {
     button.disabled = status === 'copying';
     button.dataset.copied = String(status === 'success');
     const state = button.querySelector('[data-copy-state]');
@@ -227,33 +227,33 @@ const setSetupPromptState = (status) => {
       state.textContent = 'Retry';
     }
   }
-  for (const feedback of setupPromptFeedback) {
+  for (const feedback of agentInstructionFeedback) {
     feedback.dataset.state = status;
     feedback.textContent = status === 'success'
       ? 'Copied — paste into ChatGPT, Cursor, or Claude.'
       : status === 'copying'
-        ? 'Copying instructions…'
+        ? 'Copying…'
         : 'Clipboard unavailable. Try copying again.';
   }
 };
 
-for (const button of setupPromptButtons) {
+for (const button of agentInstructionButtons) {
   button.addEventListener('click', async () => {
-    const prompt = button.dataset.prompt?.trim();
-    if (!prompt) return;
-    window.clearTimeout(setupPromptResetTimer);
-    setSetupPromptState('copying');
+    const instruction = button.dataset.instruction?.trim();
+    if (!instruction) return;
+    window.clearTimeout(agentInstructionResetTimer);
+    setAgentInstructionState('copying');
     try {
-      await copyText(prompt);
-      setSetupPromptState('success');
+      await copyText(instruction);
+      setAgentInstructionState('success');
     } catch {
-      setSetupPromptState('error');
+      setAgentInstructionState('error');
     } finally {
-      for (const setupButton of setupPromptButtons) {
-        setupButton.disabled = false;
+      for (const instructionButton of agentInstructionButtons) {
+        instructionButton.disabled = false;
       }
-      setupPromptResetTimer = window.setTimeout(
-        resetSetupPromptState,
+      agentInstructionResetTimer = window.setTimeout(
+        resetAgentInstructionState,
         7_000
       );
     }

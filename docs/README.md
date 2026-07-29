@@ -9,15 +9,16 @@ browser access.
 
 ## Start in three steps
 
-1. Copy the setup prompt in [Get started](guides/ai-agent-quick-start.md).
+1. Copy the one-line manifest instruction in
+   [Get started](guides/ai-agent-quick-start.md).
 2. Paste it into Codex desktop app, Cursor, or another browser-capable AI
    agent.
 3. Describe the asset you want, including its style, export format, important
    details, and animation.
 
-The agent opens ashfox, reads its command contract, and prepares the empty
-project before it accepts the model request. It builds inside the live viewport
-and uses the activity receipt and Undo to review complete changes.
+The manifest tells the agent how to open ashfox and prepare the empty project.
+The agent builds inside the live viewport and uses the activity receipt and
+Undo to review complete changes.
 
 ## What you can make
 

@@ -23,7 +23,7 @@ fully supported part of this repository.
 <p align="center">
   <a href="#connect-blockbench"><strong>Connect Blockbench</strong></a>
   &nbsp;·&nbsp;
-  <a href="https://ashfox.io/workbench/"><strong>Open the web workbench</strong></a>
+  <a href="#use-without-blockbench"><strong>Use without Blockbench</strong></a>
   &nbsp;·&nbsp;
   <a href="https://ashfox.io/docs/"><strong>Read the guides</strong></a>
 </p>
@@ -33,7 +33,7 @@ fully supported part of this repository.
 | | Blockbench MCP | Web workbench |
 | --- | --- | --- |
 | Best for | Existing Blockbench workflows | Starting without installing a modeling app |
-| Setup | Load one plugin and connect localhost MCP | Paste one setup prompt into your agent |
+| Setup | Load one plugin and connect localhost MCP | Give your agent one manifest instruction |
 | Workspace | Your open Blockbench project | A browser-local `.ashfox` project |
 | Agent access | MCP tools | Connected or in-app browser |
 | Exports | Blockbench-supported targets | GeckoLib 5, Bedrock, GLB, and glTF |
@@ -142,17 +142,16 @@ edit the project currently open in Blockbench.
 
 ## Use without Blockbench
 
-Paste this once into Codex desktop app, Cursor, or another browser-capable
-agent. The agent opens the workbench, reads its operating contract, and prepares
-the empty project for your request.
+Paste this single instruction into Codex desktop app, Cursor, or another
+browser-capable agent:
 
 ```text
-Open https://ashfox.io/workbench/ in your in-app browser, or a browser you can
-connect to and control. Fetch https://ashfox.io/workbench/agent-manifest.json
-with the direct HTTP request tool available in your environment, such as curl;
-never navigate the browser to it. Follow that manifest as the complete and only
-ashfox operating guide.
+Fetch and follow https://ashfox.io/workbench/agent-manifest.json using a direct HTTP request such as curl.
 ```
+
+That manifest is the complete operating guide. It tells the agent how to open
+ashfox, connect to the page, inspect the project, edit safely, and ask what you
+want to create.
 
 The workbench keeps its editable project in the browser. Files leave it only
 when you choose to save, export, or download a capture.

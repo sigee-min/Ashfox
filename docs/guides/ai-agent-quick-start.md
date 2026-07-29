@@ -17,20 +17,17 @@ helps ashfox catch incompatible geometry or animation early.
 ## Connect your agent
 
 1. Confirm that the agent can control an in-app or connected browser.
-2. Copy the setup prompt below into the agent.
+2. Copy the single manifest instruction below into the agent.
 3. Wait until the agent asks what you want to create.
 
 ```text
-Open https://ashfox.io/workbench/ in your in-app browser, or a browser you can
-connect to and control. Fetch https://ashfox.io/workbench/agent-manifest.json
-with the direct HTTP request tool available in your environment, such as curl;
-never navigate the browser to it. Follow that manifest as the complete and only
-ashfox operating guide.
+Fetch and follow https://ashfox.io/workbench/agent-manifest.json using a direct HTTP request such as curl.
 ```
 
-The agent opens the page, inspects the current project, and learns how to make
-changes, review the viewport, and prepare files. When it asks what you want to
-create, answer naturally. Paste the setup prompt once per working session.
+The manifest tells the agent how to open ashfox, inspect the project, make
+changes, review the viewport, and prepare files. When the agent asks what you
+want to create, answer naturally. Paste the instruction once per working
+session.
 
 ## Describe your first asset
 

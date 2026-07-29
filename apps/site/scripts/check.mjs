@@ -10,6 +10,7 @@ import { landingContent } from '../src/content.mjs';
 import { inspectGifPlayback } from '../src/gifPlayback.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const repositoryRoot = path.resolve(siteRoot, '../..');
 const outputRoot = path.join(siteRoot, 'dist');
 
 const walk = async (directory) => {
@@ -80,7 +81,7 @@ for (const file of htmlFiles) {
     failures.push(`${file}: local development origin leaked into output`);
   }
   if (/href="(?:https:\/\/ashfox\.io)?\/workbench\/?/.test(html)) {
-    failures.push(`${file}: people must start through the agent setup prompt`);
+    failures.push(`${file}: people must start through the agent instruction`);
   }
   const requiredMetadata = [
     '<meta name="description"',
@@ -167,19 +168,19 @@ if (storyChapterCount !== landingContent.story.length) {
     landingContent.story.length
   );
 }
-const setupPromptControlCount = (
-  landingHtml.match(/\sdata-copy-setup-prompt(?:\s|>)/g) ?? []
+const agentInstructionControlCount = (
+  landingHtml.match(/\sdata-copy-agent-instruction(?:\s|>)/g) ?? []
 ).length;
-if (setupPromptControlCount !== 3) {
+if (agentInstructionControlCount !== 3) {
   failures.push(
-    `landing has ${setupPromptControlCount} setup prompt controls, expected 3`
+    `landing has ${agentInstructionControlCount} agent instruction controls, expected 3`
   );
 }
 if (
   !landingHtml.includes(
-    'Copy once. Paste into your agent. Describe the asset.'
+    'One instruction. Then describe what you want.'
   ) ||
-  !landingHtml.includes('Copy instructions for your AI agent') ||
+  !landingHtml.includes('Copy the manifest instruction') ||
   !landingHtml.includes(
     'Your agent will ask what you want to create.'
   )
@@ -187,21 +188,28 @@ if (
   failures.push('landing must teach the copy, paste, and describe workflow');
 }
 if (
-  !landingContent.quickStart.prompt.includes(
-    'direct HTTP request tool available in your environment'
-  ) ||
-  !landingContent.quickStart.prompt.includes(
-    'never navigate the browser to it'
-  ) ||
-  !landingContent.quickStart.prompt.includes(
-    'complete and only ashfox operating guide'
-  ) ||
-  landingContent.quickStart.prompt.includes('Inspect the current project') ||
-  landingContent.quickStart.prompt.includes('What would you like to create?')
+  landingContent.quickStart.instruction !==
+  'Fetch and follow https://ashfox.io/workbench/agent-manifest.json using a direct HTTP request such as curl.'
 ) {
   failures.push(
-    'setup prompt must delegate the complete workflow to the direct-HTTP manifest'
+    'the copied instruction must delegate the complete workflow to one manifest'
   );
+}
+for (const documentationPath of [
+  'README.md',
+  'docs/guides/ai-agent-quick-start.md'
+]) {
+  const documentation = await readFile(
+    path.join(repositoryRoot, documentationPath),
+    'utf8'
+  );
+  const occurrenceCount = documentation
+    .split(landingContent.quickStart.instruction).length - 1;
+  if (occurrenceCount !== 1) {
+    failures.push(
+      `${documentationPath} must contain the canonical agent instruction exactly once`
+    );
+  }
 }
 const agentDestinationCount = (
   landingHtml.match(/\sclass="agent-destination"/g) ?? []
@@ -212,7 +220,7 @@ if (
   !landingHtml.includes('Cursor') ||
   !landingHtml.includes('Claude')
 ) {
-  failures.push('landing must show the three setup prompt destinations');
+  failures.push('landing must show the three agent instruction destinations');
 }
 for (const icon of ['chatgpt.svg', 'cursor.svg', 'claude.svg']) {
   if (!(await exists(path.join(outputRoot, 'icons', icon)))) {

@@ -6,7 +6,7 @@ available until the issue is resolved.
 ## The agent cannot start ashfox
 
 - Confirm that the agent can control an in-app or connected browser.
-- Paste the setup prompt from [Get started](ai-agent-quick-start.md).
+- Paste the manifest instruction from [Get started](ai-agent-quick-start.md).
 - Ask the agent to report whether it reached the page, manifest, inspect call,
   or project revision.
 

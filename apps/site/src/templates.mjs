@@ -45,9 +45,9 @@ const headerSetupButton = () => `
   <button
     class="header-setup"
     type="button"
-    data-copy-setup-prompt
-    data-prompt="${escapeHtml(landingContent.quickStart.prompt)}"
-    aria-label="Copy instructions for your AI agent"
+    data-copy-agent-instruction
+    data-instruction="${escapeHtml(landingContent.quickStart.instruction)}"
+    aria-label="Copy the ashfox manifest instruction"
   >
     <span class="header-copy-glyph" aria-hidden="true"></span>
     <span
@@ -264,7 +264,7 @@ const landingQuickStart = (quickStart) => `
       <ol class="quick-start-steps" aria-label="Start ashfox in three steps">
         <li>
           <b>1</b>
-          <span><strong>Copy instructions</strong><small>One click on this page</small></span>
+          <span><strong>Copy one instruction</strong><small>It points to the complete manifest</small></span>
         </li>
         <li>
           <b>2</b>
@@ -278,12 +278,12 @@ const landingQuickStart = (quickStart) => `
       <button
         class="quick-start-action"
         type="button"
-        data-copy-setup-prompt
-        data-prompt="${escapeHtml(quickStart.prompt)}"
+        data-copy-agent-instruction
+        data-instruction="${escapeHtml(quickStart.instruction)}"
       >
         <span class="copy-glyph" aria-hidden="true"></span>
         <span>
-          <strong>Copy instructions for your AI agent</strong>
+          <strong>Copy the manifest instruction</strong>
           <small>Paste once. Then describe what you want to create.</small>
           <span class="agent-destinations" aria-hidden="true">
             <span class="agent-destinations-label">Paste into</span>
@@ -313,8 +313,8 @@ const landingQuickStart = (quickStart) => `
         aria-live="polite"
       >Paste into ChatGPT, Cursor, or Claude, then press Enter.</p>
       <details class="setup-disclosure">
-        <summary>View the instructions being copied</summary>
-        <pre><code>${escapeHtml(quickStart.prompt)}</code></pre>
+        <summary>See the one line being copied</summary>
+        <pre><code>${escapeHtml(quickStart.instruction)}</code></pre>
       </details>
     </div>
   </section>
@@ -333,14 +333,14 @@ export const renderLandingPage = ({ assets, config }) => {
             <button
               class="button button-primary hero-copy-action"
               type="button"
-              data-copy-setup-prompt
-              data-prompt="${escapeHtml(content.quickStart.prompt)}"
+              data-copy-agent-instruction
+              data-instruction="${escapeHtml(content.quickStart.instruction)}"
             >
               <span
                 data-copy-state
-                data-default-state="Copy instructions for your AI agent"
+                data-default-state="Copy for your AI agent"
                 data-copied-state="Copied — paste into your agent"
-              >Copy instructions for your AI agent</span>
+              >Copy for your AI agent</span>
               <span aria-hidden="true">↗</span>
             </button>
             <a class="button button-secondary" href="#quick-start">See how it works <span>↓</span></a>
