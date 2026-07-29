@@ -230,7 +230,7 @@ const setSetupPromptState = (status) => {
   for (const feedback of setupPromptFeedback) {
     feedback.dataset.state = status;
     feedback.textContent = status === 'success'
-      ? 'Copied — paste into your agent. It will ask what you want to create.'
+      ? 'Copied — paste into ChatGPT, Cursor, or Claude.'
       : status === 'copying'
         ? 'Copying instructions…'
         : 'Clipboard unavailable. Try copying again.';

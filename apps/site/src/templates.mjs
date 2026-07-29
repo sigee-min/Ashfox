@@ -268,7 +268,7 @@ const landingQuickStart = (quickStart) => `
         </li>
         <li>
           <b>2</b>
-          <span><strong>Paste into your agent</strong><small>Codex desktop app or Cursor</small></span>
+          <span><strong>Paste into your agent</strong><small>ChatGPT, Cursor, or Claude</small></span>
         </li>
         <li>
           <b>3</b>
@@ -284,7 +284,22 @@ const landingQuickStart = (quickStart) => `
         <span class="copy-glyph" aria-hidden="true"></span>
         <span>
           <strong>Copy instructions for your AI agent</strong>
-          <small>Paste once. The agent opens and prepares ashfox.</small>
+          <small>Paste once. Then describe what you want to create.</small>
+          <span class="agent-destinations" aria-hidden="true">
+            <span class="agent-destinations-label">Paste into</span>
+            <span class="agent-destination">
+              <img src="/icons/chatgpt.svg" alt="" width="14" height="14">
+              ChatGPT
+            </span>
+            <span class="agent-destination">
+              <img src="/icons/cursor.svg" alt="" width="14" height="14">
+              Cursor
+            </span>
+            <span class="agent-destination">
+              <img src="/icons/claude.svg" alt="" width="14" height="14">
+              Claude
+            </span>
+          </span>
         </span>
         <b
           data-copy-state
@@ -294,9 +309,9 @@ const landingQuickStart = (quickStart) => `
       </button>
       <p
         data-copy-feedback
-        data-default-feedback="Paste into Codex or Cursor, then press Enter."
+        data-default-feedback="Paste into ChatGPT, Cursor, or Claude, then press Enter."
         aria-live="polite"
-      >Paste into Codex or Cursor, then press Enter.</p>
+      >Paste into ChatGPT, Cursor, or Claude, then press Enter.</p>
       <details class="setup-disclosure">
         <summary>View the instructions being copied</summary>
         <pre><code>${escapeHtml(quickStart.prompt)}</code></pre>
@@ -334,9 +349,9 @@ export const renderLandingPage = ({ assets, config }) => {
           <p
             class="hero-agent-hint"
             data-copy-feedback
-            data-default-feedback="Paste into Codex or Cursor. Your agent will ask what you want to create."
+            data-default-feedback="Paste into ChatGPT, Cursor, or Claude. Your agent will ask what you want to create."
             aria-live="polite"
-          >Paste into Codex or Cursor. Your agent will ask what you want to create.</p>
+          >Paste into ChatGPT, Cursor, or Claude. Your agent will ask what you want to create.</p>
         </div>
         <div class="hero-visual">${landingDemo(content.demo)}</div>
       </section>

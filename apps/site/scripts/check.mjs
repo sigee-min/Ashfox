@@ -186,6 +186,22 @@ if (
 ) {
   failures.push('landing must teach the copy, paste, and describe workflow');
 }
+const agentDestinationCount = (
+  landingHtml.match(/\sclass="agent-destination"/g) ?? []
+).length;
+if (
+  agentDestinationCount !== 3 ||
+  !landingHtml.includes('ChatGPT') ||
+  !landingHtml.includes('Cursor') ||
+  !landingHtml.includes('Claude')
+) {
+  failures.push('landing must show the three setup prompt destinations');
+}
+for (const icon of ['chatgpt.svg', 'cursor.svg', 'claude.svg']) {
+  if (!(await exists(path.join(outputRoot, 'icons', icon)))) {
+    failures.push(`landing agent destination icon is missing: ${icon}`);
+  }
+}
 if (
   !landingHtml.includes('Codex desktop app') ||
   !landingHtml.includes('Cursor')

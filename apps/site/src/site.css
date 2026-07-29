@@ -1194,6 +1194,44 @@ html[data-motion="ready"] .story-chapter[data-active="true"] .story-copy {
   font-size: 10px;
 }
 
+.agent-destinations {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 11px;
+  gap: 6px;
+}
+
+.agent-destinations-label {
+  margin-right: 2px;
+  color: #777b7c;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.agent-destination {
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  padding: 4px 8px 4px 6px;
+  border: 1px solid rgba(234, 223, 201, 0.12);
+  border-radius: 999px;
+  background: rgba(245, 245, 242, 0.035);
+  color: #aaa79f;
+  font-size: 9px;
+  font-weight: 650;
+  gap: 5px;
+  line-height: 1;
+}
+
+.agent-destination img {
+  width: 13px;
+  height: 13px;
+  opacity: 0.72;
+}
+
 .quick-start-action b {
   min-width: 58px;
   padding: 7px 10px;
