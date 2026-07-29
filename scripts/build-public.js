@@ -54,7 +54,6 @@ fs.writeFileSync(
   [
     '/home /home/ 301',
     '/docs /docs/ 301',
-    '/* /index.html 200',
     ''
   ].join('\n')
 );
