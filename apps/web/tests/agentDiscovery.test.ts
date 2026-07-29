@@ -78,17 +78,22 @@ assert.match(
   manifest.completionContract.defaultScope.idleAnimation,
   /animation\.<asset>\.idle/
 );
-assert.equal(
-  manifest.completionContract.highQuality.minimumCubeCount,
-  120
+assert.deepEqual(
+  Object.keys(manifest.completionContract),
+  [
+    'defaultScope',
+    'verificationBoundary',
+    'subjectFidelity',
+    'reviewGates'
+  ]
 );
 assert.match(
-  manifest.completionContract.highQuality.countSource,
-  /visibleCubes/
+  manifest.completionContract.verificationBoundary.machine,
+  /explicit structural facts/
 );
 assert.match(
-  manifest.completionContract.highQuality.meaningfulGeometry,
-  /Hidden filler/
+  manifest.completionContract.verificationBoundary.semantic,
+  /not deterministically provable/
 );
 assert.match(
   manifest.completionContract.subjectFidelity.eyes,
@@ -442,7 +447,7 @@ if (hiddenRootResult.ok) {
       }
     ).counts.visibleCubes,
     0,
-    'quality counts must exclude cubes hidden by their hierarchy'
+    'visibility counts must exclude cubes hidden by their hierarchy'
   );
   assert.equal(
     (

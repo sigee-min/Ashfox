@@ -69,12 +69,11 @@ export const agentManifest = {
       readiness:
         'Required machine gate. Final inspect kind target must report productionReady true, but this does not replace semantic and visual review.'
     },
-    highQuality: {
-      minimumCubeCount: 120,
-      countSource:
-        'Use window.ashfox.inspect().data.counts.visibleCubes. This threshold is an eligibility floor, never a design target or proof of quality.',
-      meaningfulGeometry:
-        'Every counted cube must contribute to silhouette, subject structure, articulation, construction, or readable surface detail. Hidden filler, accidental duplicates, and imperceptible splitting do not qualify.'
+    verificationBoundary: {
+      machine:
+        'Code verifies only explicit structural facts: schema, hierarchy, references, transforms, UV and texture coverage, animation timing, and target compatibility.',
+      semantic:
+        'Subject identity, silhouette fidelity, anatomy or construction accuracy, and visual appeal are not deterministically provable from counts or invariants. The agent must compare the rendered result with the request and supplied references and must not describe that judgment as machine-validated.'
     },
     subjectFidelity: {
       general:
@@ -86,7 +85,7 @@ export const agentManifest = {
     },
     reviewGates: {
       form:
-        'At the coarse stage, reject a body plan or silhouette that does not identify the requested subject before adding detail. Also reject missing defining parts, accidental asymmetry, floating pieces, avoidable interpenetration, and z-fighting. Do not trade recognition or reference fidelity for ornamental density.',
+        'At the coarse stage, reject a body plan or silhouette that does not identify the requested subject before adding detail. Every part must contribute to silhouette, structure, articulation, construction, or readable detail; reject hidden filler, accidental duplicates, and imperceptible splitting. Also reject missing defining parts, accidental asymmetry, floating pieces, avoidable interpenetration, and z-fighting. Do not trade recognition or reference fidelity for ornamental density.',
       texture:
         'Reject placeholder color fills, unintended UV stretching or rotation, broken seams, inconsistent texel scale, and identity-defining details that disappear at the expected gameplay distance.',
       rig:
@@ -225,7 +224,7 @@ export const agentManifest = {
     {
       stage: 'review',
       instruction:
-        'Apply every completionContract.reviewGates and defaultScope item. For high quality, use its single countSource and reject filler geometry. Inspect target readiness; review the viewport, Activity receipt, and Undo. Present every clip through a complete motion, then pause it.'
+        'Apply every completionContract.reviewGates and defaultScope item. Inspect target readiness; review the viewport, Activity receipt, and Undo. Present every clip through a complete motion, then pause it.'
     },
     {
       stage: 'produce',
