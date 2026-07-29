@@ -26,7 +26,7 @@ const sourceRoot = path.join(siteRoot, 'src');
 const publicRoot = path.join(siteRoot, 'public');
 const outputRoot = path.join(siteRoot, 'dist');
 
-const studioUrl = '/workbench/';
+const workbenchUrl = '/workbench/';
 const siteOrigin = 'https://ashfox.io';
 
 const hashedAsset = async (sourceName) => {
@@ -77,7 +77,7 @@ const assets = {
   css: await hashedAsset('site.css'),
   js: await hashedAsset('site.js')
 };
-const config = { siteOrigin, studioUrl };
+const config = { siteOrigin, workbenchUrl };
 const documents = await loadDocumentation(docsRoot);
 
 await writeRoute('/', renderLandingPage({ assets, config }));

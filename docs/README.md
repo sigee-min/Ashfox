@@ -9,14 +9,15 @@ browser access.
 
 ## Start in three steps
 
-1. Open [ashfox Workbench](https://ashfox.io/workbench/).
-2. Choose **Copy prompt** and paste it into Codex desktop app, Cursor, or another
-   browser-capable AI agent.
+1. Copy the setup prompt in [Get started](guides/ai-agent-quick-start.md).
+2. Paste it into Codex desktop app, Cursor, or another browser-capable AI
+   agent.
 3. Describe the asset you want, including its style, export format, important
    details, and animation.
 
-Your agent builds inside the live ashfox viewport. Use **Activity** to see what
-changed and **Undo** whenever a result goes in the wrong direction.
+The agent opens ashfox, reads its command contract, and prepares the empty
+project before it accepts the model request. It builds inside the live viewport
+and uses the activity receipt and Undo to review complete changes.
 
 ## What you can make
 
@@ -32,8 +33,8 @@ changed and **Undo** whenever a result goes in the wrong direction.
   first asset.
 - [Create and refine](guides/authoring-and-review.md) — write better requests,
   review details, and correct the result.
-- [Explore example assets](guides/examples.md) — open the tractor, rocket, and
-  kirin projects in ashfox.
+- [Explore example assets](guides/examples.md) — ask the agent to inspect the
+  tractor, rocket, and kirin projects.
 - [Save, open, export, and capture](guides/save-and-export.md) — keep the
   editable project and download finished files.
 - [Choose an export format](guides/choose-a-format.md) — decide between

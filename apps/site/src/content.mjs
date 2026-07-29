@@ -50,8 +50,7 @@ export const landingContent = {
       detail: '108 bones · 125 cubes · articulated drivetrain',
       poster: '/media/showcase/ironroot-tractor.jpg',
       media: '/media/showcase/ironroot-tractor-build.gif',
-      alt: 'Ironroot Tractor assembled from an empty ashfox scene',
-      studioSlug: 'ironroot-tractor'
+      alt: 'Ironroot Tractor assembled from an empty ashfox scene'
     },
     {
       eyebrow: 'Motion',
@@ -61,8 +60,7 @@ export const landingContent = {
       detail: '131 bones · 166 cubes · launch sequence',
       poster: '/media/showcase/aether-spear-rocket.jpg',
       media: '/media/showcase/aether-spear-rocket-animation.gif',
-      alt: 'Aether Spear Rocket launch animation in ashfox',
-      studioSlug: 'aether-spear-rocket'
+      alt: 'Aether Spear Rocket launch animation in ashfox'
     },
     {
       eyebrow: 'Character',
@@ -72,8 +70,7 @@ export const landingContent = {
       detail: '113 bones · 131 cubes · 2 animation clips',
       poster: '/media/showcase/moonveil-kirin.jpg',
       media: '/media/showcase/moonveil-kirin-animation.gif',
-      alt: 'Moonveil Kirin character animation in ashfox',
-      studioSlug: 'moonveil-kirin'
+      alt: 'Moonveil Kirin character animation in ashfox'
     }
   ],
   guides: [
@@ -81,7 +78,7 @@ export const landingContent = {
       index: '01',
       label: 'Start here',
       title: 'Connect your agent',
-      body: 'Open ashfox from Codex desktop app, Cursor, or another browser-capable agent.',
+      body: 'Paste the setup prompt into Codex desktop app, Cursor, or another browser-capable agent.',
       href: '/docs/guides/ai-agent-quick-start/'
     },
     {

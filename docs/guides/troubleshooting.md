@@ -1,43 +1,44 @@
 # Troubleshooting
 
-Start with the visible symptom. Keep the current `.ashfox` project until the
-problem is resolved.
+Describe the visible symptom to the agent and keep the latest `.ashfox` project
+available until the issue is resolved.
 
-## The agent cannot open ashfox
+## The agent cannot start ashfox
 
 - Confirm that the agent can control an in-app or connected browser.
-- Open [ashfox Workbench](https://ashfox.io/workbench/) yourself, then choose **Copy prompt** and
-  paste it into the agent.
-- Keep the ashfox tab open while the agent works.
+- Paste the setup prompt from [Get started](ai-agent-quick-start.md).
+- Ask the agent to report whether it reached the page, manifest, inspect call,
+  or project revision.
 
-If the agent has no browser access at all, you can still use the visible ashfox
-controls manually, but automated modeling requires a connected browser.
+An agent without browser control cannot use the automated workbench workflow.
 
-## Nothing happens after I describe the asset
+## Nothing happens after the model request
 
-- Confirm that the agent said ashfox was ready before sending the model request.
-- Ask it to inspect the current project and continue from the visible revision.
+- Confirm that the agent completed setup and reported the current revision.
+- Ask it to inspect the project and continue from that revision.
 - Include a concrete subject and target format.
 - Keep the request focused on one asset.
 
-## The file picker was closed
+## A file selection was cancelled
 
-Closing **Open project file** without choosing a file is a normal cancellation.
-The current project should remain unchanged and the controls should be ready
-immediately. Choose **Open project file** again when you are ready.
+Tell the agent to begin the open operation again. Cancellation leaves the
+current project unchanged and must return the file state to idle.
 
 ## A texture is missing or stretched
 
-1. Check the asset in Studio lighting.
-2. Ask the agent to identify untextured faces and the texture assigned to them.
-3. Regenerate or repack the UV layout with one consistent pixel density.
-4. Confirm that the texture is visible before exporting.
-5. For ZIP exports, keep the generated texture path and filename unchanged.
+Ask the agent to:
+
+1. render the asset in Studio lighting;
+2. identify untextured faces and their assigned textures;
+3. inspect UV bounds and apparent pixel density;
+4. regenerate or repack the atlas when needed;
+5. validate the texture paths before exporting.
+
+For ZIP exports, preserve the generated texture paths and filenames.
 
 ## Small details disappear
 
-Review the asset at the distance where it will be used. Ask for a correction
-that names both the view and the desired result:
+Name the view and desired result:
 
 ```text
 The eyes disappear in the three-quarter view.
@@ -49,15 +50,14 @@ more geometry.
 
 ## An animation does not play correctly
 
-- Select the intended clip in **Animate**.
-- Confirm that the clip has a duration and channels.
-- Step through the first frame, strongest pose, and last frame.
-- Check that each channel targets the intended bone.
-- Ask the agent to close the loop if the final pose jumps back to the first.
+Ask the agent to inspect the clip duration, channels, first frame, strongest
+pose, and loop boundary. It should check each target bone and render the motion
+before applying a correction.
 
 ## Export is blocked
 
-Read the blocking validation message before trying again. Typical fixes include:
+Ask the agent to read the blocking validation finding and inspect the relevant
+entity or target setting. Typical fixes include:
 
 - removing geometry the target cannot represent;
 - assigning missing textures;
@@ -67,25 +67,23 @@ Read the blocking validation message before trying again. Typical fixes include:
 
 Warnings can be reviewed, but blocking findings must be fixed.
 
-## A download did not reach the expected folder
+## A file did not reach the requested folder
 
-The browser controls download permissions and destinations. Download the
-prepared artifact normally, then move it into the project folder if direct
-workspace delivery is unavailable.
+Ask the agent to report the last completed boundary: artifact preparation,
+download activation, workspace transfer, or file verification. It must retry
+from the incomplete boundary and report only a file that exists.
 
 Confirm the expected extension: `.ashfox`, `.zip`, `.glb`, or `.gif`.
 
 ## A GIF was not saved
 
-Wait until capture finishes before downloading. If capture was cancelled, start
-it again. Keep the tab visible and avoid changing the viewport while frames are
-being recorded.
+Ask the agent to inspect the capture operation ID and terminal state. A
+cancelled or failed capture can be started again; a succeeded capture must use
+the matching prepared artifact.
 
-## I need to recover work
+## Recover work
 
-Reopen the newest `.ashfox` file. Browser-local state may preserve the current
-project, but the downloaded project file is the safest long-term copy.
-
-If a problem is reproducible after reopening the project, report it on
+Give the newest `.ashfox` file to the agent and ask it to inspect the loaded
+revision before editing. If the problem remains reproducible, report it on
 [GitHub](https://github.com/sigee-min/ashfox/issues) with the browser name,
-target format, and the shortest steps that reproduce it.
+target format, and shortest reproduction steps.

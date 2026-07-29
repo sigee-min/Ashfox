@@ -54,8 +54,7 @@ to GLB or glTF.
 
 ## Before exporting
 
-1. Play every required animation.
-2. Check texture assignment and pixel scale.
-3. Confirm namespace and model path for Minecraft targets.
-4. Resolve all blocking validation messages.
-5. Keep the `.ashfox` source even after the target export succeeds.
+Ask the agent to play every required animation, inspect texture assignment and
+pixel scale, confirm the Minecraft namespace and model path, and resolve all
+blocking validation findings. Have it save the `.ashfox` source before
+delivering the target export.

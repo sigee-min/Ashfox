@@ -169,23 +169,6 @@ img {
   color: var(--ink);
 }
 
-.header-cta {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
-  padding: 8px 13px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.025);
-  color: var(--cream);
-  font-size: 13px;
-  font-weight: 700;
-  transition:
-    border-color 160ms ease,
-    background 160ms ease,
-    transform 160ms ease;
-}
-
 .header-actions {
   display: flex;
   gap: 8px;
@@ -254,12 +237,6 @@ img {
   top: 5px;
   left: 6px;
   background: var(--bg);
-}
-
-.header-cta:hover {
-  border-color: rgba(199, 139, 66, 0.5);
-  background: rgba(199, 139, 66, 0.1);
-  transform: translateY(-1px);
 }
 
 .icon-button {
@@ -1912,11 +1889,6 @@ html[data-motion="ready"] [data-reveal][data-revealed="true"] {
     display: none;
   }
 
-  .header-cta {
-    padding-inline: 9px;
-    font-size: 11px;
-  }
-
   .header-actions {
     gap: 6px;
   }
@@ -2061,10 +2033,6 @@ html[data-motion="ready"] [data-reveal][data-revealed="true"] {
   .brand-mark {
     width: 27px;
     height: 27px;
-  }
-
-  .header-cta span {
-    display: none;
   }
 
   .header-setup-suffix {

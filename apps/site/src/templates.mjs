@@ -20,9 +20,6 @@ const structuredDataScript = (value) =>
     ? `<script type="application/ld+json">${JSON.stringify(value).replaceAll('<', '\\u003c')}</script>`
     : '';
 
-const studioDemoUrl = (studioUrl, slug) =>
-  `${studioUrl}${studioUrl.includes('?') ? '&' : '?'}demo=${encodeURIComponent(slug)}`;
-
 const githubUrl = 'https://github.com/sigee-min/ashfox';
 const contributeUrl = `${githubUrl}/blob/main/CONTRIBUTING.md`;
 
@@ -58,7 +55,7 @@ const headerSetupButton = () => `
   </button>
 `;
 
-const siteHeader = ({ active, studioUrl }) => `
+const siteHeader = ({ active }) => `
   <header class="site-header">
     <a class="brand" href="/" aria-label="ashfox home">
       ${brandMark}
@@ -71,9 +68,6 @@ const siteHeader = ({ active, studioUrl }) => `
     </nav>
     <div class="header-actions">
       ${headerSetupButton()}
-      <a class="header-cta" href="${escapeHtml(studioUrl)}">
-        Open <span>ashfox</span><span aria-hidden="true">↗</span>
-      </a>
     </div>
   </header>
 `;
@@ -126,7 +120,7 @@ const pageShell = ({
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
-    ${siteHeader({ active, studioUrl: config.studioUrl })}
+    ${siteHeader({ active })}
     ${body}
     <footer class="site-footer">
       <a class="brand footer-brand" href="/">
@@ -193,7 +187,7 @@ const landingDemo = (demo) => `
   </div>
 `;
 
-const landingStory = ({ story, studioUrl }) => `
+const landingStory = ({ story }) => `
   <section class="story-section" id="showcase" data-scroll-story>
     <div class="story-intro" data-reveal>
       <p class="eyebrow"><span></span>One coherent workflow</p>
@@ -205,12 +199,10 @@ const landingStory = ({ story, studioUrl }) => `
       <div class="story-stage">
         <div class="story-frame">
           ${story.map((chapter, index) => `
-            <a
+            <div
               class="story-media"
               data-story-media="${index}"
               data-active="${index === 0 ? 'true' : 'false'}"
-              href="${escapeHtml(studioDemoUrl(studioUrl, chapter.studioSlug))}"
-              aria-label="${escapeHtml(`Open ${chapter.title} in ashfox`)}"
             >
               <img
                 src="${escapeHtml(chapter.poster)}"
@@ -220,7 +212,7 @@ const landingStory = ({ story, studioUrl }) => `
                 alt="${escapeHtml(chapter.alt)}"
                 loading="lazy"
               >
-            </a>
+            </div>
           `).join('')}
         </div>
         <div class="story-stage-meta" aria-hidden="true">
@@ -234,11 +226,7 @@ const landingStory = ({ story, studioUrl }) => `
             class="story-chapter ${index % 2 === 0 ? 'story-chapter-left' : 'story-chapter-right'}"
             data-story-chapter="${index}"
           >
-            <a
-              class="story-mobile-media"
-              href="${escapeHtml(studioDemoUrl(studioUrl, chapter.studioSlug))}"
-              aria-label="${escapeHtml(`Open ${chapter.title} in ashfox`)}"
-            >
+            <div class="story-mobile-media">
               <img
                 src="${escapeHtml(chapter.poster)}"
                 data-story-mobile="${index}"
@@ -248,7 +236,7 @@ const landingStory = ({ story, studioUrl }) => `
                 alt="${escapeHtml(chapter.alt)}"
                 loading="lazy"
               >
-            </a>
+            </div>
             <div class="story-copy">
               <span>0${index + 1} · ${escapeHtml(chapter.eyebrow)}</span>
               <h3>${escapeHtml(chapter.title)}</h3>
@@ -306,7 +294,7 @@ export const renderLandingPage = ({ assets, config }) => {
         <div class="hero-visual">${landingDemo(content.demo)}</div>
       </section>
 
-      ${landingStory({ story: content.story, studioUrl: config.studioUrl })}
+      ${landingStory({ story: content.story })}
 
       <section class="section output-section" id="outputs">
         <div class="output-copy" data-reveal>
@@ -394,7 +382,7 @@ export const renderLandingPage = ({ assets, config }) => {
         {
           '@type': 'SoftwareApplication',
           name: 'ashfox',
-          url: absoluteUrl(config.siteOrigin, config.studioUrl),
+          url: absoluteUrl(config.siteOrigin, config.workbenchUrl),
           applicationCategory: 'GraphicsApplication',
           operatingSystem: 'Any',
           description: content.summary,
@@ -479,7 +467,7 @@ export const renderDocumentationPage = ({
         ${document.html}
         <div class="doc-end">
           <span>Ready to make something?</span>
-          <a href="${escapeHtml(config.studioUrl)}">Open workbench ↗</a>
+          <a href="/#quick-start">Get the setup prompt →</a>
         </div>
       </article>
       ${toc}

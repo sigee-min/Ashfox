@@ -1,12 +1,12 @@
 # Save, Open, Export, and Capture
 
-ashfox keeps the editable project separate from finished export files. Save the
-project when you want to continue editing; export when you want to use the asset
-elsewhere.
+Tell the agent what artifact you need. It operates the workbench, waits for the
+matching file operation to finish, activates the prepared artifact, and reports
+the verified result.
 
 ## Create a project with the right settings
 
-Choose **New project**, then set:
+Include the project settings in the first request:
 
 - **Name** — the human-readable project name;
 - **Format** — GeckoLib 5, Bedrock, GLB, or glTF;
@@ -14,61 +14,72 @@ Choose **New project**, then set:
 - **Model path** — the export-safe asset name and path;
 - **Texture canvas** — 16, 32, 64, 128, or 256 pixels square.
 
-Choose the smallest texture canvas that can preserve the required details.
-Minecraft-style assets commonly begin at 16, 32, or 64 pixels.
+```text
+Create a GeckoLib 5 project named Ember Stag.
+Use namespace wildwood, model path creatures/ember_stag, and a 64px texture.
+```
+
+The agent chooses the smallest texture canvas that can preserve the requested
+detail and validates target-specific settings before authoring.
 
 ## Save the editable project
 
-Choose **Save project** to download one `.ashfox` file. It contains the project
-structure and required texture data, so it is the file to keep for future
-editing.
+```text
+Save the current editable project as an .ashfox file.
+Deliver it to artifacts/ and verify the final filename and size.
+```
 
-Each save creates a new download. Keep the newest file or use a clear filename
-when your browser asks where to save it.
+The `.ashfox` file contains the project structure and required texture data.
+Keep it when future editing is expected.
 
-## Open an existing project
+## Continue from an existing project
 
-1. Choose **Open project file**.
-2. Select a `.ashfox` file.
-3. Wait for the viewport and project name to update.
+```text
+Load my .ashfox project, inspect its current revision and target, and summarize
+the model before making any changes.
+```
 
-Closing the file picker without selecting a file changes nothing. Your current
-project remains open.
+The agent starts the open operation. Browser security may ask you to select the
+local file; the agent resumes after the selection and confirms the loaded
+project revision.
 
 ## Export a finished asset
 
-1. Choose **Export**.
-2. Confirm the format, namespace, and model path.
-3. Start the export.
-4. Fix any blocking validation message and export again.
-5. Download the prepared file.
+```text
+Validate the current project for its configured target.
+Fix blocking findings, export it, deliver the artifact to artifacts/, and
+verify the final filename, extension, and size.
+```
 
-ashfox uses ZIP whenever a target needs several files. GLB can contain its
-textures in one binary file.
+GeckoLib 5, Bedrock, and glTF use ZIP when the target needs several related
+files. GLB can contain geometry, animation, and textures in one binary.
 
 See [Choose an export format](choose-a-format.md) for the exact result of each
 option.
 
 ## Capture a GIF
 
-Choose **Capture**, then select:
+Ask for either the build process or a selected animation:
 
-- **Build process** to replay how the asset was assembled;
-- **Animation** to record the selected animation clip.
+```text
+Capture the build process at 10fps with the full asset framed clearly.
+Deliver the GIF to artifacts/ and verify the result.
+```
 
-Both modes render at 10fps using the current camera and environment. Keep the
-asset framed the way you want before starting. You can cancel while capture is
-running, and capture never changes the project itself.
+```text
+Capture the selected idle animation at 10fps in Studio lighting.
+Deliver the GIF to artifacts/ and verify the result.
+```
 
-When capture finishes, download the prepared `.gif` file.
+Capture uses the requested camera and environment and does not modify the
+project.
 
-## Choose where a file is saved
+## Verify delivery
 
-Browser permissions decide whether a download can be written directly to a
-chosen folder. If your agent cannot place the file in a workspace directory,
-use the browser download and move the file afterward.
+The agent should report an artifact only after the workbench marks the same
+operation as succeeded and the file exists at the final location.
 
-Always verify the final filename and extension:
+Expected extensions:
 
 - editable source: `.ashfox`;
 - multi-file target: `.zip`;

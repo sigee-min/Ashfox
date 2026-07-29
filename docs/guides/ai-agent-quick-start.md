@@ -16,25 +16,23 @@ helps ashfox catch incompatible geometry or animation early.
 
 ## Connect your agent
 
-1. Open [ashfox Workbench](https://ashfox.io/workbench/).
-2. Choose **Copy prompt** in the header.
-3. Paste the copied prompt into your AI agent.
-4. Wait until the agent says ashfox is ready.
-
-You can also copy the same setup prompt here:
+1. Confirm that the agent can control an in-app or connected browser.
+2. Copy the setup prompt below into the agent.
+3. Wait until the agent says ashfox is ready.
 
 ```text
-Open https://ashfox.io/workbench/ in your in-app browser. If that is unavailable, use a
-browser you can connect to and control. Read
-https://ashfox.io/workbench/agent-manifest.json and use it as the single authority for
-creating, editing, reviewing, saving, and exporting ashfox projects. Inspect
-the current project and the relevant command schemas, then tell me ashfox is
-ready for my model request. Do not change the project until I send that request.
+Open https://ashfox.io/workbench/ in your in-app browser. If that is
+unavailable, use a browser you can connect to and control. Read
+https://ashfox.io/workbench/agent-manifest.json and use it as the single
+authority for creating, editing, reviewing, saving, and exporting ashfox
+projects. Inspect the current project and the relevant command schemas, then
+tell me ashfox is ready for my model request. Do not change the project until I
+send that request.
 ```
 
-The copied prompt teaches the agent how to inspect the current project, make
-changes, review the viewport, and prepare files. You only need to paste it once
-per working session.
+The agent opens the page, inspects the current project, and learns how to make
+changes, review the viewport, and prepare files. Paste it once per working
+session.
 
 ## Describe your first asset
 
@@ -52,21 +50,16 @@ clips you expect, such as `idle`, `walk`, or `attack`.
 
 ## Watch the result
 
-ashfox shows each committed change in the live viewport.
-
-- Open **Scene** to inspect the hierarchy.
-- Open **Inspect** to check exact transforms and pivots.
-- Open **Animate** to play or step through a clip.
-- Open **Activity** to review recent changes.
-- Choose **Undo** to reverse the last complete change.
-
-You do not need to approve every normal modeling operation. Review the rendered
-result and correct visible problems with a short follow-up request.
+The agent keeps the live viewport visible while it works. Ask it to inspect the
+scene hierarchy, exact transforms, pivots, animation clips, and activity
+receipts whenever a result needs closer review. Normal modeling commands apply
+without individual approval; correct a visible problem with a short follow-up
+request.
 
 ## Save before you leave
 
-Choose **Save project** to download a self-contained `.ashfox` file. Reopen that
-file later to continue with its models, textures, rig, animation, and activity
-history intact.
+Ask the agent to save a self-contained `.ashfox` file and verify its final
+location. Give that file to the agent later to continue with its models,
+textures, rig, animation, and activity history intact.
 
 Next: [Create and refine assets](authoring-and-review.md).

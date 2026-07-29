@@ -1,38 +1,47 @@
 # Example Assets
 
-These are complete ashfox projects with editable geometry, textures, rigging,
-and animation. Open one to inspect how a finished asset is structured, or start
-from the empty studio to make your own.
+These complete projects show editable geometry, textures, rigging, and
+animation. Paste a project prompt into your agent when you want it to inspect
+the structure.
 
 ## Ironroot Tractor
 
-[![Ironroot Tractor animation in ashfox](/media/showcase/ironroot-tractor-animation.gif)](/workbench/?demo=ironroot-tractor)
+![Ironroot Tractor animation in ashfox](/media/showcase/ironroot-tractor-animation.gif)
 
 A Minecraft-style field machine with 108 bones, 125 cubes, articulated wheels,
 and a mechanical work cycle.
 
-[Open Ironroot Tractor in ashfox →](/workbench/?demo=ironroot-tractor)
+```text
+Open https://ashfox.io/workbench/?demo=ironroot-tractor in your controlled
+browser. Inspect the complete project and summarize its hierarchy, textures,
+animation clips, and export target. Do not change it yet.
+```
 
 ## Aether Spear Rocket
 
-[![Aether Spear Rocket launch animation in ashfox](/media/showcase/aether-spear-rocket-animation.gif)](/workbench/?demo=aether-spear-rocket)
+![Aether Spear Rocket launch animation in ashfox](/media/showcase/aether-spear-rocket-animation.gif)
 
 A runic exploration rocket with 131 bones, 166 cubes, animated launch rigging,
 and a complete engine-plume sequence.
 
-[Open Aether Spear Rocket in ashfox →](/workbench/?demo=aether-spear-rocket)
+```text
+Open https://ashfox.io/workbench/?demo=aether-spear-rocket in your controlled
+browser. Inspect the complete project and summarize its hierarchy, textures,
+animation clips, and export target. Do not change it yet.
+```
 
 ## Moonveil Kirin
 
-[![Moonveil Kirin animation in ashfox](/media/showcase/moonveil-kirin-animation.gif)](/workbench/?demo=moonveil-kirin)
+![Moonveil Kirin animation in ashfox](/media/showcase/moonveil-kirin-animation.gif)
 
 A fantasy creature with 113 bones, 131 cubes, expressive facial details, and
 idle and awaken animation clips.
 
-[Open Moonveil Kirin in ashfox →](/workbench/?demo=moonveil-kirin)
+```text
+Open https://ashfox.io/workbench/?demo=moonveil-kirin in your controlled
+browser. Inspect the complete project and summarize its hierarchy, textures,
+animation clips, and export target. Do not change it yet.
+```
 
-## Start from an empty project
-
-Opening [ashfox without a demo link](/) starts with an empty project. Choose a
-target format, describe the asset you want, and build without inheriting any
-example geometry or animation.
+For a blank project, use the standard prompt in
+[Get started](ai-agent-quick-start.md).

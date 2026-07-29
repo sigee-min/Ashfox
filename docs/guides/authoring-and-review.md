@@ -57,12 +57,10 @@ correction rather than dozens of disconnected field changes.
 
 ## Review the model
 
-1. Check the silhouette from front, side, and three-quarter views.
-2. Confirm that large forms read before small decoration.
-3. Inspect eyes, windows, wheels, hands, engines, or other focal details.
-4. Check that moving parts have useful pivots and do not intersect at rest.
-5. Use the Studio environment for neutral judgment and Day, Evening, or Night
-   to check readability under different lighting.
+Ask the agent to render front, side, and three-quarter views in Studio
+lighting, then check Day, Evening, and Night when lighting readability matters.
+Have it verify that large forms read before decoration, focal details remain
+visible, and moving parts have useful pivots without resting intersections.
 
 ## Review textures and UVs
 
@@ -74,11 +72,10 @@ correction rather than dozens of disconnected field changes.
 
 ## Review animation
 
-1. Select the clip in **Animate**.
-2. Play it once at normal speed.
-3. Step through the strongest pose and the loop boundary.
-4. Check feet, wheels, wings, tails, and attached parts for sliding or clipping.
-5. Ask for a correction only when you can name the visible problem.
+Ask the agent to play each clip once at normal speed and inspect its strongest
+pose and loop boundary. Have it check feet, wheels, wings, tails, and attached
+parts for sliding or clipping. Request a correction only when the visible
+problem can be named.
 
 Stop refining when the silhouette, focal details, surface treatment, and motion
 are readable and export validation has no blocking issue.
