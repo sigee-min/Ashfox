@@ -15,15 +15,18 @@ import {
   renderLandingPage,
   renderNotFoundPage
 } from '../src/templates.mjs';
+import { landingContent } from '../src/content.mjs';
+import { createSinglePlayGif } from '../src/gifPlayback.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = path.resolve(siteRoot, '..', '..');
 const docsRoot = path.join(repoRoot, 'docs');
+const brandRoot = path.join(repoRoot, 'assets', 'brand');
 const sourceRoot = path.join(siteRoot, 'src');
 const publicRoot = path.join(siteRoot, 'public');
 const outputRoot = path.join(siteRoot, 'dist');
 
-const studioUrl = '/';
+const studioUrl = '/workbench/';
 const siteOrigin = 'https://ashfox.io';
 
 const hashedAsset = async (sourceName) => {
@@ -45,6 +48,28 @@ const writeRoute = async (route, html) => {
   await writeFile(destination, html);
 };
 
+const escapeXml = (value) =>
+  value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;');
+
+const sitemap = (routes) => `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${routes.map((route) => `  <url><loc>${escapeXml(new URL(route, siteOrigin).toString())}</loc></url>`).join('\n')}
+</urlset>
+`;
+
+const prepareHeroReels = async () => {
+  for (const sequence of landingContent.demo.sequences) {
+    const destination = path.join(outputRoot, sequence.reel);
+    const bytes = await readFile(destination);
+    await writeFile(destination, createSinglePlayGif(bytes));
+  }
+};
+
 await rm(outputRoot, { recursive: true, force: true });
 await mkdir(path.join(outputRoot, 'assets'), { recursive: true });
 
@@ -55,7 +80,7 @@ const assets = {
 const config = { siteOrigin, studioUrl };
 const documents = await loadDocumentation(docsRoot);
 
-await writeRoute('/home/', renderLandingPage({ assets, config }));
+await writeRoute('/', renderLandingPage({ assets, config }));
 for (const document of documents) {
   await writeRoute(
     document.route,
@@ -67,6 +92,8 @@ await writeFile(
   renderNotFoundPage({ assets, config })
 );
 await cp(publicRoot, outputRoot, { recursive: true });
+await prepareHeroReels();
+await cp(brandRoot, path.join(outputRoot, 'brand'), { recursive: true });
 await writeFile(
   path.join(outputRoot, '_headers'),
   `/*
@@ -84,8 +111,17 @@ await writeFile(
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+/brand/*
+  Cache-Control: public, max-age=3600, must-revalidate
+
 /og.png
   Cache-Control: public, max-age=86400
+
+/robots.txt
+  Cache-Control: public, max-age=3600
+
+/sitemap.xml
+  Cache-Control: public, max-age=3600
 
 /media/*
   Cache-Control: public, max-age=604800
@@ -100,7 +136,13 @@ await writeFile(
   path.join(outputRoot, 'robots.txt'),
   `User-agent: *
 Allow: /
+
+Sitemap: ${siteOrigin}/sitemap.xml
 `
+);
+await writeFile(
+  path.join(outputRoot, 'sitemap.xml'),
+  sitemap(['/', '/workbench/', ...documents.map((document) => document.route)])
 );
 
 console.log(

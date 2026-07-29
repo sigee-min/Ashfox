@@ -35,7 +35,7 @@ export const projectToThreeScene = (
   options: ProjectSceneOptions
 ): ProjectSceneProjection => {
   const root = new THREE.Group();
-  root.name = 'AshfoxProjectScene';
+  root.name = 'ashfoxProjectScene';
   const objectsByNodeId = new Map<string, THREE.Group>();
   const selectable: THREE.Object3D[] = [];
   const materials = createProjectMaterials(

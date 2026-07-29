@@ -1,0 +1,54 @@
+name: Bug report
+description: Report a reproducible ashfox problem
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Product surface
+      options:
+        - Web studio
+        - Blockbench MCP
+        - Public site or documentation
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the actual result and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Open…
+        2. Choose…
+        3. Observe…
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include the ashfox version or commit, browser or Blockbench version, operating system, and export format.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Additional evidence
+      description: Add a safe screenshot, minimal project, error message, or console excerpt. Remove secrets and private assets.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues for the same problem.
+          required: true
+        - label: This report contains no secrets or private project data.
+          required: true

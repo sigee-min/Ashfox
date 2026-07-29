@@ -3,14 +3,15 @@ for (const target of document.querySelectorAll('[data-current-year]')) {
   target.textContent = currentYear;
 }
 
+const prefersReducedMotion = window.matchMedia(
+  '(prefers-reduced-motion: reduce)'
+).matches;
+
 const agentDemo = document.querySelector('[data-agent-demo]');
 if (agentDemo instanceof HTMLElement) {
   const input = agentDemo.querySelector('[data-demo-input]');
   const reel = agentDemo.querySelector('[data-demo-reel]');
   const sequences = JSON.parse(agentDemo.dataset.sequences ?? '[]');
-  const reduceMotion = window.matchMedia(
-    '(prefers-reduced-motion: reduce)'
-  ).matches;
   let sequenceIndex = 0;
   let timers = [];
 
@@ -34,7 +35,7 @@ if (agentDemo instanceof HTMLElement) {
     const sequence = sequences[sequenceIndex];
     const source = sequence?.reel;
     if (!source) return;
-    reel.alt = `Ashfox building ${sequence.name} from an empty scene`;
+    reel.alt = `ashfox building ${sequence.name} from an empty scene`;
     agentDemo.dataset.demo = sequence.name;
     const separator = source.includes('?') ? '&' : '?';
     reel.src = `${source}${separator}run=${Date.now()}`;
@@ -50,7 +51,7 @@ if (agentDemo instanceof HTMLElement) {
     agentDemo.dataset.demo = sequence.name;
     setReelSource(reel?.dataset.emptySrc);
     if (reel instanceof HTMLImageElement) {
-      reel.alt = `Empty Ashfox scene prepared for ${sequence.name}`;
+      reel.alt = `Empty ashfox scene prepared for ${sequence.name}`;
     }
     input.value = '';
     let characterIndex = 0;
@@ -74,7 +75,6 @@ if (agentDemo instanceof HTMLElement) {
     agentDemo.dataset.stage = 'playing';
     restartReel();
     schedule(() => {
-      setReelSource(sequence.poster);
       agentDemo.dataset.busy = 'false';
       agentDemo.dataset.stage = 'cooldown';
       if (sequences.length < 2) return;
@@ -87,7 +87,7 @@ if (agentDemo instanceof HTMLElement) {
     input instanceof HTMLTextAreaElement &&
     sequences.length > 0
   ) {
-    if (reduceMotion) {
+    if (prefersReducedMotion) {
       input.value = sequences[0].prompt;
       setReelSource(sequences[0].poster);
       agentDemo.dataset.demo = sequences[0].name;
@@ -98,55 +98,141 @@ if (agentDemo instanceof HTMLElement) {
   }
 }
 
-const quickStartButton = document.querySelector(
-  '[data-copy-quick-start]'
-);
-const quickStartPrompt = document.querySelector(
-  '[data-quick-start-prompt]'
-);
-if (
-  quickStartButton instanceof HTMLButtonElement &&
-  quickStartPrompt instanceof HTMLElement
-) {
-  quickStartButton.addEventListener('click', async () => {
-    const prompt = quickStartPrompt.textContent?.trim();
-    if (!prompt) return;
-    quickStartButton.disabled = true;
-    try {
-      await navigator.clipboard.writeText(prompt);
-      quickStartButton.textContent = 'Copied';
-    } catch {
-      quickStartButton.textContent = 'Copy failed';
-    } finally {
-      window.setTimeout(() => {
-        quickStartButton.disabled = false;
-        quickStartButton.textContent = 'Copy prompt';
-      }, 1_200);
-    }
-  });
-}
+const story = document.querySelector('[data-scroll-story]');
+if (story instanceof HTMLElement) {
+  const chapters = [...story.querySelectorAll('[data-story-chapter]')];
+  const media = [...story.querySelectorAll('[data-story-media]')];
+  const mobileMedia = [...story.querySelectorAll('[data-story-mobile]')];
+  const position = story.querySelector('[data-story-position]');
+  let activeStoryIndex = -1;
 
-const searchInput = document.querySelector('#docs-search');
-if (searchInput instanceof HTMLInputElement) {
-  const links = [...document.querySelectorAll('[data-doc-link]')];
-  const applyFilter = () => {
-    const query = searchInput.value.trim().toLowerCase();
-    for (const link of links) {
-      link.hidden = query.length > 0 && !link.dataset.search.includes(query);
+  const restartStoryImage = (image) => {
+    if (!(image instanceof HTMLImageElement)) return;
+    const source = image.dataset.storySrc;
+    if (!source) return;
+    const separator = source.includes('?') ? '&' : '?';
+    image.src = `${source}${separator}run=${Date.now()}`;
+  };
+
+  const setActiveStory = (index) => {
+    if (index === activeStoryIndex || !chapters[index]) return;
+    activeStoryIndex = index;
+    story.style.setProperty(
+      '--story-progress',
+      String((index + 1) / chapters.length)
+    );
+    for (const [chapterIndex, chapter] of chapters.entries()) {
+      chapter.dataset.active = String(chapterIndex === index);
     }
-    for (const section of document.querySelectorAll('.docs-nav section')) {
-      section.hidden = !section.querySelector('[data-doc-link]:not([hidden])');
+    for (const [mediaIndex, item] of media.entries()) {
+      item.dataset.active = String(mediaIndex === index);
+      if (mediaIndex === index) restartStoryImage(item.querySelector('img'));
+    }
+    restartStoryImage(mobileMedia[index]);
+    if (position instanceof HTMLElement) {
+      position.textContent =
+        `0${index + 1} / 0${chapters.length}`;
     }
   };
-  searchInput.addEventListener('input', applyFilter);
-  document.addEventListener('keydown', (event) => {
-    if (
-      event.key === '/' &&
-      !(event.target instanceof HTMLInputElement) &&
-      !(event.target instanceof HTMLTextAreaElement)
-    ) {
-      event.preventDefault();
-      searchInput.focus();
+
+  if ('IntersectionObserver' in window && !prefersReducedMotion) {
+    const storyObserver = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.find((entry) => entry.isIntersecting);
+        if (!visible) return;
+        setActiveStory(chapters.indexOf(visible.target));
+      },
+      { rootMargin: '-38% 0px -38% 0px' }
+    );
+    for (const chapter of chapters) storyObserver.observe(chapter);
+  } else {
+    setActiveStory(0);
+  }
+}
+
+const revealTargets = [...document.querySelectorAll('[data-reveal]')];
+if (
+  revealTargets.length > 0 &&
+  'IntersectionObserver' in window &&
+  !prefersReducedMotion
+) {
+  document.documentElement.dataset.motion = 'ready';
+  const revealObserver = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        entry.target.dataset.revealed = 'true';
+        revealObserver.unobserve(entry.target);
+      }
+    },
+    { rootMargin: '0px 0px -12% 0px', threshold: 0.08 }
+  );
+  for (const target of revealTargets) revealObserver.observe(target);
+} else {
+  for (const target of revealTargets) target.dataset.revealed = 'true';
+}
+
+const copyText = async (text) => {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const fallback = document.createElement('textarea');
+  fallback.value = text;
+  fallback.setAttribute('readonly', '');
+  fallback.style.position = 'fixed';
+  fallback.style.opacity = '0';
+  document.body.append(fallback);
+  fallback.select();
+  const copied = document.execCommand('copy');
+  fallback.remove();
+  if (!copied) throw new Error('Clipboard unavailable.');
+};
+
+for (const button of document.querySelectorAll(
+  '[data-copy-setup-prompt]'
+)) {
+  if (!(button instanceof HTMLButtonElement)) continue;
+  const state = button.querySelector('[data-copy-state]');
+  const defaultState = state instanceof HTMLElement
+    ? state.dataset.defaultState ?? state.textContent ?? 'Copy'
+    : 'Copy';
+  const feedback = button
+    .closest('.quick-start-control')
+    ?.querySelector('[data-copy-feedback]');
+  let resetTimer = 0;
+
+  button.addEventListener('click', async () => {
+    const prompt = button.dataset.prompt?.trim();
+    if (!prompt) return;
+    window.clearTimeout(resetTimer);
+    button.disabled = true;
+    try {
+      await copyText(prompt);
+      button.dataset.copied = 'true';
+      if (state instanceof HTMLElement) state.textContent = 'Copied';
+      if (feedback instanceof HTMLElement) {
+        feedback.dataset.state = 'success';
+        feedback.textContent = 'Copied. Paste into Codex desktop app or Cursor.';
+      }
+    } catch {
+      button.dataset.copied = 'false';
+      if (state instanceof HTMLElement) state.textContent = 'Retry';
+      if (feedback instanceof HTMLElement) {
+        feedback.dataset.state = 'error';
+        feedback.textContent =
+          'Clipboard unavailable. Try again from a secure browser.';
+      }
+    } finally {
+      button.disabled = false;
+      resetTimer = window.setTimeout(() => {
+        button.dataset.copied = 'false';
+        if (state instanceof HTMLElement) state.textContent = defaultState;
+        if (feedback instanceof HTMLElement) {
+          delete feedback.dataset.state;
+          feedback.textContent = '';
+        }
+      }, 2_200);
     }
   });
 }

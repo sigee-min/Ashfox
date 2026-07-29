@@ -14,7 +14,7 @@ import { ProjectExportError, type ExportBundle } from './types';
 const exportGenericProject = (document: ProjectDocument): ExportBundle => {
   const report = validateProjectDocument(document, { includeFormatProfile: false });
   if (!report.valid) {
-    throw new ProjectExportError('Generic Ashfox export validation failed.', report.findings);
+    throw new ProjectExportError('Generic ashfox export validation failed.', report.findings);
   }
   const path = 'project.json';
   return {

@@ -34,7 +34,7 @@ const receipt = (
   schemaVersion: 1,
   commandId,
   projectId: 'project-test',
-  actorId: 'ai-ide',
+  actorId: 'ashfox-agent',
   source: 'agent',
   summary: 'Rename project',
   beforeRevision: 'local-0001',

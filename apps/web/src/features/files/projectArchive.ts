@@ -31,7 +31,7 @@ interface ArchiveManifest {
   assets: readonly ArchiveAssetEntry[];
 }
 
-export interface AshfoxProjectFile {
+export interface ProjectArchiveFile {
   document: ProjectDocument;
   assets: ProjectAssets;
 }
@@ -50,7 +50,7 @@ const parseManifest = (bytes: Uint8Array): ArchiveManifest => {
   try {
     value = JSON.parse(new TextDecoder().decode(bytes));
   } catch {
-    throw new Error('Ashfox manifest is not valid JSON.');
+    throw new Error('ashfox manifest is not valid JSON.');
   }
   if (
     !isRecord(value) ||
@@ -58,7 +58,7 @@ const parseManifest = (bytes: Uint8Array): ArchiveManifest => {
     value.project !== PROJECT_PATH ||
     !Array.isArray(value.assets)
   ) {
-    throw new Error('Ashfox manifest has an invalid structure.');
+    throw new Error('ashfox manifest has an invalid structure.');
   }
   const assets: ArchiveAssetEntry[] = value.assets.map((entry) => {
     if (
@@ -68,7 +68,7 @@ const parseManifest = (bytes: Uint8Array): ArchiveManifest => {
       typeof entry.path !== 'string' ||
       !entry.path.startsWith('assets/')
     ) {
-      throw new Error('Ashfox manifest contains an invalid texture asset.');
+      throw new Error('ashfox manifest contains an invalid texture asset.');
     }
     return {
       textureId: entry.textureId,
@@ -78,7 +78,7 @@ const parseManifest = (bytes: Uint8Array): ArchiveManifest => {
   const textureIds = new Set(assets.map((asset) => asset.textureId));
   const paths = new Set(assets.map((asset) => asset.path));
   if (textureIds.size !== assets.length || paths.size !== assets.length) {
-    throw new Error('Ashfox manifest contains duplicate texture assets.');
+    throw new Error('ashfox manifest contains duplicate texture assets.');
   }
   return {
     format: ARCHIVE_FORMAT,
@@ -103,7 +103,7 @@ const extensionForContentType = (contentType: string): string => {
       return 'jpg';
     default:
       throw new Error(
-        `Texture content type "${contentType}" cannot be stored in an Ashfox project.`
+        `Texture content type "${contentType}" cannot be stored in an ashfox project.`
       );
   }
 };
@@ -180,7 +180,7 @@ export const createProjectArchive = async (
   };
   const projectBytes = encodeJson(archivedDocument);
   if (projectBytes.length > MAX_PROJECT_JSON_BYTES) {
-    throw new Error('Ashfox project JSON exceeds the 8 MB limit.');
+    throw new Error('ashfox project JSON exceeds the 8 MB limit.');
   }
   const manifest: ArchiveManifest = {
     format: ARCHIVE_FORMAT,
@@ -210,26 +210,26 @@ const requiredEntry = (
   path: string
 ): Uint8Array => {
   const bytes = entries.get(path);
-  if (!bytes) throw new Error(`Ashfox archive entry "${path}" is missing.`);
+  if (!bytes) throw new Error(`ashfox archive entry "${path}" is missing.`);
   return bytes;
 };
 
 export const readProjectArchive = async (
   bytes: Uint8Array
-): Promise<AshfoxProjectFile> => {
+): Promise<ProjectArchiveFile> => {
   const entries = readStoredZip(bytes);
   const byPath = entryMap(entries);
   const manifest = parseManifest(requiredEntry(byPath, MANIFEST_PATH));
   const projectBytes = requiredEntry(byPath, manifest.project);
   if (projectBytes.length > MAX_PROJECT_JSON_BYTES) {
-    throw new Error('Ashfox project JSON exceeds the 8 MB limit.');
+    throw new Error('ashfox project JSON exceeds the 8 MB limit.');
   }
 
   let rawDocument: unknown;
   try {
     rawDocument = JSON.parse(new TextDecoder().decode(projectBytes));
   } catch {
-    throw new Error('Ashfox project JSON is invalid.');
+    throw new Error('ashfox project JSON is invalid.');
   }
   const document = parseProjectDocument(rawDocument);
   const documentTextureIds = Object.keys(document.textures).sort(
@@ -245,7 +245,7 @@ export const readProjectArchive = async (
     )
   ) {
     throw new Error(
-      'Ashfox manifest texture set does not match the project document.'
+      'ashfox manifest texture set does not match the project document.'
     );
   }
 
@@ -280,7 +280,7 @@ export const readProjectArchive = async (
   const unexpected = entries.find((entry) => !allowedPaths.has(entry.path));
   if (unexpected) {
     throw new Error(
-      `Ashfox archive contains unexpected entry "${unexpected.path}".`
+      `ashfox archive contains unexpected entry "${unexpected.path}".`
     );
   }
   return {

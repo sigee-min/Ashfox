@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: ashfox user guides
+    url: https://ashfox.io/docs/
+    about: Start here for setup, authoring, file, format, and troubleshooting help.
+  - name: Security vulnerability
+    url: https://github.com/sigee-min/ashfox/security/advisories/new
+    about: Report security issues privately.

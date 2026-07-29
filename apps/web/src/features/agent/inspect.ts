@@ -97,6 +97,7 @@ const inspectDefault = (
     {
       commandPort: 'connected',
       protocol: {
+        workbench: agentCommandProtocol.workbench,
         manifest: agentCommandProtocol.href,
         commandSchema: {
           kind: 'command',

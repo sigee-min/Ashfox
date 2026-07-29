@@ -6,9 +6,14 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
-# Sisyphus artifacts
-.sisyphus/
+# ashfox local workspace state
 .ashfox/
+
+# Operating system and editor state
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
@@ -45,7 +50,6 @@ build/Release
 node_modules/
 jspm_packages/
 apps/web/package-lock.json
-apps/docs/package-lock.json
 
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
@@ -108,6 +112,7 @@ packages/**/dist/
 
 # Serverless directories
 .serverless/
+.wrangler/
 
 # FuseBox cache
 .fusebox/

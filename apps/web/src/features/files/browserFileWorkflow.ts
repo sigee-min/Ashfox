@@ -13,7 +13,7 @@ import { renderTextureRaster } from '../textures/renderTextureRaster';
 import {
   createProjectArchive,
   readProjectArchive,
-  type AshfoxProjectFile
+  type ProjectArchiveFile
 } from './projectArchive';
 import {
   type ProjectAsset,
@@ -34,7 +34,7 @@ export interface TargetArtifactFile extends ArtifactFile {
 
 export const parseProjectFile = async (
   file: File
-): Promise<AshfoxProjectFile> => {
+): Promise<ProjectArchiveFile> => {
   if (!file.name.toLowerCase().endsWith('.ashfox')) {
     throw new Error('Project files must use the .ashfox extension.');
   }

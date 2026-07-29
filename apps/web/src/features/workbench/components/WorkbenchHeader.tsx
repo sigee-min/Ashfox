@@ -11,10 +11,10 @@ import { useArtifactUrl } from '../../files/useArtifactUrl';
 import type { GifCaptureFile } from '../../capture/gifCaptureFile';
 import type { GifCaptureRequest } from '../../capture/gifCaptureRequest';
 import { Icon } from '../Icon';
-import type { StorageStatus } from '../persistence/useLocalProjectPersistence';
 import type { ProjectExportTarget } from '../presentation/projectExportTarget';
 import type { CameraMode } from '../viewport/cameraPresets';
 import type { ViewportEnvironmentId } from '../viewport/viewportEnvironment';
+import { BrandLogo } from './BrandLogo';
 import { CaptureMenu } from './CaptureMenu';
 import { ExportMenu } from './ExportMenu';
 import { NewProjectMenu } from './NewProjectMenu';
@@ -25,9 +25,6 @@ type HeaderMenu = 'new' | 'project' | 'export' | 'capture' | null;
 
 interface WorkbenchHeaderProps {
   document: ProjectDocument;
-  isRendered: boolean;
-  storageStatus: StorageStatus;
-  lastSavedAt: string | null;
   fileOperation: FileOperationState<ArtifactFile>;
   artifactFile: ArtifactFile | null;
   buildDocuments: readonly ProjectDocument[];
@@ -46,25 +43,12 @@ interface WorkbenchHeaderProps {
   onCancelFileOperation: () => void;
 }
 
-const storageLabel = (status: StorageStatus): string => {
-  switch (status) {
-    case 'loading':
-      return 'Loading';
-    case 'saving':
-      return 'Saving';
-    case 'saved':
-      return 'Local saved';
-    case 'error':
-      return 'Storage error';
-  }
-};
-
 const targetLabel = (
   document: ProjectDocument
 ): readonly [string, string] => {
   switch (document.formatProfile.id) {
     case 'ashfox.generic':
-      return ['Ashfox', 'JSON'];
+      return ['ashfox', 'JSON'];
     case 'minecraft.java_block':
       return ['Java', document.formatProfile.modelKind];
     case 'minecraft.bedrock':
@@ -81,9 +65,6 @@ const targetLabel = (
 
 export function WorkbenchHeader({
   document,
-  isRendered,
-  storageStatus,
-  lastSavedAt,
   fileOperation,
   artifactFile,
   buildDocuments,
@@ -105,9 +86,6 @@ export function WorkbenchHeader({
   const openInputRef = useRef<HTMLInputElement>(null);
   const artifactAnchorRef = useRef<HTMLAnchorElement>(null);
   const artifactUrl = useArtifactUrl(artifactFile);
-  const storageTitle = lastSavedAt
-    ? `Saved locally ${new Date(lastSavedAt).toLocaleTimeString()}`
-    : 'Browser-local project storage';
   const target = targetLabel(document);
   const fileBusy = fileOperation.phase === 'running';
   const openLabel =
@@ -133,8 +111,8 @@ export function WorkbenchHeader({
 
   return (
     <header className="app-header">
-      <div className="brand-mark" aria-label="Ashfox">
-        <span className="brand-glyph"><Icon name="spark" /></span>
+      <div className="brand-mark" aria-label="ashfox">
+        <BrandLogo />
         <span>ashfox</span>
       </div>
       <div className="header-divider" />
@@ -236,17 +214,6 @@ export function WorkbenchHeader({
       >
         {fileOperation.message}
       </span>
-      <div className={`sync-state${isRendered ? ' is-live' : ''}`}>
-        <span className="live-dot" />
-        {isRendered ? 'Live preview' : 'Applying…'}
-      </div>
-      <div
-        className={`storage-state is-${storageStatus}`}
-        title={storageTitle}
-      >
-        <span className="storage-dot" />
-        {storageLabel(storageStatus)}
-      </div>
       <button
         type="button"
         className="target-badge"
@@ -257,7 +224,6 @@ export function WorkbenchHeader({
         <span>{target[0]}</span>
         <span className="target-detail">{target[1]}</span>
       </button>
-      <span className="revision-label">{document.revision}</span>
       {activeMenu === 'new' ? (
         <NewProjectMenu
           onCreate={(input) => {

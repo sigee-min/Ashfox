@@ -1,4 +1,4 @@
-# Ashfox Web Studio
+# ashfox Web Studio
 
 Zero-install, browser-local authoring surface.
 
@@ -16,7 +16,7 @@ Current scope:
 - cancellable project file operations with stale-completion protection;
 - self-contained `.ashfox` project archives with verified texture bytes;
 - one persistent browser artifact handoff for save, export, and capture;
-- single machine-readable AI IDE workflow in `agent-manifest.json`, backed by
+- single machine-readable AI agent workflow in `agent-manifest.json`, backed by
   reducer outcomes;
 - static production build with no application server routes.
 
@@ -35,7 +35,7 @@ Architecture:
 - IndexedDB uses revision compare-and-write and cannot roll back newer state.
 - Three.js objects are disposable render projections.
 - UI actions and the Agent Command Port submit the same canonical commands.
-- `/agent-manifest.json` is the machine authority for AI IDE operation and
+- `/workbench/agent-manifest.json` is the machine authority for AI agent operation and
   host-side artifact delivery.
 - Blockbench, MCP, Node persistence, SQLite, and worker packages are forbidden
   dependencies.

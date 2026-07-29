@@ -14,6 +14,7 @@ const contentTypes = {
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
   '.png': 'image/png',
+  '.svg': 'image/svg+xml',
   '.txt': 'text/plain; charset=utf-8',
   '.webp': 'image/webp'
 };
@@ -44,7 +45,12 @@ if (!fs.statSync(publicRoot, { throwIfNoEntry: false })?.isDirectory()) {
 
 http.createServer((request, response) => {
   const url = new URL(request.url ?? '/', `http://${host}:${port}`);
-  if (url.pathname === '/home' || url.pathname === '/docs') {
+  if (url.pathname === '/home' || url.pathname === '/home/') {
+    response.writeHead(301, { Location: '/' });
+    response.end();
+    return;
+  }
+  if (url.pathname === '/workbench' || url.pathname === '/docs') {
     response.writeHead(301, { Location: `${url.pathname}/` });
     response.end();
     return;
@@ -68,5 +74,5 @@ http.createServer((request, response) => {
   }
   fs.createReadStream(file).pipe(response);
 }).listen(port, host, () => {
-  console.log(`Ashfox preview: http://${host}:${port}/`);
+  console.log(`ashfox preview: http://${host}:${port}/`);
 });

@@ -30,7 +30,6 @@ export function Viewport({
   playing,
   onSelectNode,
   onCommitTransform,
-  onRenderedRevision,
   onStats
 }: ViewportProps) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -39,7 +38,6 @@ export function Viewport({
   const selectedNodeIdRef = useLatestValue(selectedNodeId);
   const onSelectNodeRef = useLatestValue(onSelectNode);
   const onCommitTransformRef = useLatestValue(onCommitTransform);
-  const onRenderedRevisionRef = useLatestValue(onRenderedRevision);
   const onStatsRef = useLatestValue(onStats);
 
   const runtimeRef = useViewportRuntime(hostRef, canvasRef, {
@@ -67,7 +65,6 @@ export function Viewport({
     });
     runtime.projection = projection;
     runtime.scene.add(projection.root);
-    onRenderedRevisionRef.current(document.revision);
   }, [
     assets,
     document,

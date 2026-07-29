@@ -51,7 +51,6 @@ interface ViewportWorkspaceProps {
     value: Vec3
   ) => void;
   onCommitTransform: (nodeId: string, transform: Transform) => void;
-  onRenderedRevision: (revision: string) => void;
   onStats: (stats: ViewportStats) => void;
 }
 
@@ -77,7 +76,6 @@ export function ViewportWorkspace({
   onToggleVisibility,
   onTransformProperty,
   onCommitTransform,
-  onRenderedRevision,
   onStats
 }: ViewportWorkspaceProps) {
   const selectedNode = selectedNodeId
@@ -107,7 +105,6 @@ export function ViewportWorkspace({
           playing={playing}
           onSelectNode={onSelectNode}
           onCommitTransform={onCommitTransform}
-          onRenderedRevision={onRenderedRevision}
           onStats={onStats}
         />
         <div className="viewport-top-left">

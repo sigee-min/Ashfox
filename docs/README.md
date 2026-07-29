@@ -1,81 +1,48 @@
-# Ashfox
+# ashfox Docs
 
-Ashfox is an AI-native low-poly workbench built around consistent modeling,
-texturing, and animation. This directory defines its two physically separated
-product tracks:
+ashfox turns a model request into an editable low-poly asset you can watch,
+correct, save, and export in the browser. There is nothing to install and no
+account to create.
 
-- the AI-native low-poly workbench;
-- an optional Blockbench MCP compatibility integration.
+Blockbench is optional. The quickest path uses only ashfox and an AI agent with
+browser access.
 
-The documents explain product and architecture boundaries. The published
-[agent manifest](https://github.com/sigee-min/ashfox/blob/main/apps/web/agent-manifest.json)
-is the single machine-readable authority for AI IDE discovery, operation, and
-artifact delivery.
+## Start in three steps
 
-## Navigation
+1. Open [ashfox Workbench](https://ashfox.io/workbench/).
+2. Choose **Copy prompt** and paste it into Codex desktop app, Cursor, or another
+   browser-capable AI agent.
+3. Describe the asset you want, including its style, export format, important
+   details, and animation.
 
-### Guides
+Your agent builds inside the live ashfox viewport. Use **Activity** to see what
+changed and **Undo** whenever a result goes in the wrong direction.
 
-- [AI IDE quick start](guides/ai-ide-quick-start.md)
-- [Authoring and review](guides/authoring-and-review.md)
-- [Save and export](guides/save-and-export.md)
+## What you can make
 
-### Product
+- articulated low-poly creatures, vehicles, props, and blocks;
+- pixel textures with consistent UV scale;
+- bones, pivots, and reusable animation clips;
+- build-process and animation GIFs at 10fps;
+- GeckoLib 5, Bedrock, GLB, and glTF exports.
 
-- [Vision and scope](product/vision-and-scope.md)
+## Choose a guide
 
-### Research
+- [Get started](guides/ai-agent-quick-start.md) — connect an agent and make your
+  first asset.
+- [Create and refine](guides/authoring-and-review.md) — write better requests,
+  review details, and correct the result.
+- [Explore example assets](guides/examples.md) — open the tractor, rocket, and
+  kirin projects in ashfox.
+- [Save, open, export, and capture](guides/save-and-export.md) — keep the
+  editable project and download finished files.
+- [Choose an export format](guides/choose-a-format.md) — decide between
+  GeckoLib 5, Bedrock, GLB, and glTF.
+- [Troubleshooting](guides/troubleshooting.md) — solve common browser, texture,
+  animation, and download problems.
 
-- [Single-agent quality per token](research/single-agent-quality.md)
+## Your files stay local
 
-### Architecture
-
-- [System overview](architecture/overview.md)
-- [Static public site](architecture/public-site.md)
-- [Authority boundaries](architecture/authority-boundaries.md)
-- [Web state management](architecture/web-state-management.md)
-- [Canonical project document](architecture/project-document.md)
-- [Canonical Asset IR](architecture/asset-ir.md)
-- [Commands and results](architecture/commands-and-results.md)
-- [AI-native low-poly authoring](architecture/ai-native-authoring.md)
-- [Agent Command Port](architecture/agent-command-port.md)
-- [Rendering, assets, and export](architecture/rendering-assets-export.md)
-- [Export target architecture](architecture/export-targets.md)
-
-### Experience
-
-- [Ashfox workbench UX](ux/workbench.md)
-
-### Migration
-
-- [Roadmap and delivery gates](migration/roadmap.md)
-- [Capability parity matrix](migration/parity-matrix.md)
-
-### Decisions
-
-- [ADR-0001: Build the browser workbench](decisions/0001-browser-workbench.md)
-- [ADR-0002: Separate Web and Blockbench product tracks](decisions/0002-product-tracks.md)
-- [ADR-0003: Single-agent authoring](decisions/0003-single-agent-authoring.md)
-
-## Document status vocabulary
-
-- **Proposed**: design is open for revision.
-- **Accepted**: design direction is approved.
-- **In progress**: implementation has started but the delivery gate is not met.
-- **Implemented**: the documented gate has passing evidence.
-
-## Working rules
-
-1. `engine-core` owns canonical web model, validation, and exporters.
-2. Ashfox workbench imports browser and `engine-core` packages.
-3. Blockbench compatibility packages serve the Blockbench product track.
-4. `ProjectDocument` contains canonical asset state.
-5. The two tracks share format contracts and deterministic snapshots.
-6. A delivery gate passes only when Web and Blockbench compatibility tests run independently.
-7. AI IDE writes through validated canonical commands.
-8. Integrity and target checks run locally and never require another AI turn.
-9. A schema change updates every reader, writer, validator, fixture, and test
-   in the same change.
-10. Agent context is bounded and loaded on demand.
-11. Documentation describes current product authority and active delivery
-    gates.
+ashfox stores the working project in your browser. It does not require a
+database or upload your project to an ashfox server. A file leaves the browser
+only when you choose to save, export, or download a capture.

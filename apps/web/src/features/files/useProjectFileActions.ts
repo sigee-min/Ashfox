@@ -14,7 +14,7 @@ import {
 } from './browserFileWorkflow';
 import type { ArtifactFile } from './artifactFile';
 import type { FileOperationState } from './fileOperationState';
-import type { AshfoxProjectFile } from './projectArchive';
+import type { ProjectArchiveFile } from './projectArchive';
 import type { ProjectAssets } from './projectAssets';
 import { useFileOperation } from './useFileOperation';
 import { createAnimatedGif } from '../capture/createAnimatedGif';
@@ -28,7 +28,7 @@ import type { GifCaptureRequest } from '../capture/gifCaptureRequest';
 interface UseProjectFileActionsInput {
   document: ProjectDocument;
   assets: ProjectAssets;
-  onLoad: (project: AshfoxProjectFile) => void;
+  onLoad: (project: ProjectArchiveFile) => void;
 }
 
 interface ProjectFileActions {

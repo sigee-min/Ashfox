@@ -1,6 +1,7 @@
 {
   "protocol": "ashfox.agent-command-port",
-  "href": "/agent-manifest.json",
+  "workbench": "/workbench/",
+  "href": "/workbench/agent-manifest.json",
   "description": "AI-native low-poly workbench for consistent modeling, texturing, and animation.",
   "pageApi": {
     "global": "ashfox",
@@ -99,7 +100,7 @@
   "delivery": {
     "requestedPath": "workspace-relative directory",
     "defaultDirectory": "artifacts/",
-    "owner": "AI IDE host",
+    "owner": "agent host",
     "steps": [
       "Reject paths outside the active workspace.",
       "Activate the persistent artifact anchor, then transfer the download directly into the requested directory; never rely on auto-download and never copy its bytes through model context.",

@@ -15,7 +15,7 @@ const run = async () => {
     servedir: outdir
   });
 
-  console.log(`Ashfox Web Studio: http://127.0.0.1:${server.port}`);
+  console.log(`ashfox workbench: http://127.0.0.1:${server.port}/workbench/`);
 
   const stop = async () => {
     await context.dispose();

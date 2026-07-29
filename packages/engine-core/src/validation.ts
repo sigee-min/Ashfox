@@ -1008,7 +1008,7 @@ const validateJavaProfile = (
     add({
       code: 'format.unsupported_data',
       severity: 'error',
-      message: 'Java block/item models cannot contain Ashfox animation clips.',
+      message: 'Java block/item models cannot contain ashfox animation clips.',
       path: 'animations',
       fix: 'Export a static project revision or choose an animation-capable target.'
     });
@@ -1692,7 +1692,7 @@ const validateGltfProfile = (
       add({
         code: 'format.unsupported_data',
         severity: 'error',
-        message: `glTF core cannot preserve the ${texture.renderMode} Ashfox render mode.`,
+        message: `glTF core cannot preserve the ${texture.renderMode} ashfox render mode.`,
         path: `textures.${assetId}.renderMode`,
         assetIds: [assetId]
       });
@@ -1941,7 +1941,7 @@ export const validateProjectDocument = (
     add({
       code: 'format.unsupported_data',
       severity: 'error',
-      message: 'Generic Ashfox profile version must be 1.',
+      message: 'Generic ashfox profile version must be 1.',
       path: 'formatProfile.version'
     });
   }

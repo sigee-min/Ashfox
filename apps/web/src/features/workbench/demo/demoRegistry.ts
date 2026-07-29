@@ -22,11 +22,11 @@ export const DEFAULT_DEMO = MOONVEIL_KIRIN_DEMO;
 
 export const resolveDemoDefinition = (
   search: string
-): DemoDefinition => {
+): DemoDefinition | null => {
   const slug = new URLSearchParams(search).get('demo');
   return DEMO_DEFINITIONS.find(
     (definition) => definition.slug === slug
-  ) ?? DEFAULT_DEMO;
+  ) ?? null;
 };
 
 export const createDefaultDemoHistory = () =>

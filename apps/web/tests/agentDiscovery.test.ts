@@ -56,7 +56,8 @@ const assertAttributeIsRendered = (
 };
 
 assert.equal(manifest.protocol, 'ashfox.agent-command-port');
-assert.equal(manifest.href, '/agent-manifest.json');
+assert.equal(manifest.workbench, '/workbench/');
+assert.equal(manifest.href, '/workbench/agent-manifest.json');
 assert.equal(manifest.pageApi.global, 'ashfox');
 assert.ok(
   manifest.rules.some((rule) =>
@@ -105,14 +106,14 @@ assert.equal(
 );
 assert.match(
   html,
-  /data-ashfox-agent-manifest="\/agent-manifest\.json"/
+  /data-ashfox-agent-manifest="\/workbench\/agent-manifest\.json"/
 );
 assert.match(
   html,
   /type="application\/vnd\.ashfox\.agent\+json"/
 );
 assert.ok(
-  staticFiles.includes('agent-manifest.json'),
+  staticFiles.includes('workbench/agent-manifest.json'),
   'the static deployment must include the discovered manifest'
 );
 assert.equal(
@@ -209,7 +210,7 @@ assert.ok(deliverStage && 'instruction' in deliverStage);
 assert.match(deliverStage.instruction, /Activate downloadArtifact/);
 assert.equal(manifest.delivery.requestedPath, 'workspace-relative directory');
 assert.equal(manifest.delivery.defaultDirectory, 'artifacts/');
-assert.equal(manifest.delivery.owner, 'AI IDE host');
+assert.equal(manifest.delivery.owner, 'agent host');
 assert.equal(manifest.delivery.steps.length, 3);
 const deliveryContract = [
   ...manifest.delivery.steps,
@@ -242,6 +243,7 @@ assert.ok(Buffer.byteLength(JSON.stringify(result)) <= 2_048);
 if (result.ok) {
   const data = result.data as {
     protocol: {
+      workbench: string;
       manifest: string;
       commandSchema: {
         kind: string;
@@ -250,6 +252,7 @@ if (result.ok) {
     };
     commands: readonly string[];
   };
+  assert.equal(data.protocol.workbench, manifest.workbench);
   assert.equal(data.protocol.manifest, manifest.href);
   assert.deepEqual(data.protocol.commandSchema, {
     kind: 'command',

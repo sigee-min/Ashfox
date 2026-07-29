@@ -1,7 +1,7 @@
-# Ashfox Engine Core
+# ashfox Engine Core
 
 Pure TypeScript domain model, invariants, command contracts, and deterministic
-asset exporters for the standalone Ashfox engine.
+asset exporters for the standalone ashfox engine.
 
 Host-independent UV packing and Minecraft texture shading also live here so
 the Web Studio and Blockbench compatibility track use one calculation

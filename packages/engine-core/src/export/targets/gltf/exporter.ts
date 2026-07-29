@@ -218,7 +218,7 @@ export const buildGltf = (
   const documentData: GltfDocument = {
     asset: {
       version: '2.0',
-      generator: 'Ashfox Engine Core',
+      generator: 'ashfox engine core',
       ...(profile.copyright ? { copyright: profile.copyright } : {})
     },
     scene: 0,

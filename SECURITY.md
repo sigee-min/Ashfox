@@ -1,6 +1,7 @@
 # Security Policy
 
-## Supported Versions
+## Supported versions
+
 Security fixes are provided for:
 
 - `main` branch (latest source)
@@ -8,11 +9,14 @@ Security fixes are provided for:
 
 Older releases may not receive fixes.
 
-## Reporting a Vulnerability
+## Reporting a vulnerability
+
 Please do not report vulnerabilities in public issues.
 
 Preferred path:
-1. Use GitHub Security Advisories (`Security` tab) for this repository.
+
+1. Open a
+   [private GitHub security advisory](https://github.com/sigee-min/ashfox/security/advisories/new).
 2. If advisories are unavailable, contact maintainers through a private channel and include:
    - affected version/commit
    - reproduction steps
@@ -21,7 +25,7 @@ Preferred path:
 
 If no private channel is available, open a minimal issue titled `[SECURITY] Private contact requested` without exploit details.
 
-## Response Targets
+## Response targets
 - Initial acknowledgment: within 3 business days
 - Triage decision: within 7 business days
 - Fix timeline: depends on severity and scope

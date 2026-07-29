@@ -3,7 +3,10 @@ import path from 'node:path';
 
 import { marked } from 'marked';
 
-import { sectionOrder } from './content.mjs';
+import {
+  documentationOrder,
+  sectionOrder
+} from './content.mjs';
 
 const markdownExtension = /\.md$/i;
 
@@ -50,10 +53,10 @@ const descriptionFromMarkdown = (markdown) => {
         value.length > 30 &&
         !value.startsWith('#') &&
         !value.startsWith('- ') &&
-        !value.startsWith('|') &&
-        !value.startsWith('Status:')
+        !value.startsWith('|')
     );
-  return (paragraphs[0] ?? 'Ashfox product and architecture documentation.')
+  return (paragraphs[0] ??
+    'ashfox guides for creating, reviewing, saving, and exporting low-poly assets.')
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
     .replace(/[*_`]/g, '');
 };
@@ -86,13 +89,7 @@ const addHeadingIds = (html) => {
       return `<h${level} id="${id}">${inner}</h${level}>`;
     }
   );
-  return {
-    html: content.replace(
-      /<p>Status: <strong>([^<]+)<\/strong><\/p>/,
-      '<p class="doc-status"><span>Status</span>$1</p>'
-    ),
-    toc
-  };
+  return { html: content, toc };
 };
 
 const sectionForPath = (relativePath) => {
@@ -105,6 +102,11 @@ const sectionForPath = (relativePath) => {
 const sectionRank = (section) => {
   const index = sectionOrder.indexOf(section);
   return index === -1 ? sectionOrder.length : index;
+};
+
+const documentRank = (route) => {
+  const index = documentationOrder.indexOf(route);
+  return index === -1 ? documentationOrder.length : index;
 };
 
 export const loadDocumentation = async (docsRoot) => {
@@ -137,8 +139,9 @@ export const loadDocumentation = async (docsRoot) => {
     const sectionDifference =
       sectionRank(left.section) - sectionRank(right.section);
     if (sectionDifference !== 0) return sectionDifference;
-    if (left.route === '/docs/') return -1;
-    if (right.route === '/docs/') return 1;
+    const rankDifference =
+      documentRank(left.route) - documentRank(right.route);
+    if (rankDifference !== 0) return rankDifference;
     return left.title.localeCompare(right.title);
   });
 };

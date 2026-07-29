@@ -3,20 +3,27 @@ const path = require('node:path');
 
 const { outdir, webRoot } = require('./buildOptions');
 
+const repoRoot = path.resolve(webRoot, '..', '..');
+const brandSource = path.join(repoRoot, 'assets', 'brand');
 const staticFiles = [
-  'agent-manifest.json',
-  'index.html'
+  'workbench/agent-manifest.json',
+  'workbench/index.html'
 ];
 
 const prepareOutput = () => {
   fs.rmSync(outdir, { recursive: true, force: true });
   fs.mkdirSync(outdir, { recursive: true });
-  for (const file of staticFiles) {
+  for (const destination of staticFiles) {
+    const target = path.join(outdir, destination);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.copyFileSync(
-      path.join(webRoot, file),
-      path.join(outdir, file)
+      path.join(webRoot, path.basename(destination)),
+      target
     );
   }
+  fs.cpSync(brandSource, path.join(outdir, 'brand'), {
+    recursive: true
+  });
 };
 
 module.exports = { prepareOutput, staticFiles };

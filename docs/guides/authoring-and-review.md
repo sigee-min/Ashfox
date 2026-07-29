@@ -1,59 +1,86 @@
-# Authoring and Review
+# Create and Refine Assets
 
-Ashfox gives one AI IDE deterministic low-poly modeling, texturing, and
-animation operations. The most reliable workflow alternates one meaningful
-edit with one bounded viewport review.
+A strong first request establishes the whole asset. Short follow-up requests
+then fix one visible issue at a time.
 
-## Start with the whole asset
+## Start with the complete result
 
-Describe the result before listing individual parts:
+Describe:
 
-```text
-Build an arcane field tractor with a readable cab, large rear wheels,
-an articulated drivetrain, and a slow mechanical idle.
-```
-
-This gives the first batch enough context to establish hierarchy, silhouette,
-materials, and animation intent together.
-
-## Refine one visible problem
-
-Follow-up prompts should identify the evidence and the desired change:
+- **subject** — creature, vehicle, prop, block, or environment piece;
+- **style** — Minecraft-like pixels, chunky low-poly, mechanical, organic, or
+  another clear direction;
+- **target** — GeckoLib 5, Bedrock, GLB, or glTF;
+- **structure** — important parts, proportions, symmetry, and articulation;
+- **surface** — palette, material separation, texture size, and focal details;
+- **motion** — required clips, pace, weight, and loop behavior.
 
 ```text
-The tractor reads too small in the current camera.
-Reframe it to fill the viewport without changing model scale.
+Create a moonlit fantasy kirin for GeckoLib 5.
+Keep the silhouette readable at Minecraft scale, place the eyes clearly for
+front and three-quarter views, use a restrained blue-gold pixel palette,
+and add calm idle and alert animation clips.
+```
+
+Avoid starting with a long list of individual cubes. The agent can establish a
+better hierarchy when it understands the final silhouette and motion first.
+
+## Correct one visible problem
+
+Name what you see and what the result should become.
+
+```text
+The eyes disappear at three-quarter view.
+Move them slightly higher and outward while preserving a forward gaze.
 ```
 
 ```text
-The kirin eyes disappear at three-quarter view.
-Raise the eye placement and preserve a clear forward gaze.
+The rear wheels feel too small beside the cab.
+Increase only their diameter and keep the axle and fenders aligned.
 ```
 
-Do not ask the agent to restate the project or dump raw JSON. It can inspect the
-current revision, the affected entities, and one relevant command schema.
+Do not repeat the complete project description. Your agent can inspect the
+current ashfox project before changing it.
 
-## Prefer deterministic tools
+## Ask for exact operations when precision matters
 
-Use the product operation when the request is exact:
+Natural-language requests can still be exact:
 
-- align, mirror, repeat, reparent, and pivot for structure;
-- numeric transforms for measured changes;
-- Minecraft texture generation and UV atlas commands for consistent pixels;
-- phase, mirror, and loop closure for animation;
-- target validation before export.
+- “Mirror the finished left horn to the right side.”
+- “Align all wheel pivots to their axle centers.”
+- “Use one pixel density across every cube face.”
+- “Phase the four leg cycles evenly.”
+- “Close the idle loop without changing its duration.”
 
-Related edits belong in one atomic batch. Separate batches are useful only when
-the rendered result can change the next decision.
+ashfox applies related edits together, so Activity and Undo represent the whole
+correction rather than dozens of disconnected field changes.
 
-## Review at the right scale
+## Review the model
 
-1. Check the full silhouette and camera framing.
-2. Check high-information details such as eyes, face, wheels, or engines.
-3. Play the selected clip and watch its loop boundary.
-4. Read the latest Activity receipt.
-5. Undo the batch when its direction is wrong; prompt a correction when it is
-   close.
+1. Check the silhouette from front, side, and three-quarter views.
+2. Confirm that large forms read before small decoration.
+3. Inspect eyes, windows, wheels, hands, engines, or other focal details.
+4. Check that moving parts have useful pivots and do not intersect at rest.
+5. Use the Studio environment for neutral judgment and Day, Evening, or Night
+   to check readability under different lighting.
 
-Stop when target validation has no blocking finding and another agent turn
-cannot name a concrete visible improvement.
+## Review textures and UVs
+
+- Check that similar surfaces use the same apparent pixel size.
+- Make sure each visible face has the intended texture.
+- Look for stretched pixels, seams, empty faces, and accidental transparency.
+- Keep important accents visible at the distance where the asset will be used.
+- For Minecraft assets, prefer deliberate pixel blocks over smooth gradients.
+
+## Review animation
+
+1. Select the clip in **Animate**.
+2. Play it once at normal speed.
+3. Step through the strongest pose and the loop boundary.
+4. Check feet, wheels, wings, tails, and attached parts for sliding or clipping.
+5. Ask for a correction only when you can name the visible problem.
+
+Stop refining when the silhouette, focal details, surface treatment, and motion
+are readable and export validation has no blocking issue.
+
+Next: [Save, open, export, and capture](save-and-export.md).

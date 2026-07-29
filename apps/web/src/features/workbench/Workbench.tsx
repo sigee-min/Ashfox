@@ -29,7 +29,7 @@ import {
 } from './persistence/localProjectRecord';
 import { useLocalProjectPersistence } from './persistence/useLocalProjectPersistence';
 import { useProjectFileActions } from '../files/useProjectFileActions';
-import type { AshfoxProjectFile } from '../files/projectArchive';
+import type { ProjectArchiveFile } from '../files/projectArchive';
 import {
   useAgentCommandPort
 } from '../agent/useAgentCommandPort';
@@ -41,6 +41,7 @@ import {
   createDemoHistory
 } from './demo/demoFactory';
 import {
+  createHistoryState,
   type HistoryAction
 } from './state/historyReducer';
 import {
@@ -56,6 +57,7 @@ import {
   workbenchViewReducer
 } from './state/workbenchViewState';
 import {
+  createBlankWorkbenchProject,
   createNewProjectDocument,
   type NewProjectInput
 } from './newProject';
@@ -70,9 +72,15 @@ export function Workbench() {
     () => {
       const search =
         typeof window === 'undefined' ? '' : window.location.search;
+      const definition = resolveDemoDefinition(search);
       return {
-        definition: resolveDemoDefinition(search),
-        isShowcase: new URLSearchParams(search).has('demo')
+        definition,
+        history: definition
+          ? createDemoHistory(definition)
+          : createHistoryState(
+              createBlankWorkbenchProject(new Date().toISOString())
+            ),
+        isShowcase: definition !== null
       };
     },
     []
@@ -80,9 +88,9 @@ export function Workbench() {
   const [project, dispatchProject] = useReducer(
     projectSessionReducer,
     initialProject,
-    ({ definition, isShowcase }) =>
+    ({ history, isShowcase }) =>
       createProjectSessionState(
-        createDemoHistory(definition),
+        history,
         {},
         !isShowcase
       )
@@ -94,8 +102,8 @@ export function Workbench() {
     workbenchViewReducer,
     initialDemo,
     () => createWorkbenchViewState(
-      initialDemo.initialSelectionId,
-      Object.keys(document.animations)[0] ?? null
+      initialDemo?.initialSelectionId ?? null,
+      Object.keys(initialProject.history.present.animations)[0] ?? null
     )
   );
   const {
@@ -109,7 +117,6 @@ export function Workbench() {
     activeOverlay,
     bottomMode
   } = view;
-  const [renderedRevision, setRenderedRevision] = useState(document.revision);
   const [viewportStats, setViewportStats] = useState<ViewportStats>({
     calls: 0,
     triangles: 0
@@ -199,7 +206,7 @@ export function Workbench() {
     },
     []
   );
-  const { status: storageStatus, lastSavedAt } = useLocalProjectPersistence({
+  const { status: storageStatus } = useLocalProjectPersistence({
     enabled: !initialProject.isShowcase,
     projectId: document.id,
     projectGeneration: storage.generation,
@@ -211,7 +218,7 @@ export function Workbench() {
     onExternal: receiveExternalProject
   });
 
-  const loadProject = useCallback((project: AshfoxProjectFile): void => {
+  const loadProject = useCallback((project: ProjectArchiveFile): void => {
     const nextDocument = project.document;
     const savedAt = new Date().toISOString();
     dispatchProject({
@@ -311,9 +318,6 @@ export function Workbench() {
     >
       <WorkbenchHeader
         document={document}
-        isRendered={renderedRevision === document.revision}
-        storageStatus={storageStatus}
-        lastSavedAt={lastSavedAt}
         fileOperation={projectFiles.operation}
         artifactFile={projectFiles.artifactFile}
         buildDocuments={buildCaptureDocuments}
@@ -368,7 +372,6 @@ export function Workbench() {
         onToggleVisibility={toggleVisibility}
         onTransformProperty={updateTransformProperty}
         onCommitTransform={commitNodeTransform}
-        onRenderedRevision={setRenderedRevision}
         onStats={setViewportStats}
       />
       <BottomWorkspace

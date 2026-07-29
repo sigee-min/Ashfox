@@ -117,8 +117,6 @@ export const textureToolSchemas: Record<string, JsonSchema> = {
       ifRevision: revisionProp,
       ...metaProps
     }
-  },
-  // apply_texture_spec and apply_uv_spec removed (legacy pipeline)
+  }
 };
-
 

@@ -1,4 +1,4 @@
-# Ashfox Blockbench Plugin
+# ashfox Blockbench Plugin
 
 Optional Blockbench compatibility entrypoint.
 

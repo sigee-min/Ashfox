@@ -64,3 +64,22 @@ export const createNewProjectDocument = (
   }
   return result.document;
 };
+
+export const BLANK_WORKBENCH_PROJECT_ID = 'project-local-workbench';
+
+export const createBlankWorkbenchProject = (
+  createdAt: string
+): ProjectDocument =>
+  createNewProjectDocument(
+    {
+      name: 'Untitled project',
+      target: 'glb',
+      namespace: 'ashfox',
+      modelPath: 'untitled_project',
+      textureResolution: 64
+    },
+    {
+      id: BLANK_WORKBENCH_PROJECT_ID,
+      createdAt
+    }
+  );

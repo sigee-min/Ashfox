@@ -7,7 +7,7 @@ import './globals.css';
 const rootElement = document.getElementById('root');
 
 if (!rootElement) {
-  throw new Error('Ashfox root element is missing.');
+  throw new Error('ashfox root element is missing.');
 }
 
 createRoot(rootElement).render(

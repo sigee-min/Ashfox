@@ -6,6 +6,9 @@ import {
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { landingContent } from '../src/content.mjs';
+import { inspectGifPlayback } from '../src/gifPlayback.mjs';
+
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const outputRoot = path.join(siteRoot, 'dist');
 
@@ -32,6 +35,7 @@ const htmlFiles = (await walk(outputRoot)).filter((file) =>
   file.endsWith('.html')
 );
 const failures = [];
+const indexedCanonicalUrls = [];
 
 for (const file of htmlFiles) {
   const html = await readFile(file, 'utf8');
@@ -44,7 +48,9 @@ for (const file of htmlFiles) {
     if (
       /^(?:https?:|mailto:)/.test(href) ||
       href === '/' ||
-      href.startsWith('/?')
+      href.startsWith('/?') ||
+      href === '/workbench/' ||
+      href.startsWith('/workbench/?')
     ) {
       continue;
     }
@@ -73,6 +79,38 @@ for (const file of htmlFiles) {
   if (/localhost|127\.0\.0\.1/.test(html)) {
     failures.push(`${file}: local development origin leaked into output`);
   }
+  const requiredMetadata = [
+    '<meta name="description"',
+    '<meta name="robots"',
+    '<meta property="og:title"',
+    '<meta property="og:description"',
+    '<meta property="og:url"',
+    '<meta property="og:image"',
+    '<meta name="twitter:card"',
+    '<link rel="canonical"',
+    '<script type="application/ld+json">'
+  ];
+  const isNotFoundPage = path.basename(file) === '404.html';
+  for (const metadata of requiredMetadata) {
+    if (isNotFoundPage && metadata === '<script type="application/ld+json">') {
+      continue;
+    }
+    if (!html.includes(metadata)) {
+      failures.push(`${file}: missing SEO metadata ${metadata}`);
+    }
+  }
+  if (isNotFoundPage) {
+    if (!html.includes('<meta name="robots" content="noindex,follow">')) {
+      failures.push(`${file}: not-found page must be excluded from search`);
+    }
+  } else {
+    const canonical = html.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
+    if (!canonical) {
+      failures.push(`${file}: canonical URL is missing`);
+    } else {
+      indexedCanonicalUrls.push(canonical);
+    }
+  }
 }
 
 const outputFiles = await walk(outputRoot);
@@ -84,6 +122,79 @@ if (!(await exists(path.join(outputRoot, '_headers')))) {
 }
 if (!(await exists(path.join(outputRoot, 'og.png')))) {
   failures.push('social preview image is missing');
+} else {
+  const socialImage = await readFile(path.join(outputRoot, 'og.png'));
+  const width = socialImage.readUInt32BE(16);
+  const height = socialImage.readUInt32BE(20);
+  if (width !== 1200 || height !== 630) {
+    failures.push(
+      `social preview image must be 1200x630, received ${width}x${height}`
+    );
+  }
+}
+const robotsPath = path.join(outputRoot, 'robots.txt');
+const sitemapPath = path.join(outputRoot, 'sitemap.xml');
+if (!(await exists(robotsPath))) {
+  failures.push('robots.txt is missing');
+}
+if (!(await exists(sitemapPath))) {
+  failures.push('sitemap.xml is missing');
+} else {
+  const sitemap = await readFile(sitemapPath, 'utf8');
+  for (const canonical of indexedCanonicalUrls) {
+    if (!sitemap.includes(`<loc>${canonical}</loc>`)) {
+      failures.push(`sitemap is missing canonical URL ${canonical}`);
+    }
+  }
+  if (!sitemap.includes('<loc>https://ashfox.io/</loc>')) {
+    failures.push('sitemap is missing the landing page');
+  }
+  if (!sitemap.includes('<loc>https://ashfox.io/workbench/</loc>')) {
+    failures.push('sitemap is missing the workbench');
+  }
+}
+
+const landingHtml = await readFile(path.join(outputRoot, 'index.html'), 'utf8');
+const storyChapterCount = (
+  landingHtml.match(/\sdata-story-chapter="\d+"/g) ?? []
+).length;
+if (storyChapterCount !== landingContent.story.length) {
+  failures.push(
+    `landing story has ${storyChapterCount} chapters, expected ` +
+    landingContent.story.length
+  );
+}
+const setupPromptControlCount = (
+  landingHtml.match(/\sdata-copy-setup-prompt(?:\s|>)/g) ?? []
+).length;
+if (setupPromptControlCount !== 2) {
+  failures.push(
+    `landing has ${setupPromptControlCount} setup prompt controls, expected 2`
+  );
+}
+if (
+  !landingHtml.includes('Codex desktop app') ||
+  !landingHtml.includes('Cursor')
+) {
+  failures.push('landing must name the representative AI agent tools');
+}
+
+for (const sequence of landingContent.demo.sequences) {
+  const reel = path.join(outputRoot, sequence.reel);
+  if (!(await exists(reel))) {
+    failures.push(`hero reel is missing: ${sequence.reel}`);
+    continue;
+  }
+  const playback = inspectGifPlayback(await readFile(reel));
+  if (playback.repeat !== null) {
+    failures.push(`hero reel must play once: ${sequence.reel}`);
+  }
+  if (playback.durationMs !== sequence.playbackMs) {
+    failures.push(
+      `hero reel duration mismatch: ${sequence.reel} is ` +
+      `${playback.durationMs}ms, configured as ${sequence.playbackMs}ms`
+    );
+  }
 }
 
 if (failures.length > 0) {

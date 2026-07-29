@@ -33,26 +33,33 @@ const removeSourceMaps = (directory) => {
   }
 };
 
-requireFile(path.join(webOutput, 'index.html'));
-requireFile(path.join(webOutput, 'agent-manifest.json'));
-requireFile(path.join(siteOutput, 'home', 'index.html'));
+requireFile(path.join(webOutput, 'workbench', 'index.html'));
+requireFile(path.join(webOutput, 'workbench', 'agent-manifest.json'));
+requireFile(path.join(siteOutput, 'index.html'));
 requireFile(path.join(siteOutput, 'docs', 'index.html'));
 
 fs.rmSync(publicOutput, { recursive: true, force: true });
 fs.mkdirSync(publicOutput, { recursive: true });
 
-copyDirectoryContents(webOutput, publicOutput);
 copyDirectoryContents(siteOutput, publicOutput);
+copyDirectoryContents(
+  path.join(webOutput, 'assets'),
+  path.join(publicOutput, 'assets')
+);
+const workbenchOutput = path.join(publicOutput, 'workbench');
+fs.mkdirSync(workbenchOutput, { recursive: true });
+copyDirectoryContents(
+  path.join(webOutput, 'workbench'),
+  workbenchOutput
+);
 removeSourceMaps(publicOutput);
 
-fs.copyFileSync(
-  path.join(webOutput, 'index.html'),
-  path.join(publicOutput, '404.html')
-);
 fs.writeFileSync(
   path.join(publicOutput, '_redirects'),
   [
-    '/home /home/ 301',
+    '/home / 301',
+    '/home/ / 301',
+    '/workbench /workbench/ 301',
     '/docs /docs/ 301',
     ''
   ].join('\n')
@@ -68,13 +75,13 @@ fs.writeFileSync(
 /index.html
   Cache-Control: public, max-age=0, must-revalidate
 
-/home/*
+/workbench/index.html
   Cache-Control: public, max-age=0, must-revalidate
 
 /docs/*
   Cache-Control: public, max-age=0, must-revalidate
 
-/agent-manifest.json
+/workbench/agent-manifest.json
   Cache-Control: public, max-age=0, must-revalidate
 
 /assets/app.*
@@ -83,9 +90,51 @@ fs.writeFileSync(
 /assets/site-*
   Cache-Control: public, max-age=31536000, immutable
 
+/brand/*
+  Cache-Control: public, max-age=3600, must-revalidate
+
+/og.png
+  Cache-Control: public, max-age=86400
+
+/robots.txt
+  Cache-Control: public, max-age=3600
+
+/sitemap.xml
+  Cache-Control: public, max-age=3600
+
 /media/*
   Cache-Control: public, max-age=604800
 `
 );
+
+const landingHtml = fs.readFileSync(
+  path.join(publicOutput, 'index.html'),
+  'utf8'
+);
+const workbenchHtml = fs.readFileSync(
+  path.join(publicOutput, 'workbench', 'index.html'),
+  'utf8'
+);
+if (!landingHtml.includes('<link rel="canonical" href="https://ashfox.io/">')) {
+  throw new Error('Landing canonical URL is missing.');
+}
+if (
+  !workbenchHtml.includes(
+    '<link rel="canonical" href="https://ashfox.io/workbench/"'
+  ) ||
+  !workbenchHtml.includes(
+    'data-ashfox-agent-manifest="/workbench/agent-manifest.json"'
+  )
+) {
+  throw new Error('Workbench discovery metadata is inconsistent.');
+}
+if (
+  fs.statSync(
+    path.join(publicOutput, 'agent-manifest.json'),
+    { throwIfNoEntry: false }
+  )
+) {
+  throw new Error('Agent manifest must exist only below /workbench/.');
+}
 
 console.log(`ashfox public bundle ready: ${publicOutput}`);

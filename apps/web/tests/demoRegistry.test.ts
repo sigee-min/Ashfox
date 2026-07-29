@@ -14,15 +14,12 @@ import {
 } from '../src/features/workbench/demo/demoRegistry';
 
 assert.equal(DEMO_DEFINITIONS.length, 3);
-assert.equal(resolveDemoDefinition(''), DEFAULT_DEMO);
+assert.equal(resolveDemoDefinition(''), null);
 assert.equal(
-  resolveDemoDefinition('?demo=ironroot-tractor').slug,
+  resolveDemoDefinition('?demo=ironroot-tractor')?.slug,
   'ironroot-tractor'
 );
-assert.equal(
-  resolveDemoDefinition('?demo=unknown').slug,
-  DEFAULT_DEMO.slug
-);
+assert.equal(resolveDemoDefinition('?demo=unknown'), null);
 
 for (const definition of DEMO_DEFINITIONS) {
   assert.ok(

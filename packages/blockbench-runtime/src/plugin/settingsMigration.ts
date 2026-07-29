@@ -1,6 +1,6 @@
 import type { ReadGlobals } from './types';
 
-export const cleanupLegacySettings = (deps: { readGlobals: ReadGlobals }) => {
+export const cleanupUnsupportedSettings = (deps: { readGlobals: ReadGlobals }) => {
   const globals = deps.readGlobals();
   const settings = globals.settings;
   if (!settings || typeof settings !== 'object') return;
@@ -24,4 +24,3 @@ export const cleanupLegacySettings = (deps: { readGlobals: ReadGlobals }) => {
     settings[versionKey] = { value: 1 };
   }
 };
-

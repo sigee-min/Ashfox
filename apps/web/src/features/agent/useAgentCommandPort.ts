@@ -102,7 +102,7 @@ export const useAgentCommandPort = ({
         dispatch({
           type: 'execute',
           batch,
-          actorId: 'ai-ide',
+          actorId: 'ashfox-agent',
           source: 'agent',
           committedAt: new Date().toISOString()
         });

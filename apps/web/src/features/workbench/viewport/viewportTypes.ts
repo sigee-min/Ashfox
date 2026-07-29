@@ -38,6 +38,5 @@ export interface ViewportProps {
   playing: boolean;
   onSelectNode: (nodeId: string | null) => void;
   onCommitTransform: (nodeId: string, transform: Transform) => void;
-  onRenderedRevision: (revision: string) => void;
   onStats: (stats: ViewportStats) => void;
 }

@@ -1,4 +1,4 @@
-# Ashfox Blockbench MCP Sidecar
+# ashfox Blockbench MCP Sidecar
 
 Optional MCP transport for the Blockbench compatibility track.
 

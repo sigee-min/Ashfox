@@ -1,0 +1,35 @@
+name: Feature request
+description: Suggest a user outcome ashfox should support
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Product surface
+      options:
+        - Web studio
+        - Blockbench MCP
+        - Public site or documentation
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: Explain what is difficult or impossible today.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe the result you want without prescribing an internal implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Example workflow
+      description: Show where this would fit into creating, reviewing, saving, or exporting an asset.

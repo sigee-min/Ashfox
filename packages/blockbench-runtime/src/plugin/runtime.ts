@@ -35,7 +35,7 @@ import {
 } from './messages';
 import { PLUGIN_ICON_DATA_URL } from './pluginIcon';
 
-type AshfoxBridge = {
+type PluginBridge = {
   invoke: Dispatcher['handle'];
   capabilities: Capabilities;
   serverConfig: () => EndpointConfig;
@@ -121,7 +121,7 @@ const claimSingletonWithLogger = () => {
   });
 };
 
-const exposeBridgeWithVersion = (bridge: AshfoxBridge) => {
+const exposeBridgeWithVersion = (bridge: PluginBridge) => {
   exposeBridge(bridge, PLUGIN_VERSION);
 };
 const restartServerWithState = () => {
@@ -260,7 +260,6 @@ Notes:
     }
   });
 };
-
 
 
 
