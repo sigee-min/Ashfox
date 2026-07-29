@@ -1,0 +1,226 @@
+import type { JsonPrimitive } from '../model';
+
+export type CommandInputSchema =
+  | {
+      type: 'string';
+      minLength?: number;
+    }
+  | {
+      type: 'number';
+      minimum?: number;
+      maximum?: number;
+    }
+  | {
+      type: 'boolean';
+    }
+  | {
+      type: 'array';
+      items: CommandInputSchema;
+      minItems?: number;
+      maxItems?: number;
+      uniqueItems?: boolean;
+    }
+  | {
+      type: 'object';
+      properties: Readonly<Record<string, CommandInputSchema>>;
+      required?: readonly string[];
+      additionalProperties: boolean;
+    }
+  | {
+      enum: readonly JsonPrimitive[];
+    }
+  | {
+      anyOf: readonly CommandInputSchema[];
+    };
+
+export interface SchemaIssue {
+  path: string;
+  message: string;
+  expected: string;
+}
+
+const isRecord = (
+  value: unknown
+): value is Readonly<Record<string, unknown>> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const validateEnum = (
+  value: unknown,
+  schema: Extract<CommandInputSchema, { enum: readonly JsonPrimitive[] }>,
+  path: string
+): SchemaIssue | null =>
+  schema.enum.some((entry) => Object.is(entry, value))
+    ? null
+    : {
+        path,
+        message: 'Value is outside the allowed set.',
+        expected: schema.enum.map(String).join(' | ')
+      };
+
+const validateAnyOf = (
+  value: unknown,
+  schema: Extract<CommandInputSchema, { anyOf: readonly CommandInputSchema[] }>,
+  path: string
+): SchemaIssue | null => {
+  const valid = schema.anyOf.some(
+    (candidate) => validateCommandInput(value, candidate, path) === null
+  );
+  return valid
+    ? null
+    : {
+        path,
+        message: 'Value does not match an allowed shape.',
+        expected: 'one allowed schema'
+      };
+};
+
+const validateString = (
+  value: unknown,
+  schema: Extract<CommandInputSchema, { type: 'string' }>,
+  path: string
+): SchemaIssue | null => {
+  if (typeof value !== 'string') {
+    return { path, message: 'Expected a string.', expected: 'string' };
+  }
+  if (schema.minLength !== undefined && value.length < schema.minLength) {
+    return {
+      path,
+      message: 'String is shorter than allowed.',
+      expected: `at least ${schema.minLength} character(s)`
+    };
+  }
+  return null;
+};
+
+const validateNumber = (
+  value: unknown,
+  schema: Extract<CommandInputSchema, { type: 'number' }>,
+  path: string
+): SchemaIssue | null => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return { path, message: 'Expected a finite number.', expected: 'number' };
+  }
+  if (schema.minimum !== undefined && value < schema.minimum) {
+    return {
+      path,
+      message: 'Number is below the allowed minimum.',
+      expected: `>= ${schema.minimum}`
+    };
+  }
+  if (schema.maximum !== undefined && value > schema.maximum) {
+    return {
+      path,
+      message: 'Number is above the allowed maximum.',
+      expected: `<= ${schema.maximum}`
+    };
+  }
+  return null;
+};
+
+const validateArray = (
+  value: unknown,
+  schema: Extract<CommandInputSchema, { type: 'array' }>,
+  path: string
+): SchemaIssue | null => {
+  if (!Array.isArray(value)) {
+    return { path, message: 'Expected an array.', expected: 'array' };
+  }
+  if (schema.minItems !== undefined && value.length < schema.minItems) {
+    return {
+      path,
+      message: 'Array has too few items.',
+      expected: `at least ${schema.minItems} item(s)`
+    };
+  }
+  if (schema.maxItems !== undefined && value.length > schema.maxItems) {
+    return {
+      path,
+      message: 'Array has too many items.',
+      expected: `at most ${schema.maxItems} item(s)`
+    };
+  }
+  if (schema.uniqueItems) {
+    const serialized = value.map((entry) => JSON.stringify(entry));
+    if (new Set(serialized).size !== serialized.length) {
+      return {
+        path,
+        message: 'Array items must be unique.',
+        expected: 'unique items'
+      };
+    }
+  }
+  for (let index = 0; index < value.length; index += 1) {
+    const issue = validateCommandInput(
+      value[index],
+      schema.items,
+      `${path}[${index}]`
+    );
+    if (issue) return issue;
+  }
+  return null;
+};
+
+const validateObject = (
+  value: unknown,
+  schema: Extract<CommandInputSchema, { type: 'object' }>,
+  path: string
+): SchemaIssue | null => {
+  if (!isRecord(value)) {
+    return { path, message: 'Expected an object.', expected: 'object' };
+  }
+  for (const key of schema.required ?? []) {
+    if (!(key in value)) {
+      return {
+        path: `${path}.${key}`,
+        message: 'Required property is missing.',
+        expected: 'defined value'
+      };
+    }
+  }
+  if (!schema.additionalProperties) {
+    const unknownKey = Object.keys(value).find(
+      (key) => !(key in schema.properties)
+    );
+    if (unknownKey) {
+      return {
+        path: `${path}.${unknownKey}`,
+        message: 'Property is not part of this command.',
+        expected: 'registered property'
+      };
+    }
+  }
+  for (const [key, propertySchema] of Object.entries(schema.properties)) {
+    if (!(key in value)) continue;
+    const issue = validateCommandInput(
+      value[key],
+      propertySchema,
+      `${path}.${key}`
+    );
+    if (issue) return issue;
+  }
+  return null;
+};
+
+export const validateCommandInput = (
+  value: unknown,
+  schema: CommandInputSchema,
+  path = '$'
+): SchemaIssue | null => {
+  if ('enum' in schema) return validateEnum(value, schema, path);
+  if ('anyOf' in schema) return validateAnyOf(value, schema, path);
+
+  switch (schema.type) {
+    case 'string':
+      return validateString(value, schema, path);
+    case 'number':
+      return validateNumber(value, schema, path);
+    case 'boolean':
+      return typeof value === 'boolean'
+        ? null
+        : { path, message: 'Expected a boolean.', expected: 'boolean' };
+    case 'array':
+      return validateArray(value, schema, path);
+    case 'object':
+      return validateObject(value, schema, path);
+  }
+};

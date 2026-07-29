@@ -51,28 +51,69 @@ const scanFile = (filePath, rules) => {
   return findings;
 };
 
-const assertVersionConsistency = () => {
-  const pkgPath = path.join(repoRoot, 'package.json');
-  const cfgPath = path.join(repoRoot, 'packages', 'runtime', 'src', 'config.ts');
-  const pkg = JSON.parse(readText(pkgPath));
-  const configText = readText(cfgPath);
-  const match = configText.match(/export const PLUGIN_VERSION = '([^']+)'/);
-  const pluginVersion = match ? match[1] : null;
-  if (!pluginVersion) {
-    throw new Error('quality: cannot read PLUGIN_VERSION from packages/runtime/src/config.ts');
+const assertRemovedBoundariesStayRemoved = () => {
+  const removedPaths = [
+    'apps/plugin-desktop/package.json',
+    'apps/ashfox/package.json',
+    'packages/backend-blockbench/package.json',
+    'apps/mcp-gateway/package.json',
+    'apps/worker/package.json',
+    'packages/backend-core/package.json',
+    'packages/backend-engine/package.json',
+    'apps/web/src/app/api/mcp/route.ts'
+  ];
+  for (const removedPath of removedPaths) {
+    if (fs.existsSync(path.join(repoRoot, removedPath))) {
+      throw new Error(`quality: removed boundary restored: ${removedPath}`);
+    }
   }
-  if (pkg.version !== pluginVersion) {
+};
+
+const assertTrackDependencies = () => {
+  const rootPackage = JSON.parse(readText(path.join(repoRoot, 'package.json')));
+  const webPackage = JSON.parse(
+    readText(path.join(repoRoot, 'apps', 'web', 'package.json'))
+  );
+  const workspaces = new Set(rootPackage.workspaces ?? []);
+  const forbiddenWorkspaces = [
+    'apps/mcp-gateway',
+    'apps/worker',
+    'packages/backend-core',
+    'packages/backend-engine'
+  ];
+
+  for (const workspace of forbiddenWorkspaces) {
+    if (workspaces.has(workspace)) {
+      throw new Error(`quality: forbidden hybrid workspace: ${workspace}`);
+    }
+  }
+
+  const webDependencies = Object.keys({
+    ...(webPackage.dependencies ?? {}),
+    ...(webPackage.devDependencies ?? {})
+  });
+  const forbiddenWebDependency = webDependencies.find((dependency) =>
+    /^@ashfox\/(?:blockbench-|backend-)|mcp/i.test(dependency)
+  );
+  if (forbiddenWebDependency) {
     throw new Error(
-      `quality: version mismatch: package.json(${pkg.version}) != packages/runtime/src/config.ts PLUGIN_VERSION(${pluginVersion})`
+      `quality: Web Studio cannot depend on ${forbiddenWebDependency}`
     );
   }
 };
 
 const main = () => {
-  assertVersionConsistency();
+  assertRemovedBoundariesStayRemoved();
+  assertTrackDependencies();
 
-  const srcDir = path.join(repoRoot, 'packages', 'runtime', 'src');
-  const tsFiles = walk(srcDir, (p) => p.endsWith('.ts'));
+  const sourceDirs = [
+    path.join(repoRoot, 'packages', 'blockbench-runtime', 'src'),
+    path.join(repoRoot, 'packages', 'engine-core', 'src'),
+    path.join(repoRoot, 'apps', 'web', 'src')
+  ];
+  const tsFiles = sourceDirs.flatMap((srcDir) =>
+    walk(srcDir, (p) => p.endsWith('.ts') || p.endsWith('.tsx'))
+  );
 
   const rules = [
     {
@@ -91,7 +132,7 @@ const main = () => {
     {
       id: 'console-in-src',
       pattern: /\bconsole\.(log|warn|error|info|debug)\(/,
-      allow: (filePath) => rel(filePath) === 'packages/runtime/src/logging.ts'
+      allow: (filePath) => rel(filePath) === 'packages/blockbench-runtime/src/logging.ts'
     },
     {
       id: 'bare-document',
@@ -100,49 +141,61 @@ const main = () => {
       // - document.foo
       // - document[...]
       // - document(...)
-      pattern: /(^|[^\w.])document\s*(\.|\?\.|\[|\()/
+      pattern: /(^|[^\w.])document\s*(\.|\?\.|\[|\()/,
+      appliesTo: (filePath) => rel(filePath).startsWith('packages/blockbench-runtime/src/')
     },
     {
       id: 'bare-window',
-      pattern: /(^|[^\w.])window\s*(\.|\?\.|\[|\()/
+      pattern: /(^|[^\w.])window\s*(\.|\?\.|\[|\()/,
+      appliesTo: (filePath) => rel(filePath).startsWith('packages/blockbench-runtime/src/')
+    },
+    {
+      id: 'engine-core-host-dependency',
+      pattern: /@ashfox\/blockbench-|@ashfox\/backend-|\bBlockbench\b|\bMCP\b|\/mcp\b|from ['"](?:react|next|three)['"]/,
+      appliesTo: (filePath) => rel(filePath).startsWith('packages/engine-core/src/')
+    },
+    {
+      id: 'workbench-blockbench-dependency',
+      pattern: /@ashfox\/blockbench-|@ashfox\/backend-|\bBlockbench\b|\bMCP\b|\/mcp\b/,
+      appliesTo: (filePath) => rel(filePath).startsWith('apps/web/src/')
     },
     {
       id: 'throw-in-proxy',
       pattern: /\bthrow\b/,
-      appliesTo: (filePath) => rel(filePath).startsWith('packages/runtime/src/proxy/'),
+      appliesTo: (filePath) => rel(filePath).startsWith('packages/blockbench-runtime/src/proxy/'),
       // No allowlist: proxy must be throw-free.
     }
     ,
     {
       id: 'proxy-globalThis-document',
       pattern: /\bglobalThis\.document\b/,
-      appliesTo: (filePath) => rel(filePath).startsWith('packages/runtime/src/proxy/')
+      appliesTo: (filePath) => rel(filePath).startsWith('packages/blockbench-runtime/src/proxy/')
     },
     {
       id: 'throw-in-src',
       pattern: /\bthrow\b/,
-      appliesTo: (filePath) => rel(filePath).startsWith('packages/runtime/src/'),
+      appliesTo: (filePath) => rel(filePath).startsWith('packages/blockbench-runtime/src/'),
       // Allow a narrow exception for Blockbench codec compile contract.
       allow: (filePath, line) =>
-        rel(filePath) === 'packages/runtime/src/plugin/runtime.ts' && line.includes('throw new Error(')
+        rel(filePath) === 'packages/blockbench-runtime/src/plugin/runtime.ts' && line.includes('throw new Error(')
     },
     {
       id: 'todo-fixme-comment',
       pattern: /\/\/\s*(TODO|FIXME)\b|\/\*\s*(TODO|FIXME)\b/,
-      appliesTo: (filePath) => rel(filePath).startsWith('packages/runtime/src/')
+      appliesTo: (filePath) => rel(filePath).startsWith('packages/blockbench-runtime/src/')
     },
     {
       id: 'catch-without-binding',
       pattern: /catch\s*\{/,
-      appliesTo: (filePath) => rel(filePath).startsWith('packages/runtime/src/')
+      appliesTo: (filePath) => rel(filePath).startsWith('packages/blockbench-runtime/src/')
     },
     {
       id: 'globalThis-as',
       pattern: /\bglobalThis\s+as\b/,
-      appliesTo: (filePath) => rel(filePath).startsWith('packages/runtime/src/'),
+      appliesTo: (filePath) => rel(filePath).startsWith('packages/blockbench-runtime/src/'),
       allow: (filePath) => {
         const p = rel(filePath);
-        return p === 'packages/runtime/src/types/blockbench.ts' || p === 'packages/runtime/src/shared/globalState.ts';
+        return p === 'packages/blockbench-runtime/src/types/blockbench.ts' || p === 'packages/blockbench-runtime/src/shared/globalState.ts';
       }
     }
   ];
@@ -166,4 +219,3 @@ const main = () => {
 };
 
 main();
-

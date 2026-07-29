@@ -1,0 +1,71 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "bones": [
+        {
+          "cubes": [
+            {
+              "origin": [
+                -4,
+                0,
+                -4
+              ],
+              "pivot": [
+                0,
+                4,
+                0
+              ],
+              "rotation": [
+                0,
+                -45,
+                0
+              ],
+              "size": [
+                8,
+                8,
+                8
+              ],
+              "uv": [
+                0,
+                0
+              ]
+            }
+          ],
+          "locators": {
+            "effect": {
+              "offset": [
+                0,
+                8,
+                0
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ]
+            }
+          },
+          "name": "root",
+          "pivot": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "description": {
+        "identifier": "geometry.ashfox_crate",
+        "texture_height": 64,
+        "texture_width": 64,
+        "visible_bounds_height": 1,
+        "visible_bounds_offset": [
+          0,
+          0.5,
+          0
+        ],
+        "visible_bounds_width": 1
+      }
+    }
+  ]
+}

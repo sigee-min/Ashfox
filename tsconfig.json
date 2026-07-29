@@ -5,17 +5,13 @@
     "moduleResolution": "Node",
     "baseUrl": ".",
     "paths": {
-      "@ashfox/runtime/*": ["packages/runtime/src/*"],
-      "@ashfox/backend-core": ["packages/backend-core/src/index.ts"],
-      "@ashfox/backend-core/*": ["packages/backend-core/src/*"],
-      "@ashfox/backend-blockbench": ["packages/backend-blockbench/src/index.ts"],
-      "@ashfox/backend-blockbench/*": ["packages/backend-blockbench/src/*"],
-      "@ashfox/backend-engine": ["packages/backend-engine/src/index.ts"],
-      "@ashfox/backend-engine/*": ["packages/backend-engine/src/*"],
-      "@ashfox/contracts/types": ["packages/contracts/src/types/index.ts"],
-      "@ashfox/contracts/types/*": ["packages/contracts/src/types/*"],
-      "@ashfox/contracts/mcpSchemas/*": ["packages/contracts/src/mcpSchemas/*"],
-      "@ashfox/contracts/*": ["packages/contracts/src/*"]
+      "@ashfox/blockbench-runtime/*": ["packages/blockbench-runtime/src/*"],
+      "@ashfox/engine-core": ["packages/engine-core/src/index.ts"],
+      "@ashfox/engine-core/*": ["packages/engine-core/src/*"],
+      "@ashfox/blockbench-contracts/types": ["packages/blockbench-contracts/src/types/index.ts"],
+      "@ashfox/blockbench-contracts/types/*": ["packages/blockbench-contracts/src/types/*"],
+      "@ashfox/blockbench-contracts/mcpSchemas/*": ["packages/blockbench-contracts/src/mcpSchemas/*"],
+      "@ashfox/blockbench-contracts/*": ["packages/blockbench-contracts/src/*"]
     },
     "strict": true,
     "noImplicitAny": true,
@@ -31,15 +27,10 @@
     "noUnusedParameters": true
   },
   "include": [
-    "packages/runtime/src/**/*",
-    "packages/backend-core/src/**/*",
-    "packages/backend-blockbench/src/**/*",
-    "packages/backend-engine/src/**/*",
-    "apps/plugin-desktop/src/**/*",
-    "apps/ashfox/src/**/*",
-    "apps/mcp-gateway/src/**/*",
-    "apps/worker/src/**/*",
-    "packages/contracts/src/**/*"
+    "packages/blockbench-runtime/src/**/*",
+    "packages/engine-core/src/**/*",
+    "packages/blockbench-contracts/src/**/*",
+    "apps/blockbench-plugin/src/**/*",
+    "apps/blockbench-mcp-sidecar/src/**/*"
   ]
 }
-

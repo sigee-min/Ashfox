@@ -9,7 +9,7 @@
       "package-name": "ashfox",
       "bump-patch-for-minor-pre-major": true,
       "extra-files": [
-        "packages/runtime/src/config.ts"
+        "packages/blockbench-runtime/src/config.ts"
       ]
     }
   }

@@ -9,279 +9,42 @@ env:
   NODE_VERSION: 20
 
 jobs:
-  detect-changes:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
-    outputs:
-      quality_static: ${{ steps.filter.outputs.quality_static }}
-      runtime_unit: ${{ steps.filter.outputs.runtime_unit }}
-      conformance: ${{ steps.filter.outputs.conformance }}
-      gateway: ${{ steps.filter.outputs.gateway }}
-      plugin_desktop: ${{ steps.filter.outputs.plugin_desktop }}
-      ashfox: ${{ steps.filter.outputs.ashfox }}
-      web: ${{ steps.filter.outputs.web }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Detect changed areas
-        id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          token: ${{ github.token }}
-          filters: |
-            quality_static:
-              - '.github/workflows/ci.yml'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'tsconfig.json'
-              - 'scripts/**'
-              - 'config/**'
-              - 'packages/runtime/**'
-              - 'packages/contracts/**'
-            runtime_unit:
-              - '.github/workflows/ci.yml'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'tsconfig.json'
-              - 'config/quality/**'
-              - 'packages/runtime/**'
-              - 'packages/contracts/**'
-            conformance:
-              - '.github/workflows/ci.yml'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'packages/conformance/**'
-              - 'packages/contracts/**'
-              - 'packages/runtime/**'
-            gateway:
-              - '.github/workflows/ci.yml'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'tsconfig.json'
-              - 'apps/mcp-gateway/**'
-              - 'packages/backend-core/**'
-              - 'packages/backend-engine/**'
-              - 'deploy/env/**'
-            plugin_desktop:
-              - '.github/workflows/ci.yml'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'tsconfig.json'
-              - 'scripts/esbuild.js'
-              - 'packages/runtime/**'
-              - 'packages/contracts/**'
-              - 'apps/plugin-desktop/**'
-            ashfox:
-              - '.github/workflows/ci.yml'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'tsconfig.json'
-              - 'scripts/esbuild.js'
-              - 'packages/runtime/**'
-              - 'packages/contracts/**'
-              - 'apps/ashfox/**'
-            web:
-              - '.github/workflows/ci.yml'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'apps/web/**'
-
-  quality-static:
-    needs: detect-changes
+  static-quality:
     runs-on: ubuntu-latest
     steps:
-      - name: Skip (no static quality-impacting changes)
-        if: needs.detect-changes.outputs.quality_static != 'true'
-        run: echo "quality:static skipped (no matching changes)"
-
-      - name: Checkout
-        if: needs.detect-changes.outputs.quality_static == 'true'
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        if: needs.detect-changes.outputs.quality_static == 'true'
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
+      - run: npm ci
+      - run: npm run quality:check
+      - run: npm run quality:deadcode
+      - run: npm run quality:audit
+      - run: npm run release:validate
 
-      - name: Install
-        if: needs.detect-changes.outputs.quality_static == 'true'
-        run: npm ci
-
-      - name: Type and quality checks
-        if: needs.detect-changes.outputs.quality_static == 'true'
-        run: |
-          npm run quality:check
-          npm run quality:deadcode
-          npm run quality:audit
-          npm run release:validate
-
-  runtime-unit:
-    needs: detect-changes
+  web-track:
     runs-on: ubuntu-latest
     steps:
-      - name: Skip (no runtime/unit-test-impacting changes)
-        if: needs.detect-changes.outputs.runtime_unit != 'true'
-        run: echo "runtime unit skipped (no matching changes)"
-
-      - name: Checkout
-        if: needs.detect-changes.outputs.runtime_unit == 'true'
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        if: needs.detect-changes.outputs.runtime_unit == 'true'
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
+      - run: npm ci
+      - run: npm run test:web
+      - run: npm run build:web
 
-      - name: Install
-        if: needs.detect-changes.outputs.runtime_unit == 'true'
-        run: npm ci
-
-      - name: Runtime unit tests with coverage
-        if: needs.detect-changes.outputs.runtime_unit == 'true'
-        run: |
-          npm run test:cov
-          npm run quality:coverage
-
-  conformance:
-    needs: detect-changes
+  blockbench-compatibility-track:
     runs-on: ubuntu-latest
     steps:
-      - name: Skip (no conformance-impacting changes)
-        if: needs.detect-changes.outputs.conformance != 'true'
-        run: echo "conformance skipped (no matching changes)"
-
-      - name: Checkout
-        if: needs.detect-changes.outputs.conformance == 'true'
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        if: needs.detect-changes.outputs.conformance == 'true'
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-
-      - name: Install
-        if: needs.detect-changes.outputs.conformance == 'true'
-        run: npm ci
-
-      - name: Conformance tests
-        if: needs.detect-changes.outputs.conformance == 'true'
-        run: npm run test:conformance
-
-  gateway-tests:
-    needs: detect-changes
-    runs-on: ubuntu-latest
-    steps:
-      - name: Skip (no gateway-impacting changes)
-        if: needs.detect-changes.outputs.gateway != 'true'
-        run: echo "gateway tests skipped (no matching changes)"
-
-      - name: Checkout
-        if: needs.detect-changes.outputs.gateway == 'true'
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        if: needs.detect-changes.outputs.gateway == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install
-        if: needs.detect-changes.outputs.gateway == 'true'
-        run: npm ci
-
-      - name: Run gateway preset/infrastructure tests
-        if: needs.detect-changes.outputs.gateway == 'true'
-        run: npm run test:gateway
-
-  build-plugin-desktop:
-    needs: detect-changes
-    runs-on: ubuntu-latest
-    steps:
-      - name: Skip (no plugin-desktop changes)
-        if: needs.detect-changes.outputs.plugin_desktop != 'true'
-        run: echo "build:plugin-desktop skipped (no matching changes)"
-
-      - name: Checkout
-        if: needs.detect-changes.outputs.plugin_desktop == 'true'
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        if: needs.detect-changes.outputs.plugin_desktop == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Install
-        if: needs.detect-changes.outputs.plugin_desktop == 'true'
-        run: npm ci
-
-      - name: Build plugin-desktop
-        if: needs.detect-changes.outputs.plugin_desktop == 'true'
-        run: npm run build:plugin-desktop
-
-  build-ashfox:
-    needs: detect-changes
-    runs-on: ubuntu-latest
-    steps:
-      - name: Skip (no ashfox app changes)
-        if: needs.detect-changes.outputs.ashfox != 'true'
-        run: echo "build:ashfox skipped (no matching changes)"
-
-      - name: Checkout
-        if: needs.detect-changes.outputs.ashfox == 'true'
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        if: needs.detect-changes.outputs.ashfox == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Install
-        if: needs.detect-changes.outputs.ashfox == 'true'
-        run: npm ci
-
-      - name: Build ashfox app
-        if: needs.detect-changes.outputs.ashfox == 'true'
-        run: npm run build:ashfox
-
-  build-web:
-    needs: detect-changes
-    runs-on: ubuntu-latest
-    steps:
-      - name: Skip (no web app changes)
-        if: needs.detect-changes.outputs.web != 'true'
-        run: echo "build:web skipped (no matching changes)"
-
-      - name: Checkout
-        if: needs.detect-changes.outputs.web == 'true'
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        if: needs.detect-changes.outputs.web == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Install
-        if: needs.detect-changes.outputs.web == 'true'
-        run: npm ci
-
-      - name: Build web app
-        if: needs.detect-changes.outputs.web == 'true'
-        run: npm --workspace apps/web run build
+      - run: npm ci
+      - run: npm run test:blockbench
+      - run: npm run test:cov:blockbench
+      - run: npm run quality:coverage
+      - run: npm run build:blockbench

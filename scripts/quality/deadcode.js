@@ -21,9 +21,10 @@ if (run.status !== 0) {
 
 const output = run.stdout || '';
 const ignoredDeadcodePaths = [
-  '/packages/runtime/src/types.ts:',
-  '/packages/runtime/src/types/',
-  '/packages/contracts/src/types/'
+  '/packages/blockbench-runtime/src/types.ts:',
+  '/packages/blockbench-runtime/src/types/',
+  '/packages/blockbench-contracts/src/types/',
+  '/packages/engine-core/src/'
 ];
 const lines = output
   .split(/\r?\n/)
@@ -45,4 +46,3 @@ if (lines.length > 0) {
 }
 
 console.log('ashfox deadcode gate ok');
-

@@ -1,9 +1,0 @@
-{
-  "name": "@ashfox/ashfox",
-  "version": "0.0.0",
-  "private": true,
-  "scripts": {
-    "build": "node ../../scripts/esbuild.js ashfox"
-  }
-}
-

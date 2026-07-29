@@ -41,7 +41,7 @@ const main = () => {
   const updateBaseline = args.has('--update-baseline');
 
   if (!fs.existsSync(summaryPath)) {
-    throw new Error('coverage: missing coverage/coverage-summary.json (run `npm run test:cov` first)');
+    throw new Error('coverage: missing coverage/coverage-summary.json (run `npm run test:cov:blockbench` first)');
   }
 
   const current = pickTotals(readJson(summaryPath));
@@ -55,7 +55,7 @@ const main = () => {
 
   if (!fs.existsSync(baselinePath)) {
     throw new Error(
-      'coverage: missing config/quality/coverage-baseline.json (run `npm run test:cov && node scripts/quality/coverage.js --update-baseline`)'
+      'coverage: missing config/quality/coverage-baseline.json (run `npm run test:cov:blockbench && node scripts/quality/coverage.js --update-baseline`)'
     );
   }
 
@@ -100,7 +100,7 @@ const main = () => {
     console.error('ashfox coverage gate failed (regression vs baseline):');
     for (const line of regressions) console.error(`- ${line}`);
     console.error('To update baseline intentionally:');
-    console.error('  npm run test:cov && node scripts/quality/coverage.js --update-baseline');
+    console.error('  npm run test:cov:blockbench && node scripts/quality/coverage.js --update-baseline');
     process.exitCode = 1;
     return;
   }
@@ -113,4 +113,3 @@ const main = () => {
 };
 
 main();
-

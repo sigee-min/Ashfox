@@ -1,0 +1,305 @@
+import {
+  executeCommandBatch,
+  validateProjectDocument,
+  type CommandBatch,
+  type CommandError,
+  type CommandReceipt,
+  type CommandSource,
+  type ProjectDocument
+} from '@ashfox/engine-core';
+
+import {
+  areProjectDocumentsEqual,
+  compareProjectRevisions,
+  isLocalProjectRevision,
+  localProjectRevisionForSerial,
+  projectRevisionSerial,
+  type LocalProjectRecord
+} from '../persistence/localProjectRecord';
+import { createCommandReceipt } from './createCommandReceipt';
+
+const HISTORY_LIMIT = 50;
+const ACTIVITY_LIMIT = 100;
+const LOCAL_ACTOR_ID = 'local-user';
+
+export type CommandOutcome =
+  | {
+      status: 'committed';
+      commandId: string;
+      receipt: CommandReceipt;
+    }
+  | {
+      status: 'rejected';
+      commandId: string;
+      revision: string;
+      error: CommandError;
+    };
+
+export interface HistoryState {
+  past: ProjectDocument[];
+  present: ProjectDocument;
+  future: ProjectDocument[];
+  serial: number;
+  activity: CommandReceipt[];
+  lastCommandOutcome: CommandOutcome | null;
+}
+
+export type HistoryAction =
+  | {
+      type: 'execute';
+      batch: CommandBatch;
+      actorId: string;
+      source: CommandSource;
+      committedAt: string;
+    }
+  | { type: 'undo'; commandId: string; committedAt: string }
+  | { type: 'redo'; commandId: string; committedAt: string }
+  | { type: 'hydrate'; record: LocalProjectRecord }
+  | { type: 'external'; record: LocalProjectRecord };
+
+export const createHistoryState = (
+  document: ProjectDocument
+): HistoryState => ({
+  past: [],
+  present: document,
+  future: [],
+  serial: projectRevisionSerial(document.revision),
+  activity: [],
+  lastCommandOutcome: null
+});
+
+export const localRevisionForSerial = localProjectRevisionForSerial;
+
+const stampDocument = (
+  document: ProjectDocument,
+  serial: number,
+  updatedAt: string
+): ProjectDocument => ({
+  ...document,
+  revision: localRevisionForSerial(serial),
+  updatedAt
+});
+
+const prependActivity = (
+  state: HistoryState,
+  receipt: CommandReceipt
+): CommandReceipt[] =>
+  [receipt, ...state.activity].slice(0, ACTIVITY_LIMIT);
+
+const historyReceipt = (
+  state: HistoryState,
+  present: ProjectDocument,
+  commandId: string,
+  completedAt: string,
+  summary: string
+): CommandReceipt =>
+  createCommandReceipt({
+    commandId,
+    projectId: present.id,
+    source: 'web',
+    actorId: LOCAL_ACTOR_ID,
+    summary,
+    beforeRevision: state.present.revision,
+    revision: present.revision,
+    completedAt,
+    effects: {
+      createdEntityIds: [],
+      changedEntityIds: [],
+      removedEntityIds: [],
+      invalidated: [
+        'scene',
+        'textures',
+        'animations',
+        'validation',
+        'preview'
+      ]
+    },
+    findings: validateProjectDocument(present).findings
+  });
+
+const hydrateHistory = (
+  state: HistoryState,
+  record: LocalProjectRecord
+): HistoryState => {
+  if (record.projectId !== state.present.id) {
+    const serial = projectRevisionSerial(record.revision);
+    return {
+      past: [],
+      present: isLocalProjectRevision(record.revision)
+        ? record.document
+        : stampDocument(record.document, serial, record.savedAt),
+      future: [],
+      serial,
+      activity: [...record.activity],
+      lastCommandOutcome: null
+    };
+  }
+
+  const recordSerial = projectRevisionSerial(record.revision);
+  const replacesCurrentSnapshot = !areProjectDocumentsEqual(
+    record.document,
+    state.present
+  );
+  const serial = replacesCurrentSnapshot && recordSerial <= state.serial
+    ? state.serial + 1
+    : Math.max(state.serial, recordSerial);
+  const present = serial === recordSerial
+    ? record.document
+    : stampDocument(record.document, serial, record.savedAt);
+
+  return {
+    past: [],
+    present,
+    future: [],
+    serial,
+    activity: [...record.activity],
+    lastCommandOutcome: null
+  };
+};
+
+const receiveExternalHistory = (
+  state: HistoryState,
+  record: LocalProjectRecord
+): HistoryState => {
+  if (
+    record.projectId !== state.present.id ||
+    compareProjectRevisions(record.revision, state.present.revision) <= 0
+  ) {
+    return state;
+  }
+  return {
+    past: [...state.past.slice(-(HISTORY_LIMIT - 1)), state.present],
+    present: record.document,
+    future: [],
+    serial: Math.max(
+      state.serial,
+      projectRevisionSerial(record.revision)
+    ),
+    activity: [...record.activity],
+    lastCommandOutcome: null
+  };
+};
+
+const undoHistory = (
+  state: HistoryState,
+  action: Extract<HistoryAction, { type: 'undo' }>
+): HistoryState => {
+  const previous = state.past.at(-1);
+  if (!previous) return state;
+
+  const serial = state.serial + 1;
+  const present = stampDocument(previous, serial, action.committedAt);
+  return {
+    past: state.past.slice(0, -1),
+    present,
+    future: [state.present, ...state.future].slice(0, HISTORY_LIMIT),
+    serial,
+    activity: prependActivity(
+      state,
+      historyReceipt(
+        state,
+        present,
+        action.commandId,
+        action.committedAt,
+        'Undo last command'
+      )
+    ),
+    lastCommandOutcome: null
+  };
+};
+
+const redoHistory = (
+  state: HistoryState,
+  action: Extract<HistoryAction, { type: 'redo' }>
+): HistoryState => {
+  const next = state.future[0];
+  if (!next) return state;
+
+  const serial = state.serial + 1;
+  const present = stampDocument(next, serial, action.committedAt);
+  return {
+    past: [...state.past.slice(-(HISTORY_LIMIT - 1)), state.present],
+    present,
+    future: state.future.slice(1),
+    serial,
+    activity: prependActivity(
+      state,
+      historyReceipt(
+        state,
+        present,
+        action.commandId,
+        action.committedAt,
+        'Redo command'
+      )
+    ),
+    lastCommandOutcome: null
+  };
+};
+
+const executeBatch = (
+  state: HistoryState,
+  action: Extract<HistoryAction, { type: 'execute' }>
+): HistoryState => {
+  const result = executeCommandBatch(state.present, action.batch);
+  if (!result.ok) {
+    return {
+      ...state,
+      lastCommandOutcome: {
+        status: 'rejected',
+        commandId: action.batch.batchId,
+        revision: state.present.revision,
+        error: result.error
+      }
+    };
+  }
+
+  const serial = state.serial + 1;
+  const present = stampDocument(
+    result.document,
+    serial,
+    action.committedAt
+  );
+  const receipt = createCommandReceipt({
+    commandId: action.batch.batchId,
+    projectId: present.id,
+    source: action.source,
+    actorId: action.actorId,
+    summary: result.summary,
+    beforeRevision: state.present.revision,
+    revision: present.revision,
+    completedAt: action.committedAt,
+    effects: result.effects,
+    findings: result.findings
+  });
+
+  return {
+    past: [...state.past.slice(-(HISTORY_LIMIT - 1)), state.present],
+    present,
+    future: [],
+    serial,
+    activity: prependActivity(state, receipt),
+    lastCommandOutcome: {
+      status: 'committed',
+      commandId: action.batch.batchId,
+      receipt
+    }
+  };
+};
+
+export const historyReducer = (
+  state: HistoryState,
+  action: HistoryAction
+): HistoryState => {
+  switch (action.type) {
+    case 'hydrate':
+      return hydrateHistory(state, action.record);
+    case 'external':
+      return receiveExternalHistory(state, action.record);
+    case 'undo':
+      return undoHistory(state, action);
+    case 'redo':
+      return redoHistory(state, action);
+    case 'execute':
+      return executeBatch(state, action);
+  }
+};
