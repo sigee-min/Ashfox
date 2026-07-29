@@ -4,11 +4,11 @@ export const landingContent = {
   summary:
     'Your AI agent models, textures, rigs, and animates your asset live in ashfox—ready for your game.',
   quickStart: {
-    title: 'Start building with your agent.',
+    title: 'Copy once. Paste into your agent. Describe the asset.',
     body:
-      'Copy the starter prompt into Codex desktop app or Cursor. Once connected, describe what you want to make and watch it take shape in ashfox.',
+      'Your agent opens ashfox, prepares the empty project, then asks what you want to create. Answer in your own words and it starts building.',
     prompt:
-      'Open https://ashfox.io/workbench/ in your in-app browser. If that is unavailable, use a browser you can connect to and control. Read https://ashfox.io/workbench/agent-manifest.json and use it as the single authority for creating, editing, reviewing, saving, and exporting ashfox projects. Inspect the current project and the relevant command schemas, then tell me ashfox is ready for my model request. Do not change the project until I send that request.'
+      'Open https://ashfox.io/workbench/ in your in-app browser. If that is unavailable, use a browser you can connect to and control. Read https://ashfox.io/workbench/agent-manifest.json and use it as the single authority for creating, editing, reviewing, saving, and exporting ashfox projects. Inspect the current project and the relevant command schemas. When setup is complete, ask me exactly: "What would you like to create?" Treat my next message as the complete asset brief and begin unless one required target detail is missing. Do not change the project until I answer.'
   },
   demo: {
     sequences: [
@@ -78,7 +78,7 @@ export const landingContent = {
       index: '01',
       label: 'Start here',
       title: 'Connect your agent',
-      body: 'Paste the setup prompt into Codex desktop app, Cursor, or another browser-capable agent.',
+      body: 'Paste the copied instructions into Codex desktop app, Cursor, or another browser-capable agent.',
       href: '/docs/guides/ai-agent-quick-start/'
     },
     {

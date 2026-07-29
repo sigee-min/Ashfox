@@ -189,50 +189,73 @@ const copyText = async (text) => {
   if (!copied) throw new Error('Clipboard unavailable.');
 };
 
-for (const button of document.querySelectorAll(
-  '[data-copy-setup-prompt]'
-)) {
-  if (!(button instanceof HTMLButtonElement)) continue;
-  const state = button.querySelector('[data-copy-state]');
-  const defaultState = state instanceof HTMLElement
-    ? state.dataset.defaultState ?? state.textContent ?? 'Copy'
-    : 'Copy';
-  const feedback = button
-    .closest('.quick-start-control')
-    ?.querySelector('[data-copy-feedback]');
-  let resetTimer = 0;
+const setupPromptButtons = [
+  ...document.querySelectorAll('[data-copy-setup-prompt]')
+].filter((button) => button instanceof HTMLButtonElement);
+const setupPromptFeedback = [
+  ...document.querySelectorAll('[data-copy-feedback]')
+].filter((feedback) => feedback instanceof HTMLElement);
+let setupPromptResetTimer = 0;
 
+const resetSetupPromptState = () => {
+  for (const button of setupPromptButtons) {
+    button.dataset.copied = 'false';
+    button.disabled = false;
+    const state = button.querySelector('[data-copy-state]');
+    if (state instanceof HTMLElement) {
+      state.textContent =
+        state.dataset.defaultState ?? state.textContent ?? 'Copy';
+    }
+  }
+  for (const feedback of setupPromptFeedback) {
+    delete feedback.dataset.state;
+    feedback.textContent = feedback.dataset.defaultFeedback ?? '';
+  }
+};
+
+const setSetupPromptState = (status) => {
+  for (const button of setupPromptButtons) {
+    button.disabled = status === 'copying';
+    button.dataset.copied = String(status === 'success');
+    const state = button.querySelector('[data-copy-state]');
+    if (!(state instanceof HTMLElement)) continue;
+    if (status === 'success') {
+      state.textContent = state.dataset.copiedState ?? 'Copied';
+    } else if (status === 'copying') {
+      state.textContent = 'Copying…';
+    } else if (status === 'error') {
+      state.textContent = 'Retry';
+    }
+  }
+  for (const feedback of setupPromptFeedback) {
+    feedback.dataset.state = status;
+    feedback.textContent = status === 'success'
+      ? 'Copied — paste into your agent. It will ask what you want to create.'
+      : status === 'copying'
+        ? 'Copying instructions…'
+        : 'Clipboard unavailable. Try copying again.';
+  }
+};
+
+for (const button of setupPromptButtons) {
   button.addEventListener('click', async () => {
     const prompt = button.dataset.prompt?.trim();
     if (!prompt) return;
-    window.clearTimeout(resetTimer);
-    button.disabled = true;
+    window.clearTimeout(setupPromptResetTimer);
+    setSetupPromptState('copying');
     try {
       await copyText(prompt);
-      button.dataset.copied = 'true';
-      if (state instanceof HTMLElement) state.textContent = 'Copied';
-      if (feedback instanceof HTMLElement) {
-        feedback.dataset.state = 'success';
-        feedback.textContent = 'Copied. Paste into Codex desktop app or Cursor.';
-      }
+      setSetupPromptState('success');
     } catch {
-      button.dataset.copied = 'false';
-      if (state instanceof HTMLElement) state.textContent = 'Retry';
-      if (feedback instanceof HTMLElement) {
-        feedback.dataset.state = 'error';
-        feedback.textContent =
-          'Clipboard unavailable. Try again from a secure browser.';
-      }
+      setSetupPromptState('error');
     } finally {
-      button.disabled = false;
-      resetTimer = window.setTimeout(() => {
-        button.dataset.copied = 'false';
-        if (state instanceof HTMLElement) state.textContent = defaultState;
-        if (feedback instanceof HTMLElement) {
-          delete feedback.dataset.state;
-          feedback.textContent = '';
-        }
-      }, 2_200);
+      for (const setupButton of setupPromptButtons) {
+        setupButton.disabled = false;
+      }
+      setupPromptResetTimer = window.setTimeout(
+        resetSetupPromptState,
+        7_000
+      );
     }
   });
 }

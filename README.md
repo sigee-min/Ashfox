@@ -1,13 +1,5 @@
 <p align="center">
   <img
-    src="assets/readme/ashfox-hero.png"
-    alt="ashfox — Build. Watch. Export. A golden voxel fox in a 3D workspace."
-    width="100%"
-  >
-</p>
-
-<p align="center">
-  <img
     src="apps/site/public/media/showcase/aether-spear-rocket-animation.gif"
     alt="Aether Spear Rocket launch animation created in ashfox"
     width="900"
@@ -75,7 +67,10 @@ Ask the agent to confirm the connection before it edits anything:
 ```text
 Connect to the Blockbench MCP endpoint, call list_capabilities, inspect the
 current project, and tell me which modeling, texture, animation, preview, and
-export tools are available. Do not change the project yet.
+export tools are available. When the connection check is complete, ask me
+exactly: "What would you like to create?" Treat my next message as the complete
+asset brief and begin unless one required target detail is missing. Do not
+change the project until I answer.
 ```
 
 ### 3. Make your first asset
@@ -150,9 +145,10 @@ Open https://ashfox.io/workbench/ in your in-app browser. If that is
 unavailable, use a browser you can connect to and control. Read
 https://ashfox.io/workbench/agent-manifest.json and use it as the single
 authority for creating, editing, reviewing, saving, and exporting ashfox
-projects. Inspect the current project and the relevant command schemas, then
-tell me ashfox is ready for my model request. Do not change the project until I
-send that request.
+projects. Inspect the current project and the relevant command schemas. When
+setup is complete, ask me exactly: "What would you like to create?" Treat my
+next message as the complete asset brief and begin unless one required target
+detail is missing. Do not change the project until I answer.
 ```
 
 The workbench keeps its editable project in the browser. Files leave it only

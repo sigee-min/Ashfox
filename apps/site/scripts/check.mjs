@@ -79,6 +79,9 @@ for (const file of htmlFiles) {
   if (/localhost|127\.0\.0\.1/.test(html)) {
     failures.push(`${file}: local development origin leaked into output`);
   }
+  if (/href="(?:https:\/\/ashfox\.io)?\/workbench\/?/.test(html)) {
+    failures.push(`${file}: people must start through the agent setup prompt`);
+  }
   const requiredMetadata = [
     '<meta name="description"',
     '<meta name="robots"',
@@ -167,10 +170,21 @@ if (storyChapterCount !== landingContent.story.length) {
 const setupPromptControlCount = (
   landingHtml.match(/\sdata-copy-setup-prompt(?:\s|>)/g) ?? []
 ).length;
-if (setupPromptControlCount !== 2) {
+if (setupPromptControlCount !== 3) {
   failures.push(
-    `landing has ${setupPromptControlCount} setup prompt controls, expected 2`
+    `landing has ${setupPromptControlCount} setup prompt controls, expected 3`
   );
+}
+if (
+  !landingHtml.includes(
+    'Copy once. Paste into your agent. Describe the asset.'
+  ) ||
+  !landingHtml.includes('Copy instructions for your AI agent') ||
+  !landingHtml.includes(
+    'Your agent will ask what you want to create.'
+  )
+) {
+  failures.push('landing must teach the copy, paste, and describe workflow');
 }
 if (
   !landingHtml.includes('Codex desktop app') ||

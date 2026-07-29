@@ -18,21 +18,22 @@ helps ashfox catch incompatible geometry or animation early.
 
 1. Confirm that the agent can control an in-app or connected browser.
 2. Copy the setup prompt below into the agent.
-3. Wait until the agent says ashfox is ready.
+3. Wait until the agent asks what you want to create.
 
 ```text
 Open https://ashfox.io/workbench/ in your in-app browser. If that is
 unavailable, use a browser you can connect to and control. Read
 https://ashfox.io/workbench/agent-manifest.json and use it as the single
 authority for creating, editing, reviewing, saving, and exporting ashfox
-projects. Inspect the current project and the relevant command schemas, then
-tell me ashfox is ready for my model request. Do not change the project until I
-send that request.
+projects. Inspect the current project and the relevant command schemas. When
+setup is complete, ask me exactly: "What would you like to create?" Treat my
+next message as the complete asset brief and begin unless one required target
+detail is missing. Do not change the project until I answer.
 ```
 
 The agent opens the page, inspects the current project, and learns how to make
-changes, review the viewport, and prepare files. Paste it once per working
-session.
+changes, review the viewport, and prepare files. When it asks what you want to
+create, answer naturally. Paste the setup prompt once per working session.
 
 ## Describe your first asset
 

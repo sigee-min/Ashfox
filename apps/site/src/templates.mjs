@@ -47,11 +47,14 @@ const headerSetupButton = () => `
     type="button"
     data-copy-setup-prompt
     data-prompt="${escapeHtml(landingContent.quickStart.prompt)}"
-    aria-label="Copy ashfox starter prompt"
+    aria-label="Copy instructions for your AI agent"
   >
     <span class="header-copy-glyph" aria-hidden="true"></span>
-    <span data-copy-state data-default-state="Copy">Copy</span>
-    <span class="header-setup-suffix">prompt</span>
+    <span
+      data-copy-state
+      data-default-state="Copy for agent"
+      data-copied-state="Copied"
+    >Copy for agent</span>
   </button>
 `;
 
@@ -253,11 +256,25 @@ const landingStory = ({ story }) => `
 const landingQuickStart = (quickStart) => `
   <section class="quick-start-section" id="quick-start" data-reveal>
     <div class="quick-start-copy">
-      <p class="eyebrow"><span></span>Get started</p>
+      <p class="eyebrow"><span></span>Three steps</p>
       <h2>${escapeHtml(quickStart.title)}</h2>
       <p>${escapeHtml(quickStart.body)}</p>
     </div>
     <div class="quick-start-control">
+      <ol class="quick-start-steps" aria-label="Start ashfox in three steps">
+        <li>
+          <b>1</b>
+          <span><strong>Copy instructions</strong><small>One click on this page</small></span>
+        </li>
+        <li>
+          <b>2</b>
+          <span><strong>Paste into your agent</strong><small>Codex desktop app or Cursor</small></span>
+        </li>
+        <li>
+          <b>3</b>
+          <span><strong>Describe the asset</strong><small>Your agent handles the workspace</small></span>
+        </li>
+      </ol>
       <button
         class="quick-start-action"
         type="button"
@@ -266,12 +283,24 @@ const landingQuickStart = (quickStart) => `
       >
         <span class="copy-glyph" aria-hidden="true"></span>
         <span>
-          <strong>Copy starter prompt</strong>
-          <small>Paste into Codex desktop app or Cursor</small>
+          <strong>Copy instructions for your AI agent</strong>
+          <small>Paste once. The agent opens and prepares ashfox.</small>
         </span>
-        <b data-copy-state data-default-state="Copy">Copy</b>
+        <b
+          data-copy-state
+          data-default-state="Copy"
+          data-copied-state="Copied"
+        >Copy</b>
       </button>
-      <p data-copy-feedback aria-live="polite"></p>
+      <p
+        data-copy-feedback
+        data-default-feedback="Paste into Codex or Cursor, then press Enter."
+        aria-live="polite"
+      >Paste into Codex or Cursor, then press Enter.</p>
+      <details class="setup-disclosure">
+        <summary>View the instructions being copied</summary>
+        <pre><code>${escapeHtml(quickStart.prompt)}</code></pre>
+      </details>
     </div>
   </section>
 `;
@@ -286,10 +315,28 @@ export const renderLandingPage = ({ assets, config }) => {
           <h1>${content.title}</h1>
           <p class="hero-summary">${content.summary}</p>
           <div class="hero-actions">
-            <a class="button button-primary" href="#quick-start">Get started <span>↓</span></a>
-            <a class="button button-secondary" href="/docs/guides/ai-agent-quick-start/">Read the guide <span>→</span></a>
+            <button
+              class="button button-primary hero-copy-action"
+              type="button"
+              data-copy-setup-prompt
+              data-prompt="${escapeHtml(content.quickStart.prompt)}"
+            >
+              <span
+                data-copy-state
+                data-default-state="Copy instructions for your AI agent"
+                data-copied-state="Copied — paste into your agent"
+              >Copy instructions for your AI agent</span>
+              <span aria-hidden="true">↗</span>
+            </button>
+            <a class="button button-secondary" href="#quick-start">See how it works <span>↓</span></a>
             ${githubIconButton('hero-github')}
           </div>
+          <p
+            class="hero-agent-hint"
+            data-copy-feedback
+            data-default-feedback="Paste into Codex or Cursor. Your agent will ask what you want to create."
+            aria-live="polite"
+          >Paste into Codex or Cursor. Your agent will ask what you want to create.</p>
         </div>
         <div class="hero-visual">${landingDemo(content.demo)}</div>
       </section>
@@ -467,7 +514,7 @@ export const renderDocumentationPage = ({
         ${document.html}
         <div class="doc-end">
           <span>Ready to make something?</span>
-          <a href="/#quick-start">Get the setup prompt →</a>
+          <a href="/#quick-start">Get agent instructions →</a>
         </div>
       </article>
       ${toc}
