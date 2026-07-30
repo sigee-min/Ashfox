@@ -17,6 +17,7 @@ assert.deepEqual(project.settings.textureResolution, {
   width: 16,
   height: 16
 });
+assert.equal(project.settings.surfacePixelDensity, 1);
 assert.deepEqual(project.scene, { roots: [], nodes: {} });
 assert.equal(validateProjectDocument(project).valid, true);
 

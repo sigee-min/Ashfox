@@ -20,6 +20,23 @@ const clone = <T>(value: T): T => structuredClone(value);
 
 {
   const project = clone(createJavaProject()) as ProjectDocument;
+  (
+    project.settings as {
+      surfacePixelDensity: number;
+    }
+  ).surfacePixelDensity = 3;
+  const report = validateProjectDocument(project);
+  assert.equal(report.valid, false);
+  assert.ok(
+    report.findings.some(
+      (finding) =>
+        finding.path === 'settings.surfacePixelDensity'
+    )
+  );
+}
+
+{
+  const project = clone(createJavaProject()) as ProjectDocument;
   const outer = project.scene.nodes['cube-body'];
   if (outer.kind !== 'cube') throw new Error('fixture cube missing');
   outer.transform = {

@@ -351,6 +351,86 @@ kbd {
   box-shadow: 0 0 0 2px rgba(225, 164, 74, 0.1);
 }
 
+.surface-density-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.surface-density-field legend {
+  margin-bottom: 5px;
+  color: #89939c;
+  font-size: 8px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.surface-density-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid #3b434b;
+  border-radius: 6px;
+  background: #3b434b;
+}
+
+.surface-density-options label {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px 6px;
+  background: #171b1f;
+  color: #74808a;
+  cursor: pointer;
+  text-align: center;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.surface-density-options label:has(input:checked) {
+  background: #3b3021;
+  color: #edb45f;
+}
+
+.surface-density-options label:focus-within {
+  box-shadow: inset 0 0 0 1px #9b713a;
+}
+
+.surface-density-options input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.surface-density-options strong {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.surface-density-options span {
+  overflow: hidden;
+  font-size: 7px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.surface-density-field p {
+  margin: 0;
+  color: #747f88;
+  font-size: 8px;
+  line-height: 1.4;
+}
+
 .project-facts {
   display: grid;
   grid-template-columns: 1fr 1.5fr;

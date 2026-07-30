@@ -14,13 +14,12 @@ import {
   type UvAtlasRect
 } from './uvAtlas';
 
-export const GENERATED_PIXELS_PER_BLOCK = 16;
-export const GENERATED_TEXELS_PER_MODEL_UNIT = 1;
-export const GENERATED_ATLAS_PADDING = 2;
+const BASE_PIXELS_PER_BLOCK = 16;
+const BASE_ATLAS_PADDING = 2;
 export const GENERATED_ATLAS_MIN_RESOLUTION = 16;
 export const GENERATED_ATLAS_MAX_RESOLUTION = 4096;
 
-export interface TextureSyncSuccess {
+export interface TextureDerivationSuccess {
   ok: true;
   document: ProjectDocument;
   width: number;
@@ -32,16 +31,16 @@ export interface TextureSyncSuccess {
   changedTextureIds: readonly string[];
 }
 
-export interface TextureSyncFailure {
+export interface TextureDerivationFailure {
   ok: false;
   message: string;
   path: string;
   expected?: string;
 }
 
-export type TextureSyncResult =
-  | TextureSyncSuccess
-  | TextureSyncFailure;
+export type TextureDerivationResult =
+  | TextureDerivationSuccess
+  | TextureDerivationFailure;
 
 interface FaceTarget {
   nodeId: string;
@@ -68,6 +67,7 @@ export interface TextureCompositionRegion {
 export interface TextureComposition {
   background: string;
   generated: boolean;
+  gutter: number;
   regions: readonly TextureCompositionRegion[];
   canvasDetails: readonly TextureCanvasDetail[];
 }
@@ -87,6 +87,15 @@ const baseColor = (texture: TextureAsset): string =>
 
 const modelUnitsPerBlock = (document: ProjectDocument): number =>
   document.settings.coordinateSystem.unit === 'pixel' ? 16 : 1;
+
+const pixelsPerBlock = (document: ProjectDocument): number =>
+  BASE_PIXELS_PER_BLOCK * document.settings.surfacePixelDensity;
+
+const texelsPerModelUnit = (document: ProjectDocument): number =>
+  pixelsPerBlock(document) / modelUnitsPerBlock(document);
+
+const atlasPadding = (document: ProjectDocument): number =>
+  BASE_ATLAS_PADDING * document.settings.surfacePixelDensity;
 
 const effectiveFaceDimensions = (
   node: CubeNode,
@@ -125,8 +134,7 @@ const exactTexelSize = (
   direction: CubeFaceDirection
 ): { width: number; height: number } | null => {
   const dimensions = effectiveFaceDimensions(node, direction);
-  const scale =
-    GENERATED_PIXELS_PER_BLOCK / modelUnitsPerBlock(document);
+  const scale = texelsPerModelUnit(document);
   const width = dimensions.width * scale;
   const height = dimensions.height * scale;
   const roundedWidth = Math.round(width);
@@ -213,6 +221,7 @@ const collectRects = (
 };
 
 const tryResolution = (
+  document: ProjectDocument,
   rectsByTexture: ReadonlyMap<string, readonly UvAtlasRect<FaceTarget>[]>,
   resolution: number
 ): Map<string, UvAtlasPlacement<FaceTarget>[]> | null => {
@@ -222,7 +231,7 @@ const tryResolution = (
       rects,
       resolution,
       resolution,
-      GENERATED_ATLAS_PADDING
+      atlasPadding(document)
     );
     if (!packed) return null;
     placements.set(textureId, packed);
@@ -240,7 +249,7 @@ const buildPlan = (
     resolution <= GENERATED_ATLAS_MAX_RESOLUTION;
     resolution *= 2
   ) {
-    const placements = tryResolution(rects, resolution);
+    const placements = tryResolution(document, rects, resolution);
     if (placements) {
       return {
         width: resolution,
@@ -340,10 +349,9 @@ const settingsMatchPlan = (
   plan: AtlasPlan
 ): boolean =>
   document.settings.textureResolution.width === plan.width &&
-  document.settings.textureResolution.height === plan.height &&
-  document.settings.uvPixelsPerUnit === GENERATED_TEXELS_PER_MODEL_UNIT;
+  document.settings.textureResolution.height === plan.height;
 
-export const isGeneratedTextureSynchronized = (
+export const generatedTextureMatchesDerivation = (
   document: ProjectDocument,
   textureId: string
 ): boolean => {
@@ -357,7 +365,7 @@ export const isGeneratedTextureSynchronized = (
   );
 };
 
-export const unsynchronizedGeneratedTextureIds = (
+export const staleGeneratedTextureIds = (
   document: ProjectDocument
 ): ReadonlySet<string> => {
   const textureIds = activeGeneratedTextureIds(document);
@@ -409,6 +417,9 @@ export const composeTextureRaster = (
   return {
     background: baseColor(texture),
     generated,
+    gutter: generated
+      ? document.settings.surfacePixelDensity
+      : 0,
     regions,
     canvasDetails: texture.raster?.canvasDetails ?? []
   };
@@ -464,9 +475,9 @@ const updateFaces = (
   );
 };
 
-export const synchronizeGeneratedTextures = (
+export const deriveGeneratedTextures = (
   document: ProjectDocument
-): TextureSyncResult => {
+): TextureDerivationResult => {
   const generatedTextureIds = activeGeneratedTextureIds(document);
   if (generatedTextureIds.length === 0) {
     return {
@@ -474,8 +485,8 @@ export const synchronizeGeneratedTextures = (
       document,
       width: document.settings.textureResolution.width,
       height: document.settings.textureResolution.height,
-      pixelsPerBlock: GENERATED_PIXELS_PER_BLOCK,
-      texelsPerModelUnit: GENERATED_TEXELS_PER_MODEL_UNIT,
+      pixelsPerBlock: pixelsPerBlock(document),
+      texelsPerModelUnit: texelsPerModelUnit(document),
       changedSettings: false,
       changedNodeIds: [],
       changedTextureIds: []
@@ -501,7 +512,7 @@ export const synchronizeGeneratedTextures = (
       path:
         `scene.nodes.${invalidFace.nodeId}.faces.${invalidFace.direction}`,
       expected:
-        'bounds, inflate, and scale producing whole texels at 1 texel per model unit'
+        'bounds, inflate, and scale producing whole texels at the selected surface density'
     };
   }
   const plan = buildPlan(document);
@@ -509,10 +520,10 @@ export const synchronizeGeneratedTextures = (
     return {
       ok: false,
       message:
-        'Generated surfaces exceed the fixed-density 4096 × 4096 atlas.',
+        'Generated surfaces exceed the 4096 × 4096 atlas at the selected surface density.',
       path: 'scene.nodes',
       expected:
-        'less geometry while preserving 1 square texel per model unit'
+        'less geometry or a lower surface pixel density'
     };
   }
   const placements = [...plan.placementsByTexture.values()].flat();
@@ -561,8 +572,8 @@ export const synchronizeGeneratedTextures = (
       document,
       width: plan.width,
       height: plan.height,
-      pixelsPerBlock: GENERATED_PIXELS_PER_BLOCK,
-      texelsPerModelUnit: GENERATED_TEXELS_PER_MODEL_UNIT,
+      pixelsPerBlock: pixelsPerBlock(document),
+      texelsPerModelUnit: texelsPerModelUnit(document),
       changedSettings: false,
       changedNodeIds: [],
       changedTextureIds: []
@@ -578,16 +589,15 @@ export const synchronizeGeneratedTextures = (
             textureResolution: {
               width: plan.width,
               height: plan.height
-            },
-            uvPixelsPerUnit: GENERATED_TEXELS_PER_MODEL_UNIT
+            }
           }
         : withFaces.settings,
       textures
     },
     width: plan.width,
     height: plan.height,
-    pixelsPerBlock: GENERATED_PIXELS_PER_BLOCK,
-    texelsPerModelUnit: GENERATED_TEXELS_PER_MODEL_UNIT,
+    pixelsPerBlock: pixelsPerBlock(document),
+    texelsPerModelUnit: texelsPerModelUnit(document),
     changedSettings,
     changedNodeIds,
     changedTextureIds

@@ -31,7 +31,7 @@ export const agentManifest = {
     presentMethod: 'present',
     inspect: {
       current:
-        'window.ashfox.inspect() returns the current revision, project identity, selection, typed scene and animation counts, complete command-name list, and first blocking finding.',
+        'window.ashfox.inspect() returns the current revision, project identity, surface pixel density, derived texture resolution, selection, typed scene and animation counts, complete command-name list, and first blocking finding.',
       command:
         'window.ashfox.inspect({kind:"command",name:"<command>"}) returns one canonical input schema.',
       entities:
@@ -98,27 +98,25 @@ export const agentManifest = {
   },
   textureContract: {
     authority:
-      'The agent owns only each cube material baseColor. ashfox owns the generated texture, UV atlas, square texel density, raster pixels, and atlas resolution.',
+      'The agent owns each cube material baseColor and may select project surfacePixelDensity through textures.density.set. ashfox owns the generated texture, UV atlas, raster pixels, and derived atlas resolution.',
     material:
       'Pass one deliberate #RRGGBB baseColor when creating a cube, or use scene.cubes.material with nodeIds and baseColor to recolor an existing material region. Reuse the exact same baseColor for cubes that share a material. Do not encode highlights, shadows, noise, gradients, or edge darkening in the chosen color.',
     generated: {
       bootstrap:
         'scene.cubes.create automatically creates or reuses the canonical generated texture and assigns every enabled face. The texture identity and face mapping are not command inputs.',
-      synchronize:
-        'textures.sync takes an empty payload and is the only UV, atlas, and surface-pattern operation. It atomically packs every positive-area face at exactly 1 square texel per model unit and grows one square atlas as needed without reducing texel density.',
-      triggers:
-        'Run textures.sync after cube creation, deletion, duplication, repetition, mirror, bounds, inflate, or scale changes. baseColor renders directly; position, rotation, pivot, naming, hierarchy, and animation do not require synchronization.',
+      derivation:
+        'At the end of every run batch, ashfox automatically packs every positive-area face and derives UVs, raster pixels, padding, and atlas size exactly once before commit. Derivation failure rejects the entire batch.',
+      density:
+        'textures.density.set accepts density 1, 2, or 4. The same batch automatically updates surfacePixelDensity, UVs, surface pattern, padding, and atlas size. Pixel side length is respectively 1, 1/2, or 1/4 model unit in pixel-unit projects. Use 1 by default and raise it only when smaller surface pixels materially improve the asset.',
       grid:
-        'For pixel-unit projects, every effective cube dimension after inflate and scale must be a positive whole model unit. A fractional face that cannot produce exact square texels is rejected atomically; correct the geometry instead of lowering texture density.',
+        'For pixel-unit projects, every effective cube dimension after inflate and scale must align to 1/surfacePixelDensity model-unit increments. A face that cannot produce exact square texels is rejected atomically; correct the geometry or deliberately change density.',
       surfacePattern:
-        'ashfox derives a deterministic pixel-art tonal pattern from baseColor using canonical direction, edge contrast, and pixel variation rules. The result is baked albedo data, not scene lighting, and uses the fixed square texel grid at every face size. The same geometry and baseColor always produce the same texture.',
-      terminal:
-        'An unchanged textures.sync returns no_change without a revision, Activity, or Undo entry. Treat it as complete and continue.'
+        'ashfox derives a deterministic pixel-art tonal pattern from baseColor using canonical direction, edge contrast, and pixel variation rules. The result is baked albedo data, not scene lighting, and uses the fixed square texel grid at every face size. The same geometry and baseColor always produce the same texture.'
     },
     review:
-      'After the final geometry change, run textures.sync once. Then inspect texture coverage and visually check baseColor separation, seams, face orientation, and identical square-pixel size across every face. Do not retry a terminal no_change result.',
+      'After the final geometry batch, inspect texture coverage and visually check baseColor separation, seams, face orientation, and identical square-pixel size across every face.',
     limits:
-      'The generated atlas grows from 16 × 16 up to 4096 × 4096 while preserving 1 texel per model unit. If it cannot fit, simplify geometry; ashfox never silently reduces pixel density.'
+      'The generated atlas grows from 16 × 16 up to 4096 × 4096 while preserving the selected surfacePixelDensity. If it cannot fit, simplify geometry or explicitly select a lower density; ashfox never silently reduces it.'
   },
   authoringModel: {
     project:
@@ -209,7 +207,7 @@ export const agentManifest = {
   },
   exportContract: {
     precondition:
-      'Satisfy completionContract, perform textureContract.review, then inspect kind target and require productionReady true. Save and export commit required target and texture preparation through the canonical reducer before artifact creation; direct artifact creation rejects unsynchronized generated textures. valid or productionReady alone does not prove visual completion.',
+      'Satisfy completionContract, perform textureContract.review, then inspect kind target and require productionReady true. Save and export commit any required target preparation through the canonical reducer before artifact creation. valid or productionReady alone does not prove visual completion.',
     select:
       'Use project.target.set through run before opening export. Public targets are geckolib5, bedrock, glb, and gltf.',
     submit:
@@ -236,12 +234,12 @@ export const agentManifest = {
     {
       stage: 'prove',
       instruction:
-        'Before bulk authoring, prove the pipeline with the first real model part: create its root and one whole-unit cube with a deliberate baseColor, run textures.sync, and inspect. This checkpoint proves geometry, texture, and command flow only; it is not completion or quality proof.'
+        'Before bulk authoring, prove the pipeline with the first real model part: create its root and one whole-unit cube with a deliberate baseColor, then inspect. This checkpoint proves geometry, automatic texture derivation, and command flow only; it is not completion or quality proof.'
     },
     {
       stage: 'author',
       instruction:
-        'Follow completionContract coarse-to-fine in checkpoint batches: locked body-plan silhouette and hierarchy, meaningful geometry and articulation, textureContract, then idle. Use textureContract.generated.triggers, command schemas in this manifest, and inspect after each checkpoint. Correct subject fidelity before adding detail.'
+        'Follow completionContract coarse-to-fine in checkpoint batches: locked body-plan silhouette and hierarchy, meaningful geometry and articulation, textureContract, then idle. Use textureContract.generated.derivation, command schemas in this manifest, and inspect after each checkpoint. Correct subject fidelity before adding detail.'
     },
     {
       stage: 'review',

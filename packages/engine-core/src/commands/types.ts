@@ -7,6 +7,7 @@ import type {
   ProjectDocument,
   ProjectId,
   Revision,
+  SurfacePixelDensity,
   TransformChannelProperty,
   Transform,
   Vec3
@@ -184,7 +185,9 @@ export interface CommandPayloadMap {
     nodeIds: readonly EntityId[];
     baseColor: string;
   };
-  'textures.sync': Record<string, never>;
+  'textures.density.set': {
+    density: SurfacePixelDensity;
+  };
   'animation.clip.upsert': {
     id: string;
     name: string;

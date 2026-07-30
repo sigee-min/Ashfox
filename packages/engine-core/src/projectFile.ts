@@ -1,4 +1,10 @@
-import type { ProjectDocument } from './model';
+import {
+  isSurfacePixelDensity,
+  type ProjectDocument
+} from './model';
+import {
+  deriveGeneratedTextures
+} from './textures/textureRecipe';
 import {
   ProjectInvariantError,
   validateProjectDocument
@@ -18,6 +24,28 @@ const isRecord = (
 
 const validatedShape = <T>(value: unknown): T => value as T;
 
+const normalizeProjectSettings = (
+  value: Readonly<Record<string, unknown>>
+): Readonly<Record<string, unknown>> => {
+  const settings = value.settings;
+  if (!isRecord(settings)) return value;
+  const density = settings.surfacePixelDensity === undefined
+    ? (
+        isSurfacePixelDensity(settings.uvPixelsPerUnit)
+          ? settings.uvPixelsPerUnit
+          : 1
+      )
+    : settings.surfacePixelDensity;
+  return {
+    ...value,
+    settings: {
+      textureResolution: settings.textureResolution,
+      surfacePixelDensity: density,
+      coordinateSystem: settings.coordinateSystem
+    }
+  };
+};
+
 export const parseProjectDocument = (
   value: unknown
 ): ProjectDocument => {
@@ -25,8 +53,10 @@ export const parseProjectDocument = (
     throw new ProjectFileError('Project file must contain a JSON object.');
   }
 
+  const document = validatedShape<ProjectDocument>(
+    normalizeProjectSettings(value)
+  );
   let report;
-  const document = validatedShape<ProjectDocument>(value);
   try {
     report = validateProjectDocument(document);
   } catch (error) {
@@ -34,5 +64,17 @@ export const parseProjectDocument = (
     throw new ProjectFileError(`Project structure is incomplete: ${reason}`);
   }
   if (!report.valid) throw new ProjectInvariantError(report);
-  return document;
+  const derived = deriveGeneratedTextures(document);
+  if (!derived.ok) {
+    throw new ProjectFileError(
+      `Project texture derivation failed: ${derived.message}`
+    );
+  }
+  const derivedReport = validateProjectDocument(
+    derived.document
+  );
+  if (!derivedReport.valid) {
+    throw new ProjectInvariantError(derivedReport);
+  }
+  return derived.document;
 };

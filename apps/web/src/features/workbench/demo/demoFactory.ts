@@ -76,7 +76,7 @@ const createBaseProject = (
       width: 16,
       height: 16
     },
-    uvPixelsPerUnit: 1,
+    surfacePixelDensity: 1,
     coordinateSystem: {
       up: 'y',
       handedness: 'right',
@@ -179,10 +179,6 @@ const buildStages = (
       }))
     }
   }]),
-  [{
-    name: 'textures.sync',
-    payload: {}
-  }],
   ...animationStages(definition),
   [{
     name: 'project.target.set',

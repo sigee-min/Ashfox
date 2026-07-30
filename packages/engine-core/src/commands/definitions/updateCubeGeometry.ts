@@ -42,7 +42,7 @@ export const updateCubeGeometryCommand = defineCommand({
   name: 'scene.cubes.geometry.update',
   label: 'Update cube geometry',
   purpose:
-    'Update cube bounds or inflation; generated UVs remain owned by texture synchronization.',
+    'Update cube bounds or inflation; generated surfaces are derived before commit.',
   inputSchema,
   apply: (document, payload) => {
     const ids = payload.updates.map((update) => update.nodeId);

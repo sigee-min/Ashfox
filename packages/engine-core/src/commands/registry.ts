@@ -22,7 +22,9 @@ import { setCubeMaterialCommand } from './definitions/setCubeMaterial';
 import { setNodeVisibilityCommand } from './definitions/setNodeVisibility';
 import { setNodePivotCommand } from './definitions/setNodePivot';
 import { setProjectTargetCommand } from './definitions/setProjectTarget';
-import { syncTexturesCommand } from './definitions/syncTextures';
+import {
+  setSurfacePixelDensityCommand
+} from './definitions/setSurfacePixelDensity';
 import { transformNodesCommand } from './definitions/transformNodes';
 import { updateCubeGeometryCommand } from './definitions/updateCubeGeometry';
 import { upsertAnimationChannelsCommand } from './definitions/upsertAnimationChannels';
@@ -49,7 +51,7 @@ const definitions: Readonly<Record<CommandName, CommandDefinition>> = {
   'scene.nodes.pivot': setNodePivotCommand,
   'scene.nodes.reparent': reparentNodesCommand,
   'scene.cubes.material': setCubeMaterialCommand,
-  'textures.sync': syncTexturesCommand,
+  'textures.density.set': setSurfacePixelDensityCommand,
   'animation.clip.upsert': upsertAnimationClipCommand,
   'animation.channels.upsert': upsertAnimationChannelsCommand,
   'animation.triggers.upsert': upsertAnimationTriggersCommand,

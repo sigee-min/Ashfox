@@ -35,7 +35,7 @@ assert.deepEqual(commandNames, [
   'scene.nodes.pivot',
   'scene.nodes.reparent',
   'scene.cubes.material',
-  'textures.sync',
+  'textures.density.set',
   'animation.clip.upsert',
   'animation.channels.upsert',
   'animation.triggers.upsert',
@@ -87,6 +87,7 @@ assert.deepEqual(empty.settings.textureResolution, {
   width: 16,
   height: 16
 });
+assert.equal(empty.settings.surfacePixelDensity, 1);
 assert.deepEqual(empty.textures, {});
 
 const modeled = execute(empty, 'batch-model', [
@@ -149,20 +150,16 @@ for (const nodeId of ['cube-body', 'cube-head']) {
   );
 }
 
-const synchronized = execute(modeled, 'batch-sync', [{
-  name: 'textures.sync',
-  payload: {}
-}]);
-assert.equal(synchronized.settings.uvPixelsPerUnit, 1);
+assert.equal(modeled.settings.surfacePixelDensity, 1);
 assert.ok(
-  synchronized.settings.textureResolution.width >= 16
+  modeled.settings.textureResolution.width >= 16
 );
 assert.equal(
-  synchronized.settings.textureResolution.width,
-  synchronized.settings.textureResolution.height
+  modeled.settings.textureResolution.width,
+  modeled.settings.textureResolution.height
 );
 
-const body = synchronized.scene.nodes['cube-body'];
+const body = modeled.scene.nodes['cube-body'];
 if (body.kind !== 'cube') throw new Error('Body cube missing');
 assert.deepEqual(
   [
@@ -179,8 +176,8 @@ assert.deepEqual(
   [4, 6]
 );
 
-const texture = synchronized.textures['texture-base'];
-const composition = composeTextureRaster(synchronized, texture);
+const texture = modeled.textures['texture-base'];
+const composition = composeTextureRaster(modeled, texture);
 const bodyRegions = composition.regions.filter(
   (region) => region.nodeId === 'cube-body'
 );
@@ -189,8 +186,63 @@ assert.ok(
   bodyRegions.every((region) => region.color === '#B45A2A')
 );
 assert.ok(bodyRegions.every((region) => !('tone' in region)));
+assert.equal(composition.gutter, 1);
 
-const recolored = execute(synchronized, 'batch-material', [{
+const detailed = execute(modeled, 'batch-density-2x', [{
+  name: 'textures.density.set',
+  payload: {
+    density: 2
+  }
+}]);
+assert.equal(detailed.settings.surfacePixelDensity, 2);
+const detailedBody = detailed.scene.nodes['cube-body'];
+if (detailedBody.kind !== 'cube') {
+  throw new Error('Detailed body cube missing');
+}
+assert.deepEqual(
+  [
+    detailedBody.faces.north.uv?.[2] -
+      (detailedBody.faces.north.uv?.[0] ?? 0),
+    detailedBody.faces.north.uv?.[3] -
+      (detailedBody.faces.north.uv?.[1] ?? 0)
+  ],
+  [8, 8]
+);
+assert.equal(
+  composeTextureRaster(
+    detailed,
+    detailed.textures['texture-base']
+  ).gutter,
+  2
+);
+const unchangedDensity = executeCommandBatch(detailed, {
+  batchId: 'batch-density-unchanged',
+  baseRevision: detailed.revision,
+  operations: [{
+    name: 'textures.density.set',
+    payload: { density: 2 }
+  }]
+});
+assert.equal(unchangedDensity.ok, false);
+if (!unchangedDensity.ok) {
+  assert.equal(unchangedDensity.error.code, 'no_change');
+}
+const invalidDensity = executeCommandBatch(detailed, {
+  batchId: 'batch-density-invalid',
+  baseRevision: detailed.revision,
+  operations: [{
+    name: 'textures.density.set',
+    payload: {
+      density: 3
+    } as { density: 1 }
+  }]
+});
+assert.equal(invalidDensity.ok, false);
+if (!invalidDensity.ok) {
+  assert.equal(invalidDensity.error.code, 'invalid_payload');
+}
+
+const recolored = execute(detailed, 'batch-material', [{
   name: 'scene.cubes.material',
   payload: {
     nodeIds: ['cube-body'],
@@ -219,20 +271,63 @@ assert.ok(
     .every((region) => region.color === '#2F6F45')
 );
 
-const noChange = executeCommandBatch(recolored, {
-  batchId: 'batch-sync-no-change',
-  baseRevision: recolored.revision,
+const scalable = execute(recolored, 'batch-scale-target', [{
+  name: 'project.target.set',
+  payload: {
+    target: 'glb',
+    namespace: 'ashfox',
+    modelPath: 'command_contract'
+  }
+}]);
+const scaled = executeCommandBatch(scalable, {
+  batchId: 'batch-scale-derived-texture',
+  baseRevision: scalable.revision,
   operations: [{
-    name: 'textures.sync',
-    payload: {}
+    name: 'scene.nodes.transform',
+    payload: {
+      nodeIds: ['cube-body'],
+      transform: {
+        scale: [1.5, 1, 1]
+      }
+    }
   }]
 });
-assert.equal(noChange.ok, false);
-if (noChange.ok) throw new Error('Synchronized atlas must be a no-op');
-assert.equal(noChange.error.code, 'no_change');
+assert.equal(scaled.ok, true);
+if (!scaled.ok) {
+  throw new Error('Scale must derive generated surfaces automatically.');
+}
+const scaledBody = scaled.document.scene.nodes['cube-body'];
+if (scaledBody.kind !== 'cube') {
+  throw new Error('Scaled body cube missing');
+}
+assert.equal(
+  scaledBody.faces.north.uv?.[2] -
+    (scaledBody.faces.north.uv?.[0] ?? 0),
+  12
+);
 
-const fractionalBatch = executeCommandBatch(recolored, {
-  batchId: 'batch-fractional-grid',
+const invalidScale = executeCommandBatch(scalable, {
+  batchId: 'batch-invalid-scale-grid',
+  baseRevision: scalable.revision,
+  operations: [{
+    name: 'scene.nodes.transform',
+    payload: {
+      nodeIds: ['cube-body'],
+      transform: {
+        scale: [1.1, 1, 1]
+      }
+    }
+  }]
+});
+assert.equal(invalidScale.ok, false);
+if (invalidScale.ok) {
+  throw new Error('Off-grid scale must be rejected atomically.');
+}
+assert.equal(invalidScale.error.code, 'invalid_state');
+assert.match(invalidScale.error.message, /square-pixel grid/);
+
+const halfUnitBatch = executeCommandBatch(recolored, {
+  batchId: 'batch-half-unit-grid',
   baseRevision: recolored.revision,
   operations: [
     {
@@ -246,19 +341,38 @@ const fractionalBatch = executeCommandBatch(recolored, {
           }
         }]
       }
-    },
-    {
-      name: 'textures.sync',
-      payload: {}
     }
   ]
 });
-assert.equal(fractionalBatch.ok, false);
-if (fractionalBatch.ok) {
-  throw new Error('Fractional texel grid must be rejected');
+assert.equal(halfUnitBatch.ok, true);
+if (!halfUnitBatch.ok) {
+  throw new Error('2× density must accept half-unit geometry');
 }
-assert.equal(fractionalBatch.error.code, 'invalid_state');
-assert.match(fractionalBatch.error.message, /square-pixel grid/);
+
+const invalidQuarterBatch = executeCommandBatch(recolored, {
+  batchId: 'batch-invalid-quarter-grid',
+  baseRevision: recolored.revision,
+  operations: [
+    {
+      name: 'scene.cubes.geometry.update',
+      payload: {
+        updates: [{
+          nodeId: 'cube-body',
+          bounds: {
+            from: [-2, 0, -3],
+            to: [2.25, 4, 3]
+          }
+        }]
+      }
+    }
+  ]
+});
+assert.equal(invalidQuarterBatch.ok, false);
+if (invalidQuarterBatch.ok) {
+  throw new Error('Off-grid geometry must be rejected');
+}
+assert.equal(invalidQuarterBatch.error.code, 'invalid_state');
+assert.match(invalidQuarterBatch.error.message, /square-pixel grid/);
 assert.deepEqual(
   recolored.scene.nodes['cube-body'],
   recoloredBody

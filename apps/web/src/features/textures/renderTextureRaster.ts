@@ -5,7 +5,8 @@ import {
   type ProjectDocument,
   type RgbColor,
   type TextureAsset,
-  type TextureComposition
+  type TextureComposition,
+  type TextureCompositionRegion
 } from '@ashfox/engine-core';
 
 const previewColor = (texture: TextureAsset): string => {
@@ -29,72 +30,76 @@ const fillPixel = (
   context.fillRect(x, y, 1, 1);
 };
 
+type SurfaceColorAt = (x: number, y: number) => RgbColor;
+
+const extrudeSurfaceGutter = (
+  context: CanvasRenderingContext2D,
+  region: TextureCompositionRegion,
+  gutter: number,
+  colorAt: SurfaceColorAt
+): void => {
+  for (let y = -gutter; y < region.height + gutter; y += 1) {
+    for (let x = -gutter; x < region.width + gutter; x += 1) {
+      const inside =
+        x >= 0 &&
+        x < region.width &&
+        y >= 0 &&
+        y < region.height;
+      if (inside) continue;
+      const sourceX = Math.min(region.width - 1, Math.max(0, x));
+      const sourceY = Math.min(region.height - 1, Math.max(0, y));
+      fillPixel(
+        context,
+        region.x + x,
+        region.y + y,
+        colorAt(sourceX, sourceY)
+      );
+    }
+  }
+};
+
+const renderGeneratedSurfaceRegion = (
+  context: CanvasRenderingContext2D,
+  region: TextureCompositionRegion,
+  gutter: number
+): void => {
+  const base = rgbColor(region.color);
+  const seed = stableTextureSeed(
+    `${region.nodeId}:${region.face}`,
+    0x41534846
+  );
+  const colorAt = (x: number, y: number): RgbColor =>
+    paintSurfacePixel(
+      base,
+      x,
+      y,
+      region.width,
+      region.height,
+      seed
+    );
+  for (let y = 0; y < region.height; y += 1) {
+    for (let x = 0; x < region.width; x += 1) {
+      fillPixel(
+        context,
+        region.x + x,
+        region.y + y,
+        colorAt(x, y)
+      );
+    }
+  }
+  extrudeSurfaceGutter(context, region, gutter, colorAt);
+};
+
 const renderGeneratedSurfacePatterns = (
   context: CanvasRenderingContext2D,
   composition: TextureComposition
 ): void => {
   if (!composition.generated) return;
   for (const region of composition.regions) {
-    const base = rgbColor(region.color);
-    const seed = stableTextureSeed(
-      `${region.nodeId}:${region.face}`,
-      0x41534846
-    );
-    const colorAt = (x: number, y: number): RgbColor =>
-      paintSurfacePixel(
-        base,
-        x,
-        y,
-        region.width,
-        region.height,
-        seed
-      );
-    for (let y = 0; y < region.height; y += 1) {
-      for (let x = 0; x < region.width; x += 1) {
-        fillPixel(
-          context,
-          region.x + x,
-          region.y + y,
-          colorAt(x, y)
-        );
-      }
-    }
-    for (let x = 0; x < region.width; x += 1) {
-      fillPixel(context, region.x + x, region.y - 1, colorAt(x, 0));
-      fillPixel(
-        context,
-        region.x + x,
-        region.y + region.height,
-        colorAt(x, region.height - 1)
-      );
-    }
-    for (let y = 0; y < region.height; y += 1) {
-      fillPixel(context, region.x - 1, region.y + y, colorAt(0, y));
-      fillPixel(
-        context,
-        region.x + region.width,
-        region.y + y,
-        colorAt(region.width - 1, y)
-      );
-    }
-    fillPixel(context, region.x - 1, region.y - 1, colorAt(0, 0));
-    fillPixel(
+    renderGeneratedSurfaceRegion(
       context,
-      region.x + region.width,
-      region.y - 1,
-      colorAt(region.width - 1, 0)
-    );
-    fillPixel(
-      context,
-      region.x - 1,
-      region.y + region.height,
-      colorAt(0, region.height - 1)
-    );
-    fillPixel(
-      context,
-      region.x + region.width,
-      region.y + region.height,
-      colorAt(region.width - 1, region.height - 1)
+      region,
+      composition.gutter
     );
   }
 };

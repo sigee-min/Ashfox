@@ -53,10 +53,6 @@ const authorProject = (): ProjectDocument => {
             }
           }]
         }
-      },
-      {
-        name: 'textures.sync',
-        payload: {}
       }
     ]
   });
@@ -112,13 +108,13 @@ export const test = (async () => {
     '2026-07-30T00:00:00.000Z'
   );
   const authored = executeCommandBatch(blank, {
-    batchId: 'batch-web-unsynchronized-fixture',
+    batchId: 'batch-web-stale-fixture',
     baseRevision: blank.revision,
     operations: [{
       name: 'scene.bones.create',
       payload: {
         bones: [{
-          id: 'bone-unsynchronized',
+          id: 'bone-stale',
           name: 'root',
           parentId: null
         }]
@@ -127,9 +123,9 @@ export const test = (async () => {
       name: 'scene.cubes.create',
       payload: {
         cubes: [{
-          id: 'cube-unsynchronized',
+          id: 'cube-stale',
           name: 'body',
-          parentId: 'bone-unsynchronized',
+          parentId: 'bone-stale',
           bounds: {
             from: [0, 0, 0],
             to: [4, 4, 4]
@@ -139,13 +135,19 @@ export const test = (async () => {
     }]
   });
   if (!authored.ok) throw new Error(authored.error.message);
+  const stale = structuredClone(authored.document);
+  const staleCube = stale.scene.nodes['cube-stale'];
+  if (staleCube.kind !== 'cube') {
+    throw new Error('Stale texture fixture cube is unavailable.');
+  }
+  staleCube.bounds.to[0] += 1;
   await assert.rejects(
-    () => createProjectArtifact(authored.document, {}),
-    /textures\.sync/
+    () => createProjectArtifact(stale, {}),
+    /derivations are not current/
   );
   await assert.rejects(
-    () => createTargetArtifact(authored.document, {}),
-    /textures\.sync/
+    () => createTargetArtifact(stale, {}),
+    /derivations are not current/
   );
 
   const source = authorProject();

@@ -4,7 +4,11 @@ import {
   type FormEvent
 } from 'react';
 
-import type { ProjectDocument } from '@ashfox/engine-core';
+import {
+  SURFACE_PIXEL_DENSITIES,
+  type ProjectDocument,
+  type SurfacePixelDensity
+} from '@ashfox/engine-core';
 
 import type {
   ProjectSettingsInput
@@ -14,6 +18,19 @@ interface ProjectSettingsMenuProps {
   document: ProjectDocument;
   onSave: (input: ProjectSettingsInput) => void;
 }
+
+const pixelSizeLabel = (
+  density: SurfacePixelDensity
+): string => {
+  switch (density) {
+    case 1:
+      return '1 unit';
+    case 2:
+      return '½ unit';
+    case 4:
+      return '¼ unit';
+  }
+};
 
 const coordinateLabel = (document: ProjectDocument): string => {
   const coordinate = document.settings.coordinateSystem;
@@ -25,20 +42,31 @@ export function ProjectSettingsMenu({
   onSave
 }: ProjectSettingsMenuProps) {
   const [name, setName] = useState(document.name);
+  const [surfacePixelDensity, setSurfacePixelDensity] =
+    useState(document.settings.surfacePixelDensity);
 
   useEffect(() => {
     setName(document.name);
-  }, [document.name]);
+    setSurfacePixelDensity(
+      document.settings.surfacePixelDensity
+    );
+  }, [document.name, document.settings.surfacePixelDensity]);
 
   const trimmedName = name.trim();
   const canSave =
-    trimmedName.length > 0 && trimmedName !== document.name;
+    trimmedName.length > 0 &&
+    (
+      trimmedName !== document.name ||
+      surfacePixelDensity !==
+        document.settings.surfacePixelDensity
+    );
 
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     if (!canSave) return;
     onSave({
-      name: trimmedName
+      name: trimmedName,
+      surfacePixelDensity
     });
   };
 
@@ -60,10 +88,39 @@ export function ProjectSettingsMenu({
           onChange={(event) => setName(event.target.value)}
         />
       </label>
+      <fieldset className="surface-density-field">
+        <legend>Surface detail</legend>
+        <div className="surface-density-options">
+          {SURFACE_PIXEL_DENSITIES.map((density) => (
+            <label key={density}>
+              <input
+                type="radio"
+                name="surface-pixel-density"
+                value={density}
+                checked={surfacePixelDensity === density}
+                onChange={() => setSurfacePixelDensity(density)}
+              />
+              <strong>{density}×</strong>
+              <span>{pixelSizeLabel(density)} pixel</span>
+            </label>
+          ))}
+        </div>
+        <p>
+          Smaller square pixels. Atlas size adjusts automatically.
+        </p>
+      </fieldset>
       <div className="project-facts">
         <span>
           <small>Coordinates</small>
           <strong>{coordinateLabel(document)}</strong>
+        </span>
+        <span>
+          <small>Generated atlas</small>
+          <strong>
+            {document.settings.textureResolution.width}
+            {' × '}
+            {document.settings.textureResolution.height}
+          </strong>
         </span>
       </div>
       <button

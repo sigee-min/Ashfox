@@ -38,7 +38,7 @@ export const createJavaProject = (): ProjectDocument => ({
   },
   settings: {
     textureResolution: { width: 64, height: 64 },
-    uvPixelsPerUnit: 4,
+    surfacePixelDensity: 1,
     coordinateSystem: {
       up: 'y',
       handedness: 'right',

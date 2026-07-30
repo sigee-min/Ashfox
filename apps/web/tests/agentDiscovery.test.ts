@@ -131,16 +131,20 @@ assert.match(
   /automatically creates or reuses/
 );
 assert.match(
-  manifest.textureContract.generated.synchronize,
-  /exactly 1 square texel per model unit/
+  manifest.textureContract.generated.derivation,
+  /every run batch/
 );
 assert.match(
-  manifest.textureContract.generated.triggers,
-  /baseColor renders directly/
+  manifest.textureContract.generated.density,
+  /textures\.density\.set/
+);
+assert.match(
+  manifest.textureContract.generated.density,
+  /1, 2, or 4/
 );
 assert.match(
   manifest.textureContract.generated.grid,
-  /whole model unit/
+  /1\/surfacePixelDensity/
 );
 assert.match(
   manifest.textureContract.generated.surfacePattern,
@@ -149,10 +153,6 @@ assert.match(
 assert.match(
   manifest.textureContract.generated.surfacePattern,
   /canonical direction, edge contrast, and pixel variation rules/
-);
-assert.match(
-  manifest.textureContract.generated.terminal,
-  /no_change/
 );
 assert.match(
   manifest.textureContract.review,
@@ -423,6 +423,13 @@ if (result.ok) {
         name: string;
       };
     };
+    project: {
+      surfacePixelDensity: number;
+      textureResolution: {
+        width: number;
+        height: number;
+      };
+    };
     counts: {
       nodes: number;
       bones: number;
@@ -452,7 +459,15 @@ if (result.ok) {
   assert.ok(data.commands.includes('scene.cubes.geometry.update'));
   assert.ok(data.commands.includes('scene.nodes.rename'));
   assert.ok(data.commands.includes('scene.nodes.delete'));
-  assert.ok(data.commands.includes('textures.sync'));
+  assert.ok(data.commands.includes('textures.density.set'));
+  assert.equal(
+    data.project.surfacePixelDensity,
+    document.settings.surfacePixelDensity
+  );
+  assert.deepEqual(
+    data.project.textureResolution,
+    document.settings.textureResolution
+  );
   assert.equal(data.counts.nodes, 3);
   assert.equal(data.counts.bones, 1);
   assert.equal(data.counts.cubes, 1);

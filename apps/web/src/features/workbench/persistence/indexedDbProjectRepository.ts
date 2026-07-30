@@ -1,4 +1,7 @@
 import {
+  parseProjectDocument
+} from '@ashfox/engine-core';
+import {
   areLocalProjectRecordsEqual,
   compareProjectRevisions,
   isValidLocalProjectRecord,
@@ -8,6 +11,14 @@ import {
 const DATABASE_NAME = 'ashfox';
 const DATABASE_VERSION = 1;
 const PROJECT_STORE = 'projects';
+
+const normalizeStoredRecord = (
+  record: LocalProjectRecord
+): LocalProjectRecord => ({
+  ...record,
+  document: parseProjectDocument(record.document),
+  assets: record.assets ?? {}
+});
 
 const requestResult = <T>(request: IDBRequest<T>): Promise<T> =>
   new Promise<T>((resolve, reject) => {
@@ -73,12 +84,7 @@ export const loadLocalProject = async (
     );
     await transactionComplete(transaction);
     const record = result as LocalProjectRecord | undefined;
-    return record
-      ? {
-          ...record,
-          assets: record.assets ?? {}
-        }
-      : null;
+    return record ? normalizeStoredRecord(record) : null;
   } finally {
     database.close();
   }
@@ -124,25 +130,31 @@ export const decideProjectWrite = (
   if (!existing) {
     return { status: 'stored', current: candidate };
   }
-  if (!isValidLocalProjectRecord(existing, candidate.projectId)) {
+  let current = existing;
+  try {
+    current = normalizeStoredRecord(existing);
+  } catch {
     return { status: 'blocked', current: existing };
+  }
+  if (!isValidLocalProjectRecord(current, candidate.projectId)) {
+    return { status: 'blocked', current };
   }
 
   const revisionOrder = compareProjectRevisions(
     candidate.revision,
-    existing.revision
+    current.revision
   );
   if (revisionOrder > 0) {
     return { status: 'stored', current: candidate };
   }
   if (
     revisionOrder === 0 &&
-    candidate.revision === existing.revision &&
-    sameProjectSnapshot(candidate, existing)
+    candidate.revision === current.revision &&
+    sameProjectSnapshot(candidate, current)
   ) {
-    return { status: 'unchanged', current: existing };
+    return { status: 'unchanged', current };
   }
-  return { status: 'conflict', current: existing };
+  return { status: 'conflict', current };
 };
 
 const writeNewestProjectRecord = (

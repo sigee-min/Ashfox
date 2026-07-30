@@ -4,10 +4,6 @@ import {
 } from '@ashfox/engine-core';
 
 import {
-  createTextureSyncOperation,
-  projectNeedsTextureSynchronization
-} from '../textures/textureSyncCommand';
-import {
   projectUsesExportTarget,
   type ProjectExportTarget
 } from '../workbench/presentation/projectExportTarget';
@@ -32,15 +28,6 @@ export const createArtifactPreparationOperations = (
       name: 'project.target.set',
       payload: request.target
     });
-  }
-  if (projectNeedsTextureSynchronization(document)) {
-    const operation = createTextureSyncOperation(document);
-    if (!operation) {
-      throw new Error(
-        'Generated texture synchronization is unavailable for this project.'
-      );
-    }
-    operations.push(operation);
   }
   return operations;
 };

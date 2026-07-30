@@ -1,4 +1,7 @@
 import type { ProjectDocument } from '../model';
+import {
+  deriveGeneratedTextures
+} from '../textures/textureRecipe';
 import { validateProjectDocument } from '../validation';
 import type { CommandApplication } from './definition';
 import { getCommandDefinition } from './registry';
@@ -112,6 +115,52 @@ const emptyEffects = (): CommandEffects => ({
   invalidated: []
 });
 
+const deriveBatchTextures = (
+  originalDocument: ProjectDocument,
+  document: ProjectDocument,
+  effects: CommandEffects
+):
+  | {
+      ok: true;
+      document: ProjectDocument;
+      effects: CommandEffects;
+    }
+  | CommandBatchFailure => {
+  const derived = deriveGeneratedTextures(document);
+  if (!derived.ok) {
+    return failure(originalDocument, {
+      code: 'invalid_state',
+      message: derived.message,
+      path: derived.path,
+      expected: derived.expected
+    });
+  }
+  const changedEntityIds = [
+    ...derived.changedNodeIds,
+    ...derived.changedTextureIds
+  ];
+  const changed =
+    derived.changedSettings || changedEntityIds.length > 0;
+  return {
+    ok: true,
+    document: derived.document,
+    effects: changed
+      ? mergeEffects(effects, {
+          createdEntityIds: [],
+          changedEntityIds,
+          removedEntityIds: [],
+          invalidated: [
+            'scene',
+            'textures',
+            'uv',
+            'validation',
+            'preview'
+          ]
+        })
+      : effects
+  };
+};
+
 const applyOperation = (
   document: ProjectDocument,
   batch: CommandBatch,
@@ -153,6 +202,15 @@ export const executeCommandBatch = (
     effects = mergeEffects(effects, applied.effects);
     summaries.push(applied.summary);
   }
+
+  const reconciled = deriveBatchTextures(
+    document,
+    workingDocument,
+    effects
+  );
+  if (!reconciled.ok) return reconciled;
+  workingDocument = reconciled.document;
+  effects = reconciled.effects;
 
   if (workingDocument === document) {
     return failure(document, {

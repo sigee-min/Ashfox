@@ -113,7 +113,11 @@ const inspectDefault = (
         id: document.id,
         name: document.name,
         revision: document.revision,
-        target: document.formatProfile.id
+        target: document.formatProfile.id,
+        surfacePixelDensity:
+          document.settings.surfacePixelDensity,
+        textureResolution:
+          document.settings.textureResolution
       },
       selection: selectedNodeId,
       counts: {

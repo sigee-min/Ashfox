@@ -13,7 +13,8 @@ const project = createBlankWorkbenchProject(
 
 assert.deepEqual(
   createProjectSettingsOperations(project, {
-    name: 'Copper truck'
+    name: 'Copper truck',
+    surfacePixelDensity: 1
   }),
   [
     {
@@ -26,8 +27,21 @@ assert.deepEqual(
 
 assert.deepEqual(
   createProjectSettingsOperations(project, {
-    name: project.name
+    name: project.name,
+    surfacePixelDensity: 1
   }),
   [],
   'unchanged project settings must not create a receipt'
+);
+
+assert.deepEqual(
+  createProjectSettingsOperations(project, {
+    name: project.name,
+    surfacePixelDensity: 4
+  }),
+  [{
+    name: 'textures.density.set',
+    payload: { density: 4 }
+  }],
+  'surface detail must use the canonical density command'
 );

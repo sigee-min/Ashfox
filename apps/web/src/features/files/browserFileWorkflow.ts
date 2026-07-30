@@ -1,6 +1,7 @@
 import {
   exportProject,
   exportProjectResolved,
+  staleGeneratedTextureIds,
   type BlobRef,
   type ExportBundle,
   type ExportFile,
@@ -10,9 +11,6 @@ import {
 } from '@ashfox/engine-core';
 
 import { renderTextureRaster } from '../textures/renderTextureRaster';
-import {
-  projectNeedsTextureSynchronization
-} from '../textures/textureSyncCommand';
 import {
   createProjectArchive,
   readProjectArchive,
@@ -30,7 +28,7 @@ import {
 
 const ASHFOX_CONTENT_TYPE = 'application/vnd.ashfox.project+zip';
 const UNSYNCHRONIZED_TEXTURE_MESSAGE =
-  'Generated textures must be synchronized through textures.sync before creating a file.';
+  'Generated texture derivations are not current. Finish the canonical project command before creating a file.';
 
 export interface TargetArtifactFile extends ArtifactFile {
   kind: 'target';
@@ -49,7 +47,7 @@ export const parseProjectFile = async (
 const assertArtifactDocumentReady = (
   document: ProjectDocument
 ): void => {
-  if (projectNeedsTextureSynchronization(document)) {
+  if (staleGeneratedTextureIds(document).size > 0) {
     throw new Error(UNSYNCHRONIZED_TEXTURE_MESSAGE);
   }
 };

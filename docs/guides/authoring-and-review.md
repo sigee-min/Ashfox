@@ -64,6 +64,8 @@ visible, and moving parts have useful pivots without resting intersections.
 
 ## Review textures and UVs
 
+- Choose Surface detail in Project settings: 1× for the classic scale,
+  2× for half-unit pixels, or 4× for quarter-unit pixels.
 - Check that material regions use deliberate, reusable base colors.
 - Make sure each visible face belongs to the generated atlas.
 - Look for stretched pixels, seams, empty faces, and mismatched material color.

@@ -63,10 +63,6 @@ const authorProject = (target: ExportPreset): ProjectDocument => {
           }
         }]
       }
-    },
-    {
-      name: 'textures.sync',
-      payload: {}
     }
   ];
   const result = executeCommandBatch(base, {

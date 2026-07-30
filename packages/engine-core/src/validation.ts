@@ -1,6 +1,7 @@
 import {
   CUBE_FACE_DIRECTIONS,
   PROJECT_DOCUMENT_SCHEMA_VERSION,
+  isSurfacePixelDensity,
   type AnimationEffect,
   type AnimationClip,
   type AnimationScalar,
@@ -18,7 +19,7 @@ import {
   type Vec3
 } from './model';
 import {
-  unsynchronizedGeneratedTextureIds
+  staleGeneratedTextureIds
 } from './textures/textureRecipe';
 import { findFullyOccludedCubes } from './sceneOcclusion';
 
@@ -53,7 +54,7 @@ export type InvariantCode =
   | 'texture.invalid_blob'
   | 'texture.invalid_atlas_mode'
   | 'texture.invalid_raster'
-  | 'texture.recipe_unsynchronized'
+  | 'texture.recipe_stale'
   | 'animation.invalid_timing'
   | 'animation.target_missing'
   | 'animation.key_order'
@@ -2058,15 +2059,12 @@ export const validateProjectDocument = (
       path: 'settings.textureResolution'
     });
   }
-  if (
-    document.settings.uvPixelsPerUnit !== undefined &&
-    (!isFiniteNumber(document.settings.uvPixelsPerUnit) || document.settings.uvPixelsPerUnit <= 0)
-  ) {
+  if (!isSurfacePixelDensity(document.settings.surfacePixelDensity)) {
     add({
       code: 'document.invalid_setting',
       severity: 'error',
-      message: 'uvPixelsPerUnit must be greater than zero.',
-      path: 'settings.uvPixelsPerUnit'
+      message: 'Surface pixel density must be 1, 2, or 4.',
+      path: 'settings.surfacePixelDensity'
     });
   }
   const coordinateSystem = document.settings.coordinateSystem;
@@ -2242,8 +2240,7 @@ export const validateProjectDocument = (
     });
   }
 
-  const unsynchronizedTextureIds =
-    unsynchronizedGeneratedTextureIds(document);
+  const staleTextureIds = staleGeneratedTextureIds(document);
   for (const [assetKey, texture] of Object.entries(document.textures)) {
     const path = `textures.${assetKey}`;
     registerId(texture.id, path);
@@ -2346,13 +2343,13 @@ export const validateProjectDocument = (
       );
     if (
       usesGeneratedTexture &&
-      unsynchronizedTextureIds.has(texture.id)
+      staleTextureIds.has(texture.id)
     ) {
       add({
-        code: 'texture.recipe_unsynchronized',
+        code: 'texture.recipe_stale',
         severity: 'warning',
         message:
-          'Generated texture surfaces changed after the last texture synchronization.',
+          'Generated texture does not match its canonical derivation.',
         path: 'settings.textureResolution',
         assetIds: [texture.id]
       });

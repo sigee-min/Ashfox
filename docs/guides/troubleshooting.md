@@ -31,8 +31,8 @@ Ask the agent to:
 1. render the asset in Studio lighting;
 2. identify untextured faces and their material base colors;
 3. check that effective cube dimensions are positive whole pixel units;
-4. synchronize the atlas and confirm identical square-pixel size on every
-   face;
+4. confirm the automatically derived atlas uses identical square-pixel size
+   on every face;
 5. validate the texture paths before exporting.
 
 For ZIP exports, preserve the generated texture paths and filenames.

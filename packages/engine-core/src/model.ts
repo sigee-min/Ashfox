@@ -10,6 +10,15 @@ export type Revision = string;
 export type Vec2 = readonly [number, number];
 export type Vec3 = readonly [number, number, number];
 export type UvRect = readonly [number, number, number, number];
+export const SURFACE_PIXEL_DENSITIES = [1, 2, 4] as const;
+export type SurfacePixelDensity =
+  (typeof SURFACE_PIXEL_DENSITIES)[number];
+
+export const isSurfacePixelDensity = (
+  value: unknown
+): value is SurfacePixelDensity =>
+  typeof value === 'number' &&
+  SURFACE_PIXEL_DENSITIES.includes(value as SurfacePixelDensity);
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
@@ -90,7 +99,7 @@ export interface ProjectSettings {
     width: number;
     height: number;
   };
-  uvPixelsPerUnit?: number;
+  surfacePixelDensity: SurfacePixelDensity;
   coordinateSystem: {
     up: 'y';
     handedness: 'right';
