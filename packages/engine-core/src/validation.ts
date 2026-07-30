@@ -20,6 +20,7 @@ import {
 import {
   unsynchronizedGeneratedTextureIds
 } from './textures/textureRecipe';
+import { findFullyOccludedCubes } from './sceneOcclusion';
 
 export type InvariantSeverity = 'error' | 'warning' | 'info';
 
@@ -43,6 +44,7 @@ export type InvariantCode =
   | 'cube.invalid_bounds'
   | 'cube.invalid_face'
   | 'cube.texture_missing'
+  | 'cube.fully_occluded'
   | 'mesh.vertex_missing'
   | 'mesh.face_too_small'
   | 'mesh.face_vertex_duplicate'
@@ -2225,6 +2227,20 @@ export const validateProjectDocument = (
     visitState.set(nodeId, 'visited');
   };
   Object.keys(document.scene.nodes).forEach(visitNode);
+
+  for (const occlusion of findFullyOccludedCubes(document)) {
+    add({
+      code: 'cube.fully_occluded',
+      severity: 'warning',
+      message:
+        `Cube "${occlusion.innerId}" is completely hidden inside ` +
+        `opaque cube "${occlusion.outerId}".`,
+      path: `scene.nodes.${occlusion.innerId}.bounds`,
+      entityIds: [occlusion.innerId, occlusion.outerId],
+      fix:
+        'Delete the hidden cube or expose part of it outside the containing cube.'
+    });
+  }
 
   const unsynchronizedTextureIds =
     unsynchronizedGeneratedTextureIds(document);

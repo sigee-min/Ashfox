@@ -19,6 +19,51 @@ const clone = <T>(value: T): T => structuredClone(value);
 }
 
 {
+  const project = clone(createJavaProject()) as ProjectDocument;
+  const outer = project.scene.nodes['cube-body'];
+  if (outer.kind !== 'cube') throw new Error('fixture cube missing');
+  outer.transform = {
+    ...outer.transform,
+    rotation: [0, 0, 0]
+  };
+  (project.textures['texture-base'] as {
+    atlasMode: 'generate';
+  }).atlasMode = 'generate';
+  (project.scene.nodes as Record<string, typeof outer>)['cube-hidden'] = {
+    ...structuredClone(outer),
+    id: 'cube-hidden',
+    name: 'hidden',
+    bounds: {
+      from: [-1, 2, -1],
+      to: [1, 4, 1]
+    }
+  };
+  const report = validateProjectDocument(project);
+  assert.equal(report.valid, true);
+  assert.ok(
+    report.findings.some(
+      (finding) =>
+        finding.code === 'cube.fully_occluded' &&
+        finding.severity === 'warning' &&
+        finding.entityIds?.includes('cube-hidden') &&
+        finding.entityIds.includes('cube-body')
+    )
+  );
+
+  (
+    project.scene.nodes['cube-hidden'] as typeof outer
+  ).bounds = {
+    from: [-1, 2, -1],
+    to: [5, 4, 1]
+  };
+  assert.ok(
+    !validateProjectDocument(project).findings.some(
+      (finding) => finding.code === 'cube.fully_occluded'
+    )
+  );
+}
+
+{
   const project = clone(createJavaProject());
   (project.scene.roots as string[]).push('bone-root');
   const report = validateProjectDocument(project);

@@ -119,6 +119,10 @@ assert.match(
   manifest.completionContract.reviewGates.form,
   /coarse stage/
 );
+assert.match(
+  manifest.completionContract.reviewGates.form,
+  /cube\.fully_occluded/
+);
 assert.match(manifest.completionContract.reviewGates.texture, /textureContract/);
 assert.match(manifest.textureContract.authority, /baseColor/);
 assert.match(manifest.textureContract.material, /#RRGGBB/);
@@ -139,12 +143,12 @@ assert.match(
   /whole model unit/
 );
 assert.match(
-  manifest.textureContract.generated.shading,
-  /Minecraft-style tones/
+  manifest.textureContract.generated.surfacePattern,
+  /pixel-art tonal pattern/
 );
 assert.match(
-  manifest.textureContract.generated.shading,
-  /no procedural noise/
+  manifest.textureContract.generated.surfacePattern,
+  /canonical direction, edge contrast, and pixel variation rules/
 );
 assert.match(
   manifest.textureContract.generated.terminal,

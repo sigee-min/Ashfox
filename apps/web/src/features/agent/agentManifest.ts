@@ -71,7 +71,7 @@ export const agentManifest = {
     },
     verificationBoundary: {
       machine:
-        'Code verifies only explicit structural facts: schema, hierarchy, references, transforms, UV and texture coverage, animation timing, and target compatibility.',
+        'Code verifies only explicit structural facts: schema, hierarchy, references, transforms, fully occluded static cubes, UV and texture coverage, animation timing, and target compatibility.',
       semantic:
         'Subject identity, silhouette fidelity, anatomy or construction accuracy, and visual appeal are not deterministically provable from counts or invariants. The agent must compare the rendered result with the request and supplied references and must not describe that judgment as machine-validated.'
     },
@@ -85,9 +85,9 @@ export const agentManifest = {
     },
     reviewGates: {
       form:
-        'At the coarse stage, reject a body plan or silhouette that does not identify the requested subject before adding detail. Every part must contribute to silhouette, structure, articulation, construction, or readable detail; reject hidden filler, accidental duplicates, and imperceptible splitting. Also reject missing defining parts, accidental asymmetry, floating pieces, avoidable interpenetration, and z-fighting. Do not trade recognition or reference fidelity for ornamental density.',
+        'At the coarse stage, reject a body plan or silhouette that does not identify the requested subject before adding detail. Every part must contribute to silhouette, structure, articulation, construction, or readable detail; resolve every cube.fully_occluded warning and reject hidden filler, accidental duplicates, and imperceptible splitting. Also reject missing defining parts, accidental asymmetry, floating pieces, avoidable interpenetration, and z-fighting. Do not trade recognition or reference fidelity for ornamental density.',
       texture:
-        'Reject placeholder base colors, unintended UV stretching or rotation, broken seams, inconsistent texel scale, and identity-defining color regions that disappear at gameplay distance. Do not hand-author shading; apply textureContract.review after the final generated-surface change.',
+        'Reject placeholder base colors, unintended UV stretching or rotation, broken seams, inconsistent texel scale, and identity-defining color regions that disappear at gameplay distance. Do not hand-author tonal gradients, noise, or edge effects; apply textureContract.review after the final generated-surface change.',
       rig:
         'Place pivots at plausible joints or mechanical axes. Verify hierarchy motion does not detach, shear, or move unrelated parts.',
       idle:
@@ -98,20 +98,20 @@ export const agentManifest = {
   },
   textureContract: {
     authority:
-      'The agent owns only each cube material baseColor. ashfox owns the generated texture, UV atlas, square texel density, directional face tones, raster pixels, and atlas resolution.',
+      'The agent owns only each cube material baseColor. ashfox owns the generated texture, UV atlas, square texel density, raster pixels, and atlas resolution.',
     material:
       'Pass one deliberate #RRGGBB baseColor when creating a cube, or use scene.cubes.material with nodeIds and baseColor to recolor an existing material region. Reuse the exact same baseColor for cubes that share a material. Do not encode highlights, shadows, noise, gradients, or edge darkening in the chosen color.',
     generated: {
       bootstrap:
         'scene.cubes.create automatically creates or reuses the canonical generated texture and assigns every enabled face. The texture identity and face mapping are not command inputs.',
       synchronize:
-        'textures.sync takes an empty payload and is the only UV, atlas, and shading operation. It atomically packs every positive-area face at exactly 1 square texel per model unit and grows one square atlas as needed without reducing texel density.',
+        'textures.sync takes an empty payload and is the only UV, atlas, and surface-pattern operation. It atomically packs every positive-area face at exactly 1 square texel per model unit and grows one square atlas as needed without reducing texel density.',
       triggers:
         'Run textures.sync after cube creation, deletion, duplication, repetition, mirror, bounds, inflate, or scale changes. baseColor renders directly; position, rotation, pivot, naming, hierarchy, and animation do not require synchronization.',
       grid:
         'For pixel-unit projects, every effective cube dimension after inflate and scale must be a positive whole model unit. A fractional face that cannot produce exact square texels is rejected atomically; correct the geometry instead of lowering texture density.',
-      shading:
-        'ashfox derives fixed Minecraft-style tones from baseColor: up is brightest, down is darkest, and each horizontal direction has one stable tone. Generated faces contain no procedural noise, gradient, edge effect, emission, or PBR lighting, so the same baseColor always produces the same six tones.',
+      surfacePattern:
+        'ashfox derives a deterministic pixel-art tonal pattern from baseColor using canonical direction, edge contrast, and pixel variation rules. The result is baked albedo data, not scene lighting, and uses the fixed square texel grid at every face size. The same geometry and baseColor always produce the same texture.',
       terminal:
         'An unchanged textures.sync returns no_change without a revision, Activity, or Undo entry. Treat it as complete and continue.'
     },
@@ -130,7 +130,7 @@ export const agentManifest = {
     hierarchy:
       'Bones may parent bones, cubes, or locators. parentId null makes a root. scene.bones.create permits parent IDs declared anywhere in the same payload. Use scene.locators.create for particle and sound attachment points; Minecraft locators must be parented to an existing bone. Use scene.nodes.reparent for hierarchy changes and scene.nodes.delete for atomic cascading removal.',
     cubes:
-      'Cube bounds are absolute from/to coordinates and must not be reversed. Use whole-unit effective dimensions for the texture grid. Use scene.cubes.geometry.update only for bounds and inflate, scene.cubes.material only for baseColor, scene.cubes.mirror for mirrored geometry, and scene.nodes.transform for position, rotation, scale, and pivot. Texture IDs, UV fields, atlas resolution, and face tones are derived and are not public command inputs.',
+      'Cube bounds are absolute from/to coordinates and must not be reversed. Use whole-unit effective dimensions for the texture grid. Use scene.cubes.geometry.update only for bounds and inflate, scene.cubes.material only for baseColor, scene.cubes.mirror for mirrored geometry, and scene.nodes.transform for position, rotation, scale, and pivot. Texture IDs, UV fields, atlas resolution, and raster pixels are derived and are not public command inputs.',
     animation:
       'Clips own transform channels and event triggers. Channels target stable node IDs and animate position, rotation, or scale with ordered keys. Particle and sound effects may reference locator node IDs. Use animation.tracks.delete with explicit channel or trigger kinds for precise removal without rebuilding the clip. Keep keys within clip duration and close loops explicitly when required.',
     targets: {
@@ -288,7 +288,7 @@ export const agentManifest = {
   rules: [
     'Inspect before authoring and use the returned current revision.',
     'Every delivery must satisfy completionContract; productionReady alone never proves visual or semantic completion.',
-    'Follow textureContract as the only texture, UV, raster, and automatic-shading workflow.',
+    'Follow textureContract as the only texture, UV, raster, and automatic surface-pattern workflow.',
     'Commit each proven authoring phase atomically; never submit an entire unproven high-detail asset as one batch.',
     'All project mutations use run and the canonical reducer; the bridge contains no mutation logic.',
     'Use DOM actions only for listed file boundaries; accept completion only at a terminal phase with the same operation ID.'

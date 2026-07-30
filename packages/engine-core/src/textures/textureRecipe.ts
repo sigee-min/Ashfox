@@ -63,7 +63,6 @@ export interface TextureCompositionRegion {
   width: number;
   height: number;
   color: string;
-  tone: number;
 }
 
 export interface TextureComposition {
@@ -344,23 +343,6 @@ const settingsMatchPlan = (
   document.settings.textureResolution.height === plan.height &&
   document.settings.uvPixelsPerUnit === GENERATED_TEXELS_PER_MODEL_UNIT;
 
-const faceTone = (direction: CubeFaceDirection): number => {
-  switch (direction) {
-    case 'up':
-      return 1.06;
-    case 'south':
-      return 1;
-    case 'north':
-      return 0.96;
-    case 'west':
-      return 0.92;
-    case 'east':
-      return 0.88;
-    case 'down':
-      return 0.84;
-  }
-};
-
 export const isGeneratedTextureSynchronized = (
   document: ProjectDocument,
   textureId: string
@@ -419,8 +401,7 @@ export const composeTextureRaster = (
           y: uv[1],
           width: uv[2] - uv[0],
           height: uv[3] - uv[1],
-          color: node.baseColor,
-          tone: faceTone(face)
+          color: node.baseColor
         });
       }
     }

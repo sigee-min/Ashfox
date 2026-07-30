@@ -5,8 +5,9 @@ import {
   deterministicPixelNoise,
   faceTexelSize,
   packUvAtlas,
+  paintSurfacePixel,
   reduceAtlasPixelsPerBlock,
-  shadeMinecraftPixel,
+  shadePixelRect,
   stableTextureSeed
 } from '../src';
 
@@ -66,17 +67,82 @@ assert.equal(
   deterministicPixelNoise(3, 5, seed),
   deterministicPixelNoise(3, 5, seed)
 );
+assert.deepEqual(
+  paintSurfacePixel(
+    { r: 190, g: 110, b: 55 },
+    3,
+    5,
+    8,
+    8,
+    seed
+  ),
+  paintSurfacePixel(
+    { r: 190, g: 110, b: 55 },
+    3,
+    5,
+    8,
+    8,
+    seed
+  )
+);
+assert.deepEqual(
+  paintSurfacePixel(
+    { r: 190, g: 110, b: 55 },
+    0,
+    0,
+    1,
+    1,
+    seed
+  ),
+  { r: 190, g: 110, b: 55 },
+  'single-pixel details must keep the selected base color'
+);
+assert.ok(
+  new Set(
+    Array.from({ length: 64 }, (_, index) => {
+      const color = paintSurfacePixel(
+        { r: 190, g: 110, b: 55 },
+        index % 8,
+        Math.floor(index / 8),
+        8,
+        8,
+        seed
+      );
+      return `${color.r}:${color.g}:${color.b}`;
+    })
+  ).size >= 8,
+  'large faces must preserve rich tonal variation'
+);
+assert.notDeepEqual(
+  paintSurfacePixel(
+    { r: 190, g: 110, b: 55 },
+    0,
+    0,
+    2,
+    2,
+    seed
+  ),
+  paintSurfacePixel(
+    { r: 190, g: 110, b: 55 },
+    1,
+    1,
+    2,
+    2,
+    seed
+  ),
+  'compact faces must not collapse to a single color'
+);
 
 const thinRegion = { x: 0, y: 0, width: 2, height: 2 };
 const baseColor = { r: 190, g: 110, b: 55 };
-const thinA = shadeMinecraftPixel(baseColor, 0, 0, thinRegion, {
+const thinA = shadePixelRect(baseColor, 0, 0, thinRegion, {
   intensity: 0.22,
   edge: 0,
   noise: 0,
   seed,
   lightDir: 'tl_br'
 });
-const thinB = shadeMinecraftPixel(baseColor, 0, 0, thinRegion, {
+const thinB = shadePixelRect(baseColor, 0, 0, thinRegion, {
   intensity: 0.22,
   edge: 1,
   noise: 1,

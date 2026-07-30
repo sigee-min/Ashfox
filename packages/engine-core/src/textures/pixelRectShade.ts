@@ -1,16 +1,6 @@
-export type MinecraftShadeDirection =
-  | 'tl_br'
-  | 'tr_bl'
-  | 'top_bottom'
-  | 'left_right';
-
-export interface MinecraftShadeConfig {
-  intensity: number;
-  edge: number;
-  noise: number;
-  seed: number;
-  lightDir: MinecraftShadeDirection;
-}
+import {
+  deterministicPixelNoise
+} from './deterministicPixel';
 
 export interface RgbColor {
   r: number;
@@ -18,13 +8,34 @@ export interface RgbColor {
   b: number;
 }
 
+export type PixelShadeDirection =
+  | 'tl_br'
+  | 'tr_bl'
+  | 'top_bottom'
+  | 'left_right';
+
+export interface PixelShadeConfig {
+  intensity: number;
+  edge: number;
+  noise: number;
+  seed: number;
+  lightDir: PixelShadeDirection;
+}
+
+export const DEFAULT_PIXEL_SHADE_STYLE = {
+  intensity: 0.22,
+  edge: 0.12,
+  noise: 0.06,
+  lightDir: 'tl_br'
+} as const;
+
 const clamp = (value: number, minimum: number, maximum: number): number =>
   Math.min(maximum, Math.max(minimum, value));
 
 const directionalShade = (
   u: number,
   v: number,
-  direction: MinecraftShadeDirection
+  direction: PixelShadeDirection
 ): number => {
   switch (direction) {
     case 'tr_bl':
@@ -38,40 +49,12 @@ const directionalShade = (
   }
 };
 
-export const deterministicPixelNoise = (
-  x: number,
-  y: number,
-  seed: number
-): number => {
-  let hash = (
-    seed ^
-    Math.imul(Math.trunc(x), 0x9e3779b1) ^
-    Math.imul(Math.trunc(y), 0x85ebca6b)
-  ) >>> 0;
-  hash = Math.imul(hash ^ (hash >>> 16), 0x7feb352d) >>> 0;
-  hash = Math.imul(hash ^ (hash >>> 15), 0x846ca68b) >>> 0;
-  hash = (hash ^ (hash >>> 16)) >>> 0;
-  return hash / 0xffffffff;
-};
-
-export const stableTextureSeed = (
-  value: string,
-  seed: number
-): number => {
-  let hash = (2166136261 ^ Math.trunc(seed)) >>> 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16777619) >>> 0;
-  }
-  return hash;
-};
-
-export const shadeMinecraftPixel = (
+export const shadePixelRect = (
   color: RgbColor,
   x: number,
   y: number,
   rect: { x: number; y: number; width: number; height: number },
-  config: MinecraftShadeConfig
+  config: PixelShadeConfig
 ): RgbColor => {
   const tinyRect = rect.width * rect.height <= 4;
   const thinRect = rect.width <= 2 || rect.height <= 2;

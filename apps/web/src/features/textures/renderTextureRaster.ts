@@ -1,5 +1,7 @@
 import {
   composeTextureRaster,
+  paintSurfacePixel,
+  stableTextureSeed,
   type ProjectDocument,
   type RgbColor,
   type TextureAsset,
@@ -17,31 +19,82 @@ const rgbColor = (value: string): RgbColor => ({
   b: Number.parseInt(value.slice(5, 7), 16)
 });
 
-const toneColor = (color: RgbColor, tone: number): RgbColor => ({
-  r: Math.min(255, Math.max(0, Math.round(color.r * tone))),
-  g: Math.min(255, Math.max(0, Math.round(color.g * tone))),
-  b: Math.min(255, Math.max(0, Math.round(color.b * tone)))
-});
+const fillPixel = (
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  color: RgbColor
+): void => {
+  context.fillStyle = `rgb(${color.r} ${color.g} ${color.b})`;
+  context.fillRect(x, y, 1, 1);
+};
 
-const renderGeneratedFaceTones = (
+const renderGeneratedSurfacePatterns = (
   context: CanvasRenderingContext2D,
   composition: TextureComposition
 ): void => {
   if (!composition.generated) return;
   for (const region of composition.regions) {
-    const color = toneColor(rgbColor(region.color), region.tone);
-    context.fillStyle = `rgb(${color.r} ${color.g} ${color.b})`;
-    context.fillRect(
-      region.x - 1,
-      region.y - 1,
-      region.width + 2,
-      region.height + 2
+    const base = rgbColor(region.color);
+    const seed = stableTextureSeed(
+      `${region.nodeId}:${region.face}`,
+      0x41534846
     );
-    context.fillRect(
-      region.x,
-      region.y,
-      region.width,
-      region.height
+    const colorAt = (x: number, y: number): RgbColor =>
+      paintSurfacePixel(
+        base,
+        x,
+        y,
+        region.width,
+        region.height,
+        seed
+      );
+    for (let y = 0; y < region.height; y += 1) {
+      for (let x = 0; x < region.width; x += 1) {
+        fillPixel(
+          context,
+          region.x + x,
+          region.y + y,
+          colorAt(x, y)
+        );
+      }
+    }
+    for (let x = 0; x < region.width; x += 1) {
+      fillPixel(context, region.x + x, region.y - 1, colorAt(x, 0));
+      fillPixel(
+        context,
+        region.x + x,
+        region.y + region.height,
+        colorAt(x, region.height - 1)
+      );
+    }
+    for (let y = 0; y < region.height; y += 1) {
+      fillPixel(context, region.x - 1, region.y + y, colorAt(0, y));
+      fillPixel(
+        context,
+        region.x + region.width,
+        region.y + y,
+        colorAt(region.width - 1, y)
+      );
+    }
+    fillPixel(context, region.x - 1, region.y - 1, colorAt(0, 0));
+    fillPixel(
+      context,
+      region.x + region.width,
+      region.y - 1,
+      colorAt(region.width - 1, 0)
+    );
+    fillPixel(
+      context,
+      region.x - 1,
+      region.y + region.height,
+      colorAt(0, region.height - 1)
+    );
+    fillPixel(
+      context,
+      region.x + region.width,
+      region.y + region.height,
+      colorAt(region.width - 1, region.height - 1)
     );
   }
 };
@@ -74,7 +127,7 @@ export const renderTextureRaster = (
 
   context.fillStyle = composition.background ?? previewColor(texture);
   context.fillRect(0, 0, texture.width, texture.height);
-  renderGeneratedFaceTones(context, composition);
+  renderGeneratedSurfacePatterns(context, composition);
   renderCanvasDetails(context, composition);
   return canvas;
 };

@@ -188,10 +188,7 @@ assert.equal(bodyRegions.length, 6);
 assert.ok(
   bodyRegions.every((region) => region.color === '#B45A2A')
 );
-assert.ok(
-  (bodyRegions.find((region) => region.face === 'up')?.tone ?? 0) >
-  (bodyRegions.find((region) => region.face === 'down')?.tone ?? 1)
-);
+assert.ok(bodyRegions.every((region) => !('tone' in region)));
 
 const recolored = execute(synchronized, 'batch-material', [{
   name: 'scene.cubes.material',

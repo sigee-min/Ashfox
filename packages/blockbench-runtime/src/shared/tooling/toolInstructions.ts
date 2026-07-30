@@ -18,7 +18,7 @@ export const TEXTURE_WORKFLOW_INSTRUCTIONS = [
   'paint_mesh_face is strict single-op: target one mesh, choose scope single_face/all_faces, and keep one op per call.',
   'paint_mesh_face requires a mesh-enabled format; otherwise it fails with unsupported_format.',
   'paint_mesh_face includes a commit guard and auto-rolls back when the committed texture result is unsafe.',
-  'fill_rect shading defaults to on for Minecraft-like tone variation; set shade=false to disable, or use a shade object to tune.',
+  'fill_rect tonal variation defaults to on; set shade=false to disable, or use a shade object to tune.',
   'paint_faces defaults to coordSpace=face; omit width/height to auto-match the target face UV size.',
   'Use coordSpace=texture only when you need texture-space coordinates, and always send width/height.',
   'UV overlaps or scale mismatches trigger automatic recovery; retry paint_faces after fixes.',
@@ -79,7 +79,6 @@ export const SIDECAR_TOOL_INSTRUCTIONS = [
   RIGGING_WORKFLOW_INSTRUCTIONS,
   TEXTURE_WORKFLOW_INSTRUCTIONS
 ].join(' ');
-
 
 
 

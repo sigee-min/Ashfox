@@ -69,8 +69,8 @@ visible, and moving parts have useful pivots without resting intersections.
 - Look for stretched pixels, seams, empty faces, and mismatched material color.
 - Confirm that one square pixel has exactly the same size on every face.
 - Keep important accents visible at the distance where the asset will be used.
-- Let ashfox derive the fixed directional face tones; do not hand-paint
-  gradients, noise, highlights, or shadows.
+- Let ashfox derive the tonal pixel surface pattern from each base color;
+  do not hand-paint gradients or edge outlines.
 
 ## Review animation
 

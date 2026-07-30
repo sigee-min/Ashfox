@@ -1,6 +1,9 @@
 import type { FillRectShadeLike } from './textureOps';
 import { clamp } from './math';
-import { shadeMinecraftPixel } from '@ashfox/engine-core';
+import {
+  DEFAULT_PIXEL_SHADE_STYLE,
+  shadePixelRect
+} from '@ashfox/engine-core';
 
 export type RgbaLike = { r: number; g: number; b: number; a: number };
 
@@ -26,9 +29,15 @@ export const resolveFillRectShade = (
   const config = shade === undefined || shade === true ? {} : shade;
   if (config.enabled === false) return null;
   const lightDir = resolveLightDir(config.lightDir);
-  const intensity = clampUnit(config.intensity ?? 0.22);
-  const edge = clampUnit(config.edge ?? 0.12);
-  const noise = clampUnit(config.noise ?? 0.06);
+  const intensity = clampUnit(
+    config.intensity ?? DEFAULT_PIXEL_SHADE_STYLE.intensity
+  );
+  const edge = clampUnit(
+    config.edge ?? DEFAULT_PIXEL_SHADE_STYLE.edge
+  );
+  const noise = clampUnit(
+    config.noise ?? DEFAULT_PIXEL_SHADE_STYLE.noise
+  );
   const seed = Number.isFinite(config.seed)
     ? Math.trunc(config.seed as number)
     : hashSeed(
@@ -62,7 +71,7 @@ export const applyShadedFillRect = (
 ) => {
   for (let yy = yStart; yy < yEnd; yy += 1) {
     for (let xx = xStart; xx < xEnd; xx += 1) {
-      const shaded = shadeMinecraftPixel(
+      const shaded = shadePixelRect(
         color,
         xx,
         yy,
@@ -87,7 +96,7 @@ const clampUnit = (value: number): number => clamp(Number(value), 0, 1);
 
 const resolveLightDir = (value: unknown): FillShadeDirection => {
   if (value === 'tr_bl' || value === 'top_bottom' || value === 'left_right') return value;
-  return 'tl_br';
+  return DEFAULT_PIXEL_SHADE_STYLE.lightDir;
 };
 
 const hashSeed = (...values: number[]): number => {
