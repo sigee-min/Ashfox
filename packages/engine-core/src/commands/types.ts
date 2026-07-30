@@ -13,6 +13,10 @@ import type {
   Vec3
 } from '../model';
 import type { InvariantFinding } from '../validation';
+import type {
+  PartMaterialDefinition,
+  PartSpec
+} from '../modeling/partContract';
 
 export type CommandSource = 'web' | 'agent' | 'import' | 'system';
 export type SceneAxis = 'x' | 'y' | 'z';
@@ -128,6 +132,18 @@ export interface CommandPayloadMap {
     target: ExportPreset;
     namespace: string;
     modelPath: string;
+  };
+  'model.parts.upsert': {
+    parts: readonly PartSpec[];
+    materials: readonly PartMaterialDefinition[];
+  };
+  'model.parts.material': {
+    partIds: readonly string[];
+    materialId: string;
+    baseColor: string;
+  };
+  'model.parts.delete': {
+    partIds: readonly string[];
   };
   'scene.bones.create': {
     bones: readonly BoneCreateInput[];

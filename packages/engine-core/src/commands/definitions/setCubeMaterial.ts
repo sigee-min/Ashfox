@@ -1,11 +1,10 @@
-import { CUBE_FACE_DIRECTIONS } from '../../model';
 import { updateSceneNode } from '../../scene';
-import {
-  createTextureAsset,
-  implicitTextureId
-} from '../../textures/createTextureAsset';
 import { defineCommand } from '../definition';
 import { colorSchema, entityIdsSchema } from './schemas';
+import {
+  applyGeneratedCubeMaterial,
+  ensureGeneratedTexture
+} from '../../textures/generatedMaterial';
 import {
   findMissingNodeId,
   findNonCube
@@ -25,7 +24,7 @@ export const setCubeMaterialCommand = defineCommand({
   name: 'scene.cubes.material',
   label: 'Set cube material',
   purpose:
-    'Set one base color; ashfox derives fixed Minecraft face shades.',
+    'Set one base color; ashfox derives deterministic directional pixel tones.',
   inputSchema,
   apply: (document, payload) => {
     const missingId = findMissingNodeId(document, payload.nodeIds);
@@ -48,58 +47,28 @@ export const setCubeMaterialCommand = defineCommand({
       };
     }
 
-    const generatedTexture = Object.values(document.textures)
-      .filter((texture) => texture.atlasMode === 'generate')
-      .sort((left, right) => left.id.localeCompare(right.id))[0];
-    const implicitTexture = generatedTexture
-      ? null
-      : createTextureAsset(document, {
-          id: implicitTextureId(document),
-          name: 'Base texture'
-        });
-    const textureId = generatedTexture?.id ?? implicitTexture?.id;
-    if (!textureId) throw new Error('Generated texture setup failed.');
-    const prepared = implicitTexture
-      ? {
-          ...document,
-          textures: {
-            ...document.textures,
-            [implicitTexture.id]: implicitTexture
-          }
-        }
-      : document;
+    const setup = ensureGeneratedTexture(document);
     const next = payload.nodeIds.reduce(
       (current, nodeId) =>
         updateSceneNode(current, nodeId, (node) => {
           if (node.kind !== 'cube') return node;
           const alreadyAssigned =
             node.baseColor.toLowerCase() === payload.baseColor.toLowerCase() &&
-            CUBE_FACE_DIRECTIONS.every(
+            Object.values(node.faces).every(
               (direction) =>
-                node.faces[direction].textureId === textureId &&
-                (node.faces[direction].rotation ?? 0) === 0
+                direction.textureId === setup.textureId &&
+                (direction.rotation ?? 0) === 0
             ) &&
             !node.boxUv &&
             node.uvOffset === undefined;
           if (alreadyAssigned) return node;
-          return {
-            ...node,
-            baseColor: payload.baseColor,
-            boxUv: false,
-            uvOffset: undefined,
-            faces: Object.fromEntries(
-              CUBE_FACE_DIRECTIONS.map((direction) => [
-                direction,
-                {
-                  ...node.faces[direction],
-                  textureId,
-                  rotation: 0
-                }
-              ])
-            ) as typeof node.faces
-          };
+          return applyGeneratedCubeMaterial(
+            node,
+            setup.textureId,
+            payload.baseColor
+          );
         }),
-      prepared
+      setup.document
     );
     return {
       ok: true,
@@ -110,7 +79,9 @@ export const setCubeMaterialCommand = defineCommand({
           `${payload.nodeIds.length} cube` +
           `${payload.nodeIds.length === 1 ? '' : 's'}`,
         effects: {
-          createdEntityIds: implicitTexture ? [implicitTexture.id] : [],
+          createdEntityIds: setup.createdTextureId
+            ? [setup.createdTextureId]
+            : [],
           changedEntityIds: payload.nodeIds,
           removedEntityIds: [],
           invalidated:

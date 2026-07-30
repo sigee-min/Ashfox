@@ -1,7 +1,9 @@
 import {
   CUBE_FACE_DIRECTIONS,
-  getCommandDefinition,
-  listCommandDefinitions,
+  getAgentCommandDefinition,
+  listAgentCommandDefinitions,
+  readCompiledParts,
+  readPartRecipe,
   type ProjectDocument,
   type SceneNode,
   type ValidationReport
@@ -15,7 +17,7 @@ import type {
 } from './types';
 
 const DEFAULT_LIMIT = 2048;
-const DETAIL_LIMIT = 4096;
+const DETAIL_LIMIT = 16_384;
 const ID_LIMIT = 10;
 
 const invalidRequest = (
@@ -66,12 +68,92 @@ const isIdleClipName = (name: string): boolean => {
   );
 };
 
+const compiledPartSummaries = (
+  document: ProjectDocument,
+  ids: readonly string[],
+  report: ValidationReport
+): unknown => {
+  const compiled = readCompiledParts(document);
+  if (!compiled.ok) {
+    return {
+      valid: false,
+      firstIssue: compiled.issues[0] ?? null
+    };
+  }
+  const recipe = readPartRecipe(document);
+  if (!recipe.ok) {
+    return {
+      valid: false,
+      firstIssue: recipe.issues[0] ?? null
+    };
+  }
+  const specs = new Map(
+    (recipe.recipe?.parts ?? []).map(
+      (spec) => [spec.partId, spec]
+    )
+  );
+  const materials = new Map(
+    (recipe.recipe?.materials ?? []).map(
+      (material) => [material.id, material]
+    )
+  );
+  const projectionFinding = report.findings.find(
+    (finding) =>
+      finding.severity === 'error' &&
+      finding.code === 'model.part_projection'
+  );
+  return {
+    valid: projectionFinding === undefined,
+    firstIssue: projectionFinding ?? null,
+    parts: ids
+      .map((id) => compiled.parts.get(id))
+      .filter((part) => part !== undefined)
+      .map((part) => {
+        const from = [0, 1, 2].map((axis) =>
+          Math.min(
+            ...part.cubes.map((cube) => cube.bounds.from[axis])
+          )
+        );
+        const to = [0, 1, 2].map((axis) =>
+          Math.max(
+            ...part.cubes.map((cube) => cube.bounds.to[axis])
+          )
+        );
+        return {
+          partId: part.partId,
+          parentPartId: part.parentPartId,
+          materialId: part.materialId,
+          primitive: part.primitive,
+          joint: part.joint,
+          spec: specs.get(part.partId) ?? null,
+          material:
+            materials.get(part.materialId) ?? null,
+          boneId: part.bone.id,
+          cubeCount: part.cubes.length,
+          modelBounds: { from, to }
+        };
+      })
+  };
+};
+
+const inspectCatalog = (document: ProjectDocument): unknown => {
+  const recipe = readPartRecipe(document);
+  return {
+    partIds:
+      recipe.ok && recipe.recipe
+        ? recipe.recipe.parts.map((part) => part.partId)
+        : [],
+    textureIds: Object.keys(document.textures).sort(),
+    clipIds: Object.keys(document.animations).sort()
+  };
+};
+
 const inspectDefault = (
   document: ProjectDocument,
   selectedNodeId: string | null,
   report: ValidationReport
 ): InspectResult => {
-  const commands = listCommandDefinitions()
+  const commands = listAgentCommandDefinitions()
     .map((definition) => definition.name);
   const nodes = Object.values(document.scene.nodes);
   const clips = Object.values(document.animations);
@@ -122,6 +204,13 @@ const inspectDefault = (
       selection: selectedNodeId,
       counts: {
         nodes: nodes.length,
+        parts: new Set(
+          nodes.flatMap((node) =>
+            node.generation?.authority === 'ashfox.part-compiler'
+              ? [node.generation.partId]
+              : []
+          )
+        ).size,
         bones: nodes.filter((node) => node.kind === 'bone').length,
         cubes: nodes.filter((node) => node.kind === 'cube').length,
         visibleCubes: nodes.filter(
@@ -170,7 +259,7 @@ export const inspectProject = (
 
   switch (request.kind) {
     case 'command': {
-      const definition = getCommandDefinition(request.name);
+      const definition = getAgentCommandDefinition(request.name);
       if (!definition) {
         return {
           ok: false,
@@ -193,6 +282,25 @@ export const inspectProject = (
         DETAIL_LIMIT
       );
     }
+    case 'catalog':
+      return boundedSuccess(
+        document.revision,
+        inspectCatalog(document),
+        DETAIL_LIMIT
+      );
+    case 'parts':
+      if (request.ids.length > ID_LIMIT) {
+        return invalidRequest(
+          document.revision,
+          'ids',
+          `at most ${ID_LIMIT} part IDs`
+        );
+      }
+      return boundedSuccess(
+        document.revision,
+        compiledPartSummaries(document, request.ids, report),
+        DETAIL_LIMIT
+      );
     case 'entity':
       if (request.ids.length > ID_LIMIT) {
         return invalidRequest(

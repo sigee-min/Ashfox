@@ -226,15 +226,12 @@ export function Workbench() {
     commitNodeTransform,
     updateTransformProperty,
     toggleVisibility,
-    addCube,
     undo,
     redo
   } = useWorkbenchProjectCommands({
     document,
-    historySerial: history.serial,
     selectedNodeId,
     dispatch,
-    onSelectNode: selectNode,
     exportTargetFile: projectFiles.exportTarget
   });
   const createProject = useCallback((input: NewProjectInput): void => {
@@ -323,7 +320,7 @@ export function Workbench() {
 
   const agentStatus = useAgentCommandPort({
     document,
-    commandOutcome: history.lastCommandOutcome,
+    commandOutcomes: history.commandOutcomes,
     selectedNodeId,
     report,
     dispatch,
@@ -394,7 +391,6 @@ export function Workbench() {
         onEnvironmentChange={setEnvironment}
         onOverlayChange={setActiveOverlay}
         onSelectNode={selectNode}
-        onAddCube={addCube}
         onToggleVisibility={toggleVisibility}
         onTransformProperty={updateTransformProperty}
         onCommitTransform={commitNodeTransform}

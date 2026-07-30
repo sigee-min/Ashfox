@@ -66,7 +66,7 @@ export const landingContent = {
       eyebrow: 'Character',
       title: 'Character stays alive.',
       body:
-        'Geometry, authored pixels, expressive details, and animation share the same source.',
+        'Geometry, derived pixels, expressive details, and animation share the same source.',
       detail: '113 bones · 131 cubes · 2 animation clips',
       poster: '/media/showcase/moonveil-kirin.jpg',
       media: '/media/showcase/moonveil-kirin-animation.gif',

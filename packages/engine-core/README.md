@@ -3,9 +3,9 @@
 Pure TypeScript domain model, invariants, command contracts, and deterministic
 asset exporters for the standalone ashfox engine.
 
-Host-independent UV packing and Minecraft texture shading also live here so
-the Web Studio and Blockbench compatibility track use one calculation
-authority.
+Host-independent UV packing and deterministic pixel-surface generation also
+live here so the Web Studio and Blockbench compatibility track use one
+calculation authority.
 
 This package must not import React, browser DOM APIs, Three.js, MCP transport
 types, Blockbench globals, or persistence implementations.
@@ -22,3 +22,7 @@ Target export validates the document first and returns logical JSON files and
 blob-copy entries. Self-contained GLB export instead accepts an injected async
 blob resolver and returns exactly one binary model. Directory/ZIP
 materialization belongs to the application layer.
+
+The constrained modeling authority, algorithms, invariants, and proof boundary
+are specified in
+[Constrained Modeling Kernel](../../docs/architecture/constrained-modeling-kernel.md).

@@ -32,7 +32,7 @@ import type {
 
 interface UseAgentCommandPortInput {
   document: ProjectDocument;
-  commandOutcome: CommandOutcome | null;
+  commandOutcomes: readonly CommandOutcome[];
   selectedNodeId: string | null;
   report: ValidationReport;
   dispatch: Dispatch<HistoryAction>;
@@ -42,11 +42,8 @@ interface UseAgentCommandPortInput {
 
 interface PendingCommand {
   commandId: string;
-  timer: number;
   resolve: (outcome: CommandOutcome) => void;
 }
-
-const COMMAND_COMMIT_TIMEOUT_MS = 2_000;
 
 const waitForPresentation = (): Promise<void> =>
   new Promise<void>((resolve) => {
@@ -66,7 +63,7 @@ const waitForPresentation = (): Promise<void> =>
 
 export const useAgentCommandPort = ({
   document,
-  commandOutcome,
+  commandOutcomes,
   selectedNodeId,
   report,
   dispatch,
@@ -86,24 +83,8 @@ export const useAgentCommandPort = ({
   const submit = useCallback(
     (batch: CommandBatch): Promise<CommandOutcome> =>
       new Promise<CommandOutcome>((resolve) => {
-        const timer = window.setTimeout(() => {
-          if (pendingRef.current?.commandId === batch.batchId) {
-            pendingRef.current = null;
-          }
-          resolve({
-            status: 'rejected',
-            commandId: batch.batchId,
-            revision: documentRef.current.revision,
-            error: {
-              code: 'invalid_state',
-              message: 'Command commit timed out.',
-              expected: 'a canonical reducer outcome'
-            }
-          });
-        }, COMMAND_COMMIT_TIMEOUT_MS);
         pendingRef.current = {
           commandId: batch.batchId,
-          timer,
           resolve
         };
         dispatch({
@@ -139,22 +120,26 @@ export const useAgentCommandPort = ({
 
   useEffect(() => {
     const pending = pendingRef.current;
-    if (!pending || commandOutcome?.commandId !== pending.commandId) return;
+    if (!pending) return;
+    const commandOutcome = commandOutcomes.find(
+      (outcome) => outcome.commandId === pending.commandId
+    );
+    if (!commandOutcome) return;
     pendingRef.current = null;
-    window.clearTimeout(pending.timer);
 
     if (commandOutcome.status === 'committed') {
       const effects = commandOutcome.receipt.effects;
-      const focusId =
-        effects.createdEntityIds[0] ??
-        effects.changedEntityIds[0];
-      if (focusId && documentRef.current.scene.nodes[focusId]) {
+      const focusId = [
+        ...effects.createdEntityIds,
+        ...effects.changedEntityIds
+      ].find((id) => documentRef.current.scene.nodes[id] !== undefined);
+      if (focusId) {
         onFocusEntityRef.current(focusId);
       }
     }
 
     void waitForPresentation().then(() => pending.resolve(commandOutcome));
-  }, [commandOutcome]);
+  }, [commandOutcomes]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -165,7 +150,6 @@ export const useAgentCommandPort = ({
       const pending = pendingRef.current;
       if (!pending) return;
       pendingRef.current = null;
-      window.clearTimeout(pending.timer);
       pending.resolve({
         status: 'rejected',
         commandId: pending.commandId,

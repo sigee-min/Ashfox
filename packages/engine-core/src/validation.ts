@@ -22,6 +22,15 @@ import {
   staleGeneratedTextureIds
 } from './textures/textureRecipe';
 import { findFullyOccludedCubes } from './sceneOcclusion';
+import {
+  readCompiledParts,
+  validateCompiledPartEnvironment,
+  type PartInvariantCode
+} from './modeling/partInvariants';
+import { validateCompiledPartRig } from './modeling/partRigInvariants';
+import {
+  validatePartRecipeProjection
+} from './modeling/partProjection';
 
 export type InvariantSeverity = 'error' | 'warning' | 'info';
 
@@ -40,6 +49,16 @@ export type InvariantCode =
   | 'scene.parent_cycle'
   | 'scene.root_membership'
   | 'scene.invalid_kind'
+  | 'model.part_provenance'
+  | 'model.part_grid'
+  | 'model.part_hierarchy'
+  | 'model.part_connectivity'
+  | 'model.part_attachment'
+  | 'model.part_overlap'
+  | 'model.part_silhouette'
+  | 'model.part_rig'
+  | 'model.part_budget'
+  | 'model.part_projection'
   | 'value.not_finite'
   | 'value.invalid_scale'
   | 'cube.invalid_bounds'
@@ -145,6 +164,20 @@ const JAVA_ROTATION_ANGLES = [-45, -22.5, 0, 22.5, 45] as const;
 const CUBE_FACE_ROTATIONS = [0, 90, 180, 270] as const;
 const CUBE_FACE_DIRECTION_SET = new Set<string>(CUBE_FACE_DIRECTIONS);
 const EPSILON = 0.000001;
+
+const MODEL_PART_FINDING_CODES:
+  Readonly<Record<PartInvariantCode, InvariantCode>> = {
+    provenance: 'model.part_provenance',
+    grid: 'model.part_grid',
+    hierarchy: 'model.part_hierarchy',
+    connectivity: 'model.part_connectivity',
+    attachment: 'model.part_attachment',
+    overlap: 'model.part_overlap',
+    silhouette: 'model.part_silhouette',
+    rig: 'model.part_rig',
+    budget: 'model.part_budget',
+    projection: 'model.part_projection'
+  };
 
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
@@ -2225,6 +2258,48 @@ export const validateProjectDocument = (
     visitState.set(nodeId, 'visited');
   };
   Object.keys(document.scene.nodes).forEach(visitNode);
+
+  const compiledParts = readCompiledParts(document);
+  if (!compiledParts.ok) {
+    for (const issue of compiledParts.issues) {
+      add({
+        code: MODEL_PART_FINDING_CODES[issue.code],
+        severity: 'error',
+        message: issue.message,
+        path: issue.path,
+        entityIds: issue.entityIds,
+        clipIds: issue.clipIds,
+        fix:
+          'Use model.parts.upsert, model.parts.material, or model.parts.delete instead of raw scene edits.'
+      });
+    }
+  } else {
+    const environmentIssues = [
+      ...validateCompiledPartEnvironment(document, compiledParts.parts),
+      ...validatePartRecipeProjection(document, compiledParts.parts)
+    ];
+    validateCompiledPartRig(
+      document,
+      compiledParts.parts,
+      environmentIssues
+    );
+    for (const issue of environmentIssues) {
+      add({
+        code: MODEL_PART_FINDING_CODES[issue.code],
+        severity: 'error',
+        message: issue.message,
+        path: issue.path,
+        entityIds: issue.entityIds,
+        clipIds: issue.clipIds,
+        fix:
+          issue.code === 'rig'
+            ? 'Animate stable part bones within their declared joint constraints.'
+            : issue.code === 'projection'
+              ? 'Regenerate the model through its canonical part recipe.'
+              : 'Move or remove overlapping foreign geometry.'
+      });
+    }
+  }
 
   for (const occlusion of findFullyOccludedCubes(document)) {
     add({

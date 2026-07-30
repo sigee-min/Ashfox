@@ -41,6 +41,12 @@ export function ProjectSettingsMenu({
   document,
   onSave
 }: ProjectSettingsMenuProps) {
+  const hasCompiledModel =
+    document.modeling?.authority === 'ashfox.part-compiler' ||
+    Object.values(document.scene.nodes).some(
+      (node) =>
+        node.generation?.authority === 'ashfox.part-compiler'
+    );
   const [name, setName] = useState(document.name);
   const [surfacePixelDensity, setSurfacePixelDensity] =
     useState(document.settings.surfacePixelDensity);
@@ -98,6 +104,10 @@ export function ProjectSettingsMenu({
                 name="surface-pixel-density"
                 value={density}
                 checked={surfacePixelDensity === density}
+                disabled={
+                  hasCompiledModel &&
+                  density !== document.settings.surfacePixelDensity
+                }
                 onChange={() => setSurfacePixelDensity(density)}
               />
               <strong>{density}×</strong>
@@ -106,7 +116,9 @@ export function ProjectSettingsMenu({
           ))}
         </div>
         <p>
-          Smaller square pixels. Atlas size adjusts automatically.
+          {hasCompiledModel
+            ? 'Surface detail is fixed after modeling starts.'
+            : 'Smaller square pixels. Atlas size adjusts automatically.'}
         </p>
       </fieldset>
       <div className="project-facts">

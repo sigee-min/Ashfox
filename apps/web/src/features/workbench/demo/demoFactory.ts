@@ -210,8 +210,8 @@ export const createDemoHistory = (
           baseRevision: state.present.revision,
           operations
         },
-        actorId: 'ashfox-demo-agent',
-        source: 'agent',
+        actorId: 'ashfox-demo-fixture',
+        source: 'system',
         committedAt: stageTimestamp(index)
       });
       if (next.lastCommandOutcome?.status === 'rejected') {

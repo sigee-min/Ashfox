@@ -12,7 +12,6 @@ interface SceneOverlayProps {
   document: ProjectDocument;
   selectedNodeId: string | null;
   report: ValidationReport;
-  onAddCube: () => void;
   onSelectNode: (nodeId: string) => void;
   onToggleVisibility: (nodeId: string) => void;
 }
@@ -21,7 +20,6 @@ export function SceneOverlay({
   document,
   selectedNodeId,
   report,
-  onAddCube,
   onSelectNode,
   onToggleVisibility
 }: SceneOverlayProps) {
@@ -29,15 +27,6 @@ export function SceneOverlay({
     <aside className="floating-panel scene-overlay">
       <div className="panel-heading">
         <span>Project scene</span>
-        <button
-          type="button"
-          className="mini-action"
-          onClick={onAddCube}
-          title="Add cube"
-          aria-label="Add cube"
-        >
-          <Icon name="add" />
-        </button>
       </div>
       <div className="scene-search">
         <Icon name="search" />

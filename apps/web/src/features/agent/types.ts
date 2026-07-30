@@ -5,6 +5,8 @@ import type {
 
 export type InspectRequest =
   | { kind: 'command'; name: string }
+  | { kind: 'catalog' }
+  | { kind: 'parts'; ids: readonly string[] }
   | { kind: 'entity'; ids: readonly string[] }
   | { kind: 'texture'; ids: readonly string[] }
   | { kind: 'clip'; ids: readonly string[] }

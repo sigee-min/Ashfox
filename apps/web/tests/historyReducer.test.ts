@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 
+import { createProjectFromInput } from '@ashfox/engine-core';
+
 import { createWorkbenchProject } from '../src/features/workbench/sampleProject';
 import { LOCAL_PROJECT_SCHEMA_VERSION } from '../src/features/workbench/persistence/localProjectRecord';
 import {
@@ -100,6 +102,98 @@ if (invalidPayload.lastCommandOutcome?.status === 'rejected') {
     'invalid_payload'
   );
 }
+
+const rawAgentCommand = historyReducer(committed, {
+  type: 'execute',
+  batch: {
+    batchId: 'test-agent-raw-command',
+    baseRevision: committed.present.revision,
+    operations: [{
+      name: 'scene.cubes.create',
+      payload: {
+        cubes: [{
+          id: 'cube-agent-raw',
+          name: 'raw',
+          parentId: null,
+          bounds: {
+            from: [0, 0, 0],
+            to: [1, 1, 1]
+          }
+        }]
+      }
+    }]
+  },
+  actorId: 'test',
+  source: 'agent',
+  committedAt: '2026-01-01T00:00:01.500Z'
+});
+assert.equal(rawAgentCommand.present, committed.present);
+assert.equal(rawAgentCommand.activity, committed.activity);
+assert.equal(rawAgentCommand.lastCommandOutcome?.status, 'rejected');
+if (rawAgentCommand.lastCommandOutcome?.status === 'rejected') {
+  assert.equal(
+    rawAgentCommand.lastCommandOutcome.error.code,
+    'invalid_payload'
+  );
+}
+
+const partDocument = createProjectFromInput(
+  {
+    id: 'project-part-history',
+    name: 'Part history',
+    target: 'glb',
+    namespace: 'ashfox',
+    modelPath: 'part_history',
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  'local-0001'
+);
+const partInitial = createHistoryState(partDocument);
+const partCommitted = historyReducer(partInitial, {
+  type: 'execute',
+  batch: {
+    batchId: 'test-part-upsert',
+    baseRevision: partDocument.revision,
+    operations: [{
+      name: 'model.parts.upsert',
+      payload: {
+        parts: [{
+          kind: 'plate',
+          partId: 'body',
+          parentPartId: null,
+          materialId: 'stone',
+          joint: { kind: 'fixed' },
+          attachment: null,
+          plane: 'xy',
+          origin: [-1, 0, -1],
+          outline: [
+            [0, 0],
+            [2, 0],
+            [2, 2],
+            [0, 2]
+          ],
+          thickness: 2
+        }],
+        materials: [{
+          id: 'stone',
+          baseColor: '#778899'
+        }]
+      }
+    }]
+  },
+  actorId: 'test',
+  source: 'agent',
+  committedAt: '2026-01-01T00:00:02.000Z'
+});
+assert.equal(partCommitted.lastCommandOutcome?.status, 'committed');
+assert.ok(partCommitted.present.scene.nodes['bone:body']);
+const partUndone = historyReducer(partCommitted, {
+  type: 'undo',
+  commandId: 'test-part-undo',
+  committedAt: '2026-01-01T00:00:03.000Z'
+});
+assert.deepEqual(partUndone.present.scene, partDocument.scene);
+assert.deepEqual(partUndone.present.textures, partDocument.textures);
 
 const importedDocument = {
   ...createWorkbenchProject(),

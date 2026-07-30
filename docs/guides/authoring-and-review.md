@@ -42,18 +42,21 @@ Increase only their diameter and keep the axle and fenders aligned.
 Do not repeat the complete project description. Your agent can inspect the
 current ashfox project before changing it.
 
-## Ask for exact operations when precision matters
+## Ask for an exact outcome when precision matters
 
-Natural-language requests can still be exact:
+Describe the relationship that must hold instead of prescribing raw cubes,
+bones, or UV coordinates:
 
-- “Mirror the finished left horn to the right side.”
-- “Align all wheel pivots to their axle centers.”
-- “Keep effective cube dimensions on whole pixel units.”
+- “Make the right horn match the left horn in silhouette and placement.”
+- “Move each wheel attachment to the center of its axle.”
+- “Preserve the body proportions while widening only the rear track.”
 - “Phase the four leg cycles evenly.”
 - “Close the idle loop without changing its duration.”
 
 ashfox applies related edits together, so Activity and Undo represent the whole
-correction rather than dozens of disconnected field changes.
+correction rather than dozens of disconnected field changes. The editable
+`.ashfox` recipe preserves those semantic parts after save and reopen; generated
+cubes and UV coordinates remain derived output.
 
 ## Review the model
 
@@ -64,15 +67,17 @@ visible, and moving parts have useful pivots without resting intersections.
 
 ## Review textures and UVs
 
-- Choose Surface detail in Project settings: 1× for the classic scale,
-  2× for half-unit pixels, or 4× for quarter-unit pixels.
+- Ask the agent to choose Surface detail before the first geometry: 1× for
+  one-unit pixels, 2× for half-unit pixels, or 4× for quarter-unit pixels.
+  Changing it later requires deleting every compiled part first.
 - Check that material regions use deliberate, reusable base colors.
 - Make sure each visible face belongs to the generated atlas.
 - Look for stretched pixels, seams, empty faces, and mismatched material color.
 - Confirm that one square pixel has exactly the same size on every face.
 - Keep important accents visible at the distance where the asset will be used.
-- Let ashfox derive the tonal pixel surface pattern from each base color;
-  do not hand-paint gradients or edge outlines.
+- Let ashfox derive the tonal pixel surface pattern from each base color.
+  Coplanar generated surfaces share world-lattice pattern coordinates, so a
+  cuboid split does not restart the pattern.
 
 ## Review animation
 

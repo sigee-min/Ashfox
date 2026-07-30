@@ -21,6 +21,7 @@ import { LOCAL_COMMAND_ACTOR_ID } from './localCommandActor';
 
 const HISTORY_LIMIT = 50;
 const ACTIVITY_LIMIT = 100;
+const COMMAND_OUTCOME_LIMIT = 32;
 
 export interface HistoryState {
   past: ProjectDocument[];
@@ -29,6 +30,7 @@ export interface HistoryState {
   serial: number;
   activity: CommandReceipt[];
   lastCommandOutcome: CommandOutcome | null;
+  commandOutcomes: readonly CommandOutcome[];
 }
 
 export type HistoryAction =
@@ -52,7 +54,8 @@ export const createHistoryState = (
   future: [],
   serial: projectRevisionSerial(document.revision),
   activity: [],
-  lastCommandOutcome: null
+  lastCommandOutcome: null,
+  commandOutcomes: []
 });
 
 export const localRevisionForSerial = localProjectRevisionForSerial;
@@ -72,6 +75,17 @@ const prependActivity = (
   receipt: CommandReceipt
 ): CommandReceipt[] =>
   [receipt, ...state.activity].slice(0, ACTIVITY_LIMIT);
+
+const prependCommandOutcome = (
+  state: HistoryState,
+  outcome: CommandOutcome
+): readonly CommandOutcome[] =>
+  [
+    outcome,
+    ...state.commandOutcomes.filter(
+      (entry) => entry.commandId !== outcome.commandId
+    )
+  ].slice(0, COMMAND_OUTCOME_LIMIT);
 
 const historyReceipt = (
   state: HistoryState,
@@ -118,7 +132,8 @@ const hydrateHistory = (
       future: [],
       serial,
       activity: [...record.activity],
-      lastCommandOutcome: null
+      lastCommandOutcome: null,
+      commandOutcomes: state.commandOutcomes
     };
   }
 
@@ -148,7 +163,8 @@ const hydrateHistory = (
     future: [],
     serial,
     activity: [...record.activity],
-    lastCommandOutcome: null
+    lastCommandOutcome: null,
+    commandOutcomes: state.commandOutcomes
   };
 };
 
@@ -171,7 +187,8 @@ const receiveExternalHistory = (
       projectRevisionSerial(record.revision)
     ),
     activity: [...record.activity],
-    lastCommandOutcome: null
+    lastCommandOutcome: null,
+    commandOutcomes: state.commandOutcomes
   };
 };
 
@@ -199,7 +216,8 @@ const undoHistory = (
         'Undo last command'
       )
     ),
-    lastCommandOutcome: null
+    lastCommandOutcome: null,
+    commandOutcomes: state.commandOutcomes
   };
 };
 
@@ -227,7 +245,8 @@ const redoHistory = (
         'Redo command'
       )
     ),
-    lastCommandOutcome: null
+    lastCommandOutcome: null,
+    commandOutcomes: state.commandOutcomes
   };
 };
 
@@ -235,16 +254,43 @@ const executeBatch = (
   state: HistoryState,
   action: Extract<HistoryAction, { type: 'execute' }>
 ): HistoryState => {
-  const result = executeCommandBatch(state.present, action.batch);
-  if (!result.ok) {
+  let result;
+  try {
+    result = executeCommandBatch(
+      state.present,
+      action.batch,
+      { source: action.source }
+    );
+  } catch (error) {
+    const outcome: CommandOutcome = {
+      status: 'rejected',
+      commandId: action.batch.batchId,
+      revision: state.present.revision,
+      error: {
+        code: 'invalid_state',
+        message:
+          error instanceof Error
+            ? `Command execution failed: ${error.message}`
+            : 'Command execution failed.'
+      }
+    };
     return {
       ...state,
-      lastCommandOutcome: {
-        status: 'rejected',
-        commandId: action.batch.batchId,
-        revision: state.present.revision,
-        error: result.error
-      }
+      lastCommandOutcome: outcome,
+      commandOutcomes: prependCommandOutcome(state, outcome)
+    };
+  }
+  if (!result.ok) {
+    const outcome: CommandOutcome = {
+      status: 'rejected',
+      commandId: action.batch.batchId,
+      revision: state.present.revision,
+      error: result.error
+    };
+    return {
+      ...state,
+      lastCommandOutcome: outcome,
+      commandOutcomes: prependCommandOutcome(state, outcome)
     };
   }
 
@@ -268,6 +314,11 @@ const executeBatch = (
     effects: result.effects,
     findings: result.findings
   });
+  const outcome: CommandOutcome = {
+    status: 'committed',
+    commandId: action.batch.batchId,
+    receipt
+  };
 
   return {
     past: replacesProject
@@ -279,11 +330,8 @@ const executeBatch = (
     activity: replacesProject
       ? [receipt]
       : prependActivity(state, receipt),
-    lastCommandOutcome: {
-      status: 'committed',
-      commandId: action.batch.batchId,
-      receipt
-    }
+    lastCommandOutcome: outcome,
+    commandOutcomes: prependCommandOutcome(state, outcome)
   };
 };
 

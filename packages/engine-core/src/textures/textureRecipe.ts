@@ -8,11 +8,22 @@ import {
 } from '../model';
 import { updateSceneNode } from '../scene';
 import {
+  buildCompiledSurfaceAuthority,
+  effectiveGeneratedFaceEnabled,
+  generatedSurfaceFaceKey,
+  type CompiledSurfaceAuthority,
+  type GeneratedSurfacePattern
+} from './generatedSurfaceAuthority';
+import {
   cubeFaceDimensions,
   packUvAtlas,
   type UvAtlasPlacement,
   type UvAtlasRect
 } from './uvAtlas';
+
+export type {
+  GeneratedSurfacePattern
+} from './generatedSurfaceAuthority';
 
 const BASE_PIXELS_PER_BLOCK = 16;
 const BASE_ATLAS_PADDING = 2;
@@ -46,6 +57,7 @@ interface FaceTarget {
   nodeId: string;
   direction: CubeFaceDirection;
   textureId: string;
+  pattern?: GeneratedSurfacePattern;
 }
 
 interface AtlasPlan {
@@ -62,6 +74,7 @@ export interface TextureCompositionRegion {
   width: number;
   height: number;
   color: string;
+  pattern?: GeneratedSurfacePattern;
 }
 
 export interface TextureComposition {
@@ -149,8 +162,18 @@ const exactTexelSize = (
     : null;
 };
 
-const activeGeneratedTextureIds = (
+const compiledSurfaceAuthority = (
   document: ProjectDocument
+): CompiledSurfaceAuthority =>
+  buildCompiledSurfaceAuthority(document, {
+    texelsPerModelUnit: texelsPerModelUnit(document),
+    faceSize: (cube, direction) =>
+      exactTexelSize(document, cube, direction)
+  });
+
+const activeGeneratedTextureIds = (
+  document: ProjectDocument,
+  authority: CompiledSurfaceAuthority
 ): readonly string[] =>
   [...new Set(
     Object.values(document.scene.nodes).flatMap((node) => {
@@ -159,7 +182,7 @@ const activeGeneratedTextureIds = (
         const face = node.faces[direction];
         const textureId = face.textureId;
         return (
-          face.enabled &&
+          effectiveGeneratedFaceEnabled(node, direction, authority) &&
           textureId !== null &&
           document.textures[textureId]?.atlasMode === 'generate'
         )
@@ -170,14 +193,15 @@ const activeGeneratedTextureIds = (
   )].sort();
 
 const invalidGridFace = (
-  document: ProjectDocument
+  document: ProjectDocument,
+  authority: CompiledSurfaceAuthority
 ): { nodeId: string; direction: CubeFaceDirection } | null => {
   for (const node of Object.values(document.scene.nodes)) {
     if (node.kind !== 'cube') continue;
     for (const direction of CUBE_FACE_DIRECTIONS) {
       const face = node.faces[direction];
       if (
-        face.enabled &&
+        effectiveGeneratedFaceEnabled(node, direction, authority) &&
         face.textureId !== null &&
         document.textures[face.textureId]?.atlasMode === 'generate' &&
         hasTextureSurfaceArea(node, direction) &&
@@ -191,19 +215,28 @@ const invalidGridFace = (
 };
 
 const collectRects = (
-  document: ProjectDocument
+  document: ProjectDocument,
+  authority: CompiledSurfaceAuthority
 ): Map<string, UvAtlasRect<FaceTarget>[]> | null => {
   const byTexture = new Map<string, UvAtlasRect<FaceTarget>[]>();
   for (const node of Object.values(document.scene.nodes)) {
     if (node.kind !== 'cube') continue;
     for (const direction of CUBE_FACE_DIRECTIONS) {
       const face = node.faces[direction];
-      if (!face.enabled || face.textureId === null) continue;
+      if (
+        !effectiveGeneratedFaceEnabled(node, direction, authority) ||
+        face.textureId === null
+      ) {
+        continue;
+      }
       const texture = document.textures[face.textureId];
       if (texture?.atlasMode !== 'generate') continue;
       const size = exactTexelSize(document, node, direction);
       if (!size) return null;
       const rects = byTexture.get(texture.id) ?? [];
+      const pattern = authority.faces.get(
+        generatedSurfaceFaceKey(node.id, direction)
+      )?.pattern;
       rects.push({
         key: `${node.id}:${direction}`,
         width: size.width,
@@ -211,7 +244,8 @@ const collectRects = (
         value: {
           nodeId: node.id,
           direction,
-          textureId: texture.id
+          textureId: texture.id,
+          ...(pattern ? { pattern } : {})
         }
       });
       byTexture.set(texture.id, rects);
@@ -240,9 +274,10 @@ const tryResolution = (
 };
 
 const buildPlan = (
-  document: ProjectDocument
+  document: ProjectDocument,
+  authority: CompiledSurfaceAuthority
 ): AtlasPlan | null => {
-  const rects = collectRects(document);
+  const rects = collectRects(document, authority);
   if (!rects || rects.size === 0) return null;
   for (
     let resolution = GENERATED_ATLAS_MIN_RESOLUTION;
@@ -300,7 +335,8 @@ const uvMatches = (
 const nodeMatchesPlan = (
   document: ProjectDocument,
   nodeId: string,
-  placements: readonly UvAtlasPlacement<FaceTarget>[]
+  placements: readonly UvAtlasPlacement<FaceTarget>[],
+  authority: CompiledSurfaceAuthority
 ): boolean => {
   const node = document.scene.nodes[nodeId];
   if (
@@ -310,16 +346,35 @@ const nodeMatchesPlan = (
   ) {
     return false;
   }
-  return placements.every((placement) => {
-    const face = node.faces[placement.value.direction];
-    return face.rotation === 0 && uvMatches(face.uv, expectedUv(placement));
+  const placementsByDirection = new Map(
+    placements.map((placement) => [
+      placement.value.direction,
+      placement
+    ])
+  );
+  return CUBE_FACE_DIRECTIONS.every((direction) => {
+    const face = node.faces[direction];
+    const compiledFace = authority.faces.get(
+      generatedSurfaceFaceKey(nodeId, direction)
+    );
+    if (compiledFace && face.enabled !== compiledFace.external) {
+      return false;
+    }
+    const placement = placementsByDirection.get(direction);
+    if (!placement) return true;
+    return (
+      face.enabled &&
+      face.rotation === 0 &&
+      uvMatches(face.uv, expectedUv(placement))
+    );
   });
 };
 
 const textureMatchesPlan = (
   document: ProjectDocument,
   textureId: string,
-  plan: AtlasPlan
+  plan: AtlasPlan,
+  authority: CompiledSurfaceAuthority
 ): boolean => {
   const texture = document.textures[textureId];
   const placements = plan.placementsByTexture.get(textureId);
@@ -339,8 +394,17 @@ const textureMatchesPlan = (
     nodePlacements.push(placement);
     byNode.set(placement.value.nodeId, nodePlacements);
   }
-  return [...byNode].every(([nodeId, nodePlacements]) =>
-    nodeMatchesPlan(document, nodeId, nodePlacements)
+  const nodeIds = new Set([
+    ...byNode.keys(),
+    ...authority.nodeIds
+  ]);
+  return [...nodeIds].every((nodeId) =>
+    nodeMatchesPlan(
+      document,
+      nodeId,
+      byNode.get(nodeId) ?? [],
+      authority
+    )
   );
 };
 
@@ -357,27 +421,29 @@ export const generatedTextureMatchesDerivation = (
 ): boolean => {
   const texture = document.textures[textureId];
   if (texture?.atlasMode !== 'generate') return true;
-  const plan = buildPlan(document);
+  const authority = compiledSurfaceAuthority(document);
+  const plan = buildPlan(document, authority);
   return Boolean(
     plan &&
     settingsMatchPlan(document, plan) &&
-    textureMatchesPlan(document, textureId, plan)
+    textureMatchesPlan(document, textureId, plan, authority)
   );
 };
 
 export const staleGeneratedTextureIds = (
   document: ProjectDocument
 ): ReadonlySet<string> => {
-  const textureIds = activeGeneratedTextureIds(document);
+  const authority = compiledSurfaceAuthority(document);
+  const textureIds = activeGeneratedTextureIds(document, authority);
   if (textureIds.length === 0) return new Set();
-  const plan = buildPlan(document);
+  const plan = buildPlan(document, authority);
   if (!plan || !settingsMatchPlan(document, plan)) {
     return new Set(textureIds);
   }
   return new Set(
     textureIds.filter(
       (textureId) =>
-        !textureMatchesPlan(document, textureId, plan)
+        !textureMatchesPlan(document, textureId, plan, authority)
     )
   );
 };
@@ -387,6 +453,7 @@ export const composeTextureRaster = (
   texture: TextureAsset
 ): TextureComposition => {
   const generated = texture.atlasMode === 'generate';
+  const authority = compiledSurfaceAuthority(document);
   const regions: TextureCompositionRegion[] = [];
   if (generated) {
     for (const node of Object.values(document.scene.nodes)) {
@@ -395,13 +462,16 @@ export const composeTextureRaster = (
         const surface = node.faces[face];
         const uv = surface.uv;
         if (
-          !surface.enabled ||
+          !effectiveGeneratedFaceEnabled(node, face, authority) ||
           surface.textureId !== texture.id ||
           !uv ||
           !hasTextureSurfaceArea(node, face)
         ) {
           continue;
         }
+        const pattern = authority.faces.get(
+          generatedSurfaceFaceKey(node.id, face)
+        )?.pattern;
         regions.push({
           nodeId: node.id,
           face,
@@ -409,7 +479,8 @@ export const composeTextureRaster = (
           y: uv[1],
           width: uv[2] - uv[0],
           height: uv[3] - uv[1],
-          color: node.baseColor
+          color: node.baseColor,
+          ...(pattern ? { pattern } : {})
         });
       }
     }
@@ -447,7 +518,8 @@ const mixedBoxUvCube = (
 const updateFaces = (
   document: ProjectDocument,
   plan: AtlasPlan,
-  nodeIds: readonly string[]
+  nodeIds: readonly string[],
+  authority: CompiledSurfaceAuthority
 ): ProjectDocument => {
   const assignment = assignmentForPlan(plan);
   return nodeIds.reduce(
@@ -461,11 +533,18 @@ const updateFaces = (
           faces: Object.fromEntries(
             CUBE_FACE_DIRECTIONS.map((direction) => {
               const uv = assignment.get(`${nodeId}:${direction}`);
+              const compiledFace = authority.faces.get(
+                generatedSurfaceFaceKey(nodeId, direction)
+              );
               return [
                 direction,
-                uv
-                  ? { ...node.faces[direction], uv, rotation: 0 }
-                  : node.faces[direction]
+                {
+                  ...node.faces[direction],
+                  ...(compiledFace
+                    ? { enabled: compiledFace.external }
+                    : {}),
+                  ...(uv ? { uv, rotation: 0 } : {})
+                }
               ];
             })
           ) as typeof node.faces
@@ -478,7 +557,11 @@ const updateFaces = (
 export const deriveGeneratedTextures = (
   document: ProjectDocument
 ): TextureDerivationResult => {
-  const generatedTextureIds = activeGeneratedTextureIds(document);
+  const authority = compiledSurfaceAuthority(document);
+  const generatedTextureIds = activeGeneratedTextureIds(
+    document,
+    authority
+  );
   if (generatedTextureIds.length === 0) {
     return {
       ok: true,
@@ -502,7 +585,7 @@ export const deriveGeneratedTextures = (
       expected: 'one texture mode per cube'
     };
   }
-  const invalidFace = invalidGridFace(document);
+  const invalidFace = invalidGridFace(document, authority);
   if (invalidFace) {
     return {
       ok: false,
@@ -515,7 +598,7 @@ export const deriveGeneratedTextures = (
         'bounds, inflate, and scale producing whole texels at the selected surface density'
     };
   }
-  const plan = buildPlan(document);
+  const plan = buildPlan(document, authority);
   if (!plan) {
     return {
       ok: false,
@@ -537,17 +620,29 @@ export const deriveGeneratedTextures = (
     nodePlacements.push(placement);
     placementsByNode.set(placement.value.nodeId, nodePlacements);
   }
-  const changedNodeIds = [...placementsByNode]
-    .filter(
-      ([nodeId, nodePlacements]) =>
-        !nodeMatchesPlan(document, nodeId, nodePlacements)
-    )
-    .map(([nodeId]) => nodeId);
-  const withFaces = updateFaces(document, plan, changedNodeIds);
+  const candidateNodeIds = new Set([
+    ...placementsByNode.keys(),
+    ...authority.nodeIds
+  ]);
+  const changedNodeIds = [...candidateNodeIds].filter(
+    (nodeId) =>
+      !nodeMatchesPlan(
+        document,
+        nodeId,
+        placementsByNode.get(nodeId) ?? [],
+        authority
+      )
+  );
+  const withFaces = updateFaces(
+    document,
+    plan,
+    changedNodeIds,
+    authority
+  );
   const textures = { ...withFaces.textures };
   const changedTextureIds = generatedTextureIds.filter(
     (textureId) =>
-      !textureMatchesPlan(document, textureId, plan)
+      !textureMatchesPlan(document, textureId, plan, authority)
   );
   for (const textureId of changedTextureIds) {
     const texture = textures[textureId];

@@ -70,6 +70,8 @@ export function InspectorOverlay({
       </aside>
     );
   }
+  const compilerOwned =
+    node.generation?.authority === 'ashfox.part-compiler';
 
   return (
     <aside className="floating-panel inspector-overlay">
@@ -85,6 +87,7 @@ export function InspectorOverlay({
           type="button"
           className={`visibility-large${node.visible ? ' is-active' : ''}`}
           aria-label="Toggle visibility"
+          disabled={compilerOwned}
           onClick={() => onToggleVisibility(node.id)}
         >
           <Icon name={node.visible ? 'eye' : 'eyeOff'} />
@@ -92,7 +95,7 @@ export function InspectorOverlay({
       </div>
       <div className="inspector-tabs">
         <button type="button" className="is-active">Transform</button>
-        <span>Live document</span>
+        <span>{compilerOwned ? 'Compiler owned' : 'Live document'}</span>
       </div>
       <div className="inspector-scroll">
         <section className="property-section">
@@ -104,18 +107,21 @@ export function InspectorOverlay({
             label="Position"
             value={node.transform.position}
             step={0.5}
+            disabled={compilerOwned}
             onChange={(value) => onTransformProperty('position', value)}
           />
           <VectorEditor
             label="Rotation"
             value={node.transform.rotation}
             step={1}
+            disabled={compilerOwned}
             onChange={(value) => onTransformProperty('rotation', value)}
           />
           <VectorEditor
             label="Scale"
             value={node.transform.scale}
             step={0.1}
+            disabled={compilerOwned}
             onChange={(value) => onTransformProperty('scale', value)}
           />
         </section>
@@ -128,6 +134,7 @@ export function InspectorOverlay({
             label="Origin"
             value={node.transform.pivot}
             step={0.5}
+            disabled={compilerOwned}
             onChange={(value) => onTransformProperty('pivot', value)}
           />
         </section>

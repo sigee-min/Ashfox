@@ -20,6 +20,7 @@ interface VectorEditorProps {
   value: Vec3;
   step: number;
   onChange: (value: Vec3) => void;
+  disabled?: boolean;
 }
 
 interface AxisInputProps {
@@ -27,6 +28,7 @@ interface AxisInputProps {
   step: number;
   value: number;
   onCommit: (value: number) => void;
+  disabled: boolean;
 }
 
 const formattedValue = (value: number): string =>
@@ -36,7 +38,8 @@ function AxisInput({
   label,
   step,
   value,
-  onCommit
+  onCommit,
+  disabled
 }: AxisInputProps) {
   const [draft, setDraft] = useState(() => formattedValue(value));
   const editingRef = useRef(false);
@@ -75,6 +78,7 @@ function AxisInput({
       type="number"
       step={step}
       value={draft}
+      disabled={disabled}
       onFocus={() => {
         editingRef.current = true;
       }}
@@ -89,7 +93,8 @@ export function VectorEditor({
   label,
   value,
   step,
-  onChange
+  onChange,
+  disabled = false
 }: VectorEditorProps) {
   return (
     <div className="vector-editor">
@@ -102,6 +107,7 @@ export function VectorEditor({
               label={`${label} ${axis.label}`}
               step={step}
               value={roundProjectValue(value[index])}
+              disabled={disabled}
               onCommit={(number) => {
                 const next = [...value] as [number, number, number];
                 next[index] = number;

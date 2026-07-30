@@ -39,8 +39,6 @@ interface CompletedBatch {
   result: RunResult;
 }
 
-const COMPLETED_BATCH_LIMIT = 32;
-
 interface AgentCommandInput {
   requestId: string;
   method: 'inspect' | 'run' | 'present';
@@ -404,13 +402,6 @@ export class AgentCommandPort implements AgentCommandPortApi {
     result: RunResult
   ): void {
     this.completedBatches.set(batchId, { signature, result });
-    const oldestBatchId = this.completedBatches.keys().next().value;
-    if (
-      this.completedBatches.size > COMPLETED_BATCH_LIMIT &&
-      typeof oldestBatchId === 'string'
-    ) {
-      this.completedBatches.delete(oldestBatchId);
-    }
   }
 
   private updateStatus(status: AgentCommandPortStatus): void {

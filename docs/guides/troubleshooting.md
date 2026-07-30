@@ -30,7 +30,8 @@ Ask the agent to:
 
 1. render the asset in Studio lighting;
 2. identify untextured faces and their material base colors;
-3. check that effective cube dimensions are positive whole pixel units;
+3. confirm surface detail was chosen before modeling and generated bounds are
+   aligned to that lattice;
 4. confirm the automatically derived atlas uses identical square-pixel size
    on every face;
 5. validate the texture paths before exporting.

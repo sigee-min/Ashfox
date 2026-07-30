@@ -1,5 +1,5 @@
 import {
-  getCommandDefinition,
+  getAgentCommandDefinition,
   type CommandBatch
 } from '@ashfox/engine-core';
 
@@ -62,7 +62,7 @@ export const parseCommandBatch = (
       !isRecord(operation) ||
       typeof operation.name !== 'string' ||
       !('payload' in operation) ||
-      !getCommandDefinition(operation.name)
+      !getAgentCommandDefinition(operation.name)
     ) {
       return {
         ok: false,

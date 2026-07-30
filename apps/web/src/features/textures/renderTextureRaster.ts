@@ -20,6 +20,24 @@ const rgbColor = (value: string): RgbColor => ({
   b: Number.parseInt(value.slice(5, 7), 16)
 });
 
+const FACE_TONE = {
+  up: 1.08,
+  south: 1,
+  east: 0.96,
+  north: 0.92,
+  west: 0.88,
+  down: 0.8
+} as const;
+
+const toneColor = (
+  color: RgbColor,
+  scale: number
+): RgbColor => ({
+  r: Math.min(255, Math.max(0, Math.round(color.r * scale))),
+  g: Math.min(255, Math.max(0, Math.round(color.g * scale))),
+  b: Math.min(255, Math.max(0, Math.round(color.b * scale)))
+});
+
 const fillPixel = (
   context: CanvasRenderingContext2D,
   x: number,
@@ -31,6 +49,35 @@ const fillPixel = (
 };
 
 type SurfaceColorAt = (x: number, y: number) => RgbColor;
+
+export const generatedSurfacePixel = (
+  region: TextureCompositionRegion,
+  x: number,
+  y: number
+): RgbColor => {
+  const pattern = region.pattern;
+  if (!pattern) {
+    return paintSurfacePixel(
+      rgbColor(region.color),
+      x,
+      y,
+      region.width,
+      region.height,
+      stableTextureSeed(
+        `${region.nodeId}:${region.face}`,
+        0x41534846
+      )
+    );
+  }
+  return paintSurfacePixel(
+    toneColor(rgbColor(region.color), FACE_TONE[region.face]),
+    pattern.origin[0] + x - pattern.bounds.x,
+    pattern.origin[1] + y - pattern.bounds.y,
+    pattern.bounds.width,
+    pattern.bounds.height,
+    stableTextureSeed(pattern.seedKey, 0x41534846)
+  );
+};
 
 const extrudeSurfaceGutter = (
   context: CanvasRenderingContext2D,
@@ -63,20 +110,8 @@ const renderGeneratedSurfaceRegion = (
   region: TextureCompositionRegion,
   gutter: number
 ): void => {
-  const base = rgbColor(region.color);
-  const seed = stableTextureSeed(
-    `${region.nodeId}:${region.face}`,
-    0x41534846
-  );
   const colorAt = (x: number, y: number): RgbColor =>
-    paintSurfacePixel(
-      base,
-      x,
-      y,
-      region.width,
-      region.height,
-      seed
-    );
+    generatedSurfacePixel(region, x, y);
   for (let y = 0; y < region.height; y += 1) {
     for (let x = 0; x < region.width; x += 1) {
       fillPixel(

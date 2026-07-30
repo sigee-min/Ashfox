@@ -39,7 +39,7 @@ const created = executeCommandBatch(empty, {
       }]
     }
   }]
-});
+}, { source: 'system' });
 assert.equal(created.ok, true);
 if (!created.ok) throw new Error(created.error.message);
 

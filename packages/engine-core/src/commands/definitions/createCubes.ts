@@ -1,16 +1,9 @@
 import {
-  CUBE_FACE_DIRECTIONS,
   IDENTITY_TRANSFORM,
-  type CubeFace,
-  type CubeFaces,
   type CubeNode,
   type ProjectDocument
 } from '../../model';
 import { addSceneNode } from '../../scene';
-import {
-  createTextureAsset,
-  implicitTextureId
-} from '../../textures/createTextureAsset';
 import { defineCommand } from '../definition';
 import {
   colorSchema,
@@ -19,6 +12,10 @@ import {
   vec3Schema
 } from './schemas';
 import type { CubeCreateInput } from '../types';
+import {
+  createGeneratedCubeFaces,
+  ensureGeneratedTexture
+} from '../../textures/generatedMaterial';
 
 const cubeSchema = {
   type: 'object',
@@ -65,22 +62,6 @@ const inputSchema = {
   additionalProperties: false
 } as const;
 
-const createFaces = (
-  textureId: string | null,
-  uv: readonly [number, number, number, number]
-): CubeFaces =>
-  Object.fromEntries(
-    CUBE_FACE_DIRECTIONS.map((direction) => {
-      const face: CubeFace = {
-        enabled: true,
-        textureId,
-        uv,
-        rotation: 0
-      };
-      return [direction, face];
-    })
-  ) as CubeFaces;
-
 const createCubeNode = (
   document: ProjectDocument,
   input: CubeCreateInput,
@@ -108,7 +89,11 @@ const createCubeNode = (
     mirror: false,
     boxUv: false,
     baseColor: input.baseColor ?? '#8e98a3',
-    faces: createFaces(textureId, defaultUv)
+    faces: createGeneratedCubeFaces(
+      textureId,
+      defaultUv[2],
+      defaultUv[3]
+    )
   };
 };
 
@@ -193,32 +178,11 @@ export const createCubesCommand = defineCommand({
       };
     }
 
-    const generatedTexture = Object.values(document.textures)
-      .filter((texture) => texture.atlasMode === 'generate')
-      .sort((left, right) => left.id.localeCompare(right.id))[0];
-    const shouldCreateTexture = generatedTexture === undefined;
-    const implicitTexture = shouldCreateTexture
-      ? createTextureAsset(document, {
-          id: implicitTextureId(document),
-          name: 'Base texture'
-        })
-      : null;
-    const prepared = implicitTexture
-      ? {
-          ...document,
-          textures: {
-            ...document.textures,
-            [implicitTexture.id]: implicitTexture
-          }
-        }
-      : document;
-    const textureId = generatedTexture?.id ?? implicitTexture?.id;
-    if (!textureId) {
-      throw new Error('Generated texture setup failed.');
-    }
+    const setup = ensureGeneratedTexture(document);
     const next = payload.cubes.reduce(
-      (current, input) => addCubeToScene(current, input, textureId),
-      prepared
+      (current, input) =>
+        addCubeToScene(current, input, setup.textureId),
+      setup.document
     );
     return {
       ok: true,
@@ -229,8 +193,8 @@ export const createCubesCommand = defineCommand({
             ? `Create ${payload.cubes[0].name}`
             : `Create ${payload.cubes.length} cubes`,
         effects: {
-          createdEntityIds: implicitTexture
-            ? [implicitTexture.id, ...ids]
+          createdEntityIds: setup.createdTextureId
+            ? [setup.createdTextureId, ...ids]
             : ids,
           changedEntityIds: [],
           removedEntityIds: [],

@@ -57,6 +57,7 @@ export const parseInspectRequest = (
             }
           }
         : failure('name', 'command name');
+    case 'parts':
     case 'entity':
     case 'texture':
     case 'clip':
@@ -69,6 +70,7 @@ export const parseInspectRequest = (
             }
           }
         : failure('ids', 'string ID array');
+    case 'catalog':
     case 'target':
       return {
         ok: true,
@@ -89,7 +91,7 @@ export const parseInspectRequest = (
     default:
       return failure(
         'kind',
-        'command, entity, texture, clip, target, or finding'
+        'command, catalog, parts, entity, texture, clip, target, or finding'
       );
   }
 };

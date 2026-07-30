@@ -1,3 +1,9 @@
+import {
+  readCompiledParts
+} from '../../modeling/partInvariants';
+import {
+  readPartRecipe
+} from '../../modeling/partRecipe';
 import { defineCommand } from '../definition';
 
 const inputSchema = {
@@ -20,6 +26,45 @@ export const setSurfacePixelDensityCommand = defineCommand({
   apply: (document, payload) => {
     const densityChanged =
       document.settings.surfacePixelDensity !== payload.density;
+    if (densityChanged) {
+      const recipe = readPartRecipe(document);
+      if (!recipe.ok) {
+        return {
+          ok: false,
+          error: {
+            code: 'invalid_state',
+            message: 'Canonical modeling recipe is invalid.',
+            path: recipe.issues[0]?.path ?? 'modeling',
+            pathScope: 'document'
+          }
+        };
+      }
+      const compiled = readCompiledParts(document);
+      if (!compiled.ok) {
+        return {
+          ok: false,
+          error: {
+            code: 'invalid_state',
+            message: 'Existing compiled model violates part invariants.',
+            path: compiled.issues[0]?.path ?? 'scene.parts',
+            pathScope: 'document'
+          }
+        };
+      }
+      if (recipe.recipe !== null || compiled.parts.size > 0) {
+        return {
+          ok: false,
+          error: {
+            code: 'invalid_state',
+            message:
+              'Surface density is part of the compiled model lattice and cannot change while model parts exist.',
+            path: 'payload.density',
+            expected:
+              'set density before model.parts.upsert, or delete all parts before selecting a new density'
+          }
+        };
+      }
+    }
     const next = densityChanged
       ? {
           ...document,

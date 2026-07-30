@@ -2,8 +2,10 @@ export * from './model';
 export * from './projectFile';
 export * from './project/createProjectDocument';
 export * from './commands';
-export * from './scene';
 export * from './validation';
+export * from './modeling/partContract';
+export * from './modeling/partInvariants';
+export * from './modeling/partRecipe';
 export * from './textures/uvAtlas';
 export * from './textures/deterministicPixel';
 export * from './textures/pixelSurfacePattern';
@@ -15,6 +17,7 @@ export {
   generatedTextureMatchesDerivation,
   hasTextureSurfaceArea,
   staleGeneratedTextureIds,
+  type GeneratedSurfacePattern,
   type TextureComposition,
   type TextureCompositionRegion
 } from './textures/textureRecipe';

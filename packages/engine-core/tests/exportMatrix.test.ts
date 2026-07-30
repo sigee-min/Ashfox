@@ -6,6 +6,7 @@ import {
   exportProjectResolved,
   validateProjectDocument,
   type ExportPreset,
+  type PartSpec,
   type ProjectCommandOperation,
   type ProjectDocument
 } from '../src';
@@ -28,6 +29,23 @@ const registerAsyncTest = (promise: Promise<void>): void => {
 
 const authorProject = (target: ExportPreset): ProjectDocument => {
   const base = createGltfProject();
+  const part: PartSpec = {
+    kind: 'plate',
+    partId: 'body',
+    parentPartId: null,
+    materialId: 'stone',
+    joint: { kind: 'fixed' },
+    attachment: null,
+    plane: 'xy',
+    origin: [-2, 0, -3],
+    outline: [
+      [0, 0],
+      [4, 0],
+      [4, 4],
+      [0, 4]
+    ],
+    thickness: 6
+  };
   const operations: ProjectCommandOperation[] = [
     {
       name: 'project.create',
@@ -41,26 +59,12 @@ const authorProject = (target: ExportPreset): ProjectDocument => {
       }
     },
     {
-      name: 'scene.bones.create',
+      name: 'model.parts.upsert',
       payload: {
-        bones: [{
-          id: 'bone-root',
-          name: 'root',
-          parentId: null
-        }]
-      }
-    },
-    {
-      name: 'scene.cubes.create',
-      payload: {
-        cubes: [{
-          id: 'cube-body',
-          name: 'body',
-          parentId: 'bone-root',
-          bounds: {
-            from: [-2, 0, -3],
-            to: [2, 4, 3]
-          }
+        parts: [part],
+        materials: [{
+          id: 'stone',
+          baseColor: '#8E98A3'
         }]
       }
     }
@@ -69,7 +73,7 @@ const authorProject = (target: ExportPreset): ProjectDocument => {
     batchId: `batch-export-${target}`,
     baseRevision: base.revision,
     operations
-  });
+  }, { source: 'system' });
   if (!result.ok) throw new Error(result.error.message);
   const report = validateProjectDocument(result.document);
   assert.equal(report.valid, true);

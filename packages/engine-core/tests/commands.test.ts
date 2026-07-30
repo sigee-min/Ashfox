@@ -6,6 +6,7 @@ import {
   createProjectFromInput,
   executeCommandBatch,
   getCommandDefinition,
+  listAgentCommandDefinitions,
   listCommandDefinitions,
   validateProjectDocument,
   type CommandBatch,
@@ -20,6 +21,9 @@ assert.deepEqual(commandNames, [
   'project.create',
   'project.rename',
   'project.target.set',
+  'model.parts.upsert',
+  'model.parts.material',
+  'model.parts.delete',
   'scene.bones.create',
   'scene.locators.create',
   'scene.nodes.transform',
@@ -45,6 +49,27 @@ assert.deepEqual(commandNames, [
   'animation.clip.closeLoop',
   'animation.clip.delete'
 ]);
+assert.deepEqual(
+  listAgentCommandDefinitions().map((definition) => definition.name),
+  [
+    'project.create',
+    'project.rename',
+    'project.target.set',
+    'model.parts.upsert',
+    'model.parts.material',
+    'model.parts.delete',
+    'scene.locators.create',
+    'textures.density.set',
+    'animation.clip.upsert',
+    'animation.channels.upsert',
+    'animation.triggers.upsert',
+    'animation.tracks.delete',
+    'animation.channels.phase',
+    'animation.channels.mirror',
+    'animation.clip.closeLoop',
+    'animation.clip.delete'
+  ]
+);
 assert.equal(
   getCommandDefinition('scene.cubes.material')?.inputSchema.type,
   'object'
@@ -72,7 +97,7 @@ const execute = (
     batchId,
     baseRevision: document.revision,
     operations
-  });
+  }, { source: 'system' });
   if (!result.ok) {
     throw new Error(
       `${result.error.code}: ${result.error.message} at ` +
@@ -222,7 +247,7 @@ const unchangedDensity = executeCommandBatch(detailed, {
     name: 'textures.density.set',
     payload: { density: 2 }
   }]
-});
+}, { source: 'system' });
 assert.equal(unchangedDensity.ok, false);
 if (!unchangedDensity.ok) {
   assert.equal(unchangedDensity.error.code, 'no_change');
@@ -236,11 +261,41 @@ const invalidDensity = executeCommandBatch(detailed, {
       density: 3
     } as { density: 1 }
   }]
-});
+}, { source: 'system' });
 assert.equal(invalidDensity.ok, false);
 if (!invalidDensity.ok) {
   assert.equal(invalidDensity.error.code, 'invalid_payload');
 }
+
+const materialInput = structuredClone(detailed);
+const materialInputBody = materialInput.scene.nodes['cube-body'];
+assert.equal(materialInputBody.kind, 'cube');
+if (materialInputBody.kind !== 'cube') {
+  throw new Error('Material input body missing');
+}
+materialInputBody.faces.north.enabled = false;
+const disabledFaceRecolored = execute(
+  materialInput,
+  'batch-material-disabled-face',
+  [{
+    name: 'scene.cubes.material',
+    payload: {
+      nodeIds: ['cube-body'],
+      baseColor: '#2F6F45'
+    }
+  }]
+);
+const disabledFaceBody =
+  disabledFaceRecolored.scene.nodes['cube-body'];
+assert.equal(disabledFaceBody.kind, 'cube');
+if (disabledFaceBody.kind !== 'cube') {
+  throw new Error('Disabled-face recolored body missing');
+}
+assert.equal(
+  disabledFaceBody.faces.north.enabled,
+  false,
+  'material assignment must preserve intentionally disabled raw faces'
+);
 
 const recolored = execute(detailed, 'batch-material', [{
   name: 'scene.cubes.material',
@@ -291,7 +346,7 @@ const scaled = executeCommandBatch(scalable, {
       }
     }
   }]
-});
+}, { source: 'system' });
 assert.equal(scaled.ok, true);
 if (!scaled.ok) {
   throw new Error('Scale must derive generated surfaces automatically.');
@@ -318,7 +373,7 @@ const invalidScale = executeCommandBatch(scalable, {
       }
     }
   }]
-});
+}, { source: 'system' });
 assert.equal(invalidScale.ok, false);
 if (invalidScale.ok) {
   throw new Error('Off-grid scale must be rejected atomically.');
@@ -343,7 +398,7 @@ const halfUnitBatch = executeCommandBatch(recolored, {
       }
     }
   ]
-});
+}, { source: 'system' });
 assert.equal(halfUnitBatch.ok, true);
 if (!halfUnitBatch.ok) {
   throw new Error('2× density must accept half-unit geometry');
@@ -366,7 +421,7 @@ const invalidQuarterBatch = executeCommandBatch(recolored, {
       }
     }
   ]
-});
+}, { source: 'system' });
 assert.equal(invalidQuarterBatch.ok, false);
 if (invalidQuarterBatch.ok) {
   throw new Error('Off-grid geometry must be rejected');
@@ -487,7 +542,25 @@ const invalidColor = executeCommandBatch(renamed, {
       baseColor: 'green'
     }
   }]
-});
+}, { source: 'system' });
 assert.equal(invalidColor.ok, false);
+
+const missingSource = executeCommandBatch(
+  renamed,
+  {
+    batchId: 'batch-missing-source',
+    baseRevision: renamed.revision,
+    operations: [{
+      name: 'project.rename',
+      payload: { name: 'Must not apply' }
+    }]
+  },
+  undefined as never
+);
+assert.equal(missingSource.ok, false);
+if (!missingSource.ok) {
+  assert.equal(missingSource.error.code, 'invalid_batch');
+  assert.equal(missingSource.error.path, 'source');
+}
 if (invalidColor.ok) throw new Error('Invalid color must fail');
 assert.equal(invalidColor.error.code, 'invalid_payload');

@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
 
 import {
-  addSceneNode,
-  transformsEqual,
-  updateSceneNode,
   type BoneNode
 } from '../src';
+import {
+  addSceneNode,
+  transformsEqual,
+  updateSceneNode
+} from '../src/scene';
 import { createJavaProject } from './helpers';
 
 const project = createJavaProject();

@@ -55,7 +55,7 @@ const authorProject = (): ProjectDocument => {
         }
       }
     ]
-  });
+  }, { source: 'system' });
   if (!result.ok) {
     throw new Error(
       `${result.error.message} ${JSON.stringify(result.findings ?? [])}`
@@ -94,7 +94,7 @@ const projectFor = (
         modelPath: `artifact_${target}`
       }
     }]
-  });
+  }, { source: 'system' });
   if (!result.ok) {
     throw new Error(
       `${result.error.message} ${JSON.stringify(result.findings ?? [])}`
@@ -133,7 +133,7 @@ export const test = (async () => {
         }]
       }
     }]
-  });
+  }, { source: 'system' });
   if (!authored.ok) throw new Error(authored.error.message);
   const stale = structuredClone(authored.document);
   const staleCube = stale.scene.nodes['cube-stale'];

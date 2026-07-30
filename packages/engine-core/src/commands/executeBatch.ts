@@ -3,17 +3,34 @@ import {
   deriveGeneratedTextures
 } from '../textures/textureRecipe';
 import { validateProjectDocument } from '../validation';
+import {
+  validateCompiledPartOperation
+} from './compiledPartPolicy';
 import type { CommandApplication } from './definition';
-import { getCommandDefinition } from './registry';
+import {
+  commandAllowedForSource,
+  getCommandDefinition
+} from './registry';
 import type {
   CommandBatch,
   CommandBatchFailure,
   CommandBatchResult,
   CommandEffects,
-  InvalidatedArea
+  InvalidatedArea,
+  CommandSource
 } from './types';
 
 const MAX_BATCH_OPERATIONS = 64;
+
+export interface ExecuteCommandBatchOptions {
+  source: CommandSource;
+}
+
+const isCommandSource = (value: unknown): value is CommandSource =>
+  value === 'web' ||
+  value === 'agent' ||
+  value === 'import' ||
+  value === 'system';
 
 const failure = (
   document: ProjectDocument,
@@ -28,7 +45,8 @@ const failure = (
 
 const validateBatch = (
   document: ProjectDocument,
-  batch: CommandBatch
+  batch: CommandBatch,
+  source: CommandSource
 ): CommandBatchFailure | null => {
   if (batch.batchId.trim().length === 0) {
     return failure(document, {
@@ -57,6 +75,18 @@ const validateBatch = (
       expected: `1-${MAX_BATCH_OPERATIONS} operations`
     });
   }
+  if (
+    batch.operations.filter(
+      (operation) => operation.name === 'model.parts.upsert'
+    ).length > 1
+  ) {
+    return failure(document, {
+      code: 'invalid_batch',
+      message: 'A batch may contain at most one model part upsert.',
+      path: 'operations',
+      expected: 'zero or one model.parts.upsert operation'
+    });
+  }
   for (let index = 0; index < batch.operations.length; index += 1) {
     const operation = batch.operations[index];
     const definition = getCommandDefinition(operation.name);
@@ -66,6 +96,15 @@ const validateBatch = (
         message: `Command "${String(operation.name)}" is not registered.`,
         path: `operations[${index}].name`,
         expected: 'registered command name'
+      });
+    }
+    if (!commandAllowedForSource(operation.name, source)) {
+      return failure(document, {
+        code: 'invalid_payload',
+        message:
+          `Command "${operation.name}" is not available to ${source}.`,
+        path: `operations[${index}].name`,
+        expected: 'command available to this trusted source'
       });
     }
     const issue = definition.validate(operation.payload);
@@ -81,32 +120,77 @@ const validateBatch = (
   return null;
 };
 
-const mergeUnique = <T>(
-  left: readonly T[],
-  right: readonly T[]
-): readonly T[] => [...new Set([...left, ...right])];
+type EffectState = 'created' | 'changed' | 'removed';
+
+const effectStates = (
+  effects: CommandEffects
+): Map<string, EffectState> => {
+  const states = new Map<string, EffectState>();
+  effects.createdEntityIds.forEach((id) => states.set(id, 'created'));
+  effects.changedEntityIds.forEach((id) => {
+    if (!states.has(id)) states.set(id, 'changed');
+  });
+  effects.removedEntityIds.forEach((id) => {
+    const current = states.get(id);
+    if (current === 'created') {
+      states.delete(id);
+    } else {
+      states.set(id, 'removed');
+    }
+  });
+  return states;
+};
+
+const mergeEntityEffects = (
+  current: CommandEffects,
+  next: CommandEffects
+): Pick<
+  CommandEffects,
+  'createdEntityIds' | 'changedEntityIds' | 'removedEntityIds'
+> => {
+  const states = effectStates(current);
+  for (const id of next.createdEntityIds) {
+    const previous = states.get(id);
+    states.set(
+      id,
+      previous === undefined || previous === 'created'
+        ? 'created'
+        : 'changed'
+    );
+  }
+  for (const id of next.changedEntityIds) {
+    if (!states.has(id)) states.set(id, 'changed');
+  }
+  for (const id of next.removedEntityIds) {
+    if (states.get(id) === 'created') {
+      states.delete(id);
+    } else {
+      states.set(id, 'removed');
+    }
+  }
+  const ids = [...states.keys()].sort();
+  return {
+    createdEntityIds: ids.filter((id) => states.get(id) === 'created'),
+    changedEntityIds: ids.filter((id) => states.get(id) === 'changed'),
+    removedEntityIds: ids.filter((id) => states.get(id) === 'removed')
+  };
+};
 
 const mergeEffects = (
   current: CommandEffects,
   next: CommandEffects
-): CommandEffects => ({
-  createdEntityIds: mergeUnique(
-    current.createdEntityIds,
-    next.createdEntityIds
-  ),
-  changedEntityIds: mergeUnique(
-    current.changedEntityIds,
-    next.changedEntityIds
-  ),
-  removedEntityIds: mergeUnique(
-    current.removedEntityIds,
-    next.removedEntityIds
-  ),
-  invalidated: mergeUnique<InvalidatedArea>(
-    current.invalidated,
-    next.invalidated
-  )
-});
+): CommandEffects => {
+  const entities = mergeEntityEffects(current, next);
+  return {
+    ...entities,
+    invalidated: [
+      ...new Set<InvalidatedArea>([
+        ...current.invalidated,
+        ...next.invalidated
+      ])
+    ]
+  };
+};
 
 const emptyEffects = (): CommandEffects => ({
   createdEntityIds: [],
@@ -175,21 +259,38 @@ const applyOperation = (
       path: `operations[${index}].name`
     });
   }
+  const policyIssue = validateCompiledPartOperation(document, operation);
+  if (policyIssue) {
+    return failure(document, {
+      code: 'invalid_state',
+      message: policyIssue.message,
+      path: `operations[${index}].${policyIssue.path}`,
+      expected: 'model.parts command for generated geometry'
+    });
+  }
   const result = definition.apply(document, operation.payload);
   if (result.ok) return result.value;
+  const {
+    pathScope = 'operation',
+    ...commandError
+  } = result.error;
   return failure(document, {
-    ...result.error,
-    path: result.error.path
-      ? `operations[${index}].${result.error.path}`
+    ...commandError,
+    path: commandError.path
+      ? pathScope === 'document'
+        ? commandError.path
+        : `operations[${index}].${commandError.path}`
       : `operations[${index}]`
   });
 };
 
-export const executeCommandBatch = (
+const executeCommandBatchUnchecked = (
   document: ProjectDocument,
-  batch: CommandBatch
+  batch: CommandBatch,
+  options: ExecuteCommandBatchOptions
 ): CommandBatchResult => {
-  const batchFailure = validateBatch(document, batch);
+  const source = options.source;
+  const batchFailure = validateBatch(document, batch, source);
   if (batchFailure) return batchFailure;
 
   let workingDocument = document;
@@ -239,4 +340,34 @@ export const executeCommandBatch = (
     effects,
     findings: report.findings
   };
+};
+
+export const executeCommandBatch = (
+  document: ProjectDocument,
+  batch: CommandBatch,
+  options: ExecuteCommandBatchOptions
+): CommandBatchResult => {
+  try {
+    if (!isCommandSource(options?.source)) {
+      return failure(document, {
+        code: 'invalid_batch',
+        message: 'A trusted command source is required.',
+        path: 'source',
+        expected: 'web | agent | import | system'
+      });
+    }
+    return executeCommandBatchUnchecked(
+      structuredClone(document),
+      structuredClone(batch),
+      options
+    );
+  } catch (error) {
+    return failure(document, {
+      code: 'invalid_state',
+      message:
+        error instanceof Error
+          ? `Command batch terminated without changes: ${error.message}`
+          : 'Command batch terminated without changes.'
+    });
+  }
 };

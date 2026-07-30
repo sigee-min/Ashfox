@@ -72,6 +72,9 @@ export function SceneTree({
             type="button"
             className={`visibility-toggle${node.visible ? '' : ' is-hidden'}`}
             aria-label={`${node.name} ${node.visible ? '숨기기' : '표시하기'}`}
+            disabled={
+              node.generation?.authority === 'ashfox.part-compiler'
+            }
             onClick={() => onToggleVisibility(node.id)}
           >
             <Icon name={node.visible ? 'eye' : 'eyeOff'} />

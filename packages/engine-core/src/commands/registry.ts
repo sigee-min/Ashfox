@@ -10,6 +10,7 @@ import {
   deleteAnimationTracksCommand
 } from './definitions/deleteAnimationTracks';
 import { deleteNodesCommand } from './definitions/deleteNodes';
+import { deleteModelPartsCommand } from './definitions/deleteModelParts';
 import { duplicateCubesCommand } from './definitions/duplicateCubes';
 import { mirrorAnimationChannelsCommand } from './definitions/mirrorAnimationChannels';
 import { mirrorCubesCommand } from './definitions/mirrorCubes';
@@ -19,6 +20,7 @@ import { renameProjectCommand } from './definitions/renameProject';
 import { renameNodesCommand } from './definitions/renameNodes';
 import { repeatCubesCommand } from './definitions/repeatCubes';
 import { setCubeMaterialCommand } from './definitions/setCubeMaterial';
+import { setModelPartMaterialCommand } from './definitions/setModelPartMaterial';
 import { setNodeVisibilityCommand } from './definitions/setNodeVisibility';
 import { setNodePivotCommand } from './definitions/setNodePivot';
 import { setProjectTargetCommand } from './definitions/setProjectTarget';
@@ -30,44 +32,107 @@ import { updateCubeGeometryCommand } from './definitions/updateCubeGeometry';
 import { upsertAnimationChannelsCommand } from './definitions/upsertAnimationChannels';
 import { upsertAnimationClipCommand } from './definitions/upsertAnimationClip';
 import { upsertAnimationTriggersCommand } from './definitions/upsertAnimationTriggers';
-import type { CommandName } from './types';
+import { upsertModelPartsCommand } from './definitions/upsertModelParts';
+import type { CommandName, CommandSource } from './types';
 
-const definitions: Readonly<Record<CommandName, CommandDefinition>> = {
-  'project.create': createProjectCommand,
-  'project.rename': renameProjectCommand,
-  'project.target.set': setProjectTargetCommand,
-  'scene.bones.create': createBonesCommand,
-  'scene.locators.create': createLocatorsCommand,
-  'scene.nodes.transform': transformNodesCommand,
-  'scene.nodes.visibility': setNodeVisibilityCommand,
-  'scene.cubes.create': createCubesCommand,
-  'scene.cubes.geometry.update': updateCubeGeometryCommand,
-  'scene.nodes.rename': renameNodesCommand,
-  'scene.nodes.delete': deleteNodesCommand,
-  'scene.cubes.duplicate': duplicateCubesCommand,
-  'scene.cubes.mirror': mirrorCubesCommand,
-  'scene.cubes.repeat': repeatCubesCommand,
-  'scene.nodes.align': alignNodesCommand,
-  'scene.nodes.pivot': setNodePivotCommand,
-  'scene.nodes.reparent': reparentNodesCommand,
-  'scene.cubes.material': setCubeMaterialCommand,
-  'textures.density.set': setSurfacePixelDensityCommand,
-  'animation.clip.upsert': upsertAnimationClipCommand,
-  'animation.channels.upsert': upsertAnimationChannelsCommand,
-  'animation.triggers.upsert': upsertAnimationTriggersCommand,
-  'animation.tracks.delete': deleteAnimationTracksCommand,
-  'animation.channels.phase': phaseAnimationChannelsCommand,
-  'animation.channels.mirror': mirrorAnimationChannelsCommand,
-  'animation.clip.closeLoop': closeAnimationLoopCommand,
-  'animation.clip.delete': deleteAnimationClipCommand
+interface CommandRegistration {
+  definition: CommandDefinition;
+  agentAccessible: boolean;
+}
+
+const registration = (
+  definition: CommandDefinition,
+  agentAccessible: boolean
+): CommandRegistration => ({ definition, agentAccessible });
+
+const registrations: Readonly<Record<CommandName, CommandRegistration>> = {
+  'project.create': registration(createProjectCommand, true),
+  'project.rename': registration(renameProjectCommand, true),
+  'project.target.set': registration(setProjectTargetCommand, true),
+  'model.parts.upsert': registration(upsertModelPartsCommand, true),
+  'model.parts.material': registration(setModelPartMaterialCommand, true),
+  'model.parts.delete': registration(deleteModelPartsCommand, true),
+  'scene.bones.create': registration(createBonesCommand, false),
+  'scene.locators.create': registration(createLocatorsCommand, true),
+  'scene.nodes.transform': registration(transformNodesCommand, false),
+  'scene.nodes.visibility': registration(setNodeVisibilityCommand, false),
+  'scene.cubes.create': registration(createCubesCommand, false),
+  'scene.cubes.geometry.update': registration(
+    updateCubeGeometryCommand,
+    false
+  ),
+  'scene.nodes.rename': registration(renameNodesCommand, false),
+  'scene.nodes.delete': registration(deleteNodesCommand, false),
+  'scene.cubes.duplicate': registration(duplicateCubesCommand, false),
+  'scene.cubes.mirror': registration(mirrorCubesCommand, false),
+  'scene.cubes.repeat': registration(repeatCubesCommand, false),
+  'scene.nodes.align': registration(alignNodesCommand, false),
+  'scene.nodes.pivot': registration(setNodePivotCommand, false),
+  'scene.nodes.reparent': registration(reparentNodesCommand, false),
+  'scene.cubes.material': registration(setCubeMaterialCommand, false),
+  'textures.density.set': registration(
+    setSurfacePixelDensityCommand,
+    true
+  ),
+  'animation.clip.upsert': registration(upsertAnimationClipCommand, true),
+  'animation.channels.upsert': registration(
+    upsertAnimationChannelsCommand,
+    true
+  ),
+  'animation.triggers.upsert': registration(
+    upsertAnimationTriggersCommand,
+    true
+  ),
+  'animation.tracks.delete': registration(
+    deleteAnimationTracksCommand,
+    true
+  ),
+  'animation.channels.phase': registration(
+    phaseAnimationChannelsCommand,
+    true
+  ),
+  'animation.channels.mirror': registration(
+    mirrorAnimationChannelsCommand,
+    true
+  ),
+  'animation.clip.closeLoop': registration(
+    closeAnimationLoopCommand,
+    true
+  ),
+  'animation.clip.delete': registration(deleteAnimationClipCommand, true)
 };
 
-export const commandRegistry = definitions;
+export const commandRegistry = Object.fromEntries(
+  Object.entries(registrations).map(([name, value]) => [
+    name,
+    value.definition
+  ])
+) as Readonly<Record<CommandName, CommandDefinition>>;
 
 export const getCommandDefinition = (
   name: string
 ): CommandDefinition | undefined =>
-  definitions[name as CommandName];
+  registrations[name as CommandName]?.definition;
 
 export const listCommandDefinitions = (): readonly CommandDefinition[] =>
-  Object.values(definitions);
+  Object.values(registrations).map((entry) => entry.definition);
+
+export const getAgentCommandDefinition = (
+  name: string
+): CommandDefinition | undefined => {
+  const value = registrations[name as CommandName];
+  return value?.agentAccessible ? value.definition : undefined;
+};
+
+export const listAgentCommandDefinitions =
+  (): readonly CommandDefinition[] =>
+    Object.values(registrations)
+      .filter((entry) => entry.agentAccessible)
+      .map((entry) => entry.definition);
+
+export const commandAllowedForSource = (
+  name: CommandName,
+  source: CommandSource
+): boolean =>
+  source !== 'agent' ||
+  registrations[name].agentAccessible;

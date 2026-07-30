@@ -18,8 +18,9 @@ Create a GeckoLib 5 project named Ember Stag.
 Use namespace wildwood and model path creatures/ember_stag.
 ```
 
-ashfox grows the generated atlas as needed while keeping one square texel per
-model unit, then validates target-specific settings before export.
+Choose surface detail before modeling. ashfox grows the generated atlas as
+needed while keeping one square texel per selected lattice unit, then validates
+target-specific settings before export.
 
 ## Save the editable project
 
@@ -28,8 +29,10 @@ Save the current editable project as an .ashfox file.
 Deliver it to artifacts/ and verify the final filename and size.
 ```
 
-The `.ashfox` file contains the project structure and required texture data.
-Keep it when future editing is expected.
+The `.ashfox` file contains the exact semantic part recipe, generated scene,
+animation, and required texture data. Reopening it preserves precise part-level
+editing rather than reconstructing intent from exported cuboids. Keep it when
+future editing is expected.
 
 ## Continue from an existing project
 

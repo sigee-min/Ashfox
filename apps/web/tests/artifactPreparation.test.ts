@@ -42,7 +42,7 @@ const createAuthoredProject = (): ProjectDocument => {
         }]
       }
     }]
-  });
+  }, { source: 'system' });
   if (!created.ok) throw new Error(created.error.message);
   return created.document;
 };
@@ -75,7 +75,7 @@ const targetPrepared = executeCommandBatch(authored, {
     name: 'project.target.set',
     payload: target
   }]
-});
+}, { source: 'system' });
 if (!targetPrepared.ok) {
   throw new Error(targetPrepared.error.message);
 }

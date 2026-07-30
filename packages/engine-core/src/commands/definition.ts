@@ -11,6 +11,10 @@ import type {
   CommandPayloadMap
 } from './types';
 
+export interface CommandApplicationError extends CommandError {
+  pathScope?: 'operation' | 'document';
+}
+
 export interface CommandApplication {
   document: ProjectDocument;
   summary: string;
@@ -24,7 +28,7 @@ export type CommandApplicationResult =
     }
   | {
       ok: false;
-      error: CommandError;
+      error: CommandApplicationError;
     };
 
 export interface CommandDefinition {

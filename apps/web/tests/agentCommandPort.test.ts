@@ -161,6 +161,43 @@ export const test = (async (): Promise<void> => {
       data: null
     }),
     currentRevision: () => 'local-0001',
+    submit: async (value) => {
+      submits += 1;
+      return committed(value.batchId);
+    }
+  });
+  for (let index = 0; index < 40; index += 1) {
+    const result = await port.run(batch(`ledger-${index}`));
+    assert.equal(result.ok, true);
+  }
+  assert.equal(submits, 40);
+  const replay = await port.run(batch('ledger-0'));
+  assert.equal(replay.ok, true);
+  assert.equal(
+    submits,
+    40,
+    'completed batch IDs remain idempotent for the browser session'
+  );
+  const conflict = await port.run({
+    ...batch('ledger-0'),
+    operations: [{
+      name: 'project.rename',
+      payload: { name: 'Conflicting replay' }
+    }]
+  });
+  assert.equal(conflict.ok, false);
+  assert.equal(submits, 40);
+}
+
+{
+  let submits = 0;
+  const port = new AgentCommandPort({
+    inspect: () => ({
+      ok: true,
+      revision: 'local-0001',
+      data: null
+    }),
+    currentRevision: () => 'local-0001',
     submit: async () => {
       submits += 1;
       return committed('unexpected');
@@ -173,6 +210,30 @@ export const test = (async (): Promise<void> => {
   });
   assert.equal(invalid.ok, false);
   if (!invalid.ok) assert.equal(invalid.error.code, 'invalid_batch');
+  assert.equal(submits, 0);
+
+  const rawGeometry = await port.run({
+    batchId: 'raw-geometry',
+    baseRevision: 'local-0001',
+    operations: [{
+      name: 'scene.cubes.create',
+      payload: {
+        cubes: [{
+          id: 'cube-raw',
+          name: 'raw',
+          parentId: null,
+          bounds: {
+            from: [0, 0, 0],
+            to: [1, 1, 1]
+          }
+        }]
+      }
+    }]
+  });
+  assert.equal(rawGeometry.ok, false);
+  if (!rawGeometry.ok) {
+    assert.equal(rawGeometry.error.code, 'invalid_batch');
+  }
   assert.equal(submits, 0);
 }
 

@@ -4,11 +4,14 @@ export type CommandInputSchema =
   | {
       type: 'string';
       minLength?: number;
+      maxLength?: number;
+      pattern?: string;
     }
   | {
       type: 'number';
       minimum?: number;
       maximum?: number;
+      integer?: boolean;
     }
   | {
       type: 'boolean';
@@ -62,16 +65,40 @@ const validateAnyOf = (
   schema: Extract<CommandInputSchema, { anyOf: readonly CommandInputSchema[] }>,
   path: string
 ): SchemaIssue | null => {
-  const valid = schema.anyOf.some(
-    (candidate) => validateCommandInput(value, candidate, path) === null
+  const discriminatedCandidates =
+    isRecord(value) && typeof value.kind === 'string'
+      ? schema.anyOf.filter((candidate) => {
+          if (!('type' in candidate) || candidate.type !== 'object') {
+            return false;
+          }
+          const discriminator = candidate.properties.kind;
+          return (
+            discriminator !== undefined &&
+            'enum' in discriminator &&
+            discriminator.enum.some((entry) =>
+              Object.is(entry, value.kind)
+            )
+          );
+        })
+      : [];
+  const candidates =
+    discriminatedCandidates.length > 0
+      ? discriminatedCandidates
+      : schema.anyOf;
+  const issues = candidates.map((candidate) =>
+    validateCommandInput(value, candidate, path)
   );
-  return valid
-    ? null
-    : {
-        path,
-        message: 'Value does not match an allowed shape.',
-        expected: 'one allowed schema'
-      };
+  if (issues.some((issue) => issue === null)) return null;
+  return (issues as readonly SchemaIssue[])
+    .slice()
+    .sort((left, right) =>
+      right.path.length - left.path.length ||
+      left.path.localeCompare(right.path)
+    )[0] ?? {
+      path,
+      message: 'Value does not match an allowed shape.',
+      expected: 'one allowed schema'
+    };
 };
 
 const validateString = (
@@ -89,6 +116,20 @@ const validateString = (
       expected: `at least ${schema.minLength} character(s)`
     };
   }
+  if (schema.maxLength !== undefined && value.length > schema.maxLength) {
+    return {
+      path,
+      message: 'String is longer than allowed.',
+      expected: `at most ${schema.maxLength} character(s)`
+    };
+  }
+  if (schema.pattern !== undefined && !new RegExp(schema.pattern).test(value)) {
+    return {
+      path,
+      message: 'String does not match the required pattern.',
+      expected: schema.pattern
+    };
+  }
   return null;
 };
 
@@ -99,6 +140,13 @@ const validateNumber = (
 ): SchemaIssue | null => {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     return { path, message: 'Expected a finite number.', expected: 'number' };
+  }
+  if (schema.integer && !Number.isSafeInteger(value)) {
+    return {
+      path,
+      message: 'Expected a safe integer.',
+      expected: 'safe integer'
+    };
   }
   if (schema.minimum !== undefined && value < schema.minimum) {
     return {

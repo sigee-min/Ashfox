@@ -90,6 +90,12 @@ export function Viewport({
 
     runtime.transform.detach();
     if (!selectedNodeId || playing) return;
+    if (
+      document.scene.nodes[selectedNodeId]?.generation?.authority ===
+      'ashfox.part-compiler'
+    ) {
+      return;
+    }
     const object = projection.objectsByNodeId.get(selectedNodeId);
     if (!object) return;
     runtime.transform.attach(object);

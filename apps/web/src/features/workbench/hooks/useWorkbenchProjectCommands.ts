@@ -25,10 +25,8 @@ import { LOCAL_COMMAND_ACTOR_ID } from '../state/localCommandActor';
 
 interface UseWorkbenchProjectCommandsInput {
   document: ProjectDocument;
-  historySerial: number;
   selectedNodeId: string | null;
   dispatch: Dispatch<HistoryAction>;
-  onSelectNode: (nodeId: string | null) => void;
   exportTargetFile: (target: ProjectExportTarget) => void;
 }
 
@@ -42,17 +40,14 @@ interface WorkbenchProjectCommands {
     value: Vec3
   ) => void;
   toggleVisibility: (nodeId: string) => void;
-  addCube: () => void;
   undo: () => void;
   redo: () => void;
 }
 
 export const useWorkbenchProjectCommands = ({
   document,
-  historySerial,
   selectedNodeId,
   dispatch,
-  onSelectNode,
   exportTargetFile
 }: UseWorkbenchProjectCommandsInput): WorkbenchProjectCommands => {
   const execute = useCallback(
@@ -102,6 +97,7 @@ export const useWorkbenchProjectCommands = ({
 
   const commitNodeTransform = useCallback(
     (nodeId: string, transform: Transform): void => {
+      if (document.scene.nodes[nodeId]?.generation) return;
       execute([{
         name: 'scene.nodes.transform',
         payload: {
@@ -110,12 +106,13 @@ export const useWorkbenchProjectCommands = ({
         }
       }]);
     },
-    [execute]
+    [document.scene.nodes, execute]
   );
 
   const updateTransformProperty = useCallback(
     (property: keyof Transform, value: Vec3): void => {
       if (!selectedNodeId) return;
+      if (document.scene.nodes[selectedNodeId]?.generation) return;
       execute([{
         name: 'scene.nodes.transform',
         payload: {
@@ -126,13 +123,13 @@ export const useWorkbenchProjectCommands = ({
         }
       }]);
     },
-    [execute, selectedNodeId]
+    [document.scene.nodes, execute, selectedNodeId]
   );
 
   const toggleVisibility = useCallback(
     (nodeId: string): void => {
       const node = document.scene.nodes[nodeId];
-      if (!node) return;
+      if (!node || node.generation) return;
       execute([{
         name: 'scene.nodes.visibility',
         payload: {
@@ -143,42 +140,6 @@ export const useWorkbenchProjectCommands = ({
     },
     [document.scene.nodes, execute]
   );
-
-  const addCube = useCallback((): void => {
-    const serial = historySerial + 1;
-    const id = `cube-new-${serial}`;
-    const selectedNode = selectedNodeId
-      ? document.scene.nodes[selectedNodeId]
-      : undefined;
-    const parentId = selectedNode?.kind === 'bone'
-      ? selectedNode.id
-      : selectedNode?.parentId ?? document.scene.roots[0] ?? null;
-    execute([{
-      name: 'scene.cubes.create',
-      payload: {
-        cubes: [{
-          id,
-          name: `Cube ${serial}`,
-          parentId,
-          bounds: {
-            from: [-2, 1, -2],
-            to: [2, 5, 2]
-          },
-          transform: {
-            pivot: [0, 3, 0]
-          }
-        }]
-      }
-    }]);
-    onSelectNode(id);
-  }, [
-    document.scene.nodes,
-    document.scene.roots,
-    execute,
-    historySerial,
-    onSelectNode,
-    selectedNodeId
-  ]);
 
   const undo = useCallback((): void => {
     dispatch({
@@ -203,7 +164,6 @@ export const useWorkbenchProjectCommands = ({
     commitNodeTransform,
     updateTransformProperty,
     toggleVisibility,
-    addCube,
     undo,
     redo
   };

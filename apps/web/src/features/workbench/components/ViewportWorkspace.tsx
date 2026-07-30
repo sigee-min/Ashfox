@@ -44,7 +44,6 @@ interface ViewportWorkspaceProps {
   onEnvironmentChange: (environment: ViewportEnvironmentId) => void;
   onOverlayChange: (overlay: WorkbenchOverlay) => void;
   onSelectNode: (nodeId: string | null) => void;
-  onAddCube: () => void;
   onToggleVisibility: (nodeId: string) => void;
   onTransformProperty: (
     property: keyof Transform,
@@ -72,7 +71,6 @@ export function ViewportWorkspace({
   onEnvironmentChange,
   onOverlayChange,
   onSelectNode,
-  onAddCube,
   onToggleVisibility,
   onTransformProperty,
   onCommitTransform,
@@ -148,7 +146,6 @@ export function ViewportWorkspace({
             document={document}
             selectedNodeId={selectedNodeId}
             report={report}
-            onAddCube={onAddCube}
             onSelectNode={onSelectNode}
             onToggleVisibility={onToggleVisibility}
           />
