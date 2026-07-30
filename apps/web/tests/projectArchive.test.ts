@@ -61,6 +61,24 @@ export const test = (async (): Promise<void> => {
     textureBytes[firstTextureId]
   );
 
+  const incompatible = createStoredZip(
+    archiveEntries.map((entry) =>
+      entry.path === 'project.json'
+        ? {
+            ...entry,
+            bytes: new TextEncoder().encode(JSON.stringify({
+              ...document,
+              schemaVersion: document.schemaVersion - 1
+            }))
+          }
+        : entry
+    )
+  );
+  await assert.rejects(
+    () => readProjectArchive(incompatible),
+    /schema|invariant/i
+  );
+
   const tampered = createStoredZip(
     archiveEntries.map((entry) =>
       entry.path === 'assets/texture-0001.png'

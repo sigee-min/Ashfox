@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 
-import type { LocalProjectRecord } from '../src/features/workbench/persistence/localProjectRecord';
+import {
+  LOCAL_PROJECT_SCHEMA_VERSION,
+  type LocalProjectRecord
+} from '../src/features/workbench/persistence/localProjectRecord';
 import { createWorkbenchProject } from '../src/features/workbench/sampleProject';
 import { createHistoryState } from '../src/features/workbench/state/historyReducer';
 import {
@@ -41,7 +44,7 @@ const importedAssets = {
   }
 };
 const importedRecord: LocalProjectRecord = {
-  schemaVersion: 1,
+  schemaVersion: LOCAL_PROJECT_SCHEMA_VERSION,
   projectId: importedDocument.id,
   revision: importedDocument.revision,
   document: importedDocument,

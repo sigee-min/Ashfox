@@ -1,4 +1,8 @@
 import { addSceneNode } from '../../scene';
+import {
+  projectTextureDetailIds,
+  surfaceDetailIds
+} from '../../textures/surfaceDetails';
 import { defineCommand } from '../definition';
 import { vec3Schema } from './schemas';
 import { cloneCube } from './sceneHelpers';
@@ -62,29 +66,56 @@ export const duplicateCubesCommand = defineCommand({
       };
     }
 
-    const next = payload.copies.reduce((current, copy) => {
-      const source = current.scene.nodes[copy.sourceId];
-      if (source.kind !== 'cube') return current;
-      return addSceneNode(
-        current,
-        cloneCube(
-          source,
-          copy.id,
-          copy.name ?? `${source.name} copy`,
-          copy.offset ?? [0, 0, 0]
-        )
+    const clones = payload.copies.map((copy) => {
+      const source = document.scene.nodes[copy.sourceId];
+      if (source.kind !== 'cube') {
+        throw new Error('Cube source changed during a synchronous command.');
+      }
+      return cloneCube(
+        source,
+        copy.id,
+        copy.name ?? `${source.name} copy`,
+        copy.offset ?? [0, 0, 0]
       );
-    }, document);
+    });
+    const detailIds = clones.flatMap((clone) =>
+      surfaceDetailIds(clone.faces)
+    );
+    const existingDetailIds = projectTextureDetailIds(document);
+    const conflictingDetailId = detailIds.find(
+      (id, index) =>
+        existingDetailIds.has(id) ||
+        detailIds.indexOf(id) !== index
+    );
+    if (conflictingDetailId) {
+      return {
+        ok: false,
+        error: {
+          code: 'invalid_state',
+          message:
+            `Derived texture detail ID "${conflictingDetailId}" is ` +
+            'already in use.',
+          path: 'payload.copies'
+        }
+      };
+    }
+    const next = clones.reduce(addSceneNode, document);
     return {
       ok: true,
       value: {
         document: next,
         summary: `Duplicate ${payload.copies.length} cube${payload.copies.length === 1 ? '' : 's'}`,
         effects: {
-          createdEntityIds: ids,
+          createdEntityIds: [...ids, ...detailIds],
           changedEntityIds: [],
           removedEntityIds: [],
-          invalidated: ['scene', 'uv', 'validation', 'preview']
+          invalidated: [
+            'scene',
+            'textures',
+            'uv',
+            'validation',
+            'preview'
+          ]
         }
       }
     };

@@ -2,16 +2,26 @@
 
 import {
   useCallback,
+  useEffect,
+  useRef,
+  type Dispatch,
   type DragEvent
 } from 'react';
 
-import type { ProjectDocument } from '@ashfox/engine-core';
+import type {
+  CommandBatch,
+  ProjectDocument
+} from '@ashfox/engine-core';
 
 import {
   createProjectArtifact,
   createTargetArtifact,
   parseProjectFile
 } from './browserFileWorkflow';
+import {
+  createArtifactPreparationOperations,
+  type ArtifactPreparationRequest
+} from './artifactPreparation';
 import type { ArtifactFile } from './artifactFile';
 import type { FileOperationState } from './fileOperationState';
 import type { ProjectArchiveFile } from './projectArchive';
@@ -24,10 +34,24 @@ import {
   type GifCaptureFile
 } from '../capture/gifCaptureFile';
 import type { GifCaptureRequest } from '../capture/gifCaptureRequest';
+import type {
+  ProjectExportTarget
+} from '../workbench/presentation/projectExportTarget';
+import type {
+  CommandOutcome
+} from '../workbench/state/commandOutcome';
+import type {
+  HistoryAction
+} from '../workbench/state/historyReducer';
+import {
+  LOCAL_COMMAND_ACTOR_ID
+} from '../workbench/state/localCommandActor';
 
 interface UseProjectFileActionsInput {
   document: ProjectDocument;
   assets: ProjectAssets;
+  commandOutcome: CommandOutcome | null;
+  dispatch: Dispatch<HistoryAction>;
   onLoad: (project: ProjectArchiveFile) => void;
 }
 
@@ -38,14 +62,27 @@ interface ProjectFileActions {
   open: (file: File) => void;
   drop: (event: DragEvent<HTMLElement>) => void;
   save: () => void;
-  exportTarget: (source?: ProjectDocument) => void;
+  exportTarget: (target: ProjectExportTarget) => void;
   captureGif: (request: GifCaptureRequest) => void;
   cancel: () => void;
 }
 
+interface PendingPreparation {
+  commandId: string;
+  priorCommandId: string | null;
+  resolve: (document: ProjectDocument) => void;
+  reject: (error: Error) => void;
+  detachAbort: () => void;
+}
+
+const abortError = (): DOMException =>
+  new DOMException('File operation cancelled.', 'AbortError');
+
 export const useProjectFileActions = ({
   document,
   assets,
+  commandOutcome,
+  dispatch,
   onLoad
 }: UseProjectFileActionsInput): ProjectFileActions => {
   const {
@@ -53,6 +90,129 @@ export const useProjectFileActions = ({
     run,
     cancel
   } = useFileOperation<ArtifactFile>();
+  const pendingPreparation = useRef<PendingPreparation | null>(null);
+
+  const settlePreparation = useCallback(
+    (
+      pending: PendingPreparation,
+      result: ProjectDocument | Error
+    ): void => {
+      if (pendingPreparation.current !== pending) return;
+      pendingPreparation.current = null;
+      pending.detachAbort();
+      if (result instanceof Error) pending.reject(result);
+      else pending.resolve(result);
+    },
+    []
+  );
+
+  useEffect(() => {
+    const pending = pendingPreparation.current;
+    if (!pending || !commandOutcome) return;
+    if (commandOutcome.commandId !== pending.commandId) {
+      if (commandOutcome.commandId === pending.priorCommandId) return;
+      settlePreparation(
+        pending,
+        new Error(
+          'File preparation was superseded by another project command. Retry the operation.'
+        )
+      );
+      return;
+    }
+    if (commandOutcome.status === 'rejected') {
+      settlePreparation(
+        pending,
+        new Error(commandOutcome.error.message)
+      );
+      return;
+    }
+    if (commandOutcome.receipt.revision !== document.revision) {
+      settlePreparation(
+        pending,
+        new Error(
+          'Prepared project revision is no longer active. Retry the operation.'
+        )
+      );
+      return;
+    }
+    settlePreparation(pending, document);
+  }, [
+    commandOutcome,
+    document,
+    settlePreparation
+  ]);
+
+  useEffect(
+    () => () => {
+      const pending = pendingPreparation.current;
+      if (!pending) return;
+      pendingPreparation.current = null;
+      pending.detachAbort();
+      pending.reject(abortError());
+    },
+    []
+  );
+
+  const prepareArtifactDocument = useCallback(
+    (
+      request: ArtifactPreparationRequest,
+      signal: AbortSignal
+    ): Promise<ProjectDocument> => {
+      const operations = createArtifactPreparationOperations(
+        document,
+        request
+      );
+      if (operations.length === 0) return Promise.resolve(document);
+      if (pendingPreparation.current) {
+        return Promise.reject(
+          new Error('Another file preparation is already running.')
+        );
+      }
+      const batch: CommandBatch = {
+        batchId: crypto.randomUUID(),
+        baseRevision: document.revision,
+        operations
+      };
+      return new Promise<ProjectDocument>((resolve, reject) => {
+        if (signal.aborted) {
+          reject(abortError());
+          return;
+        }
+        const onAbort = (): void => {
+          const pending = pendingPreparation.current;
+          if (pending?.commandId !== batch.batchId) return;
+          settlePreparation(pending, abortError());
+        };
+        signal.addEventListener('abort', onAbort, { once: true });
+        const pending: PendingPreparation = {
+          commandId: batch.batchId,
+          priorCommandId: commandOutcome?.commandId ?? null,
+          resolve,
+          reject,
+          detachAbort: () =>
+            signal.removeEventListener('abort', onAbort)
+        };
+        pendingPreparation.current = pending;
+        try {
+          dispatch({
+            type: 'execute',
+            batch,
+            actorId: LOCAL_COMMAND_ACTOR_ID,
+            source: 'web',
+            committedAt: new Date().toISOString()
+          });
+        } catch (error: unknown) {
+          settlePreparation(
+            pending,
+            error instanceof Error
+              ? error
+              : new Error('Project preparation failed.')
+          );
+        }
+      });
+    },
+    [commandOutcome?.commandId, dispatch, document, settlePreparation]
+  );
 
   const open = useCallback((file: File): void => {
     void run({
@@ -93,7 +253,13 @@ export const useProjectFileActions = ({
     void run({
       kind: 'save',
       pendingMessage: 'Preparing project file',
-      execute: () => createProjectArtifact(document, assets),
+      execute: async ({ signal }) => {
+        const source = await prepareArtifactDocument(
+          { kind: 'save' },
+          signal
+        );
+        return createProjectArtifact(source, assets);
+      },
       complete: (artifact) => ({
         phase: 'succeeded',
         message: `Ready · ${artifact.name}`,
@@ -101,13 +267,19 @@ export const useProjectFileActions = ({
       }),
       failureMessage: 'Project save failed'
     });
-  }, [assets, document, run]);
+  }, [assets, prepareArtifactDocument, run]);
 
-  const exportTarget = useCallback((source = document): void => {
+  const exportTarget = useCallback((target: ProjectExportTarget): void => {
     void run({
       kind: 'export',
       pendingMessage: 'Building target export',
-      execute: () => createTargetArtifact(source, assets),
+      execute: async ({ signal }) => {
+        const source = await prepareArtifactDocument(
+          { kind: 'export', target },
+          signal
+        );
+        return createTargetArtifact(source, assets);
+      },
       complete: (artifact) => ({
         phase: 'succeeded',
         message: `Ready · ${artifact.name} · ${artifact.sourceFileCount} file${artifact.sourceFileCount === 1 ? '' : 's'}`,
@@ -115,7 +287,7 @@ export const useProjectFileActions = ({
       }),
       failureMessage: 'Target export failed'
     });
-  }, [assets, document, run]);
+  }, [assets, prepareArtifactDocument, run]);
 
   const captureGif = useCallback(
     (request: GifCaptureRequest): void => {

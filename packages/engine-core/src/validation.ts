@@ -17,6 +17,14 @@ import {
   type Vec2,
   type Vec3
 } from './model';
+import {
+  hasTextureSurfaceArea,
+  unsynchronizedGeneratedTextureIds
+} from './textures/textureRecipe';
+import {
+  MAX_PROJECT_TEXTURE_DETAILS,
+  projectTextureDetailCount
+} from './textures/surfaceDetails';
 
 export type InvariantSeverity = 'error' | 'warning' | 'info';
 
@@ -48,6 +56,7 @@ export type InvariantCode =
   | 'texture.invalid_blob'
   | 'texture.invalid_atlas_mode'
   | 'texture.invalid_raster'
+  | 'texture.recipe_unsynchronized'
   | 'animation.invalid_timing'
   | 'animation.target_missing'
   | 'animation.key_order'
@@ -105,6 +114,7 @@ export class ProjectInvariantError extends Error {
 
 const RESOURCE_NAMESPACE_PATTERN = /^[a-z0-9_.-]+$/;
 const COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+
 const RESOURCE_PATH_PATTERN = /^[a-z0-9_./-]+$/;
 const TEXTURE_KEY_PATTERN = /^[a-z0-9_.-]+$/;
 const JAVA_MODEL_PATH_PATTERN = /^[a-z0-9_./-]+$/;
@@ -269,7 +279,8 @@ const validateCube = (
   cube: CubeNode,
   document: ProjectDocument,
   path: string,
-  add: (finding: InvariantFinding) => void
+  add: (finding: InvariantFinding) => void,
+  registerId: (id: string, path: string) => void
 ): void => {
   validateVec(cube.bounds.from, 3, `${path}.bounds.from`, add, cube.id);
   validateVec(cube.bounds.to, 3, `${path}.bounds.to`, add, cube.id);
@@ -383,6 +394,85 @@ const validateCube = (
           assetIds: [face.textureId]
         });
       }
+    }
+    const faceTexture = typeof face.textureId === 'string'
+      ? document.textures[face.textureId]
+      : undefined;
+    if (
+      face.enabled &&
+      faceTexture &&
+      faceTexture.atlasMode !== 'generate' &&
+      face.uv &&
+      (
+        !Array.isArray(face.uv) ||
+        face.uv.length !== 4 ||
+        face.uv[0] < 0 ||
+        face.uv[0] > faceTexture.width ||
+        face.uv[2] < 0 ||
+        face.uv[2] > faceTexture.width ||
+        face.uv[1] < 0 ||
+        face.uv[1] > faceTexture.height ||
+        face.uv[3] < 0 ||
+        face.uv[3] > faceTexture.height
+      )
+    ) {
+      add({
+        code: 'cube.invalid_face',
+        severity: 'error',
+        message:
+          'Preserved face UV endpoints must stay inside the texture canvas.',
+        path: `${facePath}.uv`,
+        entityIds: [cube.id],
+        assetIds: [faceTexture.id]
+      });
+    }
+    if (
+      !Array.isArray(face.details) ||
+      face.details.length > 512
+    ) {
+      add({
+        code: 'cube.invalid_face',
+        severity: 'error',
+        message:
+          'Face texture details must be an array with at most 512 items.',
+        path: `${facePath}.details`,
+        entityIds: [cube.id]
+      });
+    } else {
+      face.details.forEach((detail, index) => {
+        const detailPath = `${facePath}.details.${index}`;
+        registerId(detail.id, detailPath);
+        const texture = face.textureId === null
+          ? undefined
+          : document.textures[face.textureId];
+        if (
+          !COLOR_PATTERN.test(detail.color) ||
+          [detail.u, detail.v, detail.width, detail.height].some(
+            (value) => !isFiniteNumber(value)
+          ) ||
+          detail.u < 0 ||
+          detail.v < 0 ||
+          detail.width <= 0 ||
+          detail.height <= 0 ||
+          detail.u + detail.width > 1 ||
+          detail.v + detail.height > 1 ||
+          !face.enabled ||
+          (face.rotation ?? 0) !== 0 ||
+          texture?.atlasMode !== 'generate' ||
+          !hasTextureSurfaceArea(cube, direction)
+        ) {
+          add({
+            code: 'cube.invalid_face',
+            severity: 'error',
+            message:
+              'Surface details require a positive generated face and ' +
+              'normalized color rectangles.',
+            path: detailPath,
+            entityIds: [cube.id],
+            ...(face.textureId ? { assetIds: [face.textureId] } : {})
+          });
+        }
+      });
     }
   }
   if (
@@ -2022,6 +2112,43 @@ export const validateProjectDocument = (
       path: 'settings.uvPixelsPerUnit'
     });
   }
+  const generatedTextureRecipe =
+    document.settings.generatedTextureRecipe;
+  if (
+    generatedTextureRecipe !== undefined &&
+    (
+      !Number.isInteger(generatedTextureRecipe.pixelsPerBlock) ||
+      generatedTextureRecipe.pixelsPerBlock < 1 ||
+      generatedTextureRecipe.pixelsPerBlock > 256 ||
+      !Number.isInteger(generatedTextureRecipe.padding) ||
+      generatedTextureRecipe.padding < 0 ||
+      generatedTextureRecipe.padding > 32 ||
+      !Number.isInteger(generatedTextureRecipe.maxResolution) ||
+      generatedTextureRecipe.maxResolution < 16 ||
+      generatedTextureRecipe.maxResolution > 4096 ||
+      !Number.isInteger(generatedTextureRecipe.seed) ||
+      [
+        generatedTextureRecipe.intensity,
+        generatedTextureRecipe.edge,
+        generatedTextureRecipe.noise
+      ].some(
+        (value) =>
+          !isFiniteNumber(value) ||
+          value < 0 ||
+          value > 1
+      ) ||
+      !['tl_br', 'tr_bl', 'top_bottom', 'left_right'].includes(
+        generatedTextureRecipe.lightDir
+      )
+    )
+  ) {
+    add({
+      code: 'document.invalid_setting',
+      severity: 'error',
+      message: 'Generated texture recipe values are outside their supported ranges.',
+      path: 'settings.generatedTextureRecipe'
+    });
+  }
   const coordinateSystem = document.settings.coordinateSystem;
   if (
     coordinateSystem.up !== 'y' ||
@@ -2033,7 +2160,7 @@ export const validateProjectDocument = (
     add({
       code: 'document.invalid_setting',
       severity: 'error',
-      message: 'Schema v1 requires right-handed Y-up coordinates, degree XYZ rotations, and pixel, block, or meter units.',
+      message: 'Projects require right-handed Y-up coordinates, degree XYZ rotations, and pixel, block, or meter units.',
       path: 'settings.coordinateSystem'
     });
   }
@@ -2146,7 +2273,7 @@ export const validateProjectDocument = (
     }
 
     if (node.kind === 'cube') {
-      validateCube(node, document, path, add);
+      validateCube(node, document, path, add, registerId);
     } else if (node.kind === 'mesh') {
       validateMesh(node, document, path, add, registerId);
     } else if (node.kind !== 'bone' && node.kind !== 'locator') {
@@ -2181,6 +2308,8 @@ export const validateProjectDocument = (
   };
   Object.keys(document.scene.nodes).forEach(visitNode);
 
+  const unsynchronizedTextureIds =
+    unsynchronizedGeneratedTextureIds(document);
   for (const [assetKey, texture] of Object.entries(document.textures)) {
     const path = `textures.${assetKey}`;
     registerId(texture.id, path);
@@ -2233,62 +2362,81 @@ export const validateProjectDocument = (
         assetIds: [texture.id]
       });
     }
-    if (
-      texture.raster &&
-      (
+    if (texture.raster) {
+      const canvasDetails = texture.raster.canvasDetails;
+      const invalidCanvas =
+        !Array.isArray(canvasDetails) ||
+        canvasDetails.length > 512 ||
+        canvasDetails.some((detail, index) => {
+          registerId(detail.id, `${path}.raster.canvasDetails.${index}`);
+          return (
+            texture.atlasMode === 'generate' ||
+            !COLOR_PATTERN.test(detail.color) ||
+            !Number.isInteger(detail.x) ||
+            !Number.isInteger(detail.y) ||
+            !Number.isInteger(detail.width) ||
+            !Number.isInteger(detail.height) ||
+            detail.x < 0 ||
+            detail.y < 0 ||
+            detail.width <= 0 ||
+            detail.height <= 0 ||
+            detail.x + detail.width > texture.width ||
+            detail.y + detail.height > texture.height
+          );
+        });
+      if (
         !COLOR_PATTERN.test(texture.raster.background) ||
-        !Array.isArray(texture.raster.rectangles) ||
-        texture.raster.rectangles.some(
-          (rectangle) =>
-            !Number.isInteger(rectangle.x) ||
-            !Number.isInteger(rectangle.y) ||
-            !Number.isInteger(rectangle.width) ||
-            !Number.isInteger(rectangle.height) ||
-            rectangle.x < 0 ||
-            rectangle.y < 0 ||
-            rectangle.width <= 0 ||
-            rectangle.height <= 0 ||
-            rectangle.x + rectangle.width > texture.width ||
-            rectangle.y + rectangle.height > texture.height ||
-            !COLOR_PATTERN.test(rectangle.color)
-        ) ||
-        (
-          texture.raster.pattern !== undefined &&
-          (
-            texture.raster.pattern.kind !== 'minecraft_shaded_uv' ||
-            !['tl_br', 'tr_bl', 'top_bottom', 'left_right'].includes(
-              texture.raster.pattern.lightDir
-            ) ||
-            [texture.raster.pattern.intensity, texture.raster.pattern.edge, texture.raster.pattern.noise]
-              .some((value) => !isFiniteNumber(value) || value < 0 || value > 1) ||
-            !Array.isArray(texture.raster.pattern.regions) ||
-            texture.raster.pattern.regions.some(
-              (region) =>
-                !Number.isInteger(region.x) ||
-                !Number.isInteger(region.y) ||
-                !Number.isInteger(region.width) ||
-                !Number.isInteger(region.height) ||
-                !Number.isInteger(region.seed) ||
-                region.x < 0 ||
-                region.y < 0 ||
-                region.width <= 0 ||
-                region.height <= 0 ||
-                region.x + region.width > texture.width ||
-                region.y + region.height > texture.height ||
-                !COLOR_PATTERN.test(region.color)
-            )
+        invalidCanvas
+      ) {
+        add({
+          code: 'texture.invalid_raster',
+          severity: 'error',
+          message:
+            'Texture raster colors and canvas details must match their ' +
+            'atlas mode and dimensions.',
+          path: `${path}.raster`,
+          assetIds: [texture.id]
+        });
+      }
+    }
+    const usesGeneratedRecipe =
+      texture.atlasMode === 'generate' &&
+      Object.values(document.scene.nodes).some(
+        (node) =>
+          node.kind === 'cube' &&
+          CUBE_FACE_DIRECTIONS.some(
+            (direction) =>
+              node.faces[direction].enabled &&
+              node.faces[direction].textureId === texture.id
           )
-        )
+      );
+    if (
+      usesGeneratedRecipe &&
+      (
+        !document.settings.generatedTextureRecipe ||
+        unsynchronizedTextureIds.has(texture.id)
       )
     ) {
       add({
-        code: 'texture.invalid_raster',
-        severity: 'error',
-        message: 'Texture raster rectangles and colors must fit inside the texture.',
-        path: `${path}.raster`,
+        code: 'texture.recipe_unsynchronized',
+        severity: 'warning',
+        message:
+          'Generated texture surfaces changed after the last texture synchronization.',
+        path: 'settings.generatedTextureRecipe',
         assetIds: [texture.id]
       });
     }
+  }
+
+  if (projectTextureDetailCount(document) > MAX_PROJECT_TEXTURE_DETAILS) {
+    add({
+      code: 'texture.invalid_raster',
+      severity: 'error',
+      message:
+        `A project cannot exceed ${MAX_PROJECT_TEXTURE_DETAILS} ` +
+        'texture details.',
+      path: 'textures'
+    });
   }
 
   for (const [clipKey, clip] of Object.entries(document.animations)) {

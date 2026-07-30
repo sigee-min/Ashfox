@@ -42,6 +42,14 @@ const stale = persistenceSessionReducer(saved, {
 });
 assert.equal(stale, saved);
 
+const blocked = persistenceSessionReducer(ready, {
+  type: 'error',
+  session,
+  ready: false
+});
+assert.equal(blocked.ready, false);
+assert.equal(blocked.status, 'error');
+
 const restarted = persistenceSessionReducer(saved, {
   type: 'begin',
   session: {

@@ -1,5 +1,9 @@
 import type { Transform, Vec3 } from '../../model';
 import { updateSceneNode } from '../../scene';
+import {
+  remapCubeSurfaces,
+  surfaceDetailIds
+} from '../../textures/surfaceDetails';
 import { defineCommand } from '../definition';
 import { axisSchema, entityIdsSchema } from './schemas';
 import {
@@ -66,6 +70,32 @@ export const mirrorCubesCommand = defineCommand({
         }
       };
     }
+    const preservedCubeId = payload.nodeIds.find((nodeId) => {
+      const node = document.scene.nodes[nodeId];
+      return (
+        node.kind === 'cube' &&
+        Object.values(node.faces).some(
+          (face) =>
+            face.enabled &&
+            face.textureId !== null &&
+            document.textures[face.textureId]?.atlasMode !== 'generate'
+        )
+      );
+    });
+    if (preservedCubeId) {
+      return {
+        ok: false,
+        error: {
+          code: 'invalid_state',
+          message:
+            `Cube "${preservedCubeId}" uses preserved UVs that cannot be ` +
+            'mirrored consistently across every export target.',
+          path: 'payload.nodeIds',
+          expected:
+            'cubes with generated textures or explicitly untextured faces'
+        }
+      };
+    }
     const index = axisIndex(payload.axis);
     const next = payload.nodeIds.reduce(
       (current, nodeId) =>
@@ -78,7 +108,11 @@ export const mirrorCubesCommand = defineCommand({
           return {
             ...node,
             transform: mirrorTransform(node.transform, payload.axis),
-            bounds: { from, to }
+            bounds: { from, to },
+            faces: remapCubeSurfaces(node.faces, {
+              kind: 'mirror',
+              axis: payload.axis
+            }).faces
           };
         }),
       document
@@ -90,9 +124,24 @@ export const mirrorCubesCommand = defineCommand({
         summary: `Mirror ${payload.nodeIds.length} cube${payload.nodeIds.length === 1 ? '' : 's'} on ${payload.axis.toUpperCase()}`,
         effects: {
           createdEntityIds: [],
-          changedEntityIds: payload.nodeIds,
+          changedEntityIds: [
+            ...payload.nodeIds,
+            ...payload.nodeIds.flatMap((nodeId) => {
+              const node = document.scene.nodes[nodeId];
+              return node.kind === 'cube'
+                ? surfaceDetailIds(node.faces)
+                : [];
+            })
+          ],
           removedEntityIds: [],
-          invalidated: ['scene', 'uv', 'animations', 'validation', 'preview']
+          invalidated: [
+            'scene',
+            'textures',
+            'uv',
+            'animations',
+            'validation',
+            'preview'
+          ]
         }
       }
     };

@@ -6,6 +6,7 @@ export * from './scene';
 export * from './validation';
 export * from './textures/uvAtlas';
 export * from './textures/minecraftShading';
+export * from './textures/textureRecipe';
 export * from './export/types';
 export * from './export/exportProject';
 export * from './export/shared/minecraftAnimation';

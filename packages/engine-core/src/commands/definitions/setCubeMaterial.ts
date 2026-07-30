@@ -54,12 +54,53 @@ export const setCubeMaterialCommand = defineCommand({
         }
       };
     }
+    const targetTexture = payload.textureId === null
+      ? null
+      : document.textures[payload.textureId];
+    const detailedNode = payload.nodeIds.find((nodeId) => {
+      const node = document.scene.nodes[nodeId];
+      return (
+        node.kind === 'cube' &&
+        CUBE_FACE_DIRECTIONS.some(
+          (direction) => node.faces[direction].details.length > 0
+        )
+      );
+    });
+    if (detailedNode && targetTexture?.atlasMode !== 'generate') {
+      return {
+        ok: false,
+        error: {
+          code: 'invalid_state',
+          message:
+            `Cube "${detailedNode}" owns generated surface details. ` +
+            'Remove those details before assigning no texture or a ' +
+            'preserved texture.',
+          path: 'payload.textureId',
+          expected: 'generate-mode texture'
+        }
+      };
+    }
     const next = payload.nodeIds.reduce(
       (current, nodeId) =>
         updateSceneNode(current, nodeId, (node) => {
           if (node.kind !== 'cube') return node;
+          const preserveUv = targetTexture?.atlasMode === 'preserve'
+            ? [
+                0,
+                0,
+                targetTexture.width,
+                targetTexture.height
+              ] as const
+            : null;
           return {
             ...node,
+            ...(preserveUv
+              ? {
+                  boxUv: false,
+                  mirror: false,
+                  uvOffset: undefined
+                }
+              : {}),
             ...(payload.shade === undefined ? {} : { shade: payload.shade }),
             ...(payload.lightEmission === undefined
               ? {}
@@ -69,12 +110,18 @@ export const setCubeMaterialCommand = defineCommand({
                 direction,
                 {
                   ...node.faces[direction],
-                  textureId: payload.textureId
+                  textureId: payload.textureId,
+                  ...(preserveUv
+                    ? {
+                        uv: preserveUv,
+                        rotation: 0
+                      }
+                    : {})
                 }
               ])
             ) as typeof node.faces
           };
-        }),
+      }),
       document
     );
     return {
@@ -86,7 +133,13 @@ export const setCubeMaterialCommand = defineCommand({
           createdEntityIds: [],
           changedEntityIds: payload.nodeIds,
           removedEntityIds: [],
-          invalidated: ['scene', 'textures', 'validation', 'preview']
+          invalidated: [
+            'scene',
+            'textures',
+            'uv',
+            'validation',
+            'preview'
+          ]
         }
       }
     };

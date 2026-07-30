@@ -15,8 +15,6 @@ import { defineCommand } from '../definition';
 import {
   nullableEntityIdSchema,
   partialTransformSchema,
-  uvRectSchema,
-  vec2Schema,
   vec3Schema
 } from './schemas';
 import type { CubeCreateInput } from '../types';
@@ -44,17 +42,9 @@ const cubeSchema = {
     },
     transform: partialTransformSchema,
     textureId: nullableEntityIdSchema,
-    faceUv: uvRectSchema,
     inflate: {
       type: 'number'
     },
-    mirror: {
-      type: 'boolean'
-    },
-    boxUv: {
-      type: 'boolean'
-    },
-    uvOffset: vec2Schema,
     shade: {
       type: 'boolean'
     }
@@ -86,6 +76,7 @@ const createFaces = (
       const face: CubeFace = {
         enabled: true,
         textureId,
+        details: [],
         uv,
         rotation: 0
       };
@@ -99,13 +90,19 @@ const createCubeNode = (
 ): CubeNode => {
   const textureId =
     input.textureId === undefined
-      ? Object.keys(document.textures)[0] ?? null
+      ? Object.values(document.textures)
+          .filter((texture) => texture.atlasMode === 'generate')
+          .sort((left, right) => left.id.localeCompare(right.id))[0]?.id ??
+        null
       : input.textureId;
-  const faceUv = input.faceUv ?? [
+  const texture = textureId === null
+    ? undefined
+    : document.textures[textureId];
+  const defaultUv: readonly [number, number, number, number] = [
     0,
     0,
-    document.settings.textureResolution.width,
-    document.settings.textureResolution.height
+    texture?.width ?? document.settings.textureResolution.width,
+    texture?.height ?? document.settings.textureResolution.height
   ];
   return {
     id: input.id,
@@ -119,11 +116,10 @@ const createCubeNode = (
     visible: true,
     bounds: input.bounds,
     inflate: input.inflate ?? 0,
-    mirror: input.mirror ?? false,
-    boxUv: input.boxUv ?? false,
-    ...(input.uvOffset ? { uvOffset: input.uvOffset } : {}),
+    mirror: false,
+    boxUv: false,
     ...(input.shade === undefined ? {} : { shade: input.shade }),
-    faces: createFaces(textureId, faceUv)
+    faces: createFaces(textureId, defaultUv)
   };
 };
 
@@ -206,7 +202,9 @@ export const createCubesCommand = defineCommand({
     }
 
     const shouldCreateTexture =
-      Object.keys(document.textures).length === 0 &&
+      !Object.values(document.textures).some(
+        (texture) => texture.atlasMode === 'generate'
+      ) &&
       payload.cubes.some((cube) => cube.textureId === undefined);
     const implicitTexture = shouldCreateTexture
       ? createTextureAsset(document, {

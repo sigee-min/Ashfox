@@ -65,6 +65,18 @@ assert.deepEqual(cancelled, {
   message: 'Open cancelled',
   result: null
 });
+const lateSuccessAfterCancel = fileOperationReducer(cancelled, {
+  type: 'settle',
+  operationId: 1,
+  phase: 'succeeded',
+  message: 'Late artifact',
+  result: null
+});
+assert.equal(
+  lateSuccessAfterCancel,
+  cancelled,
+  'cancel is terminal even when non-interruptible work completes later'
+);
 
 const retried = fileOperationReducer(cancelled, {
   type: 'start',

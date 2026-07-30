@@ -5,9 +5,9 @@ import {
   type LocalProjectRecord
 } from './localProjectRecord';
 
-const DATABASE_NAME = 'ashfox-local';
+const DATABASE_NAME = 'ashfox-workbench';
 const DATABASE_VERSION = 1;
-const PROJECT_STORE = 'projects';
+const PROJECT_STORE = 'project-snapshots';
 
 const requestResult = <T>(request: IDBRequest<T>): Promise<T> =>
   new Promise<T>((resolve, reject) => {
@@ -106,6 +106,10 @@ export type SaveLocalProjectResult =
   | {
       status: 'conflict';
       current: LocalProjectRecord;
+    }
+  | {
+      status: 'blocked';
+      current: LocalProjectRecord;
     };
 
 const sameProjectSnapshot = (
@@ -113,15 +117,15 @@ const sameProjectSnapshot = (
   right: LocalProjectRecord
 ): boolean => areLocalProjectRecordsEqual(left, right);
 
-const decideProjectWrite = (
+export const decideProjectWrite = (
   existing: LocalProjectRecord | undefined,
   candidate: LocalProjectRecord
 ): SaveLocalProjectResult => {
-  if (
-    !existing ||
-    !isValidLocalProjectRecord(existing, candidate.projectId)
-  ) {
+  if (!existing) {
     return { status: 'stored', current: candidate };
+  }
+  if (!isValidLocalProjectRecord(existing, candidate.projectId)) {
+    return { status: 'blocked', current: existing };
   }
 
   const revisionOrder = compareProjectRevisions(

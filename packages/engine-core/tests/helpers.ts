@@ -9,6 +9,7 @@ import {
 const face = (textureId: string): CubeFace => ({
   enabled: true,
   textureId,
+  details: [],
   uv: [0, 0, 16, 16],
   rotation: 0
 });
@@ -101,7 +102,7 @@ export const createJavaProject = (): ProjectDocument => ({
       colorSpace: 'srgb',
       renderMode: 'default',
       renderSides: 'front',
-      atlasMode: 'generate',
+      atlasMode: 'preserve',
       minecraft: {
         key: 'base',
         resource: {

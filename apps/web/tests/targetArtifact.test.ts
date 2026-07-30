@@ -7,6 +7,7 @@ import {
 } from '@ashfox/engine-core';
 
 import {
+  createProjectArtifact,
   createTargetArtifact
 } from '../src/features/files/browserFileWorkflow';
 import { readStoredZip } from '../src/features/files/zip';
@@ -54,9 +55,8 @@ const authorProject = (): ProjectDocument => {
         }
       },
       {
-        name: 'textures.uvAtlas.generate',
+        name: 'textures.sync',
         payload: {
-          target: { scope: 'all' },
           pixelsPerBlock: 16,
           padding: 1,
           maxResolution: 128,
@@ -82,6 +82,7 @@ const authorProject = (): ProjectDocument => {
       ...result.document.textures,
       'texture-base': {
         ...importedTexture,
+        atlasMode: 'preserve',
         source: {
           ...importedTexture.source,
           byteLength: texturePng.byteLength
@@ -116,6 +117,46 @@ const projectFor = (
 };
 
 export const test = (async () => {
+  const blank = createBlankWorkbenchProject(
+    '2026-07-30T00:00:00.000Z'
+  );
+  const authored = executeCommandBatch(blank, {
+    batchId: 'batch-web-unsynchronized-fixture',
+    baseRevision: blank.revision,
+    operations: [{
+      name: 'scene.bones.create',
+      payload: {
+        bones: [{
+          id: 'bone-unsynchronized',
+          name: 'root',
+          parentId: null
+        }]
+      }
+    }, {
+      name: 'scene.cubes.create',
+      payload: {
+        cubes: [{
+          id: 'cube-unsynchronized',
+          name: 'body',
+          parentId: 'bone-unsynchronized',
+          bounds: {
+            from: [0, 0, 0],
+            to: [4, 4, 4]
+          }
+        }]
+      }
+    }]
+  });
+  if (!authored.ok) throw new Error(authored.error.message);
+  await assert.rejects(
+    () => createProjectArtifact(authored.document, {}),
+    /textures\.sync/
+  );
+  await assert.rejects(
+    () => createTargetArtifact(authored.document, {}),
+    /textures\.sync/
+  );
+
   const source = authorProject();
   const assets = {
     'texture-base': {

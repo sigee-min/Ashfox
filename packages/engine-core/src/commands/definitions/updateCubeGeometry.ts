@@ -1,11 +1,6 @@
-import { CUBE_FACE_DIRECTIONS } from '../../model';
 import { updateSceneNode } from '../../scene';
 import { defineCommand } from '../definition';
-import {
-  uvRectSchema,
-  vec2Schema,
-  vec3Schema
-} from './schemas';
+import { vec3Schema } from './schemas';
 
 const inputSchema = {
   type: 'object',
@@ -30,22 +25,7 @@ const inputSchema = {
           },
           inflate: {
             type: 'number'
-          },
-          mirror: {
-            type: 'boolean'
-          },
-          boxUv: {
-            type: 'boolean'
-          },
-          uvOffset: {
-            anyOf: [
-              vec2Schema,
-              {
-                enum: [null]
-              }
-            ]
-          },
-          faceUv: uvRectSchema
+          }
         },
         required: ['nodeId'],
         additionalProperties: false
@@ -58,27 +38,11 @@ const inputSchema = {
   additionalProperties: false
 } as const;
 
-const hasGeometryChange = (
-  update: {
-    bounds?: unknown;
-    inflate?: unknown;
-    mirror?: unknown;
-    boxUv?: unknown;
-    uvOffset?: unknown;
-    faceUv?: unknown;
-  }
-): boolean =>
-  update.bounds !== undefined ||
-  update.inflate !== undefined ||
-  update.mirror !== undefined ||
-  update.boxUv !== undefined ||
-  update.uvOffset !== undefined ||
-  update.faceUv !== undefined;
-
 export const updateCubeGeometryCommand = defineCommand({
   name: 'scene.cubes.geometry.update',
   label: 'Update cube geometry',
-  purpose: 'Update existing cube bounds and box or face UV geometry.',
+  purpose:
+    'Update cube bounds or inflation; generated UVs remain owned by texture synchronization.',
   inputSchema,
   apply: (document, payload) => {
     const ids = payload.updates.map((update) => update.nodeId);
@@ -89,7 +53,9 @@ export const updateCubeGeometryCommand = defineCommand({
       (nodeId) => document.scene.nodes[nodeId]?.kind !== 'cube'
     );
     const emptyUpdate = payload.updates.find(
-      (update) => !hasGeometryChange(update)
+      (update) =>
+        update.bounds === undefined &&
+        update.inflate === undefined
     );
     if (duplicateId || missingOrNonCube || emptyUpdate) {
       return {
@@ -102,7 +68,7 @@ export const updateCubeGeometryCommand = defineCommand({
             ? `Cube "${duplicateId}" is updated more than once.`
             : missingOrNonCube
               ? `Scene node "${missingOrNonCube}" is not an existing cube.`
-              : 'Cube geometry update must change at least one property.',
+              : 'Cube geometry update must change bounds or inflation.',
           path: 'payload.updates'
         }
       };
@@ -111,17 +77,6 @@ export const updateCubeGeometryCommand = defineCommand({
       (current, update) =>
         updateSceneNode(current, update.nodeId, (node) => {
           if (node.kind !== 'cube') return node;
-          const faces = update.faceUv
-            ? Object.fromEntries(
-                CUBE_FACE_DIRECTIONS.map((direction) => [
-                  direction,
-                  {
-                    ...node.faces[direction],
-                    uv: update.faceUv
-                  }
-                ])
-              ) as typeof node.faces
-            : node.faces;
           return {
             ...node,
             ...(update.bounds === undefined
@@ -129,19 +84,7 @@ export const updateCubeGeometryCommand = defineCommand({
               : { bounds: update.bounds }),
             ...(update.inflate === undefined
               ? {}
-              : { inflate: update.inflate }),
-            ...(update.mirror === undefined
-              ? {}
-              : { mirror: update.mirror }),
-            ...(update.boxUv === undefined
-              ? {}
-              : { boxUv: update.boxUv }),
-            ...(update.uvOffset === undefined
-              ? {}
-              : update.uvOffset === null
-                ? { uvOffset: undefined }
-                : { uvOffset: update.uvOffset }),
-            faces
+              : { inflate: update.inflate })
           };
         }),
       document

@@ -3,6 +3,7 @@ import type {
   AnimationEffect,
   AnimationLoopMode,
   AnimationVec3,
+  CubeFaceDirection,
   EntityId,
   KeyframeInterpolation,
   ProjectDocument,
@@ -10,8 +11,6 @@ import type {
   Revision,
   TransformChannelProperty,
   Transform,
-  UvRect,
-  Vec2,
   Vec3
 } from '../model';
 import type { InvariantFinding } from '../validation';
@@ -63,11 +62,7 @@ export interface CubeCreateInput {
   };
   transform?: Partial<Transform>;
   textureId?: AssetId | null;
-  faceUv?: UvRect;
   inflate?: number;
-  mirror?: boolean;
-  boxUv?: boolean;
-  uvOffset?: Vec2;
   shade?: boolean;
 }
 
@@ -85,10 +80,6 @@ export interface CubeGeometryUpdateInput {
     to: Vec3;
   };
   inflate?: number;
-  mirror?: boolean;
-  boxUv?: boolean;
-  uvOffset?: Vec2 | null;
-  faceUv?: UvRect;
 }
 
 export interface NodeRenameInput {
@@ -103,6 +94,28 @@ export interface TextureCreateInput {
   height?: number;
   atlasMode?: 'generate' | 'preserve';
   background?: string;
+}
+
+export interface TextureDetailUpsertInput {
+  id: EntityId;
+  color: string;
+  anchor:
+    | {
+        kind: 'surface';
+        nodeId: EntityId;
+        face: CubeFaceDirection;
+        u: number;
+        v: number;
+        width: number;
+        height: number;
+      }
+    | {
+        kind: 'canvas';
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      };
 }
 
 export interface TransformKeyInput {
@@ -208,10 +221,6 @@ export interface CommandPayloadMap {
     nodeIds: readonly EntityId[];
     parentId: EntityId | null;
   };
-  'scene.cubes.uv.fit': {
-    nodeIds: readonly EntityId[];
-    padding: number;
-  };
   'scene.cubes.material': {
     nodeIds: readonly EntityId[];
     textureId: AssetId | null;
@@ -221,41 +230,28 @@ export interface CommandPayloadMap {
   'textures.create': {
     textures: readonly TextureCreateInput[];
   };
-  'textures.preview.set': {
-    textureId: AssetId;
-    color: string;
-  };
   'textures.rename': {
     textureId: AssetId;
     name: string;
   };
-  'textures.raster.set': {
+  'textures.details.upsert': {
     textureId: AssetId;
-    background: string;
-    atlasMode?: 'generate' | 'preserve';
-    rectangles: readonly {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      color: string;
-    }[];
+    background?: string;
+    upsert?: readonly TextureDetailUpsertInput[];
+    removeIds?: readonly EntityId[];
   };
   'textures.delete': {
     textureIds: readonly AssetId[];
   };
-  'textures.uvAtlas.generate': {
-    target:
-      | { scope: 'all' }
-      | { nodeIds: readonly EntityId[] };
-    pixelsPerBlock: number;
-    padding: number;
-    maxResolution: number;
-    seed: number;
-    intensity: number;
-    edge: number;
-    noise: number;
-    lightDir: 'tl_br' | 'tr_bl' | 'top_bottom' | 'left_right';
+  'textures.sync': {
+    pixelsPerBlock?: number;
+    padding?: number;
+    maxResolution?: number;
+    seed?: number;
+    intensity?: number;
+    edge?: number;
+    noise?: number;
+    lightDir?: 'tl_br' | 'tr_bl' | 'top_bottom' | 'left_right';
   };
   'animation.clip.upsert': {
     id: string;

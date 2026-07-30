@@ -99,6 +99,12 @@ export const deleteTexturesCommand = defineCommand({
       }
     }
     const deleted = new Set(payload.textureIds);
+    const deletedDetailIds = payload.textureIds.flatMap(
+      (textureId) =>
+        document.textures[textureId].raster?.canvasDetails.map(
+          (detail) => detail.id
+        ) ?? []
+    );
     const textures = Object.fromEntries(
       Object.entries(document.textures).filter(
         ([textureId]) => !deleted.has(textureId)
@@ -118,7 +124,10 @@ export const deleteTexturesCommand = defineCommand({
         effects: {
           createdEntityIds: [],
           changedEntityIds: [],
-          removedEntityIds: payload.textureIds,
+          removedEntityIds: [
+            ...payload.textureIds,
+            ...deletedDetailIds
+          ],
           invalidated: [
             'textures',
             'uv',

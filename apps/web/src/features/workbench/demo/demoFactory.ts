@@ -7,7 +7,6 @@ import {
   type ProjectCommandOperation,
   type ProjectDocument,
   type TextureAsset,
-  type TextureRasterRectangle,
   type TransformChannelInput,
   type Vec3
 } from '@ashfox/engine-core';
@@ -18,12 +17,19 @@ import {
   type HistoryState
 } from '../state/historyReducer';
 
+interface DemoRasterRectangle {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  color: string;
+}
+
 export interface DemoTextureSpec {
   id: string;
   name: string;
-  previewColor: string;
   background: string;
-  rectangles: readonly TextureRasterRectangle[];
+  details: readonly DemoRasterRectangle[];
   atlasMode: NonNullable<TextureAsset['atlasMode']>;
   renderMode?: TextureAsset['renderMode'];
 }
@@ -72,7 +78,8 @@ const chunk = <T>(
 const textureAsset = (
   definition: DemoDefinition,
   texture: DemoTextureSpec
-): TextureAsset => ({
+): TextureAsset => {
+  return {
   id: texture.id,
   name: texture.name,
   width: 128,
@@ -90,10 +97,24 @@ const textureAsset = (
   renderSides: 'double',
   atlasMode: texture.atlasMode,
   pbrChannel: 'color',
+  raster: {
+    background: texture.background,
+    canvasDetails: texture.atlasMode === 'preserve'
+      ? texture.details.map((rectangle, index) => ({
+          id: `${texture.id}-detail-${index + 1}`,
+          color: rectangle.color,
+          x: rectangle.x,
+          y: rectangle.y,
+          width: rectangle.width,
+          height: rectangle.height
+        }))
+      : []
+  },
   metadata: {
-    previewColor: texture.previewColor
+    previewColor: texture.background
   }
-});
+  };
+};
 
 const createBaseProject = (
   definition: DemoDefinition
@@ -156,19 +177,6 @@ const layerBones = (
   }
   return layers;
 };
-
-const textureStages = (
-  definition: DemoDefinition
-): readonly ProjectCommandOperation[] =>
-  definition.textures.map((texture) => ({
-    name: 'textures.raster.set',
-    payload: {
-      textureId: texture.id,
-      background: texture.background,
-      atlasMode: texture.atlasMode,
-      rectangles: texture.rectangles
-    }
-  }));
 
 interface MaterialGroup {
   textureId: string;
@@ -262,12 +270,10 @@ const buildStages = (
       }))
     }
   }]),
-  [ ...textureStages(definition) ],
   [ ...materialStages(definition) ],
   [{
-    name: 'textures.uvAtlas.generate',
+    name: 'textures.sync',
     payload: {
-      target: { scope: 'all' },
       pixelsPerBlock: 16,
       padding: 1,
       maxResolution: 1024,
@@ -370,7 +376,6 @@ export const demoCube = (
       pivot,
       ...(options.rotation ? { rotation: options.rotation } : {})
     },
-    faceUv: [0, 0, 128, 128],
     inflate: options.inflate ?? 0,
     shade: options.shade ?? true
   },

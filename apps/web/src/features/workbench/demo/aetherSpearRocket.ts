@@ -364,35 +364,31 @@ export const AETHER_SPEAR_ROCKET_DEMO: DemoDefinition = {
     {
       id: T.hull,
       name: 'Ceramic hull',
-      previewColor: '#d9d4c8',
-      background: '#aaa89f',
+      background: '#e6e1d5',
       atlasMode: 'generate',
-      rectangles: [{ x: 18, y: 18, width: 92, height: 92, color: '#e6e1d5' }]
+      details: []
     },
     {
       id: T.carbon,
       name: 'Carbon structure',
-      previewColor: '#17202b',
-      background: '#10161d',
+      background: '#25313e',
       atlasMode: 'generate',
-      rectangles: [{ x: 20, y: 20, width: 88, height: 88, color: '#25313e' }]
+      details: []
     },
     {
       id: T.gold,
       name: 'Runic gold',
-      previewColor: '#d9a441',
-      background: '#90621f',
+      background: '#edbd5c',
       atlasMode: 'generate',
-      rectangles: [{ x: 18, y: 18, width: 92, height: 92, color: '#edbd5c' }]
+      details: []
     },
     {
       id: T.window,
       name: 'Aether window',
-      previewColor: '#55c8dd',
       background: '#123b52',
       atlasMode: 'preserve',
       renderMode: 'emissive',
-      rectangles: [
+      details: [
         { x: 8, y: 8, width: 112, height: 112, color: '#2c92ae' },
         { x: 24, y: 18, width: 70, height: 26, color: '#a8f3ff' }
       ]
@@ -400,11 +396,10 @@ export const AETHER_SPEAR_ROCKET_DEMO: DemoDefinition = {
     {
       id: T.engine,
       name: 'Engine plasma',
-      previewColor: '#77e8ff',
       background: '#0a3251',
       atlasMode: 'preserve',
       renderMode: 'additive',
-      rectangles: [
+      details: [
         { x: 10, y: 10, width: 108, height: 108, color: '#37b8e0' },
         { x: 30, y: 24, width: 68, height: 82, color: '#d5fbff' }
       ]
@@ -412,11 +407,10 @@ export const AETHER_SPEAR_ROCKET_DEMO: DemoDefinition = {
     {
       id: T.rune,
       name: 'Aether rune',
-      previewColor: '#b76cff',
       background: '#38134f',
       atlasMode: 'preserve',
       renderMode: 'emissive',
-      rectangles: [
+      details: [
         { x: 8, y: 8, width: 112, height: 112, color: '#8141c5' },
         { x: 32, y: 18, width: 18, height: 92, color: '#e0b5ff' },
         { x: 18, y: 50, width: 92, height: 18, color: '#e0b5ff' }

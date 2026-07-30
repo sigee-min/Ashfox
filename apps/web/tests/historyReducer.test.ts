@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 import { createWorkbenchProject } from '../src/features/workbench/sampleProject';
+import { LOCAL_PROJECT_SCHEMA_VERSION } from '../src/features/workbench/persistence/localProjectRecord';
 import {
   createHistoryState,
   historyReducer
@@ -31,7 +32,7 @@ assert.equal(committed.lastCommandOutcome?.commandId, 'test-commit');
 const identicalHydration = historyReducer(committed, {
   type: 'hydrate',
   record: {
-    schemaVersion: 1,
+    schemaVersion: LOCAL_PROJECT_SCHEMA_VERSION,
     projectId: committed.present.id,
     revision: committed.present.revision,
     document: committed.present,
@@ -108,7 +109,7 @@ const importedDocument = {
 const imported = historyReducer(rejected, {
   type: 'hydrate',
   record: {
-    schemaVersion: 1,
+    schemaVersion: LOCAL_PROJECT_SCHEMA_VERSION,
     projectId: importedDocument.id,
     revision: importedDocument.revision,
     document: importedDocument,

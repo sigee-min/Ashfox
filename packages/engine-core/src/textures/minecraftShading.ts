@@ -95,7 +95,7 @@ export const shadeMinecraftPixel = (
   );
   const edgeRatio = 1 - clamp(borderDistance / edgeSpan, 0, 1);
   const jitter = (
-    deterministicPixelNoise(x, y, config.seed) * 2 - 1
+    deterministicPixelNoise(localX, localY, config.seed) * 2 - 1
   ) * noise;
   const scale = 1 - direction * intensity - edgeRatio * edge + jitter;
   return {

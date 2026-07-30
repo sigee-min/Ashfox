@@ -3,6 +3,7 @@ import type {
   AnimationEffectValue,
   ProjectDocument
 } from '../../model';
+import { surfaceDetailIds } from '../../textures/surfaceDetails';
 import { defineCommand } from '../definition';
 import { entityIdsSchema } from './schemas';
 import { findMissingNodeId } from './sceneHelpers';
@@ -123,12 +124,16 @@ export const deleteNodesCommand = defineCommand({
       };
     }
     const deleted = collectDescendants(document, payload.nodeIds);
+    const deletedDetailIds = [...deleted].flatMap((nodeId) => {
+      const node = document.scene.nodes[nodeId];
+      return node?.kind === 'cube' ? surfaceDetailIds(node.faces) : [];
+    });
     const nodes = Object.fromEntries(
       Object.entries(document.scene.nodes).filter(
         ([nodeId]) => !deleted.has(nodeId)
       )
     );
-    const next: ProjectDocument = {
+    const next = {
       ...document,
       scene: {
         roots: document.scene.roots.filter((nodeId) => !deleted.has(nodeId)),
@@ -144,8 +149,15 @@ export const deleteNodesCommand = defineCommand({
         effects: {
           createdEntityIds: [],
           changedEntityIds: [],
-          removedEntityIds: [...deleted],
-          invalidated: ['scene', 'animations', 'validation', 'preview']
+          removedEntityIds: [...deleted, ...deletedDetailIds],
+          invalidated: [
+            'scene',
+            'textures',
+            'uv',
+            'animations',
+            'validation',
+            'preview'
+          ]
         }
       }
     };

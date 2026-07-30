@@ -72,7 +72,7 @@ assert.match(manifest.pageApi.inspect.current, /typed scene/);
 assert.match(manifest.completionContract.defaultScope.model, /Required/);
 assert.match(
   manifest.completionContract.defaultScope.texture,
-  /non-placeholder/
+  /textureContract/
 );
 assert.match(
   manifest.completionContract.defaultScope.idleAnimation,
@@ -119,12 +119,71 @@ assert.match(
   manifest.completionContract.reviewGates.form,
   /coarse stage/
 );
+assert.match(manifest.completionContract.reviewGates.texture, /textureContract/);
+assert.match(manifest.textureContract.authority, /derived/);
+assert.match(
+  manifest.textureContract.generated.bootstrap,
+  /omit textureId/
+);
+assert.match(
+  manifest.textureContract.generated.synchronize,
+  /only generated UV and base-shading operation/
+);
+assert.match(
+  manifest.textureContract.generated.triggers,
+  /Detail-only edits/
+);
+assert.deepEqual(
+  manifest.textureContract.generated.recipe.defaults,
+  {
+    pixelsPerBlock: 16,
+    padding: 1,
+    maxResolution: 256,
+    seed: 1095977030,
+    intensity: 0.22,
+    edge: 0.12,
+    noise: 0.06,
+    lightDir: 'tl_br'
+  }
+);
+assert.match(
+  manifest.textureContract.generated.shading,
+  /Minecraft-style shading/
+);
+assert.match(
+  manifest.textureContract.generated.shading,
+  /same pixels/
+);
+assert.match(
+  manifest.textureContract.generated.terminal,
+  /no_change/
+);
+assert.match(
+  manifest.textureContract.details.generated,
+  /surface anchors/
+);
+assert.match(
+  manifest.textureContract.details.ownership,
+  /exactly one texture owner/
+);
+assert.match(
+  manifest.textureContract.details.reassignment,
+  /Generated-to-generated/
+);
+assert.match(
+  manifest.textureContract.preserve.imported,
+  /source pixels and is immutable/
+);
+assert.match(
+  manifest.textureContract.review,
+  /automatic shading/
+);
 assert.match(manifest.exportContract.precondition, /completionContract/);
 assert.ok(
   manifest.rules.some((rule) =>
-    rule.includes('atlasMode preserve')
+    rule.includes('textureContract')
   ),
-  'the AI workflow must preserve authored texture meaning'
+  'the AI workflow must use the canonical texture contract'
 );
 assert.match(manifest.setup.manifest, /such as curl/);
 assert.match(manifest.setup.manifest, /Never navigate/);
@@ -156,7 +215,6 @@ assert.match(
   /scene\.locators\.create/
 );
 assert.match(manifest.authoringModel.hierarchy, /scene\.nodes\.delete/);
-assert.match(manifest.authoringModel.textures, /textures\.delete/);
 assert.match(
   manifest.authoringModel.animation,
   /animation\.tracks\.delete/
@@ -294,7 +352,7 @@ assertAttributeIsRendered(
 );
 
 assert.ok(
-  Buffer.byteLength(JSON.stringify(manifest)) <= 65_536,
+  Buffer.byteLength(JSON.stringify(manifest)) <= 40_960,
   'the complete machine guide must remain practical to fetch in one request'
 );
 assert.deepEqual(
@@ -333,6 +391,11 @@ assert.equal(manifest.delivery.requestedPath, 'workspace-relative directory');
 assert.equal(manifest.delivery.defaultDirectory, 'artifacts/');
 assert.equal(manifest.delivery.owner, 'agent host');
 assert.equal(manifest.delivery.steps.length, 3);
+assert.equal(
+  new Set(manifest.delivery.steps).size,
+  manifest.delivery.steps.length,
+  'delivery steps must not repeat'
+);
 const deliveryContract = [
   ...manifest.delivery.steps,
   manifest.delivery.fallback
@@ -348,6 +411,17 @@ assert.match(deliveryContract, /never claim a workspace save/);
 assert.ok(manifest.rules.length <= 10);
 for (const rule of manifest.rules) {
   assert.ok(rule.length <= 180, 'manual rules must stay focused');
+}
+const serializedManifest = JSON.stringify(manifest);
+for (const removedCommand of [
+  'textures.preview.set',
+  'textures.raster.set',
+  'textures.uvAtlas.generate'
+]) {
+  assert.ok(
+    !serializedManifest.includes(removedCommand),
+    `the manifest must not retain ${removedCommand}`
+  );
 }
 
 const document = createGltfProject();
@@ -400,7 +474,6 @@ if (result.ok) {
   assert.ok(data.commands.includes('scene.cubes.geometry.update'));
   assert.ok(data.commands.includes('scene.nodes.rename'));
   assert.ok(data.commands.includes('scene.nodes.delete'));
-  assert.ok(data.commands.includes('scene.cubes.uv.fit'));
   assert.ok(data.commands.includes('textures.create'));
   assert.equal(data.counts.nodes, 3);
   assert.equal(data.counts.bones, 1);

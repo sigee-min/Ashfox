@@ -66,9 +66,8 @@ const authorProject = (target: ExportPreset): ProjectDocument => {
       }
     },
     {
-      name: 'textures.uvAtlas.generate',
+      name: 'textures.sync',
       payload: {
-        target: { scope: 'all' },
         pixelsPerBlock: 16,
         padding: 1,
         maxResolution: 128,

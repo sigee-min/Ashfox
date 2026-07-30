@@ -51,6 +51,7 @@ export const useFileOperation = <TResult>(): FileOperationController<TResult> =>
   const activeRef = useRef<{
     operationId: number;
     controller: AbortController;
+    cancelledMessage: string;
   } | null>(null);
 
   const run = useCallback(
@@ -59,7 +60,12 @@ export const useFileOperation = <TResult>(): FileOperationController<TResult> =>
       const operationId = serialRef.current + 1;
       serialRef.current = operationId;
       const controller = new AbortController();
-      activeRef.current = { operationId, controller };
+      activeRef.current = {
+        operationId,
+        controller,
+        cancelledMessage:
+          spec.cancelledMessage ?? 'Operation cancelled'
+      };
       dispatch({
         type: 'start',
         operationId,
@@ -73,6 +79,12 @@ export const useFileOperation = <TResult>(): FileOperationController<TResult> =>
             dispatch({ type: 'progress', operationId, message });
           }
         });
+        if (controller.signal.aborted) {
+          throw new DOMException(
+            'Operation cancelled.',
+            'AbortError'
+          );
+        }
         const completion = spec.complete(value);
         dispatch({
           type: 'settle',
@@ -104,7 +116,17 @@ export const useFileOperation = <TResult>(): FileOperationController<TResult> =>
   );
 
   const cancel = useCallback((): void => {
-    activeRef.current?.controller.abort();
+    const active = activeRef.current;
+    if (!active) return;
+    activeRef.current = null;
+    active.controller.abort();
+    dispatch({
+      type: 'settle',
+      operationId: active.operationId,
+      phase: 'cancelled',
+      message: active.cancelledMessage,
+      result: null
+    });
   }, []);
 
   return { state, run, cancel };

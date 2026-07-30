@@ -11,6 +11,9 @@ import {
 
 import { renderTextureRaster } from '../textures/renderTextureRaster';
 import {
+  projectNeedsTextureSynchronization
+} from '../textures/textureSyncCommand';
+import {
   createProjectArchive,
   readProjectArchive,
   type ProjectArchiveFile
@@ -26,6 +29,8 @@ import {
 } from './artifactFile';
 
 const ASHFOX_CONTENT_TYPE = 'application/vnd.ashfox.project+zip';
+const UNSYNCHRONIZED_TEXTURE_MESSAGE =
+  'Generated textures must be synchronized through textures.sync before creating a file.';
 
 export interface TargetArtifactFile extends ArtifactFile {
   kind: 'target';
@@ -41,13 +46,23 @@ export const parseProjectFile = async (
   return readProjectArchive(new Uint8Array(await file.arrayBuffer()));
 };
 
+const assertArtifactDocumentReady = (
+  document: ProjectDocument
+): void => {
+  if (projectNeedsTextureSynchronization(document)) {
+    throw new Error(UNSYNCHRONIZED_TEXTURE_MESSAGE);
+  }
+};
+
 export const createProjectArtifact = async (
   document: ProjectDocument,
   assets: ProjectAssets
 ): Promise<ArtifactFile> => {
+  assertArtifactDocumentReady(document);
   const bytes = await createProjectArchive(
     document,
-    (texture) => resolveTextureAsset(texture, assets)
+    (texture) =>
+      resolveTextureAsset(document, texture, assets)
   );
   return {
     kind: 'project',
@@ -68,9 +83,10 @@ const textureForSource = (
   );
 
 const canvasPng = async (
+  document: ProjectDocument,
   texture: TextureAsset
 ): Promise<Uint8Array> => {
-  const canvas = renderTextureRaster(texture);
+  const canvas = renderTextureRaster(document, texture);
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((value) => {
       if (value) resolve(value);
@@ -81,6 +97,7 @@ const canvasPng = async (
 };
 
 const generatedPng = async (
+  document: ProjectDocument,
   texture: TextureAsset
 ): Promise<ProjectAsset> => {
   if (texture.source.contentType !== 'image/png') {
@@ -89,16 +106,17 @@ const generatedPng = async (
     );
   }
   return {
-    bytes: await canvasPng(texture),
+    bytes: await canvasPng(document, texture),
     contentType: 'image/png'
   };
 };
 
 const resolveTextureAsset = async (
+  document: ProjectDocument,
   texture: TextureAsset,
   assets: ProjectAssets
 ): Promise<ProjectAsset> => {
-  if (texture.raster) return generatedPng(texture);
+  if (texture.raster) return generatedPng(document, texture);
   const stored = assets[texture.id];
   if (stored) {
     return {
@@ -106,7 +124,7 @@ const resolveTextureAsset = async (
       bytes: new Uint8Array(stored.bytes)
     };
   }
-  return generatedPng(texture);
+  return generatedPng(document, texture);
 };
 
 const resolveTexture = async (
@@ -115,7 +133,9 @@ const resolveTexture = async (
   source: BlobRef
 ): Promise<ResolvedBlob | null> => {
   const texture = textureForSource(document, source);
-  return texture ? resolveTextureAsset(texture, assets) : null;
+  return texture
+    ? resolveTextureAsset(document, texture, assets)
+    : null;
 };
 
 const withoutGeneratedRasterLengths = (
@@ -143,14 +163,24 @@ const withoutGeneratedRasterLengths = (
 const createExportBundle = async (
   document: ProjectDocument,
   assets: ProjectAssets
-): Promise<ExportBundle> => {
-  const exportDocument = withoutGeneratedRasterLengths(document);
-  return exportDocument.formatProfile.id === 'gltf.2'
-    ? exportProjectResolved(exportDocument, {
+): Promise<{
+  document: ProjectDocument;
+  bundle: ExportBundle;
+}> => {
+  assertArtifactDocumentReady(document);
+  const exportDocument = withoutGeneratedRasterLengths(
+    document
+  );
+  const bundle = exportDocument.formatProfile.id === 'gltf.2'
+    ? await exportProjectResolved(exportDocument, {
         resolveBlob: (source) =>
           resolveTexture(exportDocument, assets, source)
       })
     : exportProject(exportDocument);
+  return {
+    document: exportDocument,
+    bundle
+  };
 };
 
 const fileBytes = async (
@@ -182,11 +212,12 @@ export const createTargetArtifact = async (
   document: ProjectDocument,
   assets: ProjectAssets
 ): Promise<TargetArtifactFile> => {
-  const bundle = await createExportBundle(document, assets);
+  const prepared = await createExportBundle(document, assets);
+  const { bundle } = prepared;
   const entries = await Promise.all(
     bundle.files.map(async (file) => ({
       path: file.path,
-      bytes: await fileBytes(document, assets, file)
+      bytes: await fileBytes(prepared.document, assets, file)
     }))
   );
   const name = safeArtifactName(document.name);

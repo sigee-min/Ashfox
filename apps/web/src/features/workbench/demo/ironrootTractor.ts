@@ -274,43 +274,38 @@ export const IRONROOT_TRACTOR_DEMO: DemoDefinition = {
     {
       id: T.iron,
       name: 'Forged iron',
-      previewColor: '#3b4448',
-      background: '#2c3336',
+      background: '#4b565a',
       atlasMode: 'generate',
-      rectangles: [{ x: 24, y: 24, width: 80, height: 80, color: '#4b565a' }]
+      details: []
     },
     {
       id: T.green,
       name: 'Ironroot enamel',
-      previewColor: '#3e6b43',
-      background: '#27472d',
+      background: '#4f7d50',
       atlasMode: 'generate',
-      rectangles: [{ x: 18, y: 18, width: 92, height: 92, color: '#4f7d50' }]
+      details: []
     },
     {
       id: T.brass,
       name: 'Warm brass',
-      previewColor: '#c38b3b',
-      background: '#8f5d24',
+      background: '#d4a14a',
       atlasMode: 'generate',
-      rectangles: [{ x: 20, y: 20, width: 88, height: 88, color: '#d4a14a' }]
+      details: []
     },
     {
       id: T.rubber,
       name: 'Deep tread',
-      previewColor: '#171a1c',
-      background: '#111315',
+      background: '#242a2d',
       atlasMode: 'generate',
-      rectangles: [{ x: 20, y: 20, width: 88, height: 88, color: '#242a2d' }]
+      details: []
     },
     {
       id: T.glass,
       name: 'Cab glass',
-      previewColor: '#5d9ca6',
       background: '#315b65',
       atlasMode: 'preserve',
       renderMode: 'layered',
-      rectangles: [
+      details: [
         { x: 8, y: 8, width: 112, height: 112, color: '#75b7c0' },
         { x: 18, y: 18, width: 35, height: 12, color: '#c0edf0' }
       ]
@@ -318,11 +313,10 @@ export const IRONROOT_TRACTOR_DEMO: DemoDefinition = {
     {
       id: T.lamp,
       name: 'Sunlamp',
-      previewColor: '#fff0a2',
       background: '#8b4d16',
       atlasMode: 'preserve',
       renderMode: 'emissive',
-      rectangles: [
+      details: [
         { x: 8, y: 8, width: 112, height: 112, color: '#ffd65a' },
         { x: 28, y: 28, width: 72, height: 72, color: '#fff4bb' },
         { x: 48, y: 38, width: 22, height: 22, color: '#ffffff' }

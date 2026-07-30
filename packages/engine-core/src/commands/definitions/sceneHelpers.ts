@@ -4,6 +4,7 @@ import type {
   SceneNode,
   Vec3
 } from '../../model';
+import { remapCubeSurfaces } from '../../textures/surfaceDetails';
 import type { SceneAxis } from '../types';
 
 export const axisIndex = (axis: SceneAxis): 0 | 1 | 2 => {
@@ -40,12 +41,10 @@ export const cloneCube = (
     from: offsetVec3(source.bounds.from, offset),
     to: offsetVec3(source.bounds.to, offset)
   },
-  faces: Object.fromEntries(
-    Object.entries(source.faces).map(([direction, face]) => [
-      direction,
-      { ...face }
-    ])
-  ) as CubeNode['faces']
+  faces: remapCubeSurfaces(source.faces, {
+    kind: 'copy',
+    targetNodeId: id
+  }).faces
 });
 
 export const findMissingNodeId = (

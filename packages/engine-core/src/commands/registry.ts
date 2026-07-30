@@ -13,8 +13,6 @@ import {
 import { deleteNodesCommand } from './definitions/deleteNodes';
 import { deleteTexturesCommand } from './definitions/deleteTextures';
 import { duplicateCubesCommand } from './definitions/duplicateCubes';
-import { fitCubeUvCommand } from './definitions/fitCubeUv';
-import { generateMinecraftUvAtlasCommand } from './definitions/generateMinecraftUvAtlas';
 import { mirrorAnimationChannelsCommand } from './definitions/mirrorAnimationChannels';
 import { mirrorCubesCommand } from './definitions/mirrorCubes';
 import { phaseAnimationChannelsCommand } from './definitions/phaseAnimationChannels';
@@ -30,13 +28,13 @@ import { setProjectTargetCommand } from './definitions/setProjectTarget';
 import {
   setProjectTextureResolutionCommand
 } from './definitions/setProjectTextureResolution';
-import { setTexturePreviewCommand } from './definitions/setTexturePreview';
-import { setTextureRasterCommand } from './definitions/setTextureRaster';
+import { syncTexturesCommand } from './definitions/syncTextures';
 import { transformNodesCommand } from './definitions/transformNodes';
 import { updateCubeGeometryCommand } from './definitions/updateCubeGeometry';
 import { upsertAnimationChannelsCommand } from './definitions/upsertAnimationChannels';
 import { upsertAnimationClipCommand } from './definitions/upsertAnimationClip';
 import { upsertAnimationTriggersCommand } from './definitions/upsertAnimationTriggers';
+import { upsertTextureDetailsCommand } from './definitions/upsertTextureDetails';
 import type { CommandName } from './types';
 
 const definitions: Readonly<Record<CommandName, CommandDefinition>> = {
@@ -58,14 +56,12 @@ const definitions: Readonly<Record<CommandName, CommandDefinition>> = {
   'scene.nodes.align': alignNodesCommand,
   'scene.nodes.pivot': setNodePivotCommand,
   'scene.nodes.reparent': reparentNodesCommand,
-  'scene.cubes.uv.fit': fitCubeUvCommand,
   'scene.cubes.material': setCubeMaterialCommand,
   'textures.create': createTexturesCommand,
-  'textures.preview.set': setTexturePreviewCommand,
   'textures.rename': renameTextureCommand,
-  'textures.raster.set': setTextureRasterCommand,
+  'textures.details.upsert': upsertTextureDetailsCommand,
   'textures.delete': deleteTexturesCommand,
-  'textures.uvAtlas.generate': generateMinecraftUvAtlasCommand,
+  'textures.sync': syncTexturesCommand,
   'animation.clip.upsert': upsertAnimationClipCommand,
   'animation.channels.upsert': upsertAnimationChannelsCommand,
   'animation.triggers.upsert': upsertAnimationTriggersCommand,

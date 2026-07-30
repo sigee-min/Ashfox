@@ -157,7 +157,7 @@ export const useLocalProjectPersistence = ({
             dispatchPersistence({
               type: 'error',
               session,
-              ready: true
+              ready: false
             });
             return;
           }
@@ -271,6 +271,14 @@ export const useLocalProjectPersistence = ({
             sessionId !== sessionRef.current ||
             requestId !== saveRequestRef.current
           ) {
+            return;
+          }
+          if (result.status === 'blocked') {
+            dispatchPersistence({
+              type: 'error',
+              session,
+              ready: false
+            });
             return;
           }
           if (result.status === 'conflict') {

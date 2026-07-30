@@ -3,8 +3,6 @@
 import { useCallback, type Dispatch } from 'react';
 
 import {
-  executeCommandBatch,
-  type CommandBatch,
   type ProjectDocument,
   type ProjectCommandOperation,
   type Transform,
@@ -12,14 +10,13 @@ import {
 } from '@ashfox/engine-core';
 
 import {
-  createMinecraftTextureOperation
-} from '../../textures/minecraftTextureCommand';
+  createTextureSyncOperation
+} from '../../textures/textureSyncCommand';
 import {
   createProjectOperation,
   type NewProjectInput
 } from '../newProject';
 import {
-  projectUsesExportTarget,
   type ProjectExportTarget
 } from '../presentation/projectExportTarget';
 import {
@@ -35,7 +32,7 @@ interface UseWorkbenchProjectCommandsInput {
   selectedNodeId: string | null;
   dispatch: Dispatch<HistoryAction>;
   onSelectNode: (nodeId: string | null) => void;
-  exportTargetFile: (source?: ProjectDocument) => void;
+  exportTargetFile: (target: ProjectExportTarget) => void;
 }
 
 interface WorkbenchProjectCommands {
@@ -101,36 +98,15 @@ export const useWorkbenchProjectCommands = ({
   );
 
   const generateMinecraftTexture = useCallback((): void => {
-    const operation = createMinecraftTextureOperation(document);
+    const operation = createTextureSyncOperation(document);
     if (operation) execute([operation]);
   }, [document, execute]);
 
   const exportProject = useCallback(
     (target: ProjectExportTarget): void => {
-      if (projectUsesExportTarget(document, target)) {
-        exportTargetFile(document);
-        return;
-      }
-      const batch: CommandBatch = {
-        batchId: crypto.randomUUID(),
-        baseRevision: document.revision,
-        operations: [{
-          name: 'project.target.set',
-          payload: target
-        }]
-      };
-      const projected = executeCommandBatch(document, batch);
-      if (!projected.ok) return;
-      dispatch({
-        type: 'execute',
-        batch,
-        actorId: LOCAL_COMMAND_ACTOR_ID,
-        source: 'web',
-        committedAt: new Date().toISOString()
-      });
-      exportTargetFile(projected.document);
+      exportTargetFile(target);
     },
-    [dispatch, document, exportTargetFile]
+    [exportTargetFile]
   );
 
   const commitNodeTransform = useCallback(

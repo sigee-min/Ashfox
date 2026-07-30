@@ -43,7 +43,7 @@ const prepareOutput = () => {
   fs.mkdirSync(path.dirname(manifestTarget), { recursive: true });
   fs.writeFileSync(
     manifestTarget,
-    `${JSON.stringify(loadAgentManifest(), null, 2)}\n`
+    `${JSON.stringify(loadAgentManifest())}\n`
   );
   fs.cpSync(brandSource, path.join(outdir, 'brand'), {
     recursive: true

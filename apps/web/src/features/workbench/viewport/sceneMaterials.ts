@@ -55,10 +55,11 @@ const configureTextureMap = (
 };
 
 const createRasterTextureMap = (
+  document: ProjectDocument,
   texture: TextureAsset
 ): THREE.Texture =>
   configureTextureMap(
-    new THREE.CanvasTexture(renderTextureRaster(texture)),
+    new THREE.CanvasTexture(renderTextureRaster(document, texture)),
     texture
   );
 
@@ -96,7 +97,7 @@ export const createProjectMaterials = (
   >();
   for (const texture of Object.values(document.textures)) {
     const map = texture.raster
-      ? createRasterTextureMap(texture)
+      ? createRasterTextureMap(document, texture)
       : assets[texture.id]
         ? createStoredTextureMap(texture, assets[texture.id])
         : null;

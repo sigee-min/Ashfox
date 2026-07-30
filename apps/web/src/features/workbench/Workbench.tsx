@@ -215,6 +215,8 @@ export function Workbench() {
   const projectFiles = useProjectFileActions({
     document,
     assets,
+    commandOutcome: history.lastCommandOutcome,
+    dispatch,
     onLoad: loadProject
   });
   const {

@@ -94,7 +94,7 @@ export const createTextureAsset = (
     ...(minecraft ? { minecraft } : {}),
     raster: {
       background,
-      rectangles: []
+      canvasDetails: []
     },
     metadata: {
       previewColor: background

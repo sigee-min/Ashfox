@@ -463,46 +463,38 @@ export const MOONVEIL_KIRIN_DEMO: DemoDefinition = {
     {
       id: T.coat,
       name: 'Moonlit indigo coat',
-      previewColor: '#21366f',
-      background: '#17234b',
+      background: '#284886',
       atlasMode: 'generate',
-      rectangles: [
-        { x: 12, y: 12, width: 104, height: 104, color: '#284886' },
-        { x: 30, y: 24, width: 68, height: 32, color: '#365ca3' }
-      ]
+      details: []
     },
     {
       id: T.moonlight,
       name: 'Moonlight pearl',
-      previewColor: '#d8e8ff',
-      background: '#b9ccef',
+      background: '#e9f2ff',
       atlasMode: 'generate',
-      rectangles: [{ x: 18, y: 18, width: 92, height: 92, color: '#e9f2ff' }]
+      details: []
     },
     {
       id: T.gold,
       name: 'Celestial gold',
-      previewColor: '#f2ba55',
-      background: '#9d6326',
+      background: '#e2a642',
       atlasMode: 'generate',
-      rectangles: [{ x: 16, y: 16, width: 96, height: 96, color: '#e2a642' }]
+      details: []
     },
     {
       id: T.hoof,
       name: 'Obsidian',
-      previewColor: '#171b2c',
-      background: '#0b0e19',
+      background: '#222a43',
       atlasMode: 'generate',
-      rectangles: [{ x: 20, y: 20, width: 88, height: 88, color: '#222a43' }]
+      details: []
     },
     {
       id: T.eye,
       name: 'Living eyes',
-      previewColor: '#62f6ff',
       background: '#123c59',
       atlasMode: 'preserve',
       renderMode: 'emissive',
-      rectangles: [
+      details: [
         { x: 8, y: 8, width: 112, height: 112, color: '#20cbe0' },
         { x: 28, y: 20, width: 48, height: 44, color: '#efffff' },
         { x: 48, y: 34, width: 36, height: 76, color: '#08508b' }
@@ -511,11 +503,10 @@ export const MOONVEIL_KIRIN_DEMO: DemoDefinition = {
     {
       id: T.aura,
       name: 'Astral accent',
-      previewColor: '#a967ff',
       background: '#3a1769',
       atlasMode: 'preserve',
       renderMode: 'emissive',
-      rectangles: [
+      details: [
         { x: 8, y: 8, width: 112, height: 112, color: '#773ed1' },
         { x: 32, y: 18, width: 64, height: 92, color: '#bd8cff' }
       ]
