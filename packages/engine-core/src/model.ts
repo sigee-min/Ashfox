@@ -1,4 +1,4 @@
-export const PROJECT_DOCUMENT_SCHEMA_VERSION = 2 as const;
+export const PROJECT_DOCUMENT_SCHEMA_VERSION = 3 as const;
 
 export type ProjectId = string;
 export type EntityId = string;
@@ -91,7 +91,6 @@ export interface ProjectSettings {
     height: number;
   };
   uvPixelsPerUnit?: number;
-  generatedTextureRecipe?: GeneratedTextureRecipe;
   coordinateSystem: {
     up: 'y';
     handedness: 'right';
@@ -138,19 +137,9 @@ export const CUBE_FACE_DIRECTIONS = [
 export type CubeFaceDirection = (typeof CUBE_FACE_DIRECTIONS)[number];
 export type CubeFaceRotation = 0 | 90 | 180 | 270;
 
-export interface SurfaceTextureDetail {
-  id: EntityId;
-  color: string;
-  u: number;
-  v: number;
-  width: number;
-  height: number;
-}
-
 export interface CubeFace {
   enabled: boolean;
   textureId: AssetId | null;
-  details: readonly SurfaceTextureDetail[];
   uv?: UvRect;
   rotation?: CubeFaceRotation;
   cullFace?: CubeFaceDirection;
@@ -171,6 +160,7 @@ export interface CubeNode extends NodeBase {
   inflate: number;
   mirror: boolean;
   boxUv: boolean;
+  baseColor: string;
   uvOffset?: Vec2;
   rescale?: boolean;
   shade?: boolean;
@@ -235,17 +225,6 @@ export interface TextureCanvasDetail {
 export interface TextureRaster {
   background: string;
   canvasDetails: readonly TextureCanvasDetail[];
-}
-
-export interface GeneratedTextureRecipe {
-  pixelsPerBlock: number;
-  padding: number;
-  maxResolution: number;
-  seed: number;
-  intensity: number;
-  edge: number;
-  noise: number;
-  lightDir: 'tl_br' | 'tr_bl' | 'top_bottom' | 'left_right';
 }
 
 export interface TextureAsset {

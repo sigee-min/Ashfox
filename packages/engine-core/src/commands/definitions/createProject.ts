@@ -2,7 +2,6 @@ import { createProjectDocument } from '../../project/createProjectDocument';
 import type { ProjectDocument } from '../../model';
 import { defineCommand } from '../definition';
 import type { ProjectCreateInput } from '../types';
-import { PROJECT_TEXTURE_RESOLUTIONS } from '../projectTextureResolution';
 import { setProjectTargetCommand } from './setProjectTarget';
 
 const inputSchema = {
@@ -27,9 +26,6 @@ const inputSchema = {
       type: 'string',
       minLength: 1
     },
-    textureResolution: {
-      enum: PROJECT_TEXTURE_RESOLUTIONS
-    },
     createdAt: {
       type: 'string',
       minLength: 1
@@ -41,7 +37,6 @@ const inputSchema = {
     'target',
     'namespace',
     'modelPath',
-    'textureResolution',
     'createdAt'
   ],
   additionalProperties: false
@@ -77,8 +72,7 @@ export const createProjectFromInput = (
     id: normalized.id,
     name: normalized.name,
     revision,
-    createdAt: normalized.createdAt,
-    textureResolution: normalized.textureResolution
+    createdAt: normalized.createdAt
   });
   return applyDefinition(
     document,

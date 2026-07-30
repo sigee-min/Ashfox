@@ -5,13 +5,11 @@ import { createBonesCommand } from './definitions/createBones';
 import { createCubesCommand } from './definitions/createCubes';
 import { createLocatorsCommand } from './definitions/createLocators';
 import { createProjectCommand } from './definitions/createProject';
-import { createTexturesCommand } from './definitions/createTextures';
 import { deleteAnimationClipCommand } from './definitions/deleteAnimationClip';
 import {
   deleteAnimationTracksCommand
 } from './definitions/deleteAnimationTracks';
 import { deleteNodesCommand } from './definitions/deleteNodes';
-import { deleteTexturesCommand } from './definitions/deleteTextures';
 import { duplicateCubesCommand } from './definitions/duplicateCubes';
 import { mirrorAnimationChannelsCommand } from './definitions/mirrorAnimationChannels';
 import { mirrorCubesCommand } from './definitions/mirrorCubes';
@@ -19,29 +17,23 @@ import { phaseAnimationChannelsCommand } from './definitions/phaseAnimationChann
 import { reparentNodesCommand } from './definitions/reparentNodes';
 import { renameProjectCommand } from './definitions/renameProject';
 import { renameNodesCommand } from './definitions/renameNodes';
-import { renameTextureCommand } from './definitions/renameTexture';
 import { repeatCubesCommand } from './definitions/repeatCubes';
 import { setCubeMaterialCommand } from './definitions/setCubeMaterial';
 import { setNodeVisibilityCommand } from './definitions/setNodeVisibility';
 import { setNodePivotCommand } from './definitions/setNodePivot';
 import { setProjectTargetCommand } from './definitions/setProjectTarget';
-import {
-  setProjectTextureResolutionCommand
-} from './definitions/setProjectTextureResolution';
 import { syncTexturesCommand } from './definitions/syncTextures';
 import { transformNodesCommand } from './definitions/transformNodes';
 import { updateCubeGeometryCommand } from './definitions/updateCubeGeometry';
 import { upsertAnimationChannelsCommand } from './definitions/upsertAnimationChannels';
 import { upsertAnimationClipCommand } from './definitions/upsertAnimationClip';
 import { upsertAnimationTriggersCommand } from './definitions/upsertAnimationTriggers';
-import { upsertTextureDetailsCommand } from './definitions/upsertTextureDetails';
 import type { CommandName } from './types';
 
 const definitions: Readonly<Record<CommandName, CommandDefinition>> = {
   'project.create': createProjectCommand,
   'project.rename': renameProjectCommand,
   'project.target.set': setProjectTargetCommand,
-  'project.textureResolution.set': setProjectTextureResolutionCommand,
   'scene.bones.create': createBonesCommand,
   'scene.locators.create': createLocatorsCommand,
   'scene.nodes.transform': transformNodesCommand,
@@ -57,10 +49,6 @@ const definitions: Readonly<Record<CommandName, CommandDefinition>> = {
   'scene.nodes.pivot': setNodePivotCommand,
   'scene.nodes.reparent': reparentNodesCommand,
   'scene.cubes.material': setCubeMaterialCommand,
-  'textures.create': createTexturesCommand,
-  'textures.rename': renameTextureCommand,
-  'textures.details.upsert': upsertTextureDetailsCommand,
-  'textures.delete': deleteTexturesCommand,
   'textures.sync': syncTexturesCommand,
   'animation.clip.upsert': upsertAnimationClipCommand,
   'animation.channels.upsert': upsertAnimationChannelsCommand,

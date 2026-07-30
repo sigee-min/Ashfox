@@ -37,7 +37,6 @@ const authorProject = (target: ExportPreset): ProjectDocument => {
         target,
         namespace: 'ashfox',
         modelPath: `export_${target}`,
-        textureResolution: 32,
         createdAt: '2026-07-30T00:00:00.000Z'
       }
     },
@@ -67,16 +66,7 @@ const authorProject = (target: ExportPreset): ProjectDocument => {
     },
     {
       name: 'textures.sync',
-      payload: {
-        pixelsPerBlock: 16,
-        padding: 1,
-        maxResolution: 128,
-        seed: 37,
-        intensity: 0.22,
-        edge: 0.12,
-        noise: 0.06,
-        lightDir: 'tl_br'
-      }
+      payload: {}
     }
   ];
   const result = executeCommandBatch(base, {

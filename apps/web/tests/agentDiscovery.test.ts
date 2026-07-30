@@ -120,64 +120,41 @@ assert.match(
   /coarse stage/
 );
 assert.match(manifest.completionContract.reviewGates.texture, /textureContract/);
-assert.match(manifest.textureContract.authority, /derived/);
+assert.match(manifest.textureContract.authority, /baseColor/);
+assert.match(manifest.textureContract.material, /#RRGGBB/);
 assert.match(
   manifest.textureContract.generated.bootstrap,
-  /omit textureId/
+  /automatically creates or reuses/
 );
 assert.match(
   manifest.textureContract.generated.synchronize,
-  /only generated UV and base-shading operation/
+  /exactly 1 square texel per model unit/
 );
 assert.match(
   manifest.textureContract.generated.triggers,
-  /Detail-only edits/
+  /baseColor renders directly/
 );
-assert.deepEqual(
-  manifest.textureContract.generated.recipe.defaults,
-  {
-    pixelsPerBlock: 16,
-    padding: 1,
-    maxResolution: 256,
-    seed: 1095977030,
-    intensity: 0.22,
-    edge: 0.12,
-    noise: 0.06,
-    lightDir: 'tl_br'
-  }
+assert.match(
+  manifest.textureContract.generated.grid,
+  /whole model unit/
 );
 assert.match(
   manifest.textureContract.generated.shading,
-  /Minecraft-style shading/
+  /Minecraft-style tones/
 );
 assert.match(
   manifest.textureContract.generated.shading,
-  /same pixels/
+  /no procedural noise/
 );
 assert.match(
   manifest.textureContract.generated.terminal,
   /no_change/
 );
 assert.match(
-  manifest.textureContract.details.generated,
-  /surface anchors/
-);
-assert.match(
-  manifest.textureContract.details.ownership,
-  /exactly one texture owner/
-);
-assert.match(
-  manifest.textureContract.details.reassignment,
-  /Generated-to-generated/
-);
-assert.match(
-  manifest.textureContract.preserve.imported,
-  /source pixels and is immutable/
-);
-assert.match(
   manifest.textureContract.review,
-  /automatic shading/
+  /identical square-pixel size/
 );
+assert.match(manifest.textureContract.limits, /never silently reduces/);
 assert.match(manifest.exportContract.precondition, /completionContract/);
 assert.ok(
   manifest.rules.some((rule) =>
@@ -219,10 +196,7 @@ assert.match(
   manifest.authoringModel.animation,
   /animation\.tracks\.delete/
 );
-assert.match(
-  manifest.authoringModel.project,
-  /project\.textureResolution\.set/
-);
+assert.match(manifest.authoringModel.project, /project\.target\.set/);
 assert.deepEqual(
   Object.keys(manifest.authoringModel.targets),
   ['bedrock', 'geckolib5', 'gltf', 'glb']
@@ -474,7 +448,7 @@ if (result.ok) {
   assert.ok(data.commands.includes('scene.cubes.geometry.update'));
   assert.ok(data.commands.includes('scene.nodes.rename'));
   assert.ok(data.commands.includes('scene.nodes.delete'));
-  assert.ok(data.commands.includes('textures.create'));
+  assert.ok(data.commands.includes('textures.sync'));
   assert.equal(data.counts.nodes, 3);
   assert.equal(data.counts.bones, 1);
   assert.equal(data.counts.cubes, 1);

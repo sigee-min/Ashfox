@@ -11,16 +11,15 @@ Include the project settings in the first request:
 - **Name** — the human-readable project name;
 - **Format** — GeckoLib 5, Bedrock, GLB, or glTF;
 - **Namespace** — required for Minecraft formats;
-- **Model path** — the export-safe asset name and path;
-- **Texture canvas** — 16, 32, 64, 128, or 256 pixels square.
+- **Model path** — the export-safe asset name and path.
 
 ```text
 Create a GeckoLib 5 project named Ember Stag.
-Use namespace wildwood, model path creatures/ember_stag, and a 64px texture.
+Use namespace wildwood and model path creatures/ember_stag.
 ```
 
-The agent chooses the smallest texture canvas that can preserve the requested
-detail and validates target-specific settings before authoring.
+ashfox grows the generated atlas as needed while keeping one square texel per
+model unit, then validates target-specific settings before export.
 
 ## Save the editable project
 

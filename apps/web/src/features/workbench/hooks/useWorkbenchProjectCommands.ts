@@ -10,9 +10,6 @@ import {
 } from '@ashfox/engine-core';
 
 import {
-  createTextureSyncOperation
-} from '../../textures/textureSyncCommand';
-import {
   createProjectOperation,
   type NewProjectInput
 } from '../newProject';
@@ -38,7 +35,6 @@ interface UseWorkbenchProjectCommandsInput {
 interface WorkbenchProjectCommands {
   createProject: (input: NewProjectInput) => void;
   updateProjectSettings: (input: ProjectSettingsInput) => void;
-  generateMinecraftTexture: () => void;
   exportProject: (target: ProjectExportTarget) => void;
   commitNodeTransform: (nodeId: string, transform: Transform) => void;
   updateTransformProperty: (
@@ -96,11 +92,6 @@ export const useWorkbenchProjectCommands = ({
     },
     [execute]
   );
-
-  const generateMinecraftTexture = useCallback((): void => {
-    const operation = createTextureSyncOperation(document);
-    if (operation) execute([operation]);
-  }, [document, execute]);
 
   const exportProject = useCallback(
     (target: ProjectExportTarget): void => {
@@ -208,7 +199,6 @@ export const useWorkbenchProjectCommands = ({
   return {
     createProject,
     updateProjectSettings,
-    generateMinecraftTexture,
     exportProject,
     commitNodeTransform,
     updateTransformProperty,

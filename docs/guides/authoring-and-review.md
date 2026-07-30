@@ -12,7 +12,7 @@ Describe:
   another clear direction;
 - **target** — GeckoLib 5, Bedrock, GLB, or glTF;
 - **structure** — important parts, proportions, symmetry, and articulation;
-- **surface** — palette, material separation, texture size, and focal details;
+- **surface** — base-color palette, material separation, and focal details;
 - **motion** — required clips, pace, weight, and loop behavior.
 
 ```text
@@ -48,7 +48,7 @@ Natural-language requests can still be exact:
 
 - “Mirror the finished left horn to the right side.”
 - “Align all wheel pivots to their axle centers.”
-- “Use one pixel density across every cube face.”
+- “Keep effective cube dimensions on whole pixel units.”
 - “Phase the four leg cycles evenly.”
 - “Close the idle loop without changing its duration.”
 
@@ -64,11 +64,13 @@ visible, and moving parts have useful pivots without resting intersections.
 
 ## Review textures and UVs
 
-- Check that similar surfaces use the same apparent pixel size.
-- Make sure each visible face has the intended texture.
-- Look for stretched pixels, seams, empty faces, and accidental transparency.
+- Check that material regions use deliberate, reusable base colors.
+- Make sure each visible face belongs to the generated atlas.
+- Look for stretched pixels, seams, empty faces, and mismatched material color.
+- Confirm that one square pixel has exactly the same size on every face.
 - Keep important accents visible at the distance where the asset will be used.
-- For Minecraft assets, prefer deliberate pixel blocks over smooth gradients.
+- Let ashfox derive the fixed directional face tones; do not hand-paint
+  gradients, noise, highlights, or shadows.
 
 ## Review animation
 

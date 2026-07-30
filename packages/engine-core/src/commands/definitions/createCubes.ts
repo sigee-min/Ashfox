@@ -13,6 +13,7 @@ import {
 } from '../../textures/createTextureAsset';
 import { defineCommand } from '../definition';
 import {
+  colorSchema,
   nullableEntityIdSchema,
   partialTransformSchema,
   vec3Schema
@@ -41,12 +42,9 @@ const cubeSchema = {
       additionalProperties: false
     },
     transform: partialTransformSchema,
-    textureId: nullableEntityIdSchema,
+    baseColor: colorSchema,
     inflate: {
       type: 'number'
-    },
-    shade: {
-      type: 'boolean'
     }
   },
   required: ['id', 'name', 'parentId', 'bounds'],
@@ -76,7 +74,6 @@ const createFaces = (
       const face: CubeFace = {
         enabled: true,
         textureId,
-        details: [],
         uv,
         rotation: 0
       };
@@ -86,23 +83,15 @@ const createFaces = (
 
 const createCubeNode = (
   document: ProjectDocument,
-  input: CubeCreateInput
+  input: CubeCreateInput,
+  textureId: string
 ): CubeNode => {
-  const textureId =
-    input.textureId === undefined
-      ? Object.values(document.textures)
-          .filter((texture) => texture.atlasMode === 'generate')
-          .sort((left, right) => left.id.localeCompare(right.id))[0]?.id ??
-        null
-      : input.textureId;
-  const texture = textureId === null
-    ? undefined
-    : document.textures[textureId];
+  const texture = document.textures[textureId];
   const defaultUv: readonly [number, number, number, number] = [
     0,
     0,
-    texture?.width ?? document.settings.textureResolution.width,
-    texture?.height ?? document.settings.textureResolution.height
+    texture.width,
+    texture.height
   ];
   return {
     id: input.id,
@@ -118,7 +107,7 @@ const createCubeNode = (
     inflate: input.inflate ?? 0,
     mirror: false,
     boxUv: false,
-    ...(input.shade === undefined ? {} : { shade: input.shade }),
+    baseColor: input.baseColor ?? '#8e98a3',
     faces: createFaces(textureId, defaultUv)
   };
 };
@@ -134,9 +123,13 @@ const findInvalidParent = (
 
 const addCubeToScene = (
   document: ProjectDocument,
-  input: CubeCreateInput
+  input: CubeCreateInput,
+  textureId: string
 ): ProjectDocument => {
-  const next = addSceneNode(document, createCubeNode(document, input));
+  const next = addSceneNode(
+    document,
+    createCubeNode(document, input, textureId)
+  );
   if (input.parentId !== null) return next;
   return {
     ...next,
@@ -151,7 +144,7 @@ export const createCubesCommand = defineCommand({
   name: 'scene.cubes.create',
   label: 'Create cubes',
   purpose:
-    'Create cube primitives; omitted textureId reuses a texture or creates one generate-mode base texture, while null stays untextured.',
+    'Create textured cube primitives from one base color per material.',
   inputSchema,
   apply: (document, payload) => {
     const ids = payload.cubes.map((cube) => cube.id);
@@ -170,20 +163,19 @@ export const createCubesCommand = defineCommand({
       };
     }
 
-    const missingTexture = payload.cubes.find(
+    const invalidColor = payload.cubes.find(
       (cube) =>
-        typeof cube.textureId === 'string' &&
-        document.textures[cube.textureId] === undefined
+        cube.baseColor !== undefined &&
+        !/^#[0-9a-fA-F]{6}$/.test(cube.baseColor)
     );
-    if (missingTexture) {
+    if (invalidColor) {
       return {
         ok: false,
         error: {
-          code: 'invalid_state',
-          message:
-            `Texture "${missingTexture.textureId}" does not exist.`,
-          path: `payload.cubes.${missingTexture.id}.textureId`,
-          expected: 'existing texture ID, null, or omitted textureId'
+          code: 'invalid_payload',
+          message: 'Cube base colors must use six-digit hex colors.',
+          path: `payload.cubes.${invalidColor.id}.baseColor`,
+          expected: '#RRGGBB'
         }
       };
     }
@@ -201,11 +193,10 @@ export const createCubesCommand = defineCommand({
       };
     }
 
-    const shouldCreateTexture =
-      !Object.values(document.textures).some(
-        (texture) => texture.atlasMode === 'generate'
-      ) &&
-      payload.cubes.some((cube) => cube.textureId === undefined);
+    const generatedTexture = Object.values(document.textures)
+      .filter((texture) => texture.atlasMode === 'generate')
+      .sort((left, right) => left.id.localeCompare(right.id))[0];
+    const shouldCreateTexture = generatedTexture === undefined;
     const implicitTexture = shouldCreateTexture
       ? createTextureAsset(document, {
           id: implicitTextureId(document),
@@ -221,8 +212,12 @@ export const createCubesCommand = defineCommand({
           }
         }
       : document;
+    const textureId = generatedTexture?.id ?? implicitTexture?.id;
+    if (!textureId) {
+      throw new Error('Generated texture setup failed.');
+    }
     const next = payload.cubes.reduce(
-      (current, input) => addCubeToScene(current, input),
+      (current, input) => addCubeToScene(current, input, textureId),
       prepared
     );
     return {

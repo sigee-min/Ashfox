@@ -162,19 +162,19 @@ for (const side of ['left', 'right'] as const) {
 cubes.push(
   demoCube('cube-body-core', 'bone-body', pivotOf('bone-body'), [0, 15.2, 0], [7.8, 7.2, 10.8], T.coat),
   demoCube('cube-body-shoulders', 'bone-chest', pivotOf('bone-chest'), [0, 17.2, -3.2], [8.6, 7.6, 6], T.coat),
-  demoCube('cube-body-saddle-mark', 'bone-body', pivotOf('bone-body'), [0, 18.9, 0.8], [5.8, 0.5, 6.6], T.gold, { shade: false, lightEmission: 3 }),
-  demoCube('cube-chest-moon', 'bone-chest', pivotOf('bone-chest'), [0, 17, -6.35], [4.2, 4.8, 0.45], T.aura, { shade: false, lightEmission: 11 }),
+  demoCube('cube-body-saddle-mark', 'bone-body', pivotOf('bone-body'), [0, 18.9, 0.8], [5.8, 0.5, 6.6], T.gold),
+  demoCube('cube-chest-moon', 'bone-chest', pivotOf('bone-chest'), [0, 17, -6.35], [4.2, 4.8, 0.45], T.aura),
   demoCube('cube-neck-lower', 'bone-neck-lower', pivotOf('bone-neck-lower'), [0, 20.2, -4.9], [4.8, 7.2, 4.8], T.coat, { rotation: [-18, 0, 0] }),
   demoCube('cube-neck-upper', 'bone-neck-upper', pivotOf('bone-neck-upper'), [0, 22.4, -6.7], [4.3, 5.5, 4.5], T.coat, { rotation: [-12, 0, 0] }),
   demoCube('cube-head', 'bone-head', pivotOf('bone-head'), [0, 24.3, -8.6], [5.8, 5.3, 5.5], T.coat),
-  demoCube('cube-forehead-crown', 'bone-head', pivotOf('bone-head'), [0, 25.8, -10.65], [2.8, 2.3, 0.5], T.gold, { rotation: [0, 0, 45], shade: false, lightEmission: 5 }),
+  demoCube('cube-forehead-crown', 'bone-head', pivotOf('bone-head'), [0, 25.8, -10.65], [2.8, 2.3, 0.5], T.gold, { rotation: [0, 0, 45] }),
   demoCube('cube-muzzle-main', 'bone-muzzle', pivotOf('bone-muzzle'), [0, 23.2, -11.15], [4.4, 2.9, 4.2], T.moonlight),
   demoCube('cube-nose', 'bone-muzzle', pivotOf('bone-muzzle'), [0, 23.15, -13.45], [2.7, 1.8, 0.8], T.hoof),
   demoCube('cube-jaw', 'bone-jaw', pivotOf('bone-jaw'), [0, 22.3, -11.1], [3.7, 1.4, 3.1], T.moonlight),
   demoCube('cube-ear-left', 'bone-ear-left', pivotOf('bone-ear-left'), [-2.2, 27.3, -8], [1.7, 4.6, 1.2], T.coat, { rotation: [0, 0, -22] }),
   demoCube('cube-ear-right', 'bone-ear-right', pivotOf('bone-ear-right'), [2.2, 27.3, -8], [1.7, 4.6, 1.2], T.coat, { rotation: [0, 0, 22] }),
-  demoCube('cube-ear-left-inner', 'bone-ear-left', pivotOf('bone-ear-left'), [-2.25, 27.3, -8.65], [0.75, 3.1, 0.5], T.gold, { rotation: [0, 0, -22], shade: false, lightEmission: 2 }),
-  demoCube('cube-ear-right-inner', 'bone-ear-right', pivotOf('bone-ear-right'), [2.25, 27.3, -8.65], [0.75, 3.1, 0.5], T.gold, { rotation: [0, 0, 22], shade: false, lightEmission: 2 })
+  demoCube('cube-ear-left-inner', 'bone-ear-left', pivotOf('bone-ear-left'), [-2.25, 27.3, -8.65], [0.75, 3.1, 0.5], T.gold, { rotation: [0, 0, -22] }),
+  demoCube('cube-ear-right-inner', 'bone-ear-right', pivotOf('bone-ear-right'), [2.25, 27.3, -8.65], [0.75, 3.1, 0.5], T.gold, { rotation: [0, 0, 22] })
 );
 
 for (const side of ['left', 'right'] as const) {
@@ -187,8 +187,7 @@ for (const side of ['left', 'right'] as const) {
       eyePivot,
       [sign * 1.45, 25.5, -11.42],
       [1.8, 1.65, 0.5],
-      T.hoof,
-      { shade: false }
+      T.hoof
     ),
     demoCube(
       `cube-eye-${side}-iris`,
@@ -196,8 +195,7 @@ for (const side of ['left', 'right'] as const) {
       eyePivot,
       [sign * 1.45, 25.5, -11.69],
       [1.15, 1.2, 0.22],
-      T.eye,
-      { shade: false, lightEmission: 13 }
+      T.eye
     ),
     demoCube(
       `cube-eye-${side}-pupil`,
@@ -205,8 +203,7 @@ for (const side of ['left', 'right'] as const) {
       eyePivot,
       [sign * 1.45, 25.45, -11.84],
       [0.5, 0.78, 0.5],
-      T.hoof,
-      { shade: false }
+      T.hoof
     ),
     demoCube(
       `cube-eye-${side}-glint`,
@@ -214,8 +211,7 @@ for (const side of ['left', 'right'] as const) {
       eyePivot,
       [sign * 1.18, 25.8, -11.96],
       [0.5, 0.5, 0.5],
-      T.moonlight,
-      { shade: false, lightEmission: 15 }
+      T.moonlight
     ),
     demoCube(
       `cube-eyelid-${side}-upper`,
@@ -242,10 +238,10 @@ for (const [id, x, z] of legData) {
   const hoof = `bone-leg-${id}-hoof`;
   cubes.push(
     demoCube(`cube-leg-${id}-upper`, upper, pivotOf(upper), [x, 11.2, z], [3.5, 7, 3.8], T.coat),
-    demoCube(`cube-leg-${id}-moon-band`, upper, pivotOf(upper), [x, 8.4, z], [3.7, 1, 4], T.gold, { shade: false, lightEmission: 3 }),
+    demoCube(`cube-leg-${id}-moon-band`, upper, pivotOf(upper), [x, 8.4, z], [3.7, 1, 4], T.gold),
     demoCube(`cube-leg-${id}-lower`, lower, pivotOf(lower), [x, 6.2, z - 0.2], [2.6, 5.5, 2.8], T.moonlight),
     demoCube(`cube-leg-${id}-hoof`, hoof, pivotOf(hoof), [x, 2.5, z - 1], [3.2, 2.5, 4.4], T.hoof),
-    demoCube(`cube-leg-${id}-hoof-rune`, hoof, pivotOf(hoof), [x, 2.8, z - 3.28], [1.2, 0.85, 0.25], T.aura, { shade: false, lightEmission: 8 })
+    demoCube(`cube-leg-${id}-hoof-rune`, hoof, pivotOf(hoof), [x, 2.8, z - 3.28], [1.2, 0.85, 0.25], T.aura)
   );
 }
 
@@ -278,9 +274,7 @@ for (let index = 0; index < 24; index += 1) {
       [1.15 + column * 0.12, 2.6, 3.6],
       index % 4 === 0 ? T.gold : T.moonlight,
       {
-        rotation: [18 + (index % 3) * 7, 0, (column - 1) * 12],
-        shade: index % 4 !== 0,
-        lightEmission: index % 4 === 0 ? 5 : 0
+        rotation: [18 + (index % 3) * 7, 0, (column - 1) * 12]
       }
     )
   );
@@ -299,7 +293,7 @@ for (const side of ['left', 'right'] as const) {
         [pivot[0] + sign * 0.2, pivot[1] + 0.65, pivot[2]],
         [Math.max(0.65, 1.4 - segment * 0.07), 1.8, Math.max(0.65, 1.4 - segment * 0.07)],
         segment % 3 === 0 ? T.gold : T.moonlight,
-        { rotation: [0, 0, sign * -18], lightEmission: segment % 3 === 0 ? 4 : 0 }
+        { rotation: [0, 0, sign * -18] }
       )
     );
   }
@@ -316,9 +310,7 @@ for (const side of ['left', 'right'] as const) {
           [0.72, 1.35, 0.72],
           segment === 3 ? T.aura : T.gold,
           {
-            rotation: [-22, 0, sign * -28],
-            shade: segment !== 3,
-            lightEmission: segment === 3 ? 10 : 2
+            rotation: [-22, 0, sign * -28]
           }
         )
       );
@@ -458,58 +450,36 @@ export const MOONVEIL_KIRIN_DEMO: DemoDefinition = {
   name: 'Moonveil · Celestial Kirin',
   modelPath: 'moonveil_celestial_kirin',
   initialSelectionId: null,
-  atlasSeed: 0x6d00f,
   textures: [
     {
       id: T.coat,
       name: 'Moonlit indigo coat',
-      background: '#284886',
-      atlasMode: 'generate',
-      details: []
+      background: '#284886'
     },
     {
       id: T.moonlight,
       name: 'Moonlight pearl',
-      background: '#e9f2ff',
-      atlasMode: 'generate',
-      details: []
+      background: '#e9f2ff'
     },
     {
       id: T.gold,
       name: 'Celestial gold',
-      background: '#e2a642',
-      atlasMode: 'generate',
-      details: []
+      background: '#e2a642'
     },
     {
       id: T.hoof,
       name: 'Obsidian',
-      background: '#222a43',
-      atlasMode: 'generate',
-      details: []
+      background: '#222a43'
     },
     {
       id: T.eye,
       name: 'Living eyes',
-      background: '#123c59',
-      atlasMode: 'preserve',
-      renderMode: 'emissive',
-      details: [
-        { x: 8, y: 8, width: 112, height: 112, color: '#20cbe0' },
-        { x: 28, y: 20, width: 48, height: 44, color: '#efffff' },
-        { x: 48, y: 34, width: 36, height: 76, color: '#08508b' }
-      ]
+      background: '#123c59'
     },
     {
       id: T.aura,
       name: 'Astral accent',
-      background: '#3a1769',
-      atlasMode: 'preserve',
-      renderMode: 'emissive',
-      details: [
-        { x: 8, y: 8, width: 112, height: 112, color: '#773ed1' },
-        { x: 32, y: 18, width: 64, height: 92, color: '#bd8cff' }
-      ]
+      background: '#3a1769'
     }
   ],
   bones,

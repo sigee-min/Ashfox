@@ -46,7 +46,6 @@ interface WorkbenchToolbarProps {
   viewportOptions: ViewportOptions;
   onUndo: () => void;
   onRedo: () => void;
-  onGenerateMinecraftTexture: () => void;
   onTransformMode: (mode: TransformControlsMode) => void;
   onToggleSnap: () => void;
   onSetCamera: (mode: CameraCommand['mode']) => void;
@@ -62,7 +61,6 @@ export function WorkbenchToolbar({
   viewportOptions,
   onUndo,
   onRedo,
-  onGenerateMinecraftTexture,
   onTransformMode,
   onToggleSnap,
   onSetCamera,
@@ -84,14 +82,6 @@ export function WorkbenchToolbar({
           shortcut="⇧⌘Z"
           disabled={!canRedo}
           onClick={onRedo}
-        />
-      </div>
-      <div className="tool-separator" />
-      <div className="tool-group">
-        <IconButton
-          label="Generate Minecraft texture"
-          icon="texture"
-          onClick={onGenerateMinecraftTexture}
         />
       </div>
       <div className="tool-separator" />

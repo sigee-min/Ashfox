@@ -56,16 +56,7 @@ const authorProject = (): ProjectDocument => {
       },
       {
         name: 'textures.sync',
-        payload: {
-          pixelsPerBlock: 16,
-          padding: 1,
-          maxResolution: 128,
-          seed: 11,
-          intensity: 0.22,
-          edge: 0.12,
-          noise: 0.06,
-          lightDir: 'tl_br'
-        }
+        payload: {}
       }
     ]
   });

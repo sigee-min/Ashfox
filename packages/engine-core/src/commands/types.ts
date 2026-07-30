@@ -1,9 +1,7 @@
 import type {
-  AssetId,
   AnimationEffect,
   AnimationLoopMode,
   AnimationVec3,
-  CubeFaceDirection,
   EntityId,
   KeyframeInterpolation,
   ProjectDocument,
@@ -14,9 +12,6 @@ import type {
   Vec3
 } from '../model';
 import type { InvariantFinding } from '../validation';
-import type {
-  ProjectTextureResolution
-} from './projectTextureResolution';
 
 export type CommandSource = 'web' | 'agent' | 'import' | 'system';
 export type SceneAxis = 'x' | 'y' | 'z';
@@ -33,7 +28,6 @@ export interface ProjectCreateInput {
   target: ExportPreset;
   namespace: string;
   modelPath: string;
-  textureResolution: ProjectTextureResolution;
   createdAt: string;
 }
 
@@ -61,9 +55,8 @@ export interface CubeCreateInput {
     to: Vec3;
   };
   transform?: Partial<Transform>;
-  textureId?: AssetId | null;
+  baseColor?: string;
   inflate?: number;
-  shade?: boolean;
 }
 
 export interface CubeDuplicateInput {
@@ -85,37 +78,6 @@ export interface CubeGeometryUpdateInput {
 export interface NodeRenameInput {
   nodeId: EntityId;
   name: string;
-}
-
-export interface TextureCreateInput {
-  id: AssetId;
-  name: string;
-  width?: number;
-  height?: number;
-  atlasMode?: 'generate' | 'preserve';
-  background?: string;
-}
-
-export interface TextureDetailUpsertInput {
-  id: EntityId;
-  color: string;
-  anchor:
-    | {
-        kind: 'surface';
-        nodeId: EntityId;
-        face: CubeFaceDirection;
-        u: number;
-        v: number;
-        width: number;
-        height: number;
-      }
-    | {
-        kind: 'canvas';
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-      };
 }
 
 export interface TransformKeyInput {
@@ -165,9 +127,6 @@ export interface CommandPayloadMap {
     target: ExportPreset;
     namespace: string;
     modelPath: string;
-  };
-  'project.textureResolution.set': {
-    size: ProjectTextureResolution;
   };
   'scene.bones.create': {
     bones: readonly BoneCreateInput[];
@@ -223,36 +182,9 @@ export interface CommandPayloadMap {
   };
   'scene.cubes.material': {
     nodeIds: readonly EntityId[];
-    textureId: AssetId | null;
-    shade?: boolean;
-    lightEmission?: number;
+    baseColor: string;
   };
-  'textures.create': {
-    textures: readonly TextureCreateInput[];
-  };
-  'textures.rename': {
-    textureId: AssetId;
-    name: string;
-  };
-  'textures.details.upsert': {
-    textureId: AssetId;
-    background?: string;
-    upsert?: readonly TextureDetailUpsertInput[];
-    removeIds?: readonly EntityId[];
-  };
-  'textures.delete': {
-    textureIds: readonly AssetId[];
-  };
-  'textures.sync': {
-    pixelsPerBlock?: number;
-    padding?: number;
-    maxResolution?: number;
-    seed?: number;
-    intensity?: number;
-    edge?: number;
-    noise?: number;
-    lightDir?: 'tl_br' | 'tr_bl' | 'top_bottom' | 'left_right';
-  };
+  'textures.sync': Record<string, never>;
   'animation.clip.upsert': {
     id: string;
     name: string;

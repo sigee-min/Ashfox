@@ -11,8 +11,7 @@ const operation = createProjectOperation(
     name: 'Copper Golem',
     target: 'geckolib5',
     namespace: 'ashfox',
-    modelPath: 'copper_golem',
-    textureResolution: 128
+    modelPath: 'copper_golem'
   },
   {
     id: 'project-copper-golem',
@@ -28,7 +27,6 @@ assert.deepEqual(operation, {
     target: 'geckolib5',
     namespace: 'ashfox',
     modelPath: 'copper_golem',
-    textureResolution: 128,
     createdAt: '2026-07-29T00:00:00.000Z'
   }
 });

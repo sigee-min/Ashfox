@@ -9,7 +9,6 @@ import {
 const face = (textureId: string): CubeFace => ({
   enabled: true,
   textureId,
-  details: [],
   uv: [0, 0, 16, 16],
   rotation: 0
 });
@@ -80,6 +79,7 @@ export const createJavaProject = (): ProjectDocument => ({
         inflate: 0,
         mirror: false,
         boxUv: false,
+        baseColor: '#8e98a3',
         faces: createFaces('texture-base')
       }
     }

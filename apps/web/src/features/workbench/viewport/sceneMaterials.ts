@@ -15,7 +15,7 @@ export interface ProjectMaterialLibrary {
   resolve(
     textureId: string | null,
     lightEmission?: number
-  ): THREE.MeshStandardMaterial;
+  ): THREE.Material;
   dispose(): void;
 }
 
@@ -39,13 +39,15 @@ const configureTextureMap = (
   map: THREE.Texture,
   texture: TextureAsset
 ): THREE.Texture => {
-  const filter =
+  map.magFilter =
     texture.sampling === 'nearest'
       ? THREE.NearestFilter
       : THREE.LinearFilter;
-  map.magFilter = filter;
-  map.minFilter = filter;
-  map.generateMipmaps = false;
+  map.minFilter =
+    texture.sampling === 'nearest'
+      ? THREE.NearestMipmapNearestFilter
+      : THREE.LinearMipmapLinearFilter;
+  map.generateMipmaps = true;
   map.colorSpace =
     texture.colorSpace === 'srgb'
       ? THREE.SRGBColorSpace
@@ -103,7 +105,7 @@ export const createProjectMaterials = (
         : null;
     resources.set(texture.id, { texture, map });
   }
-  const materials = new Map<string, THREE.MeshStandardMaterial>();
+  const materials = new Map<string, THREE.Material>();
   const fallback = new THREE.MeshStandardMaterial({
     color: untexturedColor,
     roughness: 0.9
@@ -112,7 +114,7 @@ export const createProjectMaterials = (
   const resolve = (
     textureId: string | null,
     lightEmission = 0
-  ): THREE.MeshStandardMaterial => {
+  ): THREE.Material => {
     if (textureId === null) return fallback;
     const resource = resources.get(textureId);
     if (!resource) return fallback;
@@ -124,19 +126,9 @@ export const createProjectMaterials = (
     const cached = materials.get(key);
     if (cached) return cached;
     const additive = resource.texture.renderMode === 'additive';
-    const material = new THREE.MeshStandardMaterial({
+    const common = {
       color: resource.map ? '#ffffff' : previewColor(resource.texture),
       map: resource.map,
-      roughness: 0.84,
-      metalness: 0.02,
-      emissive:
-        emission > 0
-          ? resource.map
-            ? '#ffffff'
-            : previewColor(resource.texture)
-          : '#000000',
-      emissiveMap: emission > 0 ? resource.map : null,
-      emissiveIntensity: emission,
       transparent: additive,
       blending: additive
         ? THREE.AdditiveBlending
@@ -146,7 +138,22 @@ export const createProjectMaterials = (
         resource.texture.renderSides === 'double'
           ? THREE.DoubleSide
           : THREE.FrontSide
-    });
+    } as const;
+    const material = resource.texture.atlasMode === 'generate'
+      ? new THREE.MeshBasicMaterial(common)
+      : new THREE.MeshStandardMaterial({
+          ...common,
+          roughness: 0.84,
+          metalness: 0.02,
+          emissive:
+            emission > 0
+              ? resource.map
+                ? '#ffffff'
+                : previewColor(resource.texture)
+              : '#000000',
+          emissiveMap: emission > 0 ? resource.map : null,
+          emissiveIntensity: emission
+        });
     materials.set(key, material);
     return material;
   };

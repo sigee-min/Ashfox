@@ -19,7 +19,6 @@ const empty = createProjectFromInput(
     target: 'glb',
     namespace: 'ashfox',
     modelPath: 'capture_fixture',
-    textureResolution: 16,
     createdAt: '2026-07-29T00:00:00.000Z'
   },
   'local-0001'

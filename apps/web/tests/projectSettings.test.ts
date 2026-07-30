@@ -13,17 +13,12 @@ const project = createBlankWorkbenchProject(
 
 assert.deepEqual(
   createProjectSettingsOperations(project, {
-    name: 'Copper truck',
-    textureResolution: 128
+    name: 'Copper truck'
   }),
   [
     {
       name: 'project.rename',
       payload: { name: 'Copper truck' }
-    },
-    {
-      name: 'project.textureResolution.set',
-      payload: { size: 128 }
     }
   ],
   'human project settings must use one canonical command batch'
@@ -31,8 +26,7 @@ assert.deepEqual(
 
 assert.deepEqual(
   createProjectSettingsOperations(project, {
-    name: project.name,
-    textureResolution: project.settings.textureResolution.width
+    name: project.name
   }),
   [],
   'unchanged project settings must not create a receipt'

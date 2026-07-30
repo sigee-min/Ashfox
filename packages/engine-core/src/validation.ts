@@ -18,13 +18,8 @@ import {
   type Vec3
 } from './model';
 import {
-  hasTextureSurfaceArea,
   unsynchronizedGeneratedTextureIds
 } from './textures/textureRecipe';
-import {
-  MAX_PROJECT_TEXTURE_DETAILS,
-  projectTextureDetailCount
-} from './textures/surfaceDetails';
 
 export type InvariantSeverity = 'error' | 'warning' | 'info';
 
@@ -279,8 +274,7 @@ const validateCube = (
   cube: CubeNode,
   document: ProjectDocument,
   path: string,
-  add: (finding: InvariantFinding) => void,
-  registerId: (id: string, path: string) => void
+  add: (finding: InvariantFinding) => void
 ): void => {
   validateVec(cube.bounds.from, 3, `${path}.bounds.from`, add, cube.id);
   validateVec(cube.bounds.to, 3, `${path}.bounds.to`, add, cube.id);
@@ -290,6 +284,15 @@ const validateCube = (
       severity: 'error',
       message: 'Cube inflate must be finite.',
       path: `${path}.inflate`,
+      entityIds: [cube.id]
+    });
+  }
+  if (!COLOR_PATTERN.test(cube.baseColor)) {
+    add({
+      code: 'cube.invalid_face',
+      severity: 'error',
+      message: 'Cube baseColor must use six-digit hex.',
+      path: `${path}.baseColor`,
       entityIds: [cube.id]
     });
   }
@@ -424,54 +427,6 @@ const validateCube = (
         path: `${facePath}.uv`,
         entityIds: [cube.id],
         assetIds: [faceTexture.id]
-      });
-    }
-    if (
-      !Array.isArray(face.details) ||
-      face.details.length > 512
-    ) {
-      add({
-        code: 'cube.invalid_face',
-        severity: 'error',
-        message:
-          'Face texture details must be an array with at most 512 items.',
-        path: `${facePath}.details`,
-        entityIds: [cube.id]
-      });
-    } else {
-      face.details.forEach((detail, index) => {
-        const detailPath = `${facePath}.details.${index}`;
-        registerId(detail.id, detailPath);
-        const texture = face.textureId === null
-          ? undefined
-          : document.textures[face.textureId];
-        if (
-          !COLOR_PATTERN.test(detail.color) ||
-          [detail.u, detail.v, detail.width, detail.height].some(
-            (value) => !isFiniteNumber(value)
-          ) ||
-          detail.u < 0 ||
-          detail.v < 0 ||
-          detail.width <= 0 ||
-          detail.height <= 0 ||
-          detail.u + detail.width > 1 ||
-          detail.v + detail.height > 1 ||
-          !face.enabled ||
-          (face.rotation ?? 0) !== 0 ||
-          texture?.atlasMode !== 'generate' ||
-          !hasTextureSurfaceArea(cube, direction)
-        ) {
-          add({
-            code: 'cube.invalid_face',
-            severity: 'error',
-            message:
-              'Surface details require a positive generated face and ' +
-              'normalized color rectangles.',
-            path: detailPath,
-            entityIds: [cube.id],
-            ...(face.textureId ? { assetIds: [face.textureId] } : {})
-          });
-        }
       });
     }
   }
@@ -2112,43 +2067,6 @@ export const validateProjectDocument = (
       path: 'settings.uvPixelsPerUnit'
     });
   }
-  const generatedTextureRecipe =
-    document.settings.generatedTextureRecipe;
-  if (
-    generatedTextureRecipe !== undefined &&
-    (
-      !Number.isInteger(generatedTextureRecipe.pixelsPerBlock) ||
-      generatedTextureRecipe.pixelsPerBlock < 1 ||
-      generatedTextureRecipe.pixelsPerBlock > 256 ||
-      !Number.isInteger(generatedTextureRecipe.padding) ||
-      generatedTextureRecipe.padding < 0 ||
-      generatedTextureRecipe.padding > 32 ||
-      !Number.isInteger(generatedTextureRecipe.maxResolution) ||
-      generatedTextureRecipe.maxResolution < 16 ||
-      generatedTextureRecipe.maxResolution > 4096 ||
-      !Number.isInteger(generatedTextureRecipe.seed) ||
-      [
-        generatedTextureRecipe.intensity,
-        generatedTextureRecipe.edge,
-        generatedTextureRecipe.noise
-      ].some(
-        (value) =>
-          !isFiniteNumber(value) ||
-          value < 0 ||
-          value > 1
-      ) ||
-      !['tl_br', 'tr_bl', 'top_bottom', 'left_right'].includes(
-        generatedTextureRecipe.lightDir
-      )
-    )
-  ) {
-    add({
-      code: 'document.invalid_setting',
-      severity: 'error',
-      message: 'Generated texture recipe values are outside their supported ranges.',
-      path: 'settings.generatedTextureRecipe'
-    });
-  }
   const coordinateSystem = document.settings.coordinateSystem;
   if (
     coordinateSystem.up !== 'y' ||
@@ -2273,7 +2191,7 @@ export const validateProjectDocument = (
     }
 
     if (node.kind === 'cube') {
-      validateCube(node, document, path, add, registerId);
+      validateCube(node, document, path, add);
     } else if (node.kind === 'mesh') {
       validateMesh(node, document, path, add, registerId);
     } else if (node.kind !== 'bone' && node.kind !== 'locator') {
@@ -2399,7 +2317,7 @@ export const validateProjectDocument = (
         });
       }
     }
-    const usesGeneratedRecipe =
+    const usesGeneratedTexture =
       texture.atlasMode === 'generate' &&
       Object.values(document.scene.nodes).some(
         (node) =>
@@ -2411,32 +2329,18 @@ export const validateProjectDocument = (
           )
       );
     if (
-      usesGeneratedRecipe &&
-      (
-        !document.settings.generatedTextureRecipe ||
-        unsynchronizedTextureIds.has(texture.id)
-      )
+      usesGeneratedTexture &&
+      unsynchronizedTextureIds.has(texture.id)
     ) {
       add({
         code: 'texture.recipe_unsynchronized',
         severity: 'warning',
         message:
           'Generated texture surfaces changed after the last texture synchronization.',
-        path: 'settings.generatedTextureRecipe',
+        path: 'settings.textureResolution',
         assetIds: [texture.id]
       });
     }
-  }
-
-  if (projectTextureDetailCount(document) > MAX_PROJECT_TEXTURE_DETAILS) {
-    add({
-      code: 'texture.invalid_raster',
-      severity: 'error',
-      message:
-        `A project cannot exceed ${MAX_PROJECT_TEXTURE_DETAILS} ` +
-        'texture details.',
-      path: 'textures'
-    });
   }
 
   for (const [clipKey, clip] of Object.entries(document.animations)) {

@@ -160,12 +160,12 @@ const hullRing = (
 );
 
 cubes.push(
-  demoCube('cube-core-window-north', 'bone-core', pivots.core, [0, 18, -5.9], [4, 5.2, 0.6], T.window, { shade: false, lightEmission: 9 }),
-  demoCube('cube-core-window-south', 'bone-core', pivots.core, [0, 18, 5.9], [4, 5.2, 0.6], T.window, { shade: false, lightEmission: 9 }),
-  demoCube('cube-core-window-west', 'bone-core', pivots.core, [-5.9, 18, 0], [0.6, 5.2, 4], T.window, { shade: false, lightEmission: 9 }),
-  demoCube('cube-core-window-east', 'bone-core', pivots.core, [5.9, 18, 0], [0.6, 5.2, 4], T.window, { shade: false, lightEmission: 9 }),
-  demoCube('cube-core-crystal', 'bone-core', pivots.core, [0, 18, 0], [3.2, 7.5, 3.2], T.rune, { rotation: [0, 45, 0], shade: false, lightEmission: 15 }),
-  demoCube('cube-nose-spire', 'bone-nose', pivots.nose, [0, 39, 0], [1.2, 5.2, 1.2], T.rune, { rotation: [0, 45, 0], shade: false, lightEmission: 12 })
+  demoCube('cube-core-window-north', 'bone-core', pivots.core, [0, 18, -5.9], [4, 5.2, 0.6], T.window),
+  demoCube('cube-core-window-south', 'bone-core', pivots.core, [0, 18, 5.9], [4, 5.2, 0.6], T.window),
+  demoCube('cube-core-window-west', 'bone-core', pivots.core, [-5.9, 18, 0], [0.6, 5.2, 4], T.window),
+  demoCube('cube-core-window-east', 'bone-core', pivots.core, [5.9, 18, 0], [0.6, 5.2, 4], T.window),
+  demoCube('cube-core-crystal', 'bone-core', pivots.core, [0, 18, 0], [3.2, 7.5, 3.2], T.rune, { rotation: [0, 45, 0] }),
+  demoCube('cube-nose-spire', 'bone-nose', pivots.nose, [0, 39, 0], [1.2, 5.2, 1.2], T.rune, { rotation: [0, 45, 0] })
 );
 
 const finData = [
@@ -221,8 +221,7 @@ for (const side of ['north', 'south', 'west', 'east'] as const) {
       pivot,
       [pivot[0], -1, pivot[2]],
       [1.8, 2.8, 1.8],
-      T.engine,
-      { shade: false, lightEmission: 15 }
+      T.engine
     )
   );
 }
@@ -242,9 +241,7 @@ for (let index = 0; index < 12; index += 1) {
       [2.2, 4.8, 0.5],
       index % 3 === 0 ? T.rune : T.carbon,
       {
-        rotation: [0, angle, 0],
-        shade: index % 3 !== 0,
-        lightEmission: index % 3 === 0 ? 8 : 0
+        rotation: [0, angle, 0]
       }
     )
   );
@@ -359,62 +356,36 @@ export const AETHER_SPEAR_ROCKET_DEMO: DemoDefinition = {
   name: 'Aether Spear · Runic Exploration Rocket',
   modelPath: 'aether_spear_rocket',
   initialSelectionId: null,
-  atlasSeed: 0xae7e5,
   textures: [
     {
       id: T.hull,
       name: 'Ceramic hull',
-      background: '#e6e1d5',
-      atlasMode: 'generate',
-      details: []
+      background: '#e6e1d5'
     },
     {
       id: T.carbon,
       name: 'Carbon structure',
-      background: '#25313e',
-      atlasMode: 'generate',
-      details: []
+      background: '#25313e'
     },
     {
       id: T.gold,
       name: 'Runic gold',
-      background: '#edbd5c',
-      atlasMode: 'generate',
-      details: []
+      background: '#edbd5c'
     },
     {
       id: T.window,
       name: 'Aether window',
-      background: '#123b52',
-      atlasMode: 'preserve',
-      renderMode: 'emissive',
-      details: [
-        { x: 8, y: 8, width: 112, height: 112, color: '#2c92ae' },
-        { x: 24, y: 18, width: 70, height: 26, color: '#a8f3ff' }
-      ]
+      background: '#123b52'
     },
     {
       id: T.engine,
       name: 'Engine plasma',
-      background: '#0a3251',
-      atlasMode: 'preserve',
-      renderMode: 'additive',
-      details: [
-        { x: 10, y: 10, width: 108, height: 108, color: '#37b8e0' },
-        { x: 30, y: 24, width: 68, height: 82, color: '#d5fbff' }
-      ]
+      background: '#0a3251'
     },
     {
       id: T.rune,
       name: 'Aether rune',
-      background: '#38134f',
-      atlasMode: 'preserve',
-      renderMode: 'emissive',
-      details: [
-        { x: 8, y: 8, width: 112, height: 112, color: '#8141c5' },
-        { x: 32, y: 18, width: 18, height: 92, color: '#e0b5ff' },
-        { x: 18, y: 50, width: 92, height: 18, color: '#e0b5ff' }
-      ]
+      background: '#38134f'
     }
   ],
   bones,

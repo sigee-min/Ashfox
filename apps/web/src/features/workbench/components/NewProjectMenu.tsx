@@ -4,11 +4,6 @@ import {
 } from 'react';
 
 import {
-  PROJECT_TEXTURE_RESOLUTIONS,
-  type ProjectTextureResolution
-} from '@ashfox/engine-core';
-
-import {
   isMinecraftExportTarget,
   PROJECT_EXPORT_TARGETS,
   projectResourceToken,
@@ -29,8 +24,6 @@ export function NewProjectMenu({
   const [namespace, setNamespace] = useState('ashfox');
   const [modelPath, setModelPath] = useState('untitled_project');
   const [modelPathEdited, setModelPathEdited] = useState(false);
-  const [resolution, setResolution] =
-    useState<ProjectTextureResolution>(64);
 
   const trimmedName = name.trim();
   const trimmedNamespace = namespace.trim();
@@ -50,8 +43,7 @@ export function NewProjectMenu({
       name: trimmedName,
       target,
       namespace: trimmedNamespace || 'ashfox',
-      modelPath: trimmedModelPath,
-      textureResolution: resolution
+      modelPath: trimmedModelPath
     });
   };
 
@@ -92,22 +84,6 @@ export function NewProjectMenu({
           setModelPathEdited(true);
         }}
       />
-      <label className="popover-field">
-        <span>Texture canvas</span>
-        <select
-          aria-label="Texture resolution"
-          value={resolution}
-          onChange={(event) => setResolution(
-            Number(event.target.value) as ProjectTextureResolution
-          )}
-        >
-          {PROJECT_TEXTURE_RESOLUTIONS.map((size) => (
-            <option value={size} key={size}>
-              {size} × {size}
-            </option>
-          ))}
-        </select>
-      </label>
       <p className="new-project-note">
         Your current project remains in local browser storage.
       </p>

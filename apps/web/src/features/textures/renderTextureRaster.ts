@@ -1,6 +1,5 @@
 import {
   composeTextureRaster,
-  shadeMinecraftPixel,
   type ProjectDocument,
   type RgbColor,
   type TextureAsset,
@@ -24,59 +23,26 @@ const toneColor = (color: RgbColor, tone: number): RgbColor => ({
   b: Math.min(255, Math.max(0, Math.round(color.b * tone)))
 });
 
-const renderMinecraftPattern = (
+const renderGeneratedFaceTones = (
   context: CanvasRenderingContext2D,
-  texture: TextureAsset,
   composition: TextureComposition
 ): void => {
-  const recipe = composition.recipe;
-  if (!recipe) return;
-  const image = context.getImageData(0, 0, texture.width, texture.height);
+  if (!composition.generated) return;
   for (const region of composition.regions) {
     const color = toneColor(rgbColor(region.color), region.tone);
-    const xEnd = region.x + region.width;
-    const yEnd = region.y + region.height;
-    for (let y = region.y; y < yEnd; y += 1) {
-      for (let x = region.x; x < xEnd; x += 1) {
-        const shaded = shadeMinecraftPixel(
-          color,
-          x,
-          y,
-          region,
-          {
-            intensity: recipe.intensity,
-            edge: recipe.edge,
-            noise: recipe.noise,
-            seed: region.seed,
-            lightDir: recipe.lightDir
-          }
-        );
-        const index = (y * texture.width + x) * 4;
-        image.data[index] = shaded.r;
-        image.data[index + 1] = shaded.g;
-        image.data[index + 2] = shaded.b;
-        image.data[index + 3] = 255;
-      }
-    }
-  }
-  context.putImageData(image, 0, 0);
-};
-
-const renderSurfaceDetails = (
-  context: CanvasRenderingContext2D,
-  composition: TextureComposition
-): void => {
-  for (const region of composition.regions) {
-    for (const detail of region.details) {
-      const x = region.x + Math.floor(detail.u * region.width);
-      const y = region.y + Math.floor(detail.v * region.height);
-      let width = Math.max(1, Math.round(detail.width * region.width));
-      let height = Math.max(1, Math.round(detail.height * region.height));
-      width = Math.min(width, region.x + region.width - x);
-      height = Math.min(height, region.y + region.height - y);
-      context.fillStyle = detail.color;
-      context.fillRect(x, y, width, height);
-    }
+    context.fillStyle = `rgb(${color.r} ${color.g} ${color.b})`;
+    context.fillRect(
+      region.x - 1,
+      region.y - 1,
+      region.width + 2,
+      region.height + 2
+    );
+    context.fillRect(
+      region.x,
+      region.y,
+      region.width,
+      region.height
+    );
   }
 };
 
@@ -108,8 +74,7 @@ export const renderTextureRaster = (
 
   context.fillStyle = composition.background ?? previewColor(texture);
   context.fillRect(0, 0, texture.width, texture.height);
-  renderMinecraftPattern(context, texture, composition);
-  renderSurfaceDetails(context, composition);
+  renderGeneratedFaceTones(context, composition);
   renderCanvasDetails(context, composition);
   return canvas;
 };

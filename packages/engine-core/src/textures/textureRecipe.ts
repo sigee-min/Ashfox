@@ -2,104 +2,23 @@ import {
   CUBE_FACE_DIRECTIONS,
   type CubeFaceDirection,
   type CubeNode,
-  type GeneratedTextureRecipe,
   type ProjectDocument,
-  type SurfaceTextureDetail,
   type TextureAsset,
   type TextureCanvasDetail
 } from '../model';
 import { updateSceneNode } from '../scene';
 import {
   cubeFaceDimensions,
-  faceTexelSize,
   packUvAtlas,
-  reduceAtlasPixelsPerBlock,
   type UvAtlasPlacement,
   type UvAtlasRect
 } from './uvAtlas';
-import { stableTextureSeed } from './minecraftShading';
 
-export interface TextureSyncOptions extends GeneratedTextureRecipe {}
-
-const DEFAULT_RECIPE: GeneratedTextureRecipe = {
-  pixelsPerBlock: 16,
-  padding: 1,
-  maxResolution: 256,
-  seed: 0x41534846,
-  intensity: 0.22,
-  edge: 0.12,
-  noise: 0.06,
-  lightDir: 'tl_br'
-};
-
-const activeGeneratedTextureIds = (
-  document: ProjectDocument
-): readonly string[] =>
-  [...new Set(
-    Object.values(document.scene.nodes).flatMap((node) => {
-      if (node.kind !== 'cube') return [];
-      return CUBE_FACE_DIRECTIONS.flatMap((direction) => {
-        const face = node.faces[direction];
-        const textureId = face.textureId;
-        return (
-          face.enabled &&
-          textureId !== null &&
-          document.textures[textureId]?.atlasMode === 'generate'
-        )
-          ? [textureId]
-          : [];
-      });
-    })
-  )].sort();
-
-const storedRecipe = (
-  document: ProjectDocument
-): GeneratedTextureRecipe | undefined =>
-  document.settings.generatedTextureRecipe;
-
-export const resolveTextureSyncOptions = (
-  document: ProjectDocument,
-  overrides: Partial<TextureSyncOptions> = {}
-): TextureSyncOptions => {
-  const stored = storedRecipe(document);
-  return {
-    pixelsPerBlock:
-      overrides.pixelsPerBlock ??
-      stored?.pixelsPerBlock ??
-      DEFAULT_RECIPE.pixelsPerBlock,
-    padding:
-      overrides.padding ??
-      stored?.padding ??
-      DEFAULT_RECIPE.padding,
-    maxResolution:
-      overrides.maxResolution ??
-      Math.max(
-        stored?.maxResolution ?? DEFAULT_RECIPE.maxResolution,
-        document.settings.textureResolution.width,
-        document.settings.textureResolution.height
-      ),
-    seed:
-      overrides.seed ??
-      stored?.seed ??
-      DEFAULT_RECIPE.seed,
-    intensity:
-      overrides.intensity ??
-      stored?.intensity ??
-      DEFAULT_RECIPE.intensity,
-    edge:
-      overrides.edge ??
-      stored?.edge ??
-      DEFAULT_RECIPE.edge,
-    noise:
-      overrides.noise ??
-      stored?.noise ??
-      DEFAULT_RECIPE.noise,
-    lightDir:
-      overrides.lightDir ??
-      stored?.lightDir ??
-      DEFAULT_RECIPE.lightDir
-  };
-};
+export const GENERATED_PIXELS_PER_BLOCK = 16;
+export const GENERATED_TEXELS_PER_MODEL_UNIT = 1;
+export const GENERATED_ATLAS_PADDING = 2;
+export const GENERATED_ATLAS_MIN_RESOLUTION = 16;
+export const GENERATED_ATLAS_MAX_RESOLUTION = 4096;
 
 export interface TextureSyncSuccess {
   ok: true;
@@ -107,6 +26,7 @@ export interface TextureSyncSuccess {
   width: number;
   height: number;
   pixelsPerBlock: number;
+  texelsPerModelUnit: number;
   changedSettings: boolean;
   changedNodeIds: readonly string[];
   changedTextureIds: readonly string[];
@@ -132,7 +52,6 @@ interface FaceTarget {
 interface AtlasPlan {
   width: number;
   height: number;
-  pixelsPerBlock: number;
   placementsByTexture: Map<string, UvAtlasPlacement<FaceTarget>[]>;
 }
 
@@ -144,19 +63,18 @@ export interface TextureCompositionRegion {
   width: number;
   height: number;
   color: string;
-  seed: number;
   tone: number;
-  details: readonly SurfaceTextureDetail[];
 }
 
 export interface TextureComposition {
   background: string;
-  recipe?: GeneratedTextureRecipe;
+  generated: boolean;
   regions: readonly TextureCompositionRegion[];
   canvasDetails: readonly TextureCanvasDetail[];
 }
 
 const COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+const EPSILON = 1e-9;
 
 const previewColor = (texture: TextureAsset): string => {
   const value = texture.metadata?.previewColor;
@@ -202,10 +120,72 @@ export const hasTextureSurfaceArea = (
   return dimensions.width > 0 && dimensions.height > 0;
 };
 
-const collectRects = (
+const exactTexelSize = (
   document: ProjectDocument,
-  pixelsPerBlock: number
-): Map<string, UvAtlasRect<FaceTarget>[]> => {
+  node: CubeNode,
+  direction: CubeFaceDirection
+): { width: number; height: number } | null => {
+  const dimensions = effectiveFaceDimensions(node, direction);
+  const scale =
+    GENERATED_PIXELS_PER_BLOCK / modelUnitsPerBlock(document);
+  const width = dimensions.width * scale;
+  const height = dimensions.height * scale;
+  const roundedWidth = Math.round(width);
+  const roundedHeight = Math.round(height);
+  return (
+    roundedWidth > 0 &&
+    roundedHeight > 0 &&
+    Math.abs(width - roundedWidth) <= EPSILON &&
+    Math.abs(height - roundedHeight) <= EPSILON
+  )
+    ? { width: roundedWidth, height: roundedHeight }
+    : null;
+};
+
+const activeGeneratedTextureIds = (
+  document: ProjectDocument
+): readonly string[] =>
+  [...new Set(
+    Object.values(document.scene.nodes).flatMap((node) => {
+      if (node.kind !== 'cube') return [];
+      return CUBE_FACE_DIRECTIONS.flatMap((direction) => {
+        const face = node.faces[direction];
+        const textureId = face.textureId;
+        return (
+          face.enabled &&
+          textureId !== null &&
+          document.textures[textureId]?.atlasMode === 'generate'
+        )
+          ? [textureId]
+          : [];
+      });
+    })
+  )].sort();
+
+const invalidGridFace = (
+  document: ProjectDocument
+): { nodeId: string; direction: CubeFaceDirection } | null => {
+  for (const node of Object.values(document.scene.nodes)) {
+    if (node.kind !== 'cube') continue;
+    for (const direction of CUBE_FACE_DIRECTIONS) {
+      const face = node.faces[direction];
+      if (
+        face.enabled &&
+        face.textureId !== null &&
+        document.textures[face.textureId]?.atlasMode === 'generate' &&
+        hasTextureSurfaceArea(node, direction) &&
+        !exactTexelSize(document, node, direction)
+      ) {
+        return { nodeId: node.id, direction };
+      }
+    }
+  }
+  return null;
+};
+
+const collectRects = (
+  document: ProjectDocument
+): Map<string, UvAtlasRect<FaceTarget>[]> | null => {
   const byTexture = new Map<string, UvAtlasRect<FaceTarget>[]>();
   for (const node of Object.values(document.scene.nodes)) {
     if (node.kind !== 'cube') continue;
@@ -214,14 +194,9 @@ const collectRects = (
       if (!face.enabled || face.textureId === null) continue;
       const texture = document.textures[face.textureId];
       if (texture?.atlasMode !== 'generate') continue;
+      const size = exactTexelSize(document, node, direction);
+      if (!size) return null;
       const rects = byTexture.get(texture.id) ?? [];
-      byTexture.set(texture.id, rects);
-      const size = faceTexelSize(
-        effectiveFaceDimensions(node, direction),
-        modelUnitsPerBlock(document),
-        pixelsPerBlock
-      );
-      if (!size) continue;
       rects.push({
         key: `${node.id}:${direction}`,
         width: size.width,
@@ -232,6 +207,7 @@ const collectRects = (
           textureId: texture.id
         }
       });
+      byTexture.set(texture.id, rects);
     }
   }
   return byTexture;
@@ -239,13 +215,16 @@ const collectRects = (
 
 const tryResolution = (
   rectsByTexture: ReadonlyMap<string, readonly UvAtlasRect<FaceTarget>[]>,
-  width: number,
-  height: number,
-  padding: number
+  resolution: number
 ): Map<string, UvAtlasPlacement<FaceTarget>[]> | null => {
   const placements = new Map<string, UvAtlasPlacement<FaceTarget>[]>();
   for (const [textureId, rects] of rectsByTexture) {
-    const packed = packUvAtlas(rects, width, height, padding);
+    const packed = packUvAtlas(
+      rects,
+      resolution,
+      resolution,
+      GENERATED_ATLAS_PADDING
+    );
     if (!packed) return null;
     placements.set(textureId, packed);
   }
@@ -253,41 +232,23 @@ const tryResolution = (
 };
 
 const buildPlan = (
-  document: ProjectDocument,
-  options: TextureSyncOptions
+  document: ProjectDocument
 ): AtlasPlan | null => {
-  let pixelsPerBlock = options.pixelsPerBlock;
-  const startWidth = document.settings.textureResolution.width;
-  const startHeight = document.settings.textureResolution.height;
-  while (pixelsPerBlock >= 1) {
-    const rects = collectRects(document, pixelsPerBlock);
-    if (rects.size === 0) return null;
-    let width = startWidth;
-    let height = startHeight;
-    while (
-      width <= options.maxResolution &&
-      height <= options.maxResolution
-    ) {
-      const placements = tryResolution(
-        rects,
-        width,
-        height,
-        options.padding
-      );
-      if (placements) {
-        return {
-          width,
-          height,
-          pixelsPerBlock,
-          placementsByTexture: placements
-        };
-      }
-      width *= 2;
-      height *= 2;
+  const rects = collectRects(document);
+  if (!rects || rects.size === 0) return null;
+  for (
+    let resolution = GENERATED_ATLAS_MIN_RESOLUTION;
+    resolution <= GENERATED_ATLAS_MAX_RESOLUTION;
+    resolution *= 2
+  ) {
+    const placements = tryResolution(rects, resolution);
+    if (placements) {
+      return {
+        width: resolution,
+        height: resolution,
+        placementsByTexture: placements
+      };
     }
-    const reduced = reduceAtlasPixelsPerBlock(pixelsPerBlock);
-    if (reduced === null) return null;
-    pixelsPerBlock = reduced;
   }
   return null;
 };
@@ -312,75 +273,6 @@ const assignmentForPlan = (
   return assignment;
 };
 
-const updateFaces = (
-  document: ProjectDocument,
-  plan: AtlasPlan,
-  nodeIds: readonly string[]
-): ProjectDocument => {
-  const assignment = assignmentForPlan(plan);
-  return nodeIds.reduce(
-    (current, nodeId) =>
-      updateSceneNode(current, nodeId, (node) => {
-        if (node.kind !== 'cube') return node;
-        return {
-          ...node,
-          boxUv: false,
-          uvOffset: undefined,
-          faces: Object.fromEntries(
-            CUBE_FACE_DIRECTIONS.map((direction) => {
-              const uv = assignment.get(`${nodeId}:${direction}`);
-              return [
-                direction,
-                uv
-                  ? { ...node.faces[direction], uv, rotation: 0 }
-                  : node.faces[direction]
-              ];
-            })
-          ) as typeof node.faces
-        };
-      }),
-    document
-  );
-};
-
-const faceTone = (direction: CubeFaceDirection): number => {
-  switch (direction) {
-    case 'up':
-      return 1.08;
-    case 'down':
-      return 0.72;
-    case 'south':
-      return 0.98;
-    case 'north':
-      return 0.92;
-    case 'west':
-      return 0.86;
-    case 'east':
-      return 0.8;
-  }
-};
-
-const recipeMatches = (
-  left: GeneratedTextureRecipe | undefined,
-  right: GeneratedTextureRecipe
-): boolean =>
-  left !== undefined &&
-  left.pixelsPerBlock === right.pixelsPerBlock &&
-  left.padding === right.padding &&
-  left.maxResolution === right.maxResolution &&
-  left.seed === right.seed &&
-  left.intensity === right.intensity &&
-  left.edge === right.edge &&
-  left.noise === right.noise &&
-  left.lightDir === right.lightDir;
-
-const uvMatches = (
-  actual: readonly number[] | undefined,
-  expected: readonly number[]
-): boolean =>
-  actual?.length === expected.length &&
-  actual.every((value, index) => value === expected[index]);
-
 const expectedUv = (
   placement: UvAtlasPlacement<FaceTarget>
 ): readonly [number, number, number, number] => [
@@ -389,6 +281,13 @@ const expectedUv = (
   placement.x + placement.width,
   placement.y + placement.height
 ];
+
+const uvMatches = (
+  actual: readonly number[] | undefined,
+  expected: readonly number[]
+): boolean =>
+  actual?.length === expected.length &&
+  actual.every((value, index) => value === expected[index]);
 
 const nodeMatchesPlan = (
   document: ProjectDocument,
@@ -439,29 +338,39 @@ const textureMatchesPlan = (
 
 const settingsMatchPlan = (
   document: ProjectDocument,
-  plan: AtlasPlan,
-  options: TextureSyncOptions
+  plan: AtlasPlan
 ): boolean =>
   document.settings.textureResolution.width === plan.width &&
   document.settings.textureResolution.height === plan.height &&
-  document.settings.uvPixelsPerUnit ===
-    plan.pixelsPerBlock / modelUnitsPerBlock(document) &&
-  recipeMatches(
-    document.settings.generatedTextureRecipe,
-    options
-  );
+  document.settings.uvPixelsPerUnit === GENERATED_TEXELS_PER_MODEL_UNIT;
 
-export const isTextureRecipeSynchronized = (
+const faceTone = (direction: CubeFaceDirection): number => {
+  switch (direction) {
+    case 'up':
+      return 1.06;
+    case 'south':
+      return 1;
+    case 'north':
+      return 0.96;
+    case 'west':
+      return 0.92;
+    case 'east':
+      return 0.88;
+    case 'down':
+      return 0.84;
+  }
+};
+
+export const isGeneratedTextureSynchronized = (
   document: ProjectDocument,
   textureId: string
 ): boolean => {
   const texture = document.textures[textureId];
   if (texture?.atlasMode !== 'generate') return true;
-  const options = resolveTextureSyncOptions(document);
-  const plan = buildPlan(document, options);
+  const plan = buildPlan(document);
   return Boolean(
     plan &&
-    settingsMatchPlan(document, plan, options) &&
+    settingsMatchPlan(document, plan) &&
     textureMatchesPlan(document, textureId, plan)
   );
 };
@@ -471,9 +380,8 @@ export const unsynchronizedGeneratedTextureIds = (
 ): ReadonlySet<string> => {
   const textureIds = activeGeneratedTextureIds(document);
   if (textureIds.length === 0) return new Set();
-  const options = resolveTextureSyncOptions(document);
-  const plan = buildPlan(document, options);
-  if (!plan || !settingsMatchPlan(document, plan, options)) {
+  const plan = buildPlan(document);
+  if (!plan || !settingsMatchPlan(document, plan)) {
     return new Set(textureIds);
   }
   return new Set(
@@ -488,12 +396,9 @@ export const composeTextureRaster = (
   document: ProjectDocument,
   texture: TextureAsset
 ): TextureComposition => {
-  const background = baseColor(texture);
-  const recipe = texture.atlasMode === 'generate'
-    ? document.settings.generatedTextureRecipe
-    : undefined;
+  const generated = texture.atlasMode === 'generate';
   const regions: TextureCompositionRegion[] = [];
-  if (texture.atlasMode === 'generate' && recipe) {
+  if (generated) {
     for (const node of Object.values(document.scene.nodes)) {
       if (node.kind !== 'cube') continue;
       for (const face of CUBE_FACE_DIRECTIONS) {
@@ -514,20 +419,15 @@ export const composeTextureRaster = (
           y: uv[1],
           width: uv[2] - uv[0],
           height: uv[3] - uv[1],
-          color: background,
-          seed: stableTextureSeed(
-            `${texture.id}:${node.id}:${face}`,
-            recipe.seed
-          ),
-          tone: faceTone(face),
-          details: surface.details
+          color: node.baseColor,
+          tone: faceTone(face)
         });
       }
     }
   }
   return {
-    background,
-    ...(recipe ? { recipe } : {}),
+    background: baseColor(texture),
+    generated,
     regions,
     canvasDetails: texture.raster?.canvasDetails ?? []
   };
@@ -552,9 +452,39 @@ const mixedBoxUvCube = (
     return hasGenerated && hasPreserved;
   });
 
-export const synchronizeTextureRecipes = (
+const updateFaces = (
   document: ProjectDocument,
-  options: TextureSyncOptions
+  plan: AtlasPlan,
+  nodeIds: readonly string[]
+): ProjectDocument => {
+  const assignment = assignmentForPlan(plan);
+  return nodeIds.reduce(
+    (current, nodeId) =>
+      updateSceneNode(current, nodeId, (node) => {
+        if (node.kind !== 'cube') return node;
+        return {
+          ...node,
+          boxUv: false,
+          uvOffset: undefined,
+          faces: Object.fromEntries(
+            CUBE_FACE_DIRECTIONS.map((direction) => {
+              const uv = assignment.get(`${nodeId}:${direction}`);
+              return [
+                direction,
+                uv
+                  ? { ...node.faces[direction], uv, rotation: 0 }
+                  : node.faces[direction]
+              ];
+            })
+          ) as typeof node.faces
+        };
+      }),
+    document
+  );
+};
+
+export const synchronizeGeneratedTextures = (
+  document: ProjectDocument
 ): TextureSyncResult => {
   const generatedTextureIds = activeGeneratedTextureIds(document);
   if (generatedTextureIds.length === 0) {
@@ -563,9 +493,8 @@ export const synchronizeTextureRecipes = (
       document,
       width: document.settings.textureResolution.width,
       height: document.settings.textureResolution.height,
-      pixelsPerBlock:
-        (document.settings.uvPixelsPerUnit ?? 1) *
-        modelUnitsPerBlock(document),
+      pixelsPerBlock: GENERATED_PIXELS_PER_BLOCK,
+      texelsPerModelUnit: GENERATED_TEXELS_PER_MODEL_UNIT,
       changedSettings: false,
       changedNodeIds: [],
       changedTextureIds: []
@@ -576,19 +505,33 @@ export const synchronizeTextureRecipes = (
     return {
       ok: false,
       message:
-        `Cube "${mixedCube.id}" mixes generated surfaces with preserved ` +
-        'surfaces while box UV is enabled.',
+        `Cube "${mixedCube.id}" mixes generated and preserved surfaces.`,
       path: `scene.nodes.${mixedCube.id}.faces`,
-      expected: 'one atlas mode per box-UV cube'
+      expected: 'one texture mode per cube'
     };
   }
-  const plan = buildPlan(document, options);
+  const invalidFace = invalidGridFace(document);
+  if (invalidFace) {
+    return {
+      ok: false,
+      message:
+        `Cube "${invalidFace.nodeId}" face "${invalidFace.direction}" ` +
+        'does not align to the fixed square-pixel grid.',
+      path:
+        `scene.nodes.${invalidFace.nodeId}.faces.${invalidFace.direction}`,
+      expected:
+        'bounds, inflate, and scale producing whole texels at 1 texel per model unit'
+    };
+  }
+  const plan = buildPlan(document);
   if (!plan) {
     return {
       ok: false,
-      message: 'Texture recipe cannot fit every generated cube surface.',
-      path: 'payload.maxResolution',
-      expected: 'a larger maximum resolution or less generated geometry'
+      message:
+        'Generated surfaces exceed the fixed-density 4096 × 4096 atlas.',
+      path: 'scene.nodes',
+      expected:
+        'less geometry while preserving 1 square texel per model unit'
     };
   }
   const placements = [...plan.placementsByTexture.values()].flat();
@@ -609,7 +552,6 @@ export const synchronizeTextureRecipes = (
     )
     .map(([nodeId]) => nodeId);
   const withFaces = updateFaces(document, plan, changedNodeIds);
-  const recipe: GeneratedTextureRecipe = { ...options };
   const textures = { ...withFaces.textures };
   const changedTextureIds = generatedTextureIds.filter(
     (textureId) =>
@@ -627,7 +569,7 @@ export const synchronizeTextureRecipes = (
       }
     };
   }
-  const changedSettings = !settingsMatchPlan(document, plan, options);
+  const changedSettings = !settingsMatchPlan(document, plan);
   if (
     !changedSettings &&
     changedNodeIds.length === 0 &&
@@ -638,7 +580,8 @@ export const synchronizeTextureRecipes = (
       document,
       width: plan.width,
       height: plan.height,
-      pixelsPerBlock: plan.pixelsPerBlock,
+      pixelsPerBlock: GENERATED_PIXELS_PER_BLOCK,
+      texelsPerModelUnit: GENERATED_TEXELS_PER_MODEL_UNIT,
       changedSettings: false,
       changedNodeIds: [],
       changedTextureIds: []
@@ -655,16 +598,15 @@ export const synchronizeTextureRecipes = (
               width: plan.width,
               height: plan.height
             },
-            uvPixelsPerUnit:
-              plan.pixelsPerBlock / modelUnitsPerBlock(document),
-            generatedTextureRecipe: recipe
+            uvPixelsPerUnit: GENERATED_TEXELS_PER_MODEL_UNIT
           }
         : withFaces.settings,
       textures
     },
     width: plan.width,
     height: plan.height,
-    pixelsPerBlock: plan.pixelsPerBlock,
+    pixelsPerBlock: GENERATED_PIXELS_PER_BLOCK,
+    texelsPerModelUnit: GENERATED_TEXELS_PER_MODEL_UNIT,
     changedSettings,
     changedNodeIds,
     changedTextureIds

@@ -1,9 +1,5 @@
 import { addSceneNode } from '../../scene';
 import type { CubeNode } from '../../model';
-import {
-  projectTextureDetailIds,
-  surfaceDetailIds
-} from '../../textures/surfaceDetails';
 import { defineCommand } from '../definition';
 import { entityIdsSchema, vec3Schema } from './schemas';
 import {
@@ -89,27 +85,6 @@ export const repeatCubesCommand = defineCommand({
       }
     }
     const createdIds = clones.map((clone) => clone.id);
-    const detailIds = clones.flatMap((clone) =>
-      surfaceDetailIds(clone.faces)
-    );
-    const existingDetailIds = projectTextureDetailIds(document);
-    const conflictingDetailId = detailIds.find(
-      (id, index) =>
-        existingDetailIds.has(id) ||
-        detailIds.indexOf(id) !== index
-    );
-    if (conflictingDetailId) {
-      return {
-        ok: false,
-        error: {
-          code: 'invalid_state',
-          message:
-            `Derived texture detail ID "${conflictingDetailId}" is ` +
-            'already in use.',
-          path: 'payload.idPrefix'
-        }
-      };
-    }
     const next = clones.reduce(addSceneNode, document);
     return {
       ok: true,
@@ -117,7 +92,7 @@ export const repeatCubesCommand = defineCommand({
         document: next,
         summary: `Repeat ${payload.nodeIds.length} cube${payload.nodeIds.length === 1 ? '' : 's'} × ${payload.count}`,
         effects: {
-          createdEntityIds: [...createdIds, ...detailIds],
+          createdEntityIds: createdIds,
           changedEntityIds: [],
           removedEntityIds: [],
           invalidated: [

@@ -63,7 +63,7 @@ export const agentManifest = {
       model:
         'Required. Deliver coherent named geometry under a usable bone hierarchy; a project shell or proof cube is not a finished model.',
       texture:
-        'Required. Satisfy textureContract with at least one non-placeholder texture. Final inspect must show untexturedVisibleFaces 0 and texturedVisibleFaces equal enabledVisibleFaces.',
+        'Required. Choose a deliberate #RRGGBB baseColor for every material region and satisfy textureContract. Final inspect must show untexturedVisibleFaces 0 and texturedVisibleFaces equal enabledVisibleFaces.',
       idleAnimation:
         'Required for every asset. Use animation.<asset>.idle for Minecraft targets or Idle for glTF/GLB, with at least one transform channel and matching start and end poses. Add a changed intermediate pose only when motion is semantically valid; otherwise use identical hold keys. Final inspect must show idleClips and idleChannels at least 1. Present and review one complete loop.',
       readiness:
@@ -81,76 +81,48 @@ export const agentManifest = {
       bodyPlan:
         'Lock the primary body axis and stance, support points, head-to-body ratio, mass distribution, limb or appendage count and attachment, and joint directions before surface detail. Reject an upright human torso, human shoulder or pelvis layout, or human limb proportions unless the requested subject actually has them.',
       eyes:
-        'When visible eyes define the subject, use geometry only for form that materially changes the socket, lid, head, or silhouette. Use aligned texture regions for iris, pupil, markings, and restrained highlights. Do not default to protruding, floating, or emissive eye cubes.'
+        'When visible eyes define the subject, shape the socket, lid, and head first, then use the smallest flush whole-unit cubes and restrained baseColor contrast needed for iris, pupil, or highlight readability. Do not default to protruding, floating, or emissive eyes.'
     },
     reviewGates: {
       form:
         'At the coarse stage, reject a body plan or silhouette that does not identify the requested subject before adding detail. Every part must contribute to silhouette, structure, articulation, construction, or readable detail; reject hidden filler, accidental duplicates, and imperceptible splitting. Also reject missing defining parts, accidental asymmetry, floating pieces, avoidable interpenetration, and z-fighting. Do not trade recognition or reference fidelity for ornamental density.',
       texture:
-        'Reject placeholder color fills, unintended UV stretching or rotation, broken seams, inconsistent texel scale, incorrect directional shading, and identity-defining details that disappear at gameplay distance. Apply textureContract.review after the final generated-surface change.',
+        'Reject placeholder base colors, unintended UV stretching or rotation, broken seams, inconsistent texel scale, and identity-defining color regions that disappear at gameplay distance. Do not hand-author shading; apply textureContract.review after the final generated-surface change.',
       rig:
         'Place pivots at plausible joints or mechanical axes. Verify hierarchy motion does not detach, shear, or move unrelated parts.',
       idle:
         'Reject loop-end snapping, unintended root drift, constant-speed robotic motion where easing is expected, and secondary motion that contradicts weight or construction.',
       final:
-        'Compare the rendered result with subjectFidelity, then inspect target readiness, coverage counts, texture details, and the idle clip before claiming completion.'
+        'Compare the rendered result with subjectFidelity, then inspect target readiness, texture coverage, and the idle clip before claiming completion.'
     }
   },
   textureContract: {
     authority:
-      'Project settings own one generated recipe. Cube faces own generated texture assignment, derived UVs, and normalized surface details. Texture rasters own one base color and preserve-mode canvas details. Atlas placement and rendered pixels are derived.',
+      'The agent owns only each cube material baseColor. ashfox owns the generated texture, UV atlas, square texel density, directional face tones, raster pixels, and atlas resolution.',
+    material:
+      'Pass one deliberate #RRGGBB baseColor when creating a cube, or use scene.cubes.material with nodeIds and baseColor to recolor an existing material region. Reuse the exact same baseColor for cubes that share a material. Do not encode highlights, shadows, noise, gradients, or edge darkening in the chosen color.',
     generated: {
       bootstrap:
-        'In scene.cubes.create, omit textureId to reuse the canonical generate-mode base texture or create it automatically. Use explicit null only for an intentionally untextured cube.',
+        'scene.cubes.create automatically creates or reuses the canonical generated texture and assigns every enabled face. The texture identity and face mapping are not command inputs.',
       synchronize:
-        'textures.sync is the only generated UV and base-shading operation. It atomically packs every positive-area generated face at one resolved texel density, including cube scale and positive or negative inflate, and preserves surface details.',
+        'textures.sync takes an empty payload and is the only UV, atlas, and shading operation. It atomically packs every positive-area face at exactly 1 square texel per model unit and grows one square atlas as needed without reducing texel density.',
       triggers:
-        'Run textures.sync after cube creation, deletion, duplication, repetition, or generated mirror; bounds, inflate, or scale changes; generated texture reassignment; project texture-resolution changes; or a recipe override. Detail-only edits, position, rotation, pivot, naming, hierarchy, and animation do not require synchronization.',
-      recipe: {
-        scope:
-          'A textures.sync override becomes the project recipe. Later calls with omitted fields reuse it.',
-        defaults: {
-          pixelsPerBlock: 16,
-          padding: 1,
-          maxResolution: 256,
-          seed: 1095977030,
-          intensity: 0.22,
-          edge: 0.12,
-          noise: 0.06,
-          lightDir: 'tl_br'
-        }
-      },
+        'Run textures.sync after cube creation, deletion, duplication, repetition, mirror, bounds, inflate, or scale changes. baseColor renders directly; position, rotation, pivot, naming, hierarchy, and animation do not require synchronization.',
+      grid:
+        'For pixel-unit projects, every effective cube dimension after inflate and scale must be a positive whole model unit. A fractional face that cannot produce exact square texels is rejected atomically; correct the geometry instead of lowering texture density.',
       shading:
-        'Generated pixels receive deterministic Minecraft-style shading: up is brightest, down is darkest, side faces use stable directional tones, then the recipe applies its light gradient, edge darkening, and seeded pixel noise. The same project, geometry, colors, and recipe produce the same pixels.',
+        'ashfox derives fixed Minecraft-style tones from baseColor: up is brightest, down is darkest, and each horizontal direction has one stable tone. Generated faces contain no procedural noise, gradient, edge effect, emission, or PBR lighting, so the same baseColor always produces the same six tones.',
       terminal:
         'An unchanged textures.sync returns no_change without a revision, Activity, or Undo entry. Treat it as complete and continue.'
     },
-    details: {
-      command:
-        'textures.details.upsert sets a texture base color and adds, moves, replaces, or removes stable-ID details.',
-      generated:
-        'Generated details use surface anchors with nodeId, face, and normalized u, v, width, and height. They remain attached through atlas repacking; duplicate and repeat copy them with deterministic IDs, mirror remaps them, and owner deletion removes them.',
-      ownership:
-        'Every detail ID has exactly one texture owner. A mutation or removal through a different textureId is rejected atomically. Detail-only edits render immediately and do not require textures.sync.',
-      reassignment:
-        'Generated-to-generated material reassignment keeps surface details. Remove owned surface details before assigning null or a preserve texture.'
-    },
-    preserve: {
-      procedural:
-        'textures.create with atlasMode preserve creates an editable fixed-size canvas; its details use integer canvas anchors.',
-      imported:
-        'An imported preserve texture without a procedural raster keeps its source pixels and is immutable.',
-      mapping:
-        'Assigning a preserve texture normalizes each enabled face to the texture canvas with boxUv false and rotation 0. Preserve-mode cube mirror is rejected because pixel orientation cannot be identical across every target.'
-    },
     review:
-      'After the final generated-surface change, run textures.sync once, inspect texture coverage, and visually check texel scale, seams, face orientation, automatic shading, and detail alignment. Do not retry a terminal no_change result.',
+      'After the final geometry change, run textures.sync once. Then inspect texture coverage and visually check baseColor separation, seams, face orientation, and identical square-pixel size across every face. Do not retry a terminal no_change result.',
     limits:
-      'A project accepts at most 16,384 texture details. textures.delete accepts only unreferenced textures and removes their owned canvas details. Generated and preserve surfaces cannot share a box-UV cube.'
+      'The generated atlas grows from 16 × 16 up to 4096 × 4096 while preserving 1 texel per model unit. If it cannot fit, simplify geometry; ashfox never silently reduces pixel density.'
   },
   authoringModel: {
     project:
-      'project.create replaces the active document. Existing projects may be edited with project.rename, project.target.set, and project.textureResolution.set; submit related project edits in one run batch. Project ID and createdAt are immutable after creation. A target change rewrites canonical format metadata and Minecraft resource bindings; changing an animation-free project to GeckoLib 5 provisions a required rest-pose clip, which does not replace the idle requirement in completionContract. Texture resolution accepts 16, 32, 64, 128, or 256 as the generated baseline. Preserve-mode textures keep authored dimensions.',
+      'project.create replaces the active document. Existing projects may be edited with project.rename and project.target.set; submit related project edits in one run batch. Project ID and createdAt are immutable after creation. A target change rewrites canonical format metadata and Minecraft resource bindings; changing an animation-free project to GeckoLib 5 provisions a required rest-pose clip, which does not replace the idle requirement in completionContract.',
     identity:
       'Project, scene-node, texture, clip, channel, trigger, and key IDs are unique stable strings. Names are human-readable and may change without changing IDs.',
     coordinates:
@@ -158,7 +130,7 @@ export const agentManifest = {
     hierarchy:
       'Bones may parent bones, cubes, or locators. parentId null makes a root. scene.bones.create permits parent IDs declared anywhere in the same payload. Use scene.locators.create for particle and sound attachment points; Minecraft locators must be parented to an existing bone. Use scene.nodes.reparent for hierarchy changes and scene.nodes.delete for atomic cascading removal.',
     cubes:
-      'Cube bounds are absolute from/to coordinates and must not be reversed. Use scene.cubes.geometry.update only for bounds and inflate, scene.cubes.mirror for generated or untextured mirrored geometry, and scene.nodes.transform for position, rotation, scale, and pivot. Generated UV fields are derived by textureContract and are not public command inputs.',
+      'Cube bounds are absolute from/to coordinates and must not be reversed. Use whole-unit effective dimensions for the texture grid. Use scene.cubes.geometry.update only for bounds and inflate, scene.cubes.material only for baseColor, scene.cubes.mirror for mirrored geometry, and scene.nodes.transform for position, rotation, scale, and pivot. Texture IDs, UV fields, atlas resolution, and face tones are derived and are not public command inputs.',
     animation:
       'Clips own transform channels and event triggers. Channels target stable node IDs and animate position, rotation, or scale with ordered keys. Particle and sound effects may reference locator node IDs. Use animation.tracks.delete with explicit channel or trigger kinds for precise removal without rebuilding the clip. Keep keys within clip duration and close loops explicitly when required.',
     targets: {
@@ -264,7 +236,7 @@ export const agentManifest = {
     {
       stage: 'prove',
       instruction:
-        'Before bulk authoring, prove the pipeline with the first real model part: create its root and geometry with omitted textureId, run textures.sync, add one surface-bound detail when the subject needs it, and inspect. This checkpoint proves command and texture flow only; it is not completion or quality proof.'
+        'Before bulk authoring, prove the pipeline with the first real model part: create its root and one whole-unit cube with a deliberate baseColor, run textures.sync, and inspect. This checkpoint proves geometry, texture, and command flow only; it is not completion or quality proof.'
     },
     {
       stage: 'author',

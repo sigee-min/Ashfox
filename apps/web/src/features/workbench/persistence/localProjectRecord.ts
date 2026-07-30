@@ -9,7 +9,7 @@ import {
   type ProjectAssets
 } from '../../files/projectAssets';
 
-export const LOCAL_PROJECT_SCHEMA_VERSION = 2;
+export const LOCAL_PROJECT_SCHEMA_VERSION = 3;
 
 export interface LocalProjectRecord {
   schemaVersion: typeof LOCAL_PROJECT_SCHEMA_VERSION;

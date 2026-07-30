@@ -38,7 +38,6 @@ export const createBlankWorkbenchProject = (
       target: 'glb',
       namespace: 'ashfox',
       modelPath: 'untitled_project',
-      textureResolution: 64,
       createdAt
     },
     'local-0001'

@@ -9,7 +9,6 @@ export interface CreateProjectDocumentInput {
   name: string;
   revision: Revision;
   createdAt: string;
-  textureResolution: number;
 }
 
 const requiredText = (value: string, label: string): string => {
@@ -18,22 +17,13 @@ const requiredText = (value: string, label: string): string => {
   return normalized;
 };
 
-const textureResolution = (value: number): number => {
-  if (!Number.isSafeInteger(value) || value < 1 || value > 8192) {
-    throw new Error('Texture resolution must be an integer from 1 to 8192.');
-  }
-  return value;
-};
-
 export const createProjectDocument = ({
   id,
   name,
   revision,
-  createdAt,
-  textureResolution: requestedResolution
+  createdAt
 }: CreateProjectDocumentInput): ProjectDocument => {
   const timestamp = requiredText(createdAt, 'Creation timestamp');
-  const resolution = textureResolution(requestedResolution);
   return {
     schemaVersion: PROJECT_DOCUMENT_SCHEMA_VERSION,
     id: requiredText(id, 'Project ID'),
@@ -45,10 +35,10 @@ export const createProjectDocument = ({
     },
     settings: {
       textureResolution: {
-        width: resolution,
-        height: resolution
+        width: 16,
+        height: 16
       },
-      uvPixelsPerUnit: 0.25,
+      uvPixelsPerUnit: 1,
       coordinateSystem: {
         up: 'y',
         handedness: 'right',

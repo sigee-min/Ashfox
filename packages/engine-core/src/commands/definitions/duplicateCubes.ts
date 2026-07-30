@@ -1,8 +1,4 @@
 import { addSceneNode } from '../../scene';
-import {
-  projectTextureDetailIds,
-  surfaceDetailIds
-} from '../../textures/surfaceDetails';
 import { defineCommand } from '../definition';
 import { vec3Schema } from './schemas';
 import { cloneCube } from './sceneHelpers';
@@ -78,27 +74,6 @@ export const duplicateCubesCommand = defineCommand({
         copy.offset ?? [0, 0, 0]
       );
     });
-    const detailIds = clones.flatMap((clone) =>
-      surfaceDetailIds(clone.faces)
-    );
-    const existingDetailIds = projectTextureDetailIds(document);
-    const conflictingDetailId = detailIds.find(
-      (id, index) =>
-        existingDetailIds.has(id) ||
-        detailIds.indexOf(id) !== index
-    );
-    if (conflictingDetailId) {
-      return {
-        ok: false,
-        error: {
-          code: 'invalid_state',
-          message:
-            `Derived texture detail ID "${conflictingDetailId}" is ` +
-            'already in use.',
-          path: 'payload.copies'
-        }
-      };
-    }
     const next = clones.reduce(addSceneNode, document);
     return {
       ok: true,
@@ -106,7 +81,7 @@ export const duplicateCubesCommand = defineCommand({
         document: next,
         summary: `Duplicate ${payload.copies.length} cube${payload.copies.length === 1 ? '' : 's'}`,
         effects: {
-          createdEntityIds: [...ids, ...detailIds],
+          createdEntityIds: ids,
           changedEntityIds: [],
           removedEntityIds: [],
           invalidated: [

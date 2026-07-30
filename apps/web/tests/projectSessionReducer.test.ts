@@ -105,7 +105,6 @@ const created = projectSessionReducer(hydrated, {
         target: 'glb',
         namespace: 'ashfox',
         modelPath: 'clean_project',
-        textureResolution: 64,
         createdAt: '2026-07-29T01:00:00.000Z'
       }
     }]

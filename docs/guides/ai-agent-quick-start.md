@@ -37,11 +37,13 @@ motion in one request.
 ```text
 Create a Minecraft-style arcane field tractor for GeckoLib 5.
 Give it a readable cab, large rear wheels, an articulated drivetrain,
-consistent 32px textures, and a slow mechanical idle animation.
+restrained iron-green-brass material colors, and a slow mechanical idle
+animation.
 ```
 
-For a static prop, say that no animation is needed. For a character, name the
-clips you expect, such as `idle`, `walk`, or `attack`.
+Every finished asset includes an idle clip. For an otherwise static prop, that
+clip may hold one valid pose. Name any additional clips you expect, such as
+`walk` or `attack`.
 
 ## Watch the result
 

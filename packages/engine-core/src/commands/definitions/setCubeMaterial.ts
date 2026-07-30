@@ -1,10 +1,11 @@
 import { CUBE_FACE_DIRECTIONS } from '../../model';
 import { updateSceneNode } from '../../scene';
-import { defineCommand } from '../definition';
 import {
-  entityIdsSchema,
-  nullableEntityIdSchema
-} from './schemas';
+  createTextureAsset,
+  implicitTextureId
+} from '../../textures/createTextureAsset';
+import { defineCommand } from '../definition';
+import { colorSchema, entityIdsSchema } from './schemas';
 import {
   findMissingNodeId,
   findNonCube
@@ -14,132 +15,108 @@ const inputSchema = {
   type: 'object',
   properties: {
     nodeIds: entityIdsSchema,
-    textureId: nullableEntityIdSchema,
-    shade: {
-      type: 'boolean'
-    },
-    lightEmission: {
-      type: 'number',
-      minimum: 0,
-      maximum: 15
-    }
+    baseColor: colorSchema
   },
-  required: ['nodeIds', 'textureId'],
+  required: ['nodeIds', 'baseColor'],
   additionalProperties: false
 } as const;
 
 export const setCubeMaterialCommand = defineCommand({
   name: 'scene.cubes.material',
   label: 'Set cube material',
-  purpose: 'Assign one texture and deterministic shading settings to cube faces.',
+  purpose:
+    'Set one base color; ashfox derives fixed Minecraft face shades.',
   inputSchema,
   apply: (document, payload) => {
     const missingId = findMissingNodeId(document, payload.nodeIds);
     const nonCube = findNonCube(document, payload.nodeIds);
-    if (
-      missingId ||
-      nonCube ||
-      (payload.textureId !== null && !document.textures[payload.textureId])
-    ) {
+    if (missingId || nonCube || !/^#[0-9a-fA-F]{6}$/.test(payload.baseColor)) {
       return {
         ok: false,
         error: {
-          code: 'invalid_state',
+          code: missingId || nonCube ? 'invalid_state' : 'invalid_payload',
           message: missingId
             ? `Scene node "${missingId}" does not exist.`
             : nonCube
               ? `Scene node "${nonCube.id}" is not a cube.`
-              : `Texture "${payload.textureId}" does not exist.`,
-          path: missingId || nonCube ? 'payload.nodeIds' : 'payload.textureId'
+              : 'Material base color must use six-digit hex.',
+          path: missingId || nonCube
+            ? 'payload.nodeIds'
+            : 'payload.baseColor',
+          expected: missingId || nonCube ? 'existing cube IDs' : '#RRGGBB'
         }
       };
     }
-    const targetTexture = payload.textureId === null
+
+    const generatedTexture = Object.values(document.textures)
+      .filter((texture) => texture.atlasMode === 'generate')
+      .sort((left, right) => left.id.localeCompare(right.id))[0];
+    const implicitTexture = generatedTexture
       ? null
-      : document.textures[payload.textureId];
-    const detailedNode = payload.nodeIds.find((nodeId) => {
-      const node = document.scene.nodes[nodeId];
-      return (
-        node.kind === 'cube' &&
-        CUBE_FACE_DIRECTIONS.some(
-          (direction) => node.faces[direction].details.length > 0
-        )
-      );
-    });
-    if (detailedNode && targetTexture?.atlasMode !== 'generate') {
-      return {
-        ok: false,
-        error: {
-          code: 'invalid_state',
-          message:
-            `Cube "${detailedNode}" owns generated surface details. ` +
-            'Remove those details before assigning no texture or a ' +
-            'preserved texture.',
-          path: 'payload.textureId',
-          expected: 'generate-mode texture'
+      : createTextureAsset(document, {
+          id: implicitTextureId(document),
+          name: 'Base texture'
+        });
+    const textureId = generatedTexture?.id ?? implicitTexture?.id;
+    if (!textureId) throw new Error('Generated texture setup failed.');
+    const prepared = implicitTexture
+      ? {
+          ...document,
+          textures: {
+            ...document.textures,
+            [implicitTexture.id]: implicitTexture
+          }
         }
-      };
-    }
+      : document;
     const next = payload.nodeIds.reduce(
       (current, nodeId) =>
         updateSceneNode(current, nodeId, (node) => {
           if (node.kind !== 'cube') return node;
-          const preserveUv = targetTexture?.atlasMode === 'preserve'
-            ? [
-                0,
-                0,
-                targetTexture.width,
-                targetTexture.height
-              ] as const
-            : null;
+          const alreadyAssigned =
+            node.baseColor.toLowerCase() === payload.baseColor.toLowerCase() &&
+            CUBE_FACE_DIRECTIONS.every(
+              (direction) =>
+                node.faces[direction].textureId === textureId &&
+                (node.faces[direction].rotation ?? 0) === 0
+            ) &&
+            !node.boxUv &&
+            node.uvOffset === undefined;
+          if (alreadyAssigned) return node;
           return {
             ...node,
-            ...(preserveUv
-              ? {
-                  boxUv: false,
-                  mirror: false,
-                  uvOffset: undefined
-                }
-              : {}),
-            ...(payload.shade === undefined ? {} : { shade: payload.shade }),
-            ...(payload.lightEmission === undefined
-              ? {}
-              : { lightEmission: payload.lightEmission }),
+            baseColor: payload.baseColor,
+            boxUv: false,
+            uvOffset: undefined,
             faces: Object.fromEntries(
               CUBE_FACE_DIRECTIONS.map((direction) => [
                 direction,
                 {
                   ...node.faces[direction],
-                  textureId: payload.textureId,
-                  ...(preserveUv
-                    ? {
-                        uv: preserveUv,
-                        rotation: 0
-                      }
-                    : {})
+                  textureId,
+                  rotation: 0
                 }
               ])
             ) as typeof node.faces
           };
-      }),
-      document
+        }),
+      prepared
     );
     return {
       ok: true,
       value: {
         document: next,
-        summary: `Set material on ${payload.nodeIds.length} cube${payload.nodeIds.length === 1 ? '' : 's'}`,
+        summary:
+          `Set ${payload.baseColor} material on ` +
+          `${payload.nodeIds.length} cube` +
+          `${payload.nodeIds.length === 1 ? '' : 's'}`,
         effects: {
-          createdEntityIds: [],
+          createdEntityIds: implicitTexture ? [implicitTexture.id] : [],
           changedEntityIds: payload.nodeIds,
           removedEntityIds: [],
-          invalidated: [
-            'scene',
-            'textures',
-            'uv',
-            'validation',
-            'preview'
-          ]
+          invalidated:
+            next === document
+              ? []
+              : ['scene', 'textures', 'uv', 'validation', 'preview']
         }
       }
     };

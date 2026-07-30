@@ -5,9 +5,9 @@ import {
   type LocalProjectRecord
 } from './localProjectRecord';
 
-const DATABASE_NAME = 'ashfox-workbench';
+const DATABASE_NAME = 'ashfox';
 const DATABASE_VERSION = 1;
-const PROJECT_STORE = 'project-snapshots';
+const PROJECT_STORE = 'projects';
 
 const requestResult = <T>(request: IDBRequest<T>): Promise<T> =>
   new Promise<T>((resolve, reject) => {

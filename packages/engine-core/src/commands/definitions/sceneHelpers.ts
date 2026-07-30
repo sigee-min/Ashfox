@@ -1,10 +1,11 @@
 import type {
+  CubeFaceDirection,
+  CubeFaces,
   CubeNode,
   ProjectDocument,
   SceneNode,
   Vec3
 } from '../../model';
-import { remapCubeSurfaces } from '../../textures/surfaceDetails';
 import type { SceneAxis } from '../types';
 
 export const axisIndex = (axis: SceneAxis): 0 | 1 | 2 => {
@@ -24,6 +25,48 @@ export const offsetVec3 = (value: Vec3, offset: Vec3): Vec3 => [
   value[2] + offset[2]
 ];
 
+const mirroredDirection = (
+  direction: CubeFaceDirection,
+  axis: SceneAxis
+): CubeFaceDirection => {
+  if (axis === 'x') {
+    if (direction === 'east') return 'west';
+    if (direction === 'west') return 'east';
+  }
+  if (axis === 'y') {
+    if (direction === 'up') return 'down';
+    if (direction === 'down') return 'up';
+  }
+  if (axis === 'z') {
+    if (direction === 'north') return 'south';
+    if (direction === 'south') return 'north';
+  }
+  return direction;
+};
+
+export const mirrorCubeFaces = (
+  faces: CubeFaces,
+  axis: SceneAxis
+): CubeFaces => {
+  const faceFor = (targetDirection: CubeFaceDirection) => {
+    const source = faces[mirroredDirection(targetDirection, axis)];
+    return {
+      ...source,
+      ...(source.cullFace
+        ? { cullFace: mirroredDirection(source.cullFace, axis) }
+        : {})
+    };
+  };
+  return {
+    north: faceFor('north'),
+    south: faceFor('south'),
+    east: faceFor('east'),
+    west: faceFor('west'),
+    up: faceFor('up'),
+    down: faceFor('down')
+  };
+};
+
 export const cloneCube = (
   source: CubeNode,
   id: string,
@@ -41,10 +84,14 @@ export const cloneCube = (
     from: offsetVec3(source.bounds.from, offset),
     to: offsetVec3(source.bounds.to, offset)
   },
-  faces: remapCubeSurfaces(source.faces, {
-    kind: 'copy',
-    targetNodeId: id
-  }).faces
+  faces: {
+    north: { ...source.faces.north },
+    south: { ...source.faces.south },
+    east: { ...source.faces.east },
+    west: { ...source.faces.west },
+    up: { ...source.faces.up },
+    down: { ...source.faces.down }
+  }
 });
 
 export const findMissingNodeId = (

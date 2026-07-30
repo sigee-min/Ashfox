@@ -1,15 +1,12 @@
 import type { Transform, Vec3 } from '../../model';
 import { updateSceneNode } from '../../scene';
-import {
-  remapCubeSurfaces,
-  surfaceDetailIds
-} from '../../textures/surfaceDetails';
 import { defineCommand } from '../definition';
 import { axisSchema, entityIdsSchema } from './schemas';
 import {
   axisIndex,
   findMissingNodeId,
-  findNonCube
+  findNonCube,
+  mirrorCubeFaces
 } from './sceneHelpers';
 import type { SceneAxis } from '../types';
 
@@ -109,10 +106,7 @@ export const mirrorCubesCommand = defineCommand({
             ...node,
             transform: mirrorTransform(node.transform, payload.axis),
             bounds: { from, to },
-            faces: remapCubeSurfaces(node.faces, {
-              kind: 'mirror',
-              axis: payload.axis
-            }).faces
+            faces: mirrorCubeFaces(node.faces, payload.axis)
           };
         }),
       document
@@ -124,15 +118,7 @@ export const mirrorCubesCommand = defineCommand({
         summary: `Mirror ${payload.nodeIds.length} cube${payload.nodeIds.length === 1 ? '' : 's'} on ${payload.axis.toUpperCase()}`,
         effects: {
           createdEntityIds: [],
-          changedEntityIds: [
-            ...payload.nodeIds,
-            ...payload.nodeIds.flatMap((nodeId) => {
-              const node = document.scene.nodes[nodeId];
-              return node.kind === 'cube'
-                ? surfaceDetailIds(node.faces)
-                : [];
-            })
-          ],
+          changedEntityIds: payload.nodeIds,
           removedEntityIds: [],
           invalidated: [
             'scene',

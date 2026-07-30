@@ -222,7 +222,6 @@ export function Workbench() {
   const {
     createProject: executeCreateProject,
     updateProjectSettings,
-    generateMinecraftTexture,
     exportProject,
     commitNodeTransform,
     updateTransformProperty,
@@ -372,7 +371,6 @@ export function Workbench() {
         viewportOptions={viewportOptions}
         onUndo={undo}
         onRedo={redo}
-        onGenerateMinecraftTexture={generateMinecraftTexture}
         onTransformMode={changeTransformMode}
         onToggleSnap={() => dispatchView({ type: 'snap.toggle' })}
         onSetCamera={setCamera}

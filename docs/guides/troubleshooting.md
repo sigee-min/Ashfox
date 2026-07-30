@@ -29,9 +29,10 @@ current project unchanged and must return the file state to idle.
 Ask the agent to:
 
 1. render the asset in Studio lighting;
-2. identify untextured faces and their assigned textures;
-3. inspect UV bounds and apparent pixel density;
-4. regenerate or repack the atlas when needed;
+2. identify untextured faces and their material base colors;
+3. check that effective cube dimensions are positive whole pixel units;
+4. synchronize the atlas and confirm identical square-pixel size on every
+   face;
 5. validate the texture paths before exporting.
 
 For ZIP exports, preserve the generated texture paths and filenames.

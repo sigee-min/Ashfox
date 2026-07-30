@@ -85,8 +85,8 @@ const cubes: DemoCubeSpec[] = [
   demoCube('cube-cab-back', 'bone-cab', p('cab'), [0, 12, 6.5], [7.4, 5.6, 0.8], T.green),
   demoCube('cube-cab-left-post', 'bone-cab', p('cab'), [-3.4, 12.2, 1], [0.8, 5.7, 1], T.brass),
   demoCube('cube-cab-right-post', 'bone-cab', p('cab'), [3.4, 12.2, 1], [0.8, 5.7, 1], T.brass),
-  demoCube('cube-cab-window-front', 'bone-cab', p('cab'), [0, 12.5, 0.55], [5.8, 3.7, 0.35], T.glass, { shade: false }),
-  demoCube('cube-cab-window-back', 'bone-cab', p('cab'), [0, 12.5, 6.05], [5.8, 3.6, 0.35], T.glass, { shade: false }),
+  demoCube('cube-cab-window-front', 'bone-cab', p('cab'), [0, 12.5, 0.55], [5.8, 3.7, 0.35], T.glass),
+  demoCube('cube-cab-window-back', 'bone-cab', p('cab'), [0, 12.5, 6.05], [5.8, 3.6, 0.35], T.glass),
   demoCube('cube-seat-base', 'bone-cab', p('cab'), [0, 10.2, 4.4], [3.6, 1.1, 2.8], T.rubber),
   demoCube('cube-seat-back', 'bone-cab', p('cab'), [0, 12, 5.2], [3.6, 3.8, 0.8], T.rubber, { rotation: [-8, 0, 0] }),
   demoCube('cube-steering-column', 'bone-steering', p('steering'), [0, 11, 1.2], [0.7, 2.5, 0.7], T.iron, { rotation: [-24, 0, 0] }),
@@ -97,8 +97,8 @@ const cubes: DemoCubeSpec[] = [
   demoCube('cube-exhaust-cap', 'bone-exhaust', p('exhaust'), [-2.4, 17, -5], [1.8, 0.5, 1.8], T.brass, { rotation: [0, 0, -8] }),
   demoCube('cube-piston-left', 'bone-piston-left', p('piston-left'), [-3.1, 8.3, -4.7], [1, 2.8, 3.8], T.brass),
   demoCube('cube-piston-right', 'bone-piston-right', p('piston-right'), [3.1, 8.3, -4.7], [1, 2.8, 3.8], T.brass),
-  demoCube('cube-lamp-left', 'bone-lamp-left', p('lamp-left'), [-2.7, 9.5, -8.8], [2, 2, 0.7], T.lamp, { shade: false, lightEmission: 12 }),
-  demoCube('cube-lamp-right', 'bone-lamp-right', p('lamp-right'), [2.7, 9.5, -8.8], [2, 2, 0.7], T.lamp, { shade: false, lightEmission: 12 })
+  demoCube('cube-lamp-left', 'bone-lamp-left', p('lamp-left'), [-2.7, 9.5, -8.8], [2, 2, 0.7], T.lamp),
+  demoCube('cube-lamp-right', 'bone-lamp-right', p('lamp-right'), [2.7, 9.5, -8.8], [2, 2, 0.7], T.lamp)
 ];
 
 const wheel = (
@@ -269,58 +269,36 @@ export const IRONROOT_TRACTOR_DEMO: DemoDefinition = {
   name: 'Ironroot · Arcane Field Tractor',
   modelPath: 'ironroot_arcane_tractor',
   initialSelectionId: null,
-  atlasSeed: 0x1a0b7c,
   textures: [
     {
       id: T.iron,
       name: 'Forged iron',
-      background: '#4b565a',
-      atlasMode: 'generate',
-      details: []
+      background: '#4b565a'
     },
     {
       id: T.green,
       name: 'Ironroot enamel',
-      background: '#4f7d50',
-      atlasMode: 'generate',
-      details: []
+      background: '#4f7d50'
     },
     {
       id: T.brass,
       name: 'Warm brass',
-      background: '#d4a14a',
-      atlasMode: 'generate',
-      details: []
+      background: '#d4a14a'
     },
     {
       id: T.rubber,
       name: 'Deep tread',
-      background: '#242a2d',
-      atlasMode: 'generate',
-      details: []
+      background: '#242a2d'
     },
     {
       id: T.glass,
       name: 'Cab glass',
-      background: '#315b65',
-      atlasMode: 'preserve',
-      renderMode: 'layered',
-      details: [
-        { x: 8, y: 8, width: 112, height: 112, color: '#75b7c0' },
-        { x: 18, y: 18, width: 35, height: 12, color: '#c0edf0' }
-      ]
+      background: '#315b65'
     },
     {
       id: T.lamp,
       name: 'Sunlamp',
-      background: '#8b4d16',
-      atlasMode: 'preserve',
-      renderMode: 'emissive',
-      details: [
-        { x: 8, y: 8, width: 112, height: 112, color: '#ffd65a' },
-        { x: 28, y: 28, width: 72, height: 72, color: '#fff4bb' },
-        { x: 48, y: 38, width: 22, height: 22, color: '#ffffff' }
-      ]
+      background: '#8b4d16'
     }
   ],
   bones,
