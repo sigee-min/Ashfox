@@ -5,7 +5,9 @@ import type {
   EntityId,
   KeyframeInterpolation,
   ProjectDocument,
-  ProjectIntent,
+  ProjectIntentSymmetryPair,
+  ProjectForwardDirection,
+  ProjectGrounding,
   ProjectId,
   Revision,
   SurfacePixelDensity,
@@ -29,12 +31,36 @@ export type ExportPreset =
   | 'geckolib5';
 
 export interface ProjectCreateInput {
+  name: string;
+  target?: ExportPreset;
+  density?: SurfacePixelDensity;
+}
+
+export interface ProjectDocumentCreateInput {
   id: ProjectId;
   name: string;
   target: ExportPreset;
   namespace: string;
   modelPath: string;
   createdAt: string;
+  density?: SurfacePixelDensity;
+}
+
+export interface ProjectTargetInput {
+  target: ExportPreset;
+  namespace?: string;
+  modelPath?: string;
+}
+
+export interface ProjectIntentInput {
+  subject: string;
+  forward?: ProjectForwardDirection;
+  grounding?: ProjectGrounding;
+  requiredFeatures?: readonly string[];
+  requiredPartIds?: readonly string[];
+  requiredMaterialIds?: readonly string[];
+  requiredClipIds?: readonly string[];
+  symmetryPairs?: readonly ProjectIntentSymmetryPair[];
 }
 
 export interface BoneCreateInput {
@@ -133,29 +159,38 @@ export type AnimationTriggerInput =
   | AnimationEffectTriggerInput
   | AnimationTimelineTriggerInput;
 
+export type AnimationMotionRole = 'idle' | 'loop' | 'once';
+
+export type AnimationRotationDegrees =
+  | number
+  | readonly [number, number, number];
+
+export interface AnimationMotionKeyInput {
+  phase: number;
+  rotationDegrees: AnimationRotationDegrees;
+}
+
+export interface AnimationPartMotionInput {
+  partId: string;
+  keys: readonly AnimationMotionKeyInput[];
+}
+
 export interface CommandPayloadMap {
   'project.create': ProjectCreateInput;
   'project.rename': {
     name: string;
   };
-  'project.target.set': {
-    target: ExportPreset;
-    namespace: string;
-    modelPath: string;
-  };
-  'project.intent.set': ProjectIntent;
+  'project.target.set': ProjectTargetInput;
+  'project.intent.set': ProjectIntentInput;
   'model.parts.upsert': {
     parts: readonly PartAuthoringSpec[];
-    materials: readonly PartMaterialDefinition[];
+    materials?: readonly PartMaterialDefinition[];
   };
   'model.parts.mirror': {
     rootPartId: string;
     axis: SceneAxis;
     plane: number;
-    partIdMap: readonly {
-      sourcePartId: string;
-      targetPartId: string;
-    }[];
+    targetRootPartId?: string;
   };
   'model.parts.transform': {
     rootPartId: string;
@@ -240,6 +275,12 @@ export interface CommandPayloadMap {
     durationSeconds: number;
     fps: number;
     loop: AnimationLoopMode;
+  };
+  'animation.motion.upsert': {
+    clipId: string;
+    role: AnimationMotionRole;
+    durationSeconds?: number;
+    motions?: readonly AnimationPartMotionInput[];
   };
   'animation.channels.upsert': {
     clipId: string;

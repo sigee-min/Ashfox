@@ -7,8 +7,8 @@ import {
   type CycleObservation
 } from '../../agent/cycleObservation';
 import type {
-  PresentRequest,
-  PresentResult
+  PresentResult,
+  ViewPresentationRequest
 } from '../../agent/types';
 import type {
   CameraMode
@@ -23,7 +23,7 @@ export interface PresentationSession {
   nonce: number;
   projectId: string;
   sourceRevision: string;
-  mode: PresentRequest['mode'];
+  mode: ViewPresentationRequest['mode'];
   camera: CameraMode;
   clipId: string | null;
   timeSeconds: number;

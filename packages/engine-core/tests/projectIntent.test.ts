@@ -136,36 +136,10 @@ const authored = execute(empty, 'intent-author-complete', [
     }
   },
   {
-    name: 'animation.clip.upsert',
-    payload: {
-      id: 'idle',
-      name: 'Idle',
-      durationSeconds: 1,
-      fps: 20,
-      loop: 'loop'
-    }
-  },
-  {
-    name: 'animation.channels.upsert',
+    name: 'animation.motion.upsert',
     payload: {
       clipId: 'idle',
-      channels: [{
-        id: 'body.rotation',
-        targetNodeId: 'bone:body',
-        property: 'rotation',
-        keys: [
-          {
-            id: 'idle-start',
-            timeSeconds: 0,
-            value: [0, 0, 0]
-          },
-          {
-            id: 'idle-end',
-            timeSeconds: 1,
-            value: [0, 0, 0]
-          }
-        ]
-      }]
+      role: 'idle'
     }
   }
 ]);
@@ -588,19 +562,18 @@ if (!reversedSymmetryNoChange.ok) {
   assert.equal(reversedSymmetryNoChange.error.code, 'no_change');
 }
 
-const malformed = structuredClone(complete);
-malformed.intent = {
-  ...malformed.intent!,
+const withoutFeatureChecklist = structuredClone(complete);
+withoutFeatureChecklist.intent = {
+  ...withoutFeatureChecklist.intent!,
   requiredFeatures: []
 };
-const malformedReport = validateProjectDocument(malformed);
-assert.equal(malformedReport.valid, false);
-assert.ok(
-  malformedReport.findings.some(
-    (finding) => finding.code === 'document.invalid_intent'
-  )
+const checklistReport = validateProjectDocument(
+  withoutFeatureChecklist
 );
-assert.throws(
-  () => parseProjectDocument(JSON.parse(JSON.stringify(malformed))),
-  /violates/
+assert.equal(checklistReport.valid, true);
+assert.doesNotThrow(
+  () => parseProjectDocument(
+    JSON.parse(JSON.stringify(withoutFeatureChecklist))
+  ),
+  'semantic feature notes are optional metadata'
 );

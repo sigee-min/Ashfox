@@ -52,12 +52,8 @@ const authorProject = (target: ExportPreset): ProjectDocument => {
     {
       name: 'project.create',
       payload: {
-        id: `project-export-${target}`,
         name: `Export ${target}`,
-        target,
-        namespace: 'ashfox',
-        modelPath: `export_${target}`,
-        createdAt: '2026-07-30T00:00:00.000Z'
+        target
       }
     },
     {

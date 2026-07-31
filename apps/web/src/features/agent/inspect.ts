@@ -6,11 +6,11 @@ import {
   isSceneNodeEffectivelyVisible,
   isProductionIdleClipName,
   orthographicContributionMetrics,
+  projectSpacePartAuthoringSpec,
   readCompiledParts,
   readPartRecipe,
   type AnimationClip,
   type CommandReceipt,
-  type PartAuthoringSpec,
   type PartSpec,
   type ProjectDocument,
   type ValidationReport
@@ -66,14 +66,7 @@ const selectedValues = <T>(
 
 const authoringPartSpec = (
   spec: PartSpec | undefined
-): PartAuthoringSpec | null => {
-  if (!spec) return null;
-  const {
-    attachment: _attachment,
-    ...authoring
-  } = spec;
-  return authoring;
-};
+) => spec ? projectSpacePartAuthoringSpec(spec) : null;
 
 const compiledPartSummaries = (
   document: ProjectDocument,

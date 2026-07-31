@@ -11,6 +11,7 @@ export * from './productionReadiness';
 export * from './animation/capability';
 export * from './animation/numericChannel';
 export * from './modeling/partContract';
+export * from './modeling/partAuthoring';
 export * from './modeling/partInvariants';
 export * from './modeling/partOccupancyCanonicalization';
 export * from './modeling/partQualityMetrics';

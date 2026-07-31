@@ -6,6 +6,10 @@ import {
   useRef
 } from 'react';
 
+import type {
+  OperationLease,
+  OperationLeaseToken
+} from '../../application/operationLease';
 import {
   fileOperationReducer,
   INITIAL_FILE_OPERATION,
@@ -35,14 +39,32 @@ interface FileOperationSpec<T, TResult> {
 
 interface FileOperationController<TResult> {
   state: FileOperationState<TResult>;
-  run: <T>(spec: FileOperationSpec<T, TResult>) => Promise<void>;
+  run: <T>(
+    spec: FileOperationSpec<T, TResult>,
+    lease?: OperationLeaseToken
+  ) => Promise<FileOperationRunResult<TResult>>;
   cancel: () => void;
 }
+
+export type FileOperationRunResult<TResult> =
+  | {
+      ok: true;
+      operationId: number;
+      result: TResult | null;
+    }
+  | {
+      ok: false;
+      operationId: number | null;
+      code: 'busy' | 'cancelled' | 'failed';
+      message: string;
+    };
 
 const errorMessage = (error: unknown, fallback: string): string =>
   error instanceof Error ? error.message : fallback;
 
-export const useFileOperation = <TResult>(): FileOperationController<TResult> => {
+export const useFileOperation = <TResult>(
+  operationLease: OperationLease
+): FileOperationController<TResult> => {
   const [state, dispatch] = useReducer(
     fileOperationReducer<TResult>,
     INITIAL_FILE_OPERATION
@@ -55,8 +77,31 @@ export const useFileOperation = <TResult>(): FileOperationController<TResult> =>
   } | null>(null);
 
   const run = useCallback(
-    async <T,>(spec: FileOperationSpec<T, TResult>): Promise<void> => {
-      if (activeRef.current !== null) return;
+    async <T,>(
+      spec: FileOperationSpec<T, TResult>,
+      inheritedLease?: OperationLeaseToken
+    ): Promise<FileOperationRunResult<TResult>> => {
+      if (activeRef.current !== null) {
+        return {
+          ok: false,
+          operationId: activeRef.current.operationId,
+          code: 'busy',
+          message: 'Another file operation is already running.'
+        };
+      }
+      const ownsLease = inheritedLease === undefined;
+      const lease =
+        inheritedLease ??
+        operationLease.tryAcquire(`file.${spec.kind}`);
+      if (!lease || !operationLease.isActive(lease)) {
+        return {
+          ok: false,
+          operationId: null,
+          code: 'busy',
+          message:
+            `Another operation is still running (${operationLease.currentOwner() ?? 'unknown'}).`
+        };
+      }
       const operationId = serialRef.current + 1;
       serialRef.current = operationId;
       const controller = new AbortController();
@@ -93,6 +138,19 @@ export const useFileOperation = <TResult>(): FileOperationController<TResult> =>
           message: completion.message,
           result: completion.result ?? null
         });
+        if (completion.phase === 'cancelled') {
+          return {
+            ok: false,
+            operationId,
+            code: 'cancelled',
+            message: completion.message
+          };
+        }
+        return {
+          ok: true,
+          operationId,
+          result: completion.result ?? null
+        };
       } catch (error: unknown) {
         const cancelled =
           controller.signal.aborted ||
@@ -106,13 +164,22 @@ export const useFileOperation = <TResult>(): FileOperationController<TResult> =>
             : errorMessage(error, spec.failureMessage),
           result: null
         });
+        return {
+          ok: false,
+          operationId,
+          code: cancelled ? 'cancelled' : 'failed',
+          message: cancelled
+            ? spec.cancelledMessage ?? 'Operation cancelled'
+            : errorMessage(error, spec.failureMessage)
+        };
       } finally {
         if (activeRef.current?.operationId === operationId) {
           activeRef.current = null;
         }
+        if (ownsLease) lease.release();
       }
     },
-    []
+    [operationLease]
   );
 
   const cancel = useCallback((): void => {

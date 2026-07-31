@@ -9,25 +9,13 @@ import {
   WORKBENCH_PLACEHOLDER_PROJECT_ID
 } from '../../application/projectIdentity';
 
-export type NewProjectInput = Omit<
-  ProjectCreateInput,
-  'id' | 'createdAt'
->;
-
-export interface NewProjectIdentity {
-  id: string;
-  createdAt: string;
-}
+export type NewProjectInput = ProjectCreateInput;
 
 export const createProjectOperation = (
-  input: NewProjectInput,
-  identity: NewProjectIdentity
+  input: NewProjectInput
 ): ProjectCommandOperation => ({
   name: 'project.create',
-  payload: {
-    ...input,
-    ...identity
-  }
+  payload: input
 });
 
 export const createBlankWorkbenchProject = (

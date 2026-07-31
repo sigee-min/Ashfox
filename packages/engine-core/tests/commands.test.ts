@@ -46,6 +46,7 @@ assert.deepEqual(commandNames, [
   'scene.cubes.material',
   'textures.density.set',
   'animation.clip.upsert',
+  'animation.motion.upsert',
   'animation.channels.upsert',
   'animation.triggers.upsert',
   'animation.tracks.delete',
@@ -66,17 +67,9 @@ assert.deepEqual(
     'model.parts.transform',
     'model.parts.material',
     'model.parts.delete',
-    'scene.locators.create',
-    'scene.locators.update',
     'scene.locators.delete',
     'textures.density.set',
-    'animation.clip.upsert',
-    'animation.channels.upsert',
-    'animation.triggers.upsert',
-    'animation.tracks.delete',
-    'animation.channels.phase',
-    'animation.channels.mirror',
-    'animation.clip.closeLoop',
+    'animation.motion.upsert',
     'animation.clip.delete'
   ]
 );

@@ -237,7 +237,7 @@ export const modelPartSpecSchema = {
 export const modelPartsUpsertSchema = {
   type: 'object',
   description:
-    'Author semantic parts in project-space lattice coordinates. For every child, ashfox derives a fixed joint by default, the nearest shared-face anchor and pivot, and a deterministic snap of at most two lattice cells. Shallow intersections remain intentional input and receive one canonical owner.',
+    'Author semantic parts in project-space lattice coordinates. Omitted defaultable fields preserve their existing values during replacement and default only for new parts. For every child, ashfox derives a fixed joint by default, the nearest shared-face anchor and pivot, and a deterministic snap of at most two lattice cells. Shallow intersections remain intentional input and receive one canonical owner.',
   properties: {
     parts: {
       type: 'array',
@@ -247,6 +247,8 @@ export const modelPartsUpsertSchema = {
     },
     materials: {
       type: 'array',
+      description:
+        'Optional base-color definitions for material IDs not already present in the project.',
       items: {
         type: 'object',
         properties: {
@@ -260,7 +262,7 @@ export const modelPartsUpsertSchema = {
       maxItems: PART_CONTRACT_LIMITS.maxPartsPerBatch
     }
   },
-  required: ['parts', 'materials'],
+  required: ['parts'],
   additionalProperties: false
 } as const satisfies CommandInputSchema;
 
@@ -299,7 +301,7 @@ export const modelPartsDeleteSchema = {
 export const modelPartsMirrorSchema = {
   type: 'object',
   description:
-    'Copy one non-root canonical part subtree by exact lattice reflection, then normalize shallow joins to single-owner geometry. Every source subtree part requires one explicit unused target ID.',
+    'Copy one non-root canonical part subtree by exact lattice reflection, then normalize shallow joins to single-owner geometry. ashfox derives every target ID deterministically.',
   properties: {
     rootPartId: {
       ...idSchema,
@@ -312,30 +314,13 @@ export const modelPartsMirrorSchema = {
       description:
         'Asset-space lattice coordinate of the reflection plane on the selected axis.'
     },
-    partIdMap: {
-      type: 'array',
+    targetRootPartId: {
+      ...idSchema,
       description:
-        'Exact one-to-one source and target ID mapping covering the complete selected subtree.',
-      items: {
-        type: 'object',
-        properties: {
-          sourcePartId: {
-            ...idSchema,
-            description: 'Existing part in the selected source subtree.'
-          },
-          targetPartId: {
-            ...idSchema,
-            description: 'Unused stable ID for the reflected copy.'
-          }
-        },
-        required: ['sourcePartId', 'targetPartId'],
-        additionalProperties: false
-      },
-      minItems: 1,
-      maxItems: PART_CONTRACT_LIMITS.maxPartsPerDocument
+        'Optional stable ID for the mirrored subtree root. When omitted, ashfox derives it from the source root, axis, and plane.'
     }
   },
-  required: ['rootPartId', 'axis', 'plane', 'partIdMap'],
+  required: ['rootPartId', 'axis', 'plane'],
   additionalProperties: false
 } as const satisfies CommandInputSchema;
 

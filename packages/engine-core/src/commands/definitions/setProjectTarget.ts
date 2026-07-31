@@ -3,14 +3,25 @@ import type {
   ProjectDocument,
   ProjectFormatProfile
 } from '../../model';
+import {
+  ensureRequiredAnimationFallback,
+  withoutImplicitRestPose
+} from '../../animation/implicitRestPose';
+import { canonicalJsonString } from '../../canonicalJson';
 import { resourceToken } from '../../resourceToken';
 import {
   createMinecraftTextureBinding
 } from '../../textures/createTextureAsset';
 import { defineCommand } from '../definition';
-import type { ExportPreset } from '../types';
+import type {
+  ExportPreset,
+  ProjectTargetInput
+} from '../types';
 
 const MINECRAFT_ANIMATION_NAME = /^animation\.[a-z0-9_.-]+$/;
+const MINECRAFT_NAMESPACE = /^[a-z0-9_.-]+$/;
+const MINECRAFT_MODEL_PATH = /^[a-z0-9_./-]+$/;
+const GLTF_MODEL_PATH = /^[A-Za-z0-9_./-]+$/;
 
 const inputSchema = {
   type: 'object',
@@ -20,16 +31,76 @@ const inputSchema = {
     },
     namespace: {
       type: 'string',
-      minLength: 1
+      minLength: 1,
+      pattern: MINECRAFT_NAMESPACE.source
     },
     modelPath: {
       type: 'string',
       minLength: 1
     }
   },
-  required: ['target', 'namespace', 'modelPath'],
+  required: ['target'],
   additionalProperties: false
 } as const;
+
+const currentNamespace = (
+  document: ProjectDocument
+): string =>
+  document.formatProfile.id === 'minecraft.bedrock' ||
+  document.formatProfile.id === 'minecraft.java.geckolib5' ||
+  document.formatProfile.id === 'minecraft.java_block'
+    ? document.formatProfile.namespace
+    : 'ashfox';
+
+const currentModelPath = (
+  document: ProjectDocument
+): string =>
+  document.formatProfile.id === 'ashfox.generic'
+    ? resourceToken(document.name, 'asset')
+    : document.formatProfile.modelPath;
+
+const targetInput = (
+  document: ProjectDocument,
+  payload: ProjectTargetInput
+): {
+  namespace: string;
+  modelPath: string;
+} => ({
+  namespace:
+    payload.namespace?.trim() ?? currentNamespace(document),
+  modelPath:
+    payload.modelPath?.trim() ??
+    (
+      payload.target === 'bedrock' ||
+      payload.target === 'geckolib5'
+        ? currentModelPath(document)
+          .split('/')
+          .map((segment) => resourceToken(segment, 'asset'))
+          .join('/')
+        : currentModelPath(document)
+    )
+});
+
+const invalidModelPath = (
+  target: ExportPreset,
+  modelPath: string
+): boolean => {
+  const pattern =
+    target === 'gltf' || target === 'glb'
+      ? GLTF_MODEL_PATH
+      : MINECRAFT_MODEL_PATH;
+  return (
+    !pattern.test(modelPath) ||
+    modelPath.startsWith('/') ||
+    modelPath.endsWith('/') ||
+    modelPath.includes('..') ||
+    (
+      target === 'gltf' || target === 'glb'
+        ? /\.(?:gltf|glb|bin)$/i.test(modelPath)
+        : modelPath.endsWith('.json')
+    )
+  );
+};
 
 const profileFor = (
   target: ExportPreset,
@@ -99,17 +170,6 @@ const actorAnimationName = (
     : preferred;
 };
 
-const withoutImplicitRestPose = (
-  animations: ProjectDocument['animations']
-): ProjectDocument['animations'] =>
-  Object.fromEntries(
-    Object.entries(animations).filter(([id, clip]) =>
-      id !== 'animation-rest-pose' ||
-      Object.keys(clip.channels).length > 0 ||
-      Object.keys(clip.triggers).length > 0
-    )
-  );
-
 const animationsFor = (
   document: ProjectDocument,
   target: ExportPreset,
@@ -121,24 +181,9 @@ const animationsFor = (
   if (target !== 'bedrock' && target !== 'geckolib5') {
     return sourceAnimations;
   }
-  const animations =
-    target === 'geckolib5' &&
-    Object.keys(sourceAnimations).length === 0
-      ? {
-          'animation-rest-pose': {
-            id: 'animation-rest-pose',
-            name: 'Rest pose',
-            durationSeconds: 1,
-            fps: 20,
-            loop: 'loop' as const,
-            channels: {},
-            triggers: {}
-          }
-        }
-      : sourceAnimations;
   const usedNames = new Set<string>();
   return Object.fromEntries(
-    Object.entries(animations).map(([id, clip]) => {
+    Object.entries(sourceAnimations).map(([id, clip]) => {
       const name = actorAnimationName(clip, modelPath, usedNames);
       usedNames.add(name);
       return [id, name === clip.name ? clip : { ...clip, name }];
@@ -187,21 +232,34 @@ export const setProjectTargetCommand = defineCommand({
   purpose: 'Select one canonical target preset and its resource location.',
   inputSchema,
   apply: (document, payload) => {
-    const namespace = payload.namespace.trim();
-    const modelPath = payload.modelPath.trim();
-    const emptyField = namespace.length === 0
-      ? 'namespace'
-      : modelPath.length === 0
-        ? 'modelPath'
-        : null;
-    if (emptyField) {
+    const {
+      namespace,
+      modelPath
+    } = targetInput(document, payload);
+    const invalidNamespace =
+      (
+        payload.target === 'bedrock' ||
+        payload.target === 'geckolib5'
+      ) &&
+      !MINECRAFT_NAMESPACE.test(namespace);
+    if (
+      invalidNamespace ||
+      invalidModelPath(payload.target, modelPath)
+    ) {
+      const path = invalidNamespace ? 'namespace' : 'modelPath';
       return {
         ok: false,
         error: {
           code: 'invalid_payload',
-          message: `Project ${emptyField} cannot be empty.`,
-          path: `payload.${emptyField}`,
-          expected: 'non-empty text'
+          message:
+            invalidNamespace
+              ? 'Project namespace is not a safe resource namespace.'
+              : 'Project model path is not a safe extensionless relative path.',
+          path: `payload.${path}`,
+          expected:
+            invalidNamespace
+              ? 'lowercase letters, digits, dots, underscores, or hyphens'
+              : 'safe relative resource path without traversal or file extension'
         }
       }
     }
@@ -210,41 +268,57 @@ export const setProjectTargetCommand = defineCommand({
       payload.target,
       modelPath
     );
-    const createdAnimationIds = Object.keys(animations).filter(
+    const targetCandidate: ProjectDocument = {
+      ...document,
+      formatProfile: profileFor(
+        payload.target,
+        namespace,
+        modelPath
+      ),
+      animations,
+      textures: texturesFor(
+        document,
+        payload.target,
+        namespace,
+        modelPath
+      )
+    };
+    const candidate = ensureRequiredAnimationFallback(
+      targetCandidate
+    ).document;
+    const createdAnimationIds = Object.keys(
+      candidate.animations
+    ).filter(
       (id) => document.animations[id] === undefined
     );
-    const removedAnimationIds = Object.keys(document.animations).filter(
-      (id) => animations[id] === undefined
+    const removedAnimationIds = Object.keys(
+      document.animations
+    ).filter(
+      (id) => candidate.animations[id] === undefined
     );
+    const changed =
+      canonicalJsonString(candidate) !==
+      canonicalJsonString(document);
     return {
       ok: true,
       value: {
-        document: {
-          ...document,
-          formatProfile: profileFor(
-            payload.target,
-            namespace,
-            modelPath
-          ),
-          animations,
-          textures: texturesFor(
-            document,
-            payload.target,
-            namespace,
-            modelPath
-          )
-        },
+        document: changed ? candidate : document,
         summary: `Set ${payload.target} export target`,
         effects: {
-          createdEntityIds: createdAnimationIds,
-          changedEntityIds: [document.id],
-          removedEntityIds: removedAnimationIds,
-          invalidated: [
-            'textures',
-            'animations',
-            'validation',
-            'preview'
-          ]
+          createdEntityIds:
+            changed ? createdAnimationIds : [],
+          changedEntityIds: changed ? [document.id] : [],
+          removedEntityIds:
+            changed ? removedAnimationIds : [],
+          invalidated:
+            changed
+              ? [
+                  'textures',
+                  'animations',
+                  'validation',
+                  'preview'
+                ]
+              : []
         }
       }
     };

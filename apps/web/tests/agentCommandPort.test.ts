@@ -13,23 +13,25 @@ import {
   compactCommandReceipt
 } from '../src/features/agent/compactReceipt';
 import type {
-  PresentRequest
+  AgentRunRequest,
+  DeliverResult,
+  PresentRequest,
+  PresentResult
 } from '../src/features/agent/types';
 import type {
   CommandOutcome
 } from '../src/application/commandOutcome';
+import {
+  createOperationLease
+} from '../src/application/operationLease';
 
-const batch = (
-  batchId: string,
-  baseRevision = 'local-0001'
-): CommandBatch => ({
-  batchId,
-  baseProjectId: 'project-test',
-  baseRevision,
+const runRequest = (
+  name = 'Port test'
+): AgentRunRequest => ({
   operations: [{
     name: 'project.rename',
     payload: {
-      name: 'Port test'
+      name
     }
   }]
 });
@@ -129,6 +131,7 @@ class FakeDocument {
 export const test = (async (): Promise<void> => {
 {
   let submits = 0;
+  const submitted: CommandBatch[] = [];
   const statuses: AgentCommandPortStatus[] = [];
   const port = new AgentCommandPort({
     inspect: () => ({
@@ -140,6 +143,7 @@ export const test = (async (): Promise<void> => {
     currentRevision: () => 'local-0001',
     submit: async (value) => {
       submits += 1;
+      submitted.push(value);
       return committed(value.batchId);
     },
     present: async (request) => ({
@@ -147,13 +151,13 @@ export const test = (async (): Promise<void> => {
       revision: 'local-0001',
       data: {
         frameNonce: 42,
-        mode: request.mode,
-        camera: request.camera,
+        mode: 'frame',
+        camera: 'front',
         cameraMatrix: [1, 0, 0, 0],
-        clipId: request.clipId,
+        clipId: null,
         playing: false,
-        observedTimeSeconds: request.timeSeconds,
-        completedCycles: request.mode === 'cycle' ? 1 : 0,
+        observedTimeSeconds: 0,
+        completedCycles: 0,
         previewIssues: []
       }
     }),
@@ -185,11 +189,7 @@ export const test = (async (): Promise<void> => {
   }
   assert.deepEqual(
     await port.present({
-      kind: 'view',
-      mode: 'frame',
-      camera: 'front',
-      clipId: 'clip-idle',
-      timeSeconds: 0.25
+      review: 'next'
     }),
     {
       ok: true,
@@ -199,94 +199,52 @@ export const test = (async (): Promise<void> => {
         mode: 'frame',
         camera: 'front',
         cameraMatrix: [1, 0, 0, 0],
-        clipId: 'clip-idle',
+        clipId: null,
         playing: false,
-        observedTimeSeconds: 0.25,
+        observedTimeSeconds: 0,
         completedCycles: 0,
         previewIssues: []
       }
     }
   );
   const invalidPresent = await port.present({
-    kind: 'view',
-    mode: 'frame',
-    camera: 'front',
-    clipId: '',
-    timeSeconds: 0
-  });
+    review: 'all'
+  } as unknown as PresentRequest);
   assert.equal(invalidPresent.ok, false);
   if (!invalidPresent.ok) {
     assert.equal(invalidPresent.error.code, 'invalid_request');
   }
   const unknownPresentProperty = await port.present({
-    kind: 'view',
-    mode: 'frame',
-    camera: 'front',
-    clipId: null,
-    timeSeconds: 0,
+    review: 'next',
     ignored: true
   } as PresentRequest);
   assert.equal(unknownPresentProperty.ok, false);
   if (!unknownPresentProperty.ok) {
     assert.equal(unknownPresentProperty.error.path, 'ignored');
   }
-  const invalidCycle = await port.present({
-    kind: 'view',
-    mode: 'cycle',
-    camera: 'perspective',
-    clipId: null,
-    timeSeconds: 0
-  });
-  assert.equal(invalidCycle.ok, false);
-  if (!invalidCycle.ok) {
-    assert.equal(invalidCycle.error.code, 'invalid_request');
-    assert.equal(invalidCycle.error.path, 'clipId');
-  }
-  assert.deepEqual(await port.run(batch('commit')), {
+  assert.deepEqual(await port.run(runRequest()), {
     ok: true,
     revision: 'local-0002',
-    receipt: compactCommandReceipt(receipt('commit'))
+    receipt: compactCommandReceipt(receipt('agent-run:1'))
   });
   assert.equal(submits, 1);
+  assert.deepEqual(submitted[0], {
+    batchId: 'agent-run:1',
+    baseProjectId: 'project-test',
+    baseRevision: 'local-0001',
+    operations: runRequest().operations
+  });
   assert.deepEqual(statuses, ['working', 'connected']);
 
-  const duplicateResult = await port.run(batch('commit'));
-  assert.equal(duplicateResult.ok, true);
-  assert.equal(submits, 1);
-  const reorderedDuplicate = await port.run({
-    operations: [{
-      payload: { name: 'Port test' },
-      name: 'project.rename'
-    }],
-    baseRevision: 'local-0001',
-    batchId: 'commit',
-    baseProjectId: 'project-test'
-  });
-  assert.equal(reorderedDuplicate.ok, true);
-  assert.equal(
-    submits,
-    1,
-    'object property order must not change batch identity'
-  );
-
-  const conflictingDuplicate = await port.run({
-    ...batch('commit'),
-    operations: [{
-      name: 'project.rename',
-      payload: {
-        name: 'Different content'
-      }
-    }]
-  });
-  assert.equal(conflictingDuplicate.ok, false);
-  if (!conflictingDuplicate.ok) {
-    assert.equal(conflictingDuplicate.error.code, 'invalid_batch');
-  }
-  assert.equal(submits, 1);
+  const secondResult = await port.run(runRequest('Second request'));
+  assert.equal(secondResult.ok, true);
+  assert.equal(submits, 2);
 }
 
 {
-  let submits = 0;
+  let resolveDelivery:
+    ((result: DeliverResult) => void) | undefined;
+  const statuses: AgentCommandPortStatus[] = [];
   const port = new AgentCommandPort({
     inspect: () => ({
       ok: true,
@@ -295,32 +253,34 @@ export const test = (async (): Promise<void> => {
     }),
     currentProjectId: () => 'project-test',
     currentRevision: () => 'local-0001',
-    submit: async (value) => {
-      submits += 1;
-      return committed(value.batchId);
+    submit: async (value) => committed(value.batchId),
+    deliver: () =>
+      new Promise<DeliverResult>((resolve) => {
+        resolveDelivery = resolve;
+      }),
+    onStatusChange: (status) => statuses.push(status)
+  });
+  const first = port.deliver();
+  const duplicate = port.deliver();
+  const competing = await port.run(runRequest());
+  assert.equal(competing.ok, false);
+  if (!competing.ok) {
+    assert.equal(competing.error.code, 'invalid_state');
+  }
+  assert.ok(resolveDelivery);
+  resolveDelivery({
+    ok: true,
+    revision: 'local-0001',
+    artifact: {
+      name: 'asset.glb',
+      contentType: 'model/gltf-binary',
+      byteLength: 128,
+      target: 'glb',
+      contentHash: 'sha256:test'
     }
   });
-  for (let index = 0; index < 40; index += 1) {
-    const result = await port.run(batch(`ledger-${index}`));
-    assert.equal(result.ok, true);
-  }
-  assert.equal(submits, 40);
-  const replay = await port.run(batch('ledger-0'));
-  assert.equal(replay.ok, true);
-  assert.equal(
-    submits,
-    40,
-    'completed batch IDs remain idempotent for the browser session'
-  );
-  const conflict = await port.run({
-    ...batch('ledger-0'),
-    operations: [{
-      name: 'project.rename',
-      payload: { name: 'Conflicting replay' }
-    }]
-  });
-  assert.equal(conflict.ok, false);
-  assert.equal(submits, 40);
+  assert.deepEqual(await duplicate, await first);
+  assert.deepEqual(statuses, ['working', 'connected']);
 }
 
 {
@@ -339,46 +299,28 @@ export const test = (async (): Promise<void> => {
     }
   });
   const invalid = await port.run({
-    batchId: 'invalid',
-    baseProjectId: 'project-test',
-    baseRevision: 'local-0001',
     operations: []
   });
   assert.equal(invalid.ok, false);
   if (!invalid.ok) assert.equal(invalid.error.code, 'invalid_batch');
   assert.equal(submits, 0);
 
-  const missingProject = await port.run({
-    batchId: 'missing-project',
-    baseRevision: 'local-0001',
-    operations: [{
-      name: 'project.rename',
-      payload: { name: 'Must not submit' }
-    }]
-  } as unknown as CommandBatch);
-  assert.equal(missingProject.ok, false);
-  if (!missingProject.ok) {
-    assert.equal(missingProject.error.code, 'invalid_batch');
-  }
-  assert.equal(submits, 0);
-
-  const unknownBatchProperty = await port.run({
-    ...batch('unknown-batch-property'),
+  const unknownRequestProperty = await port.run({
+    ...runRequest(),
     ignored: true
-  } as CommandBatch);
-  assert.equal(unknownBatchProperty.ok, false);
-  if (!unknownBatchProperty.ok) {
-    assert.equal(unknownBatchProperty.error.code, 'invalid_batch');
-    assert.equal(unknownBatchProperty.error.path, 'ignored');
+  } as unknown as AgentRunRequest);
+  assert.equal(unknownRequestProperty.ok, false);
+  if (!unknownRequestProperty.ok) {
+    assert.equal(unknownRequestProperty.error.code, 'invalid_batch');
+    assert.equal(unknownRequestProperty.error.path, 'ignored');
   }
   const unknownOperationProperty = await port.run({
-    ...batch('unknown-operation-property'),
     operations: [{
       name: 'project.rename',
       payload: { name: 'Must not submit' },
       ignored: true
     }]
-  } as CommandBatch);
+  } as unknown as AgentRunRequest);
   assert.equal(unknownOperationProperty.ok, false);
   if (!unknownOperationProperty.ok) {
     assert.equal(unknownOperationProperty.error.code, 'invalid_batch');
@@ -390,9 +332,6 @@ export const test = (async (): Promise<void> => {
   assert.equal(submits, 0);
 
   const rawGeometry = await port.run({
-    batchId: 'raw-geometry',
-    baseProjectId: 'project-test',
-    baseRevision: 'local-0001',
     operations: [{
       name: 'scene.cubes.create',
       payload: {
@@ -443,7 +382,7 @@ export const test = (async (): Promise<void> => {
       findingsTruncated: true
     })
   });
-  assert.deepEqual(await port.run(batch('stale')), {
+  assert.deepEqual(await port.run(runRequest()), {
     ok: false,
     revision: 'local-0004',
     error: {
@@ -463,103 +402,6 @@ export const test = (async (): Promise<void> => {
 }
 
 {
-  let currentProjectId = 'project-a';
-  let submits = 0;
-  const port = new AgentCommandPort({
-    inspect: () => ({
-      ok: true,
-      revision: 'local-0001',
-      data: null
-    }),
-    currentProjectId: () => currentProjectId,
-    currentRevision: () => 'local-0001',
-    submit: async (value) => {
-      submits += 1;
-      return committed(value.batchId);
-    }
-  });
-  const forProject = (projectId: string): CommandBatch => ({
-    ...batch('same-batch-id'),
-    baseProjectId: projectId
-  });
-  const projectAResult = await port.run(forProject('project-a'));
-  assert.equal(projectAResult.ok, true);
-  currentProjectId = 'project-b';
-  const projectBResult = await port.run(forProject('project-b'));
-  assert.equal(projectBResult.ok, true);
-  assert.equal(
-    submits,
-    2,
-    'idempotency keys are independent across projects'
-  );
-  const cachedProjectA = await port.run(forProject('project-a'));
-  assert.equal(cachedProjectA.ok, false);
-  if (!cachedProjectA.ok) {
-    assert.equal(cachedProjectA.error.code, 'project_mismatch');
-  }
-  assert.equal(submits, 2);
-  const staleOldProject = await port.run({
-    ...forProject('project-a'),
-    batchId: 'unused-old-project-batch'
-  });
-  assert.equal(staleOldProject.ok, false);
-  if (!staleOldProject.ok) {
-    assert.equal(staleOldProject.error.code, 'project_mismatch');
-    assert.equal(staleOldProject.error.expected, 'project-b');
-  }
-  assert.equal(submits, 2);
-}
-
-{
-  let currentProjectId = 'project-old';
-  let submits = 0;
-  const port = new AgentCommandPort({
-    inspect: () => ({
-      ok: true,
-      revision: 'local-0001',
-      data: null
-    }),
-    currentProjectId: () => currentProjectId,
-    currentRevision: () => 'local-0001',
-    submit: async (value) => {
-      submits += 1;
-      currentProjectId = 'project-new';
-      return {
-        status: 'committed',
-        commandId: value.batchId,
-        receipt: {
-          ...receipt(value.batchId),
-          projectId: 'project-new'
-        }
-      };
-    }
-  });
-  const createBatch: CommandBatch = {
-    batchId: 'create-project-replay',
-    baseProjectId: 'project-old',
-    baseRevision: 'local-0001',
-    operations: [{
-      name: 'project.create',
-      payload: {
-        id: 'project-new',
-        name: 'New project',
-        target: 'glb',
-        namespace: 'ashfox',
-        modelPath: 'new_project',
-        createdAt: '2026-07-31T00:00:00.000Z'
-      }
-    }]
-  };
-  assert.equal((await port.run(createBatch)).ok, true);
-  assert.equal((await port.run(createBatch)).ok, true);
-  assert.equal(
-    submits,
-    1,
-    'a project.create retry may replay its result after replacement'
-  );
-}
-
-{
   let resolveSubmit: ((outcome: CommandOutcome) => void) | undefined;
   let submits = 0;
   const statuses: AgentCommandPortStatus[] = [];
@@ -571,7 +413,7 @@ export const test = (async (): Promise<void> => {
     }),
     currentProjectId: () => 'project-test',
     currentRevision: () => 'local-0001',
-    submit: (value) => {
+    submit: () => {
       submits += 1;
       return new Promise<CommandOutcome>((resolve) => {
         resolveSubmit = resolve;
@@ -579,16 +421,26 @@ export const test = (async (): Promise<void> => {
     },
     onStatusChange: (status) => statuses.push(status)
   });
-  const value = batch('in-flight');
+  const value = runRequest();
   const first = port.run(value);
-  const duplicate = port.run(value);
-  const competing = await port.run(batch('competing'));
+  const duplicate = port.run({
+    operations: [{
+      payload: { name: 'Port test' },
+      name: 'project.rename'
+    }]
+  });
+  const competing = await port.run(runRequest('Competing'));
   assert.equal(submits, 1);
   assert.equal(competing.ok, false);
   if (!competing.ok) assert.equal(competing.error.code, 'invalid_state');
   assert.ok(resolveSubmit);
-  resolveSubmit(committed(value.batchId));
+  resolveSubmit(committed('agent-run:1'));
   assert.deepEqual(await duplicate, await first);
+  assert.equal(
+    submits,
+    1,
+    'property order must not change in-flight request identity'
+  );
   assert.deepEqual(statuses, ['working', 'connected']);
 }
 
@@ -610,9 +462,7 @@ for (const failure of [
     },
     onStatusChange: (status) => statuses.push(status)
   });
-  const result = await port.run(
-    batch(failure.name === 'AbortError' ? 'cancelled' : 'exception')
-  );
+  const result = await port.run(runRequest());
   assert.equal(result.ok, false);
   if (!result.ok) {
     assert.equal(result.error.code, 'invalid_state');
@@ -643,7 +493,7 @@ for (const failure of [
         resolvePresentation = resolve;
       })
   });
-  const disconnect = port.connect(fakeWindow as Window);
+  const disconnect = port.connect(fakeWindow as unknown as Window);
   const inputAttribute = 'data-agent-command-port-input';
   const resultAttribute = 'data-agent-command-port-result';
   const currentInput = (): FakeElement => {
@@ -663,11 +513,7 @@ for (const failure of [
     requestId: 'present-first',
     method: 'present',
     payload: {
-      kind: 'view',
-      mode: 'frame',
-      camera: 'front',
-      clipId: null,
-      timeSeconds: 0
+      review: 'next'
     }
   });
   firstInput.dispatch('input');
@@ -722,6 +568,89 @@ for (const failure of [
 {
   const fakeDocument = new FakeDocument();
   const fakeWindow = { document: fakeDocument };
+  let submits = 0;
+  let currentProjectId = 'project-old';
+  const port = new AgentCommandPort({
+    inspect: () => ({
+      ok: true,
+      revision: 'local-0001',
+      data: null
+    }),
+    currentProjectId: () => currentProjectId,
+    currentRevision: () => 'local-0001',
+    submit: async (value) => {
+      submits += 1;
+      assert.equal(value.batchId, 'agent-request:repeat-run');
+      assert.equal(value.baseProjectId, 'project-old');
+      currentProjectId = 'project-new';
+      return {
+        ...committed(value.batchId),
+        receipt: {
+          ...receipt(value.batchId),
+          projectId: currentProjectId
+        }
+      };
+    }
+  });
+  const disconnect = port.connect(fakeWindow as unknown as Window);
+  const currentInput = (): FakeElement => {
+    const value = fakeDocument.body.children.find(
+      (child) =>
+        child.attributes.has('data-agent-command-port-input')
+    );
+    assert.ok(value);
+    return value;
+  };
+  const projectRequest = (
+    name: string
+  ): AgentRunRequest => ({
+    operations: [{
+      name: 'project.create',
+      payload: { name }
+    }]
+  });
+  const dispatchRun = (name: string): void => {
+    const input = currentInput();
+    input.value = JSON.stringify({
+      requestId: 'repeat-run',
+      method: 'run',
+      payload: projectRequest(name)
+    });
+    input.dispatch('input');
+  };
+
+  dispatchRun('Bridge project');
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  dispatchRun('Bridge project');
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(
+    submits,
+    1,
+    'the DOM request ID must replay one derived canonical batch'
+  );
+
+  dispatchRun('Conflicting bridge project');
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(submits, 1);
+  const resultElement = fakeDocument.head.children.find(
+    (child) =>
+      child.attributes.has('data-agent-command-port-result')
+  );
+  assert.ok(resultElement);
+  const lastResult = JSON.parse(
+    resultElement.attributes.get(
+      'data-agent-command-port-result'
+    ) ?? '{}'
+  ).result;
+  assert.equal(lastResult.ok, false);
+  assert.equal(lastResult.error.code, 'invalid_batch');
+  assert.equal(lastResult.error.path, 'requestId');
+  disconnect();
+}
+
+{
+  const fakeDocument = new FakeDocument();
+  const fakeWindow = { document: fakeDocument };
   let resolvePresentation:
     ((result: PresentResult) => void) | undefined;
   let submits = 0;
@@ -742,7 +671,7 @@ for (const failure of [
         resolvePresentation = resolve;
       })
   });
-  const disconnect = port.connect(fakeWindow as Window);
+  const disconnect = port.connect(fakeWindow as unknown as Window);
   const currentInput = (): FakeElement => {
     const value = fakeDocument.body.children.find(
       (child) =>
@@ -757,11 +686,7 @@ for (const failure of [
     requestId: 'slow-present',
     method: 'present',
     payload: {
-      kind: 'view',
-      mode: 'frame',
-      camera: 'front',
-      clipId: null,
-      timeSeconds: 0
+      review: 'next'
     }
   });
   firstInput.dispatch('input');
@@ -771,7 +696,7 @@ for (const failure of [
   queuedInput.value = JSON.stringify({
     requestId: 'queued-run',
     method: 'run',
-    payload: batch('must-not-submit')
+    payload: runRequest()
   });
   queuedInput.dispatch('input');
   disconnect();
@@ -797,5 +722,202 @@ for (const failure of [
     0,
     'disconnect must cancel queued mutations before submission'
   );
+}
+
+{
+  const operationLease = createOperationLease();
+  let submits = 0;
+  let deliveries = 0;
+  const port = new AgentCommandPort({
+    inspect: () => ({
+      ok: true,
+      revision: 'local-0001',
+      data: null
+    }),
+    currentProjectId: () => 'project-test',
+    currentRevision: () => 'local-0001',
+    submit: async (value) => {
+      submits += 1;
+      return committed(value.batchId);
+    },
+    deliver: async () => {
+      deliveries += 1;
+      return {
+        ok: false,
+        revision: 'local-0001',
+        error: { code: 'export_failed' }
+      };
+    },
+    operationLease
+  });
+
+  for (const owner of [
+    'file.open',
+    'file.save',
+    'file.export'
+  ]) {
+    const fileLease = operationLease.tryAcquire(owner);
+    assert.ok(fileLease);
+    const blockedRun = await port.run(
+      runRequest(`Blocked by ${owner}`)
+    );
+    assert.equal(blockedRun.ok, false);
+    if (!blockedRun.ok) {
+      assert.match(blockedRun.error.message ?? '', new RegExp(owner));
+    }
+    const blockedDelivery = await port.deliver();
+    assert.equal(blockedDelivery.ok, false);
+    if (!blockedDelivery.ok) {
+      assert.equal(blockedDelivery.error.code, 'busy');
+    }
+    fileLease.release();
+  }
+  assert.equal(submits, 0);
+  assert.equal(deliveries, 0);
+}
+
+{
+  const operationLease = createOperationLease();
+  let resolveSubmit: ((outcome: CommandOutcome) => void) | undefined;
+  const port = new AgentCommandPort({
+    inspect: () => ({
+      ok: true,
+      revision: 'local-0001',
+      data: null
+    }),
+    currentProjectId: () => 'project-test',
+    currentRevision: () => 'local-0001',
+    submit: (batch) =>
+      new Promise<CommandOutcome>((resolve) => {
+        resolveSubmit = (outcome) => resolve({
+          ...outcome,
+          commandId: batch.batchId
+        });
+      }),
+    operationLease
+  });
+
+  const running = port.run(runRequest('Lease held by run'));
+  assert.equal(operationLease.currentOwner(), 'agent.run');
+  for (const owner of [
+    'file.open',
+    'file.save',
+    'file.export'
+  ]) {
+    assert.equal(operationLease.tryAcquire(owner), null);
+  }
+  await Promise.resolve();
+  assert.ok(resolveSubmit);
+  resolveSubmit(committed('agent-run:1'));
+  assert.equal((await running).ok, true);
+  assert.equal(operationLease.currentOwner(), null);
+}
+
+{
+  const operationLease = createOperationLease();
+  let observedBorrowedLease = false;
+  const port = new AgentCommandPort({
+    inspect: () => ({
+      ok: true,
+      revision: 'local-0001',
+      data: null
+    }),
+    currentProjectId: () => 'project-test',
+    currentRevision: () => 'local-0001',
+    submit: async (batch) => committed(batch.batchId),
+    deliver: async (lease) => {
+      observedBorrowedLease = operationLease.isActive(lease);
+      for (const owner of [
+        'file.open',
+        'file.save',
+        'file.export'
+      ]) {
+        assert.equal(operationLease.tryAcquire(owner), null);
+      }
+      return {
+        ok: true,
+        revision: 'local-0001',
+        artifact: {
+          name: 'asset.glb',
+          contentType: 'model/gltf-binary',
+          byteLength: 128,
+          target: 'glb',
+          contentHash: 'sha256:test'
+        }
+      };
+    },
+    operationLease
+  });
+
+  assert.equal((await port.deliver()).ok, true);
+  assert.equal(observedBorrowedLease, true);
+  assert.equal(operationLease.currentOwner(), null);
+}
+
+{
+  const operationLease = createOperationLease();
+  const statuses: AgentCommandPortStatus[] = [];
+  let submits = 0;
+  const port = new AgentCommandPort({
+    inspect: () => ({
+      ok: true,
+      revision: 'local-0001',
+      data: null
+    }),
+    currentProjectId: () => 'project-test',
+    currentRevision: () => 'local-0001',
+    submit: () => {
+      submits += 1;
+      throw new Error('synchronous submit failure');
+    },
+    operationLease,
+    onStatusChange: (status) => statuses.push(status)
+  });
+
+  assert.equal((await port.run(runRequest('First sync failure'))).ok, false);
+  assert.equal(operationLease.currentOwner(), null);
+  assert.equal((await port.run(runRequest('Second sync failure'))).ok, false);
+  assert.equal(submits, 2);
+  assert.equal(operationLease.currentOwner(), null);
+  assert.deepEqual(statuses, [
+    'working',
+    'connected',
+    'working',
+    'connected'
+  ]);
+}
+
+{
+  const operationLease = createOperationLease();
+  const statuses: AgentCommandPortStatus[] = [];
+  let deliveries = 0;
+  const port = new AgentCommandPort({
+    inspect: () => ({
+      ok: true,
+      revision: 'local-0001',
+      data: null
+    }),
+    currentProjectId: () => 'project-test',
+    currentRevision: () => 'local-0001',
+    submit: async (batch) => committed(batch.batchId),
+    deliver: () => {
+      deliveries += 1;
+      throw new Error('synchronous delivery failure');
+    },
+    operationLease,
+    onStatusChange: (status) => statuses.push(status)
+  });
+
+  assert.equal((await port.deliver()).ok, false);
+  assert.equal(operationLease.currentOwner(), null);
+  assert.equal((await port.deliver()).ok, false);
+  assert.equal(deliveries, 2);
+  assert.equal(operationLease.currentOwner(), null);
+  assert.deepEqual(statuses, [
+    'working',
+    'connected',
+    'working',
+    'connected'
+  ]);
 }
 })();

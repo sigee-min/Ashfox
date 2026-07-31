@@ -11,10 +11,10 @@ GeckoLib 5, glTF, and GLB exporters can consume.
 
 The design deliberately trades unrestricted geometry for predictable output:
 
-- the agent owns parts, proportions, attachments, joints, material IDs, and
-  base colors;
-- the compiler owns occupancy, cuboid subdivision, pivots, stable node IDs,
-  and structural projection;
+- the agent owns parts, proportions, parent relationships, optional joint
+  intent, material IDs, and base colors;
+- the compiler owns attachments, occupancy, cuboid subdivision, pivots,
+  stable node IDs, and structural projection;
 - the generated-surface derivation owns UVs, raster pixels, and atlas
   resolution;
 - `ProjectDocument.modeling` is the persisted semantic authority for
@@ -85,16 +85,18 @@ accepted structure rather than reverse-writing modeling intent.
 The mutation surface is:
 
 - `model.parts.upsert`
+- `model.parts.mirror`
+- `model.parts.transform`
 - `model.parts.material`
 - `model.parts.delete`
 
-Every part has:
+The persisted normalized part has:
 
 - stable `partId`;
 - `parentPartId`, or `null` for the one root;
 - stable `materialId`;
 - `fixed`, `hinge`, or `ball` joint;
-- child attachment with `parentAnchor` and `partAnchor`;
+- an engine-derived child attachment with `parentAnchor` and `partAnchor`;
 - one primitive.
 
 The five primitives are:
@@ -175,22 +177,6 @@ N(soft) != N(balanced) != N(hard).
 Thus `P_(1,e)` is not injective, and exact profile intent cannot be recovered
 from the compiled scene.
 
-### Attachment counterexample
-
-The attachment transform has an independent ambiguity. For a fixed
-`parentAnchor`, compare:
-
-```text
-A: local center = (0, 1, 0), partAnchor = (0, 0, 0)
-B: local center = (1, 1, 0), partAnchor = (1, 0, 0)
-```
-
-Because child translation is `parentAnchor - partAnchor`, both recipes produce
-the same world-space center and the same bone pivot. Translating the rest of
-the local primitive by the same offset preserves the complete world occupancy.
-The generated projection therefore cannot reveal which local coordinates and
-part anchor the author supplied.
-
 ### Consequence
 
 The compiled scene is a lossy projection, not a reversible serialization of
@@ -202,8 +188,10 @@ recipe. Generated bones and cubes are a deterministic materialized view.
 Loading requires their structural projection to match; missing or drifted
 geometry is rejected rather than inferred or silently regenerated. Generated
 UV and raster caches may be rederived after that structural gate.
-`readPartRecipe` and `inspect({ kind: "parts" })` return the persisted recipe,
-not a geometric approximation.
+`readPartRecipe` returns that persisted recipe.
+`inspect({ kind: "parts" })` exposes its exact, project-space authoring
+projection with compiler-owned attachment coordinates removed, so the result
+can be reapplied without moving the model.
 
 ## Integer lattice
 
@@ -327,9 +315,9 @@ the integer translation
 T = parentAnchor - partAnchor.
 ```
 
-After seam ownership, the requested parent anchor is snapped to the nearest
-shared child-parent face within two cells. The child bone pivot is that
-canonical anchor divided by `d`. Validation requires:
+For every child, the compiler searches within two cells for the nearest valid
+shared child-parent face, derives the canonical anchor, and uses that anchor
+divided by `d` as the bone pivot. Validation requires:
 
 - the child and parent occupied sets to share at least one complete cell face;
 - the pivot lattice point to lie on the closure of both occupied sets;
@@ -595,8 +583,10 @@ and one receipt. A successful modeling batch creates one Undo snapshot;
 Therefore a rejected part, texture, animation, or target state cannot partially
 commit.
 
-The Web adapter keeps a session-long `batchId` ledger. An identical replay
-returns its completed result; conflicting reuse is rejected. Every terminal
+The Web adapter accepts only an operation list and derives the active project,
+revision, and unique canonical batch identity at submission time. The fallback
+transport binds completed results to its request ID, so an identical replay
+returns the same result and conflicting reuse is rejected. Every terminal
 result clears the working state. These transport properties do not create a
 second mutation path: the adapter validates and forwards to the same command
 reducer.

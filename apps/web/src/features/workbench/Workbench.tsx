@@ -28,6 +28,9 @@ import {
   createLocalProjectRecord,
   type LocalProjectRecord
 } from '../../application/localProjectRecord';
+import {
+  createOperationLease
+} from '../../application/operationLease';
 import { useLocalProjectPersistence } from './persistence/useLocalProjectPersistence';
 import { useProjectFileActions } from '../files/useProjectFileActions';
 import type { ProjectArchiveFile } from '../files/projectArchive';
@@ -68,6 +71,7 @@ import type {
 } from './viewport/viewportTypes';
 
 export function Workbench() {
+  const operationLease = useMemo(createOperationLease, []);
   const initialProject = useMemo(
     () => {
       const search =
@@ -121,9 +125,12 @@ export function Workbench() {
     calls: 0,
     triangles: 0
   });
-  const dispatch = useCallback((action: HistoryAction): void => {
+  const dispatchUserMutation = useCallback((
+    action: HistoryAction
+  ): void => {
+    if (operationLease.currentOwner() !== null) return;
     dispatchProject(action);
-  }, []);
+  }, [operationLease]);
   const selectNode = useCallback((nodeId: string | null): void => {
     dispatchView({ type: 'node.select', nodeId });
   }, []);
@@ -176,13 +183,15 @@ export function Workbench() {
   } = useAnimationPlayback(activeClip);
 
   const hydrateProject = useCallback((record: LocalProjectRecord): void => {
+    if (operationLease.currentOwner() !== null) return;
     dispatchProject({ type: 'hydrate', record });
-  }, []);
+  }, [operationLease]);
   const receiveExternalProject = useCallback(
     (record: LocalProjectRecord): void => {
+      if (operationLease.currentOwner() !== null) return;
       dispatchProject({ type: 'external', record });
     },
-    []
+    [operationLease]
   );
   const { status: storageStatus } = useLocalProjectPersistence({
     enabled: !initialProject.isShowcase,
@@ -212,7 +221,8 @@ export function Workbench() {
   const projectFiles = useProjectFileActions({
     document,
     assets,
-    onLoad: loadProject
+    onLoad: loadProject,
+    operationLease
   });
   const {
     createProject: executeCreateProject,
@@ -225,16 +235,22 @@ export function Workbench() {
   } = useWorkbenchProjectCommands({
     document,
     selectedNodeId,
-    dispatch
+    dispatch: dispatchUserMutation
   });
   const createProject = useCallback((input: NewProjectInput): void => {
+    if (operationLease.currentOwner() !== null) return;
     executeCreateProject(input);
     dispatchView({ type: 'node.select', nodeId: null });
     dispatchView({ type: 'clip.select', clipId: null });
     dispatchView({ type: 'overlay.set', overlay: null });
     setPlaying(false);
     setPlayhead(0);
-  }, [executeCreateProject, setPlayhead, setPlaying]);
+  }, [
+    executeCreateProject,
+    operationLease,
+    setPlayhead,
+    setPlaying
+  ]);
   const togglePlayback = useCallback((): void => {
     if (!activeClip) return;
     setPlaying((current) => !current);
@@ -303,10 +319,12 @@ export function Workbench() {
     commandOutcomes: history.commandOutcomes,
     selectedNodeId,
     report,
-    dispatch,
+    dispatch: dispatchProject,
     onFocusEntity: selectNode,
     onPresent: presentAgentView,
-    getVisualReviews
+    onDeliver: projectFiles.exportTarget,
+    getVisualReviews,
+    operationLease
   });
 
   return (

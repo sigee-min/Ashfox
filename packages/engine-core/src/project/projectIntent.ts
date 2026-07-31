@@ -396,7 +396,6 @@ export const normalizeProjectIntent = (
     value.requiredFeatures,
     'requiredFeatures',
     {
-      minItems: 1,
       maxItems: PROJECT_INTENT_LIMITS.maxRequiredFeatures,
       maxItemLength: PROJECT_INTENT_LIMITS.maxFeatureLength,
       normalizeWhitespace: true,

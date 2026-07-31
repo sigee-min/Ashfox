@@ -74,10 +74,7 @@ export const useWorkbenchProjectCommands = ({
   const createProject = useCallback(
     (input: NewProjectInput): void => {
       execute([
-        createProjectOperation(input, {
-          id: `project-${crypto.randomUUID()}`,
-          createdAt: new Date().toISOString()
-        })
+        createProjectOperation(input)
       ]);
     },
     [execute]

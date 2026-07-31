@@ -8,6 +8,7 @@ import {
 } from 'react';
 
 import {
+  evaluateProductionReadiness,
   type CommandBatch,
   type CommandReceipt,
   type ProjectDocument,
@@ -21,8 +22,18 @@ import type {
   HistoryAction
 } from '../../application/historyReducer';
 import type {
+  OperationLease,
+  OperationLeaseToken
+} from '../../application/operationLease';
+import type {
   ProjectAssets
 } from '../../application/projectAssets';
+import type {
+  ArtifactFile
+} from '../files/artifactFile';
+import type {
+  FileOperationRunResult
+} from '../files/useFileOperation';
 import { useLatestValue } from '../../hooks/useLatestValue';
 import {
   AgentCommandPort,
@@ -34,8 +45,15 @@ import type {
 } from './presentationReview';
 import type {
   PresentRequest,
-  PresentResult
+  PresentResult,
+  ViewPresentationRequest
 } from './types';
+import {
+  nextVisualReview
+} from './visualReviewPlan';
+import {
+  deliverAgentProject
+} from './deliverAgentProject';
 
 interface UseAgentCommandPortInput {
   document: ProjectDocument;
@@ -46,11 +64,17 @@ interface UseAgentCommandPortInput {
   report: ValidationReport;
   dispatch: Dispatch<HistoryAction>;
   onFocusEntity: (nodeId: string) => void;
-  onPresent: (request: PresentRequest) => Promise<PresentResult>;
+  onPresent: (
+    request: ViewPresentationRequest
+  ) => Promise<PresentResult>;
+  onDeliver: (lease: OperationLeaseToken) => Promise<
+    FileOperationRunResult<ArtifactFile>
+  >;
   getVisualReviews: (
     projectId: string,
     revision: string
   ) => readonly VisualReviewReceipt[];
+  operationLease: OperationLease;
 }
 
 interface PendingCommand {
@@ -84,7 +108,9 @@ export const useAgentCommandPort = ({
   dispatch,
   onFocusEntity,
   onPresent,
-  getVisualReviews
+  onDeliver,
+  getVisualReviews,
+  operationLease
 }: UseAgentCommandPortInput): AgentCommandPortStatus => {
   const [status, setStatus] =
     useState<AgentCommandPortStatus>('connected');
@@ -97,6 +123,7 @@ export const useAgentCommandPort = ({
   const reportRef = useLatestValue(report);
   const onFocusEntityRef = useLatestValue(onFocusEntity);
   const onPresentRef = useLatestValue(onPresent);
+  const onDeliverRef = useLatestValue(onDeliver);
   const getVisualReviewsRef = useLatestValue(getVisualReviews);
 
   const submit = useCallback(
@@ -136,12 +163,56 @@ export const useAgentCommandPort = ({
         currentProjectId: () => documentRef.current.id,
         currentRevision: () => documentRef.current.revision,
         submit,
-        present: (request) => onPresentRef.current(request),
+        operationLease,
+        present: (_request: PresentRequest) => {
+          const current = documentRef.current;
+          const readiness = evaluateProductionReadiness(
+            current,
+            reportRef.current
+          );
+          const review = nextVisualReview(
+            current,
+            readiness,
+            getVisualReviewsRef.current(
+              current.id,
+              current.revision
+            )
+          );
+          if (!review) {
+            return Promise.resolve({
+              ok: false,
+              revision: current.revision,
+              error: {
+                code: 'invalid_state',
+                path: 'review',
+                expected:
+                  'a remaining revision-bound visual review from inspect'
+              }
+            });
+          }
+          return onPresentRef.current({
+            ...review,
+            timeSeconds: 0
+          });
+        },
+        deliver: (lease) => {
+          const current = documentRef.current;
+          return deliverAgentProject({
+            document: current,
+            report: reportRef.current,
+            visualReviews: getVisualReviewsRef.current(
+              current.id,
+              current.revision
+            ),
+            currentDocument: () => documentRef.current,
+            exportTarget: () => onDeliverRef.current(lease)
+          });
+        },
         onStatusChange: (nextStatus) => {
           if (mountedRef.current) setStatus(nextStatus);
         }
       }),
-    [submit]
+    [operationLease, submit]
   );
 
   useEffect(() => {

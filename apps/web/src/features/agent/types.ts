@@ -1,8 +1,8 @@
 import type {
   AnimationPreviewIssue,
-  CommandBatch,
   CommandSource,
-  InvariantFinding
+  InvariantFinding,
+  ProjectCommandOperation
 } from '@ashfox/engine-core';
 import type {
   CameraMode
@@ -86,8 +86,15 @@ export interface RunFailure {
 
 export type RunResult = RunSuccess | RunFailure;
 
+export interface AgentRunRequest {
+  operations: readonly ProjectCommandOperation[];
+}
+
 export interface PresentRequest {
-  kind: 'view';
+  review: 'next';
+}
+
+export interface ViewPresentationRequest {
   mode: 'frame' | 'cycle';
   camera: CameraMode;
   clipId: string | null;
@@ -99,7 +106,7 @@ export interface PresentSuccess {
   revision: string;
   data: {
     frameNonce: number;
-    mode: PresentRequest['mode'];
+    mode: ViewPresentationRequest['mode'];
     camera: CameraMode;
     cameraMatrix: readonly number[];
     clipId: string | null;
@@ -129,10 +136,40 @@ export interface PresentFailure {
 
 export type PresentResult = PresentSuccess | PresentFailure;
 
+export interface DeliverSuccess {
+  ok: true;
+  revision: string;
+  artifact: {
+    name: string;
+    contentType: string;
+    byteLength: number;
+    target: string;
+    contentHash: string;
+  };
+}
+
+export interface DeliverFailure {
+  ok: false;
+  revision: string;
+  error: {
+    code:
+      | 'busy'
+      | 'cancelled'
+      | 'invalid_state'
+      | 'export_failed';
+    message?: string;
+    path?: string;
+    expected?: string;
+  };
+}
+
+export type DeliverResult = DeliverSuccess | DeliverFailure;
+
 export interface AgentCommandPortApi {
   inspect(request?: InspectRequest): InspectResult;
-  run(batch: CommandBatch): Promise<RunResult>;
+  run(request: AgentRunRequest): Promise<RunResult>;
   present(request: PresentRequest): Promise<PresentResult>;
+  deliver(): Promise<DeliverResult>;
 }
 
 declare global {

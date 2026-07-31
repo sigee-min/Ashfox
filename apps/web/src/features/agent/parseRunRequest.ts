@@ -1,11 +1,13 @@
 import {
   getAgentCommandDefinition,
-  type CommandBatch
+  type ProjectCommandOperation
 } from '@ashfox/engine-core';
 
 interface ParseSuccess {
   ok: true;
-  batch: CommandBatch;
+  request: {
+    operations: readonly ProjectCommandOperation[];
+  };
 }
 
 interface ParseFailure {
@@ -17,14 +19,9 @@ interface ParseFailure {
   };
 }
 
-export type ParseCommandBatchResult = ParseSuccess | ParseFailure;
+export type ParseRunRequestResult = ParseSuccess | ParseFailure;
 
-const BATCH_KEYS = new Set([
-  'batchId',
-  'baseProjectId',
-  'baseRevision',
-  'operations'
-]);
+const REQUEST_KEYS = new Set(['operations']);
 const OPERATION_KEYS = new Set(['name', 'payload']);
 
 const isRecord = (
@@ -32,8 +29,10 @@ const isRecord = (
 ): value is Readonly<Record<string, unknown>> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const commandBatchShape = (value: unknown): CommandBatch =>
-  value as CommandBatch;
+const operationsShape = (
+  value: unknown
+): readonly ProjectCommandOperation[] =>
+  value as readonly ProjectCommandOperation[];
 
 const unknownKey = (
   value: Readonly<Record<string, unknown>>,
@@ -41,38 +40,34 @@ const unknownKey = (
 ): string | undefined =>
   Object.keys(value).find((key) => !allowed.has(key));
 
-export const parseCommandBatch = (
+export const parseRunRequest = (
   value: unknown
-): ParseCommandBatchResult => {
+): ParseRunRequestResult => {
   if (!isRecord(value)) {
     return {
       ok: false,
       error: {
         code: 'invalid_batch',
         path: '$',
-        expected: 'command batch object'
+        expected: 'run request object'
       }
     };
   }
-  const batchUnknownKey = unknownKey(
+  const requestUnknownKey = unknownKey(
     value,
-    BATCH_KEYS
+    REQUEST_KEYS
   );
-  if (batchUnknownKey) {
+  if (requestUnknownKey) {
     return {
       ok: false,
       error: {
         code: 'invalid_batch',
-        path: batchUnknownKey,
-        expected: 'registered command batch property'
+        path: requestUnknownKey,
+        expected: 'operations'
       }
     };
   }
   if (
-    typeof value.batchId !== 'string' ||
-    typeof value.baseProjectId !== 'string' ||
-    value.baseProjectId.trim().length === 0 ||
-    typeof value.baseRevision !== 'string' ||
     !Array.isArray(value.operations) ||
     value.operations.length === 0 ||
     value.operations.length > 64
@@ -82,8 +77,7 @@ export const parseCommandBatch = (
       error: {
         code: 'invalid_batch',
         path: '$',
-        expected:
-          'batchId, baseProjectId, baseRevision, and 1-64 operations'
+        expected: '1-64 operations'
       }
     };
   }
@@ -121,6 +115,8 @@ export const parseCommandBatch = (
   }
   return {
     ok: true,
-    batch: commandBatchShape(value)
+    request: {
+      operations: operationsShape(value.operations)
+    }
   };
 };

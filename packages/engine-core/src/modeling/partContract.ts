@@ -61,11 +61,30 @@ type AuthoringPart<TPart extends PartSpec> =
   TPart extends PartSpec
     ? Omit<
         TPart,
-        'parentPartId' | 'joint' | 'attachment'
+        | 'parentPartId'
+        | 'joint'
+        | 'attachment'
+        | (
+          TPart extends MassPartSpec | SegmentPartSpec
+            ? 'profile'
+            : TPart extends RadialPartSpec
+              ? 'innerRadius'
+              : TPart extends FeaturePartSpec
+                ? 'relief'
+                : never
+        )
       > & {
         parentPartId?: string | null;
         joint?: PartJoint;
-      }
+      } & (
+        TPart extends MassPartSpec | SegmentPartSpec
+          ? { profile?: PartProfile }
+          : TPart extends RadialPartSpec
+            ? { innerRadius?: number }
+            : TPart extends FeaturePartSpec
+              ? { relief?: number }
+              : object
+      )
     : never;
 export type PartAuthoringSpec = AuthoringPart<PartSpec>;
 

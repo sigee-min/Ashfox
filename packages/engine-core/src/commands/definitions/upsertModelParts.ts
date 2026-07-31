@@ -7,6 +7,9 @@ import {
   derivePartAttachments
 } from '../../modeling/partAttachmentDerivation';
 import {
+  preserveExistingPartAuthoringDefaults
+} from '../../modeling/partAuthoring';
+import {
   compilePartScene
 } from '../../modeling/partCompiler';
 import {
@@ -27,7 +30,31 @@ export const upsertModelPartsCommand = defineCommand({
     'Compile project-space semantic parts with derived joints, shared-face pivots, shallow seam snapping, single-owner geometry, UVs, and generated texture surfaces.',
   inputSchema: modelPartsUpsertSchema,
   apply: (document, payload) => {
-    const normalized = normalizePartSpecs(payload.parts);
+    const currentRecipe = readPartRecipe(document);
+    if (!currentRecipe.ok) {
+      return {
+        ok: false,
+        error: {
+          code: 'invalid_state',
+          message: currentRecipe.issues[0]?.message ??
+            'Canonical modeling recipe is invalid.',
+          path: currentRecipe.issues[0]?.path ?? 'modeling',
+          pathScope: 'document'
+        }
+      };
+    }
+    const existingParts = new Map(
+      (currentRecipe.recipe?.parts ?? []).map(
+        (part) => [part.partId, part]
+      )
+    );
+    const authoredParts = payload.parts.map((part) =>
+      preserveExistingPartAuthoringDefaults(
+        part,
+        existingParts.get(part.partId)
+      )
+    );
+    const normalized = normalizePartSpecs(authoredParts);
     if (!normalized.ok) {
       const issue = normalized.issues[0];
       return {
@@ -42,8 +69,9 @@ export const upsertModelPartsCommand = defineCommand({
         }
       };
     }
-    const materialIds = payload.materials.map((material) => material.id);
-    const invalidMaterial = payload.materials.find(
+    const materials = payload.materials ?? [];
+    const materialIds = materials.map((material) => material.id);
+    const invalidMaterial = materials.find(
       (material) =>
         !isPartId(material.id) ||
         !isPartBaseColor(material.baseColor)
@@ -65,24 +93,6 @@ export const upsertModelPartsCommand = defineCommand({
       };
     }
 
-    const currentRecipe = readPartRecipe(document);
-    if (!currentRecipe.ok) {
-      return {
-        ok: false,
-        error: {
-          code: 'invalid_state',
-          message: currentRecipe.issues[0]?.message ??
-            'Canonical modeling recipe is invalid.',
-          path: currentRecipe.issues[0]?.path ?? 'modeling',
-          pathScope: 'document'
-        }
-      };
-    }
-    const existingParts = new Map(
-      (currentRecipe.recipe?.parts ?? []).map(
-        (part) => [part.partId, part]
-      )
-    );
     for (const part of normalized.value) {
       existingParts.set(part.partId, part);
     }
@@ -91,7 +101,7 @@ export const upsertModelPartsCommand = defineCommand({
         (material) => [material.id, material]
       )
     );
-    const conflictingMaterial = payload.materials.find((material) => {
+    const conflictingMaterial = materials.find((material) => {
       const existing = existingMaterials.get(material.id);
       return (
         existing !== undefined &&
@@ -112,7 +122,7 @@ export const upsertModelPartsCommand = defineCommand({
         }
       };
     }
-    for (const material of payload.materials) {
+    for (const material of materials) {
       existingMaterials.set(material.id, material);
     }
     const derived = derivePartAttachments(

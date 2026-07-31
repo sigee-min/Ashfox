@@ -105,7 +105,7 @@ const reviewed = deriveInspectWorkflow(
   readyReadiness,
   completeReceipts
 );
-assert.equal(reviewed.stage, 'produce');
+assert.equal(reviewed.stage, 'deliver');
 assert.deepEqual(reviewed.remainingVisualReviews, []);
 assert.equal(reviewed.remainingVisualReviewCount, 0);
 
@@ -126,7 +126,7 @@ if (defaultInspect.ok) {
       remainingVisualReviews: readonly string[];
     };
   }).workflow;
-  assert.equal(workflow.stage, 'produce');
+  assert.equal(workflow.stage, 'deliver');
   assert.deepEqual(workflow.remainingVisualReviews, []);
 }
 
@@ -147,7 +147,7 @@ if (targetInspect.ok) {
       remainingVisualReviews: readonly string[];
     };
   }).workflow;
-  assert.equal(workflow.stage, 'produce');
+  assert.equal(workflow.stage, 'deliver');
   assert.deepEqual(workflow.remainingVisualReviews, []);
 }
 
@@ -171,7 +171,7 @@ const unspecifiedGuidance = deriveInspectWorkflow(
   unspecifiedReport,
   evaluateProductionReadiness(unspecified, unspecifiedReport)
 );
-assert.equal(unspecifiedGuidance.stage, 'specify');
+assert.equal(unspecifiedGuidance.stage, 'plan');
 assert.equal(
   unspecifiedGuidance.blocker?.code,
   'production.intent_missing'
@@ -219,14 +219,14 @@ const locatorGuidance = deriveInspectWorkflow(
   locatorReport,
   evaluateProductionReadiness(locatorProject, locatorReport)
 );
-assert.equal(locatorGuidance.stage, 'author');
+assert.equal(locatorGuidance.stage, 'model');
 assert.equal(
   locatorGuidance.blocker?.code,
   'scene.parent_missing'
 );
 assert.deepEqual(
   locatorGuidance.recommendedCommands,
-  ['scene.locators.update', 'scene.locators.delete']
+  ['scene.locators.delete']
 );
 
 const invalidAnimation = structuredClone(readyProject);
@@ -248,7 +248,7 @@ assert.equal(
 );
 assert.ok(
   invalidAnimationGuidance.recommendedCommands.includes(
-    'animation.clip.upsert'
+    'animation.motion.upsert'
   )
 );
 
@@ -266,7 +266,7 @@ const untexturedGuidance = deriveInspectWorkflow(
   untexturedReport,
   evaluateProductionReadiness(untextured, untexturedReport)
 );
-assert.equal(untexturedGuidance.stage, 'author');
+assert.equal(untexturedGuidance.stage, 'model');
 assert.match(
   untexturedGuidance.blocker?.code ?? '',
   /^(cube\.texture_missing|production\.texture_coverage_incomplete)$/
@@ -287,7 +287,7 @@ const geometryGuidance = deriveInspectWorkflow(
   geometryReport,
   evaluateProductionReadiness(geometryMissing, geometryReport)
 );
-assert.equal(geometryGuidance.stage, 'prove');
+assert.equal(geometryGuidance.stage, 'model');
 assert.equal(
   geometryGuidance.blocker?.code,
   'production.geometry_missing'

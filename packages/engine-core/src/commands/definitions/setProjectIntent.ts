@@ -7,7 +7,9 @@ import {
   PART_CONTRACT_LIMITS,
   PART_ID_PATTERN_SOURCE
 } from '../../modeling/partContract';
+import type { ProjectDocument } from '../../model';
 import { defineCommand } from '../definition';
+import type { ProjectIntentInput } from '../types';
 
 const partIdSchema = {
   type: 'string',
@@ -50,7 +52,6 @@ const inputSchema = {
         minLength: 1,
         maxLength: PROJECT_INTENT_LIMITS.maxFeatureLength
       },
-      minItems: 1,
       maxItems: PROJECT_INTENT_LIMITS.maxRequiredFeatures,
       uniqueItems: true,
       description:
@@ -102,17 +103,38 @@ const inputSchema = {
         'Exact unordered lattice-reflection relationships; endpoint order is canonicalized and does not assert semantic left/right identity.'
     }
   },
-  required: [
-    'subject',
-    'forward',
-    'grounding',
-    'requiredFeatures',
-    'requiredPartIds',
-    'requiredMaterialIds',
-    'requiredClipIds'
-  ],
+  required: ['subject'],
   additionalProperties: false
 } as const;
+
+const completeIntentInput = (
+  document: ProjectDocument,
+  input: ProjectIntentInput
+): unknown => {
+  const current = document.intent;
+  return {
+    subject: input.subject,
+    forward: input.forward ?? current?.forward ?? 'north',
+    grounding: input.grounding ?? current?.grounding ?? 'free',
+    requiredFeatures:
+      input.requiredFeatures ?? current?.requiredFeatures ?? [],
+    requiredPartIds:
+      input.requiredPartIds ?? current?.requiredPartIds ?? [],
+    requiredMaterialIds:
+      input.requiredMaterialIds ??
+      current?.requiredMaterialIds ??
+      [],
+    requiredClipIds:
+      input.requiredClipIds ?? current?.requiredClipIds ?? [],
+    ...(
+      input.symmetryPairs !== undefined
+        ? { symmetryPairs: input.symmetryPairs }
+        : current?.symmetryPairs
+          ? { symmetryPairs: current.symmetryPairs }
+          : {}
+    )
+  };
+};
 
 export const setProjectIntentCommand = defineCommand({
   name: 'project.intent.set',
@@ -121,7 +143,9 @@ export const setProjectIntentCommand = defineCommand({
     'Persist an objective build and review contract without claiming semantic or visual-quality proof.',
   inputSchema,
   apply: (document, payload) => {
-    const normalized = normalizeProjectIntent(payload);
+    const normalized = normalizeProjectIntent(
+      completeIntentInput(document, payload)
+    );
     if (!normalized.ok) {
       const issue = normalized.issues[0];
       return {

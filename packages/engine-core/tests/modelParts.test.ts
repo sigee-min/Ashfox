@@ -365,6 +365,56 @@ assert.deepEqual(
   'a deeper descendant must remain connected after ancestor rederivation'
 );
 
+const partialChildUpdate = executeCommandBatch(
+  ordered,
+  {
+    batchId: 'preserve-existing-authoring-defaults',
+    baseProjectId: ordered.id,
+    baseRevision: ordered.revision,
+    operations: [{
+      name: 'model.parts.upsert',
+      payload: {
+        parts: [{
+          kind: 'mass',
+          partId: 'head',
+          materialId: 'charcoal',
+          center: [0, 5, 2],
+          radii: [1, 1, 1]
+        }]
+      }
+    }]
+  },
+  { source: 'agent' }
+);
+assert.equal(partialChildUpdate.ok, true);
+if (!partialChildUpdate.ok) {
+  throw new Error(partialChildUpdate.error.message);
+}
+const partialChildRecipe = readPartRecipe(
+  partialChildUpdate.document
+);
+assert.equal(partialChildRecipe.ok, true);
+if (
+  !partialChildRecipe.ok ||
+  partialChildRecipe.recipe === null
+) {
+  throw new Error('Partially updated child recipe is unavailable.');
+}
+const partiallyUpdatedChild = partialChildRecipe.recipe.parts.find(
+  (part) => part.partId === 'head'
+);
+assert.equal(partiallyUpdatedChild?.parentPartId, 'body');
+assert.deepEqual(
+  partiallyUpdatedChild?.joint,
+  { kind: 'hinge', axis: 'x' }
+);
+assert.equal(
+  partiallyUpdatedChild?.kind === 'mass'
+    ? partiallyUpdatedChild.profile
+    : null,
+  'hard'
+);
+
 const reopenedOrdered = parseProjectDocument(
   JSON.parse(JSON.stringify(ordered))
 );
@@ -666,6 +716,81 @@ if (!rejectedDetached.ok) {
 }
 assert.equal(JSON.stringify(ordered), beforeRawEdit);
 assert.equal(ordered.scene.nodes['bone:detached'], undefined);
+
+const missingDeleteSnapshot = JSON.stringify(recolored);
+const missingDelete = executeCommandBatch(
+  recolored,
+  {
+    batchId: 'parts-delete-missing',
+    baseProjectId: recolored.id,
+    baseRevision: recolored.revision,
+    operations: [{
+      name: 'model.parts.delete',
+      payload: {
+        partIds: ['missing-part']
+      }
+    }]
+  },
+  { source: 'agent' }
+);
+assert.equal(missingDelete.ok, false);
+if (!missingDelete.ok) {
+  assert.equal(missingDelete.error.code, 'no_change');
+}
+assert.equal(JSON.stringify(recolored), missingDeleteSnapshot);
+
+const mixedDelete = executeCommandBatch(
+  recolored,
+  {
+    batchId: 'parts-delete-mixed',
+    baseProjectId: recolored.id,
+    baseRevision: recolored.revision,
+    operations: [{
+      name: 'model.parts.delete',
+      payload: {
+        partIds: ['missing-part', 'head']
+      }
+    }]
+  },
+  { source: 'agent' }
+);
+assert.equal(mixedDelete.ok, true);
+if (!mixedDelete.ok) {
+  throw new Error(mixedDelete.error.message);
+}
+const mixedParts = readCompiledParts(mixedDelete.document);
+assert.equal(mixedParts.ok, true);
+if (!mixedParts.ok) {
+  throw new Error('Mixed idempotent deletion is invalid.');
+}
+assert.deepEqual([...mixedParts.parts.keys()], ['body']);
+assert.ok(
+  mixedDelete.effects.removedEntityIds.includes('bone:head')
+);
+assert.ok(
+  !mixedDelete.effects.removedEntityIds.includes('missing-part')
+);
+
+const emptyDeleteBase = createEmptyProject();
+const emptyDelete = executeCommandBatch(
+  emptyDeleteBase,
+  {
+    batchId: 'parts-delete-empty-project',
+    baseProjectId: emptyDeleteBase.id,
+    baseRevision: emptyDeleteBase.revision,
+    operations: [{
+      name: 'model.parts.delete',
+      payload: {
+        partIds: ['missing-part']
+      }
+    }]
+  },
+  { source: 'agent' }
+);
+assert.equal(emptyDelete.ok, false);
+if (!emptyDelete.ok) {
+  assert.equal(emptyDelete.error.code, 'no_change');
+}
 
 const deleted = execute(
   recolored,

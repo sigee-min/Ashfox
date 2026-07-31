@@ -2,9 +2,11 @@ import type {
   ConstrainedModelRecipe,
   ModelPartFace
 } from '../model';
+import { canonicalJsonString } from '../canonicalJson';
 import { compareStableText } from '../stableOrder';
 import {
   isPartId,
+  PART_CONTRACT_LIMITS,
   type LatticeVec2,
   type LatticeVec3,
   type PartSpec
@@ -27,6 +29,13 @@ export interface MirrorPartRecipeInput {
   axis: Axis;
   plane: number;
   partIdMap: readonly PartIdMirrorMapping[];
+}
+
+export interface DeriveMirrorPartIdMapInput {
+  rootPartId: string;
+  axis: Axis;
+  plane: number;
+  targetRootPartId?: string;
 }
 
 export interface TranslatePartSubtreeInput {
@@ -336,6 +345,65 @@ export const partSubtreeIds = (
   return [...selected].sort(compareStableText);
 };
 
+const stablePartIdHash = (value: string): string => {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(36).padStart(7, '0');
+};
+
+const fittedDerivedPartId = (
+  preferred: string,
+  prefix: string,
+  hashSeed: string
+): string => {
+  if (preferred.length <= PART_CONTRACT_LIMITS.maxIdLength) {
+    return preferred;
+  }
+  const suffix = `.part-${stablePartIdHash(hashSeed)}`;
+  const available =
+    PART_CONTRACT_LIMITS.maxIdLength - suffix.length;
+  const fittedPrefix = prefix
+    .slice(0, available)
+    .replace(/[._-]+$/u, '');
+  return `${fittedPrefix || 'part'}${suffix}`;
+};
+
+export const deriveMirrorPartIdMap = (
+  recipe: ConstrainedModelRecipe,
+  input: DeriveMirrorPartIdMapInput
+): readonly PartIdMirrorMapping[] => {
+  const sourcePartIds = partSubtreeIds(
+    recipe,
+    input.rootPartId
+  );
+  if (sourcePartIds.length === 0) return [];
+  const planeToken =
+    input.plane < 0 ? `n${-input.plane}` : `p${input.plane}`;
+  const defaultRootSuffix =
+    `.mirror-${input.axis}-${planeToken}`;
+  const defaultRoot = fittedDerivedPartId(
+    `${input.rootPartId}${defaultRootSuffix}`,
+    input.rootPartId,
+    `${input.rootPartId}|${input.axis}|${input.plane}`
+  );
+  const targetRootPartId =
+    input.targetRootPartId ?? defaultRoot;
+  return sourcePartIds.map((sourcePartId) => ({
+    sourcePartId,
+    targetPartId:
+      sourcePartId === input.rootPartId
+        ? targetRootPartId
+        : fittedDerivedPartId(
+            `${targetRootPartId}.${sourcePartId}`,
+            targetRootPartId,
+            `${targetRootPartId}|${sourcePartId}`
+          )
+  }));
+};
+
 const normalizedResult = (
   parts: readonly PartSpec[],
   recipe: ConstrainedModelRecipe,
@@ -424,7 +492,6 @@ export const mirrorPartRecipeSubtree = (
   const issues: PartRecipeTransformIssue[] = [];
   const mappings = new Map<string, string>();
   const targets = new Set<string>();
-  const existingIds = new Set(recipe.parts.map((part) => part.partId));
   input.partIdMap.forEach((entry, index) => {
     const path = `partIdMap[${index}]`;
     if (!isPartId(entry.sourcePartId)) {
@@ -456,12 +523,6 @@ export const mirrorPartRecipeSubtree = (
       });
     }
     targets.add(entry.targetPartId);
-    if (existingIds.has(entry.targetPartId)) {
-      issues.push({
-        path: `${path}.targetPartId`,
-        message: `Target part "${entry.targetPartId}" already exists.`
-      });
-    }
   });
   const subtree = new Set(subtreeIds);
   for (const sourcePartId of subtreeIds) {
@@ -514,6 +575,44 @@ export const mirrorPartRecipeSubtree = (
               }
       };
     });
+  const existingTargets = mirrored.map((part) =>
+    recipe.parts.find(
+      (candidate) => candidate.partId === part.partId
+    )
+  );
+  if (existingTargets.some((part) => part !== undefined)) {
+    if (existingTargets.some((part) => part === undefined)) {
+      return {
+        ok: false,
+        issues: [{
+          path: 'partIdMap',
+          message:
+            'Only part of the deterministic mirror target subtree exists. Delete the conflicting target subtree before retrying.'
+        }]
+      };
+    }
+    const mismatchIndex = mirrored.findIndex(
+      (part, index) =>
+        canonicalJsonString(part) !==
+          canonicalJsonString(existingTargets[index] ?? null)
+    );
+    if (mismatchIndex < 0) {
+      return normalizedResult(
+        recipe.parts,
+        recipe,
+        mirrored.map((part) => part.partId)
+      );
+    }
+    const targetPartId = mirrored[mismatchIndex].partId;
+    return {
+      ok: false,
+      issues: [{
+        path: 'partIdMap',
+        message:
+          `Target part "${targetPartId}" already exists with different canonical content.`
+      }]
+    };
+  }
   return normalizedResult(
     [...recipe.parts, ...mirrored],
     recipe,

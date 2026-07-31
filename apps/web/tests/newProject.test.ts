@@ -12,24 +12,16 @@ const operation = createProjectOperation(
   {
     name: 'Copper Golem',
     target: 'geckolib5',
-    namespace: 'ashfox',
-    modelPath: 'copper_golem'
-  },
-  {
-    id: 'project-copper-golem',
-    createdAt: '2026-07-29T00:00:00.000Z'
+    density: 2
   }
 );
 
 assert.deepEqual(operation, {
   name: 'project.create',
   payload: {
-    id: 'project-copper-golem',
     name: 'Copper Golem',
     target: 'geckolib5',
-    namespace: 'ashfox',
-    modelPath: 'copper_golem',
-    createdAt: '2026-07-29T00:00:00.000Z'
+    density: 2
   }
 });
 

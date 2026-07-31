@@ -55,69 +55,36 @@ const assertSelectorIsRendered = (
   );
 };
 
-const assertAttributeIsRendered = (
-  name: string,
-  attribute: string
-): void => {
-  assert.match(attribute, /^[\w-]+$/);
-  assert.ok(
-    productSource.includes(`${attribute}=`) ||
-      productSource.includes(`${attribute}\n`),
-    `${name} must reference rendered product state`
-  );
-};
-
 assert.equal(manifest.protocol, 'ashfox.agent-command-port');
 assert.equal(manifest.workbench, '/workbench/');
 assert.equal(manifest.href, '/workbench/agent-manifest.json');
 assert.equal(manifest.pageApi.global, 'ashfox');
 assert.equal(manifest.pageApi.presentMethod, 'present');
+assert.equal(manifest.pageApi.deliverMethod, 'deliver');
 assert.match(manifest.pageApi.present.call, /window\.ashfox\.present/);
+assert.match(manifest.pageApi.present.call, /review:"next"/);
+assert.match(manifest.pageApi.deliver.call, /window\.ashfox\.deliver/);
 assert.match(manifest.pageApi.inspect.command, /kind:"command"/);
 assert.match(manifest.pageApi.run.call, /await window\.ashfox\.run/);
+assert.doesNotMatch(manifest.pageApi.run.call, /baseRevision|batchId/);
 assert.match(manifest.setup.manifest, /such as curl/);
-assert.match(manifest.setup.manifest, /Never navigate/);
+assert.match(manifest.setup.manifest, /Do not navigate/);
 assert.match(manifest.setup.ready, /What would you like to create/);
 
-assert.match(manifest.modeling.authority, /Raw bone and cube commands/);
-assert.match(manifest.modeling.canonicalState, /one normalized/);
-assert.match(manifest.modeling.canonicalState, /structural drift/);
-assert.match(manifest.modeling.canonicalState, /UV and raster caches/);
-assert.match(manifest.modeling.lattice, /1\/d model unit/);
-assert.match(manifest.modeling.hierarchy, /bone:<partId>/);
-assert.match(manifest.modeling.hierarchy, /not agent input/);
-assert.match(manifest.modeling.hierarchy, /project space/);
+assert.match(manifest.authoring.project, /name,target\?,density\?/);
+assert.match(manifest.authoring.coordinates, /1\/d model unit/);
+assert.match(manifest.authoring.hierarchy, /derives snap/);
+assert.match(manifest.authoring.hierarchy, /UVs/);
+assert.match(manifest.authoring.materials, /square surface pixels/);
 assert.deepEqual(
-  Object.keys(manifest.modeling.primitives),
+  Object.keys(manifest.authoring.parts),
   ['mass', 'segment', 'plate', 'radial', 'feature']
 );
-assert.equal(manifest.modeling.enforcedInvariants.length, 12);
-assert.ok(
-  manifest.modeling.enforcedInvariants.some((entry) =>
-    entry.includes('6-connected')
-  )
-);
-assert.ok(
-  manifest.modeling.enforcedInvariants.some((entry) =>
-    entry.includes('single-owned cells without overlap')
-  )
-);
-assert.ok(
-  manifest.modeling.enforcedInvariants.some((entry) =>
-    entry.includes('at most two surface cells')
-  )
-);
-assert.ok(
-  manifest.modeling.enforcedInvariants.some((entry) =>
-    entry.includes('static support')
-  )
-);
-assert.match(manifest.texture.authority, /derives external-face UVs/);
-assert.match(manifest.texture.density, /1, 2, or 4/);
-assert.match(manifest.texture.review, /square-pixel size/);
-assert.match(manifest.completion.model, /never a quality score/);
-assert.match(manifest.completion.semanticBoundary, /not subject identity/);
-assert.match(manifest.completion.review, /generic humanoid substitution/);
+assert.match(manifest.animation.command, /animation\.motion\.upsert/);
+assert.match(manifest.animation.idle, /static hold/);
+assert.match(manifest.quality.required, /never a quality target/);
+assert.match(manifest.quality.fidelity, /generic humanoid/);
+assert.match(manifest.quality.review, /identity or appeal/);
 
 const agentDefinitions = listAgentCommandDefinitions();
 assert.equal(
@@ -147,7 +114,7 @@ for (const command of [
   'model.parts.material',
   'model.parts.delete',
   'textures.density.set',
-  'animation.clip.upsert'
+  'animation.motion.upsert'
 ]) {
   assert.ok(agentCommandNames.includes(command));
 }
@@ -156,20 +123,23 @@ for (const rawCommand of [
   'scene.cubes.create',
   'scene.cubes.geometry.update',
   'scene.nodes.delete',
-  'scene.cubes.material'
+  'scene.cubes.material',
+  'scene.locators.create',
+  'scene.locators.update',
+  'animation.clip.upsert',
+  'animation.channels.upsert',
+  'animation.triggers.upsert'
 ]) {
   assert.ok(!agentCommandNames.includes(rawCommand));
 }
 
-for (const [name, selector] of Object.entries(manifest.domActions)) {
-  assertSelectorIsRendered(`domActions.${name}`, selector);
-}
-assert.ok(!Object.hasOwn(manifest.domActions, 'newProject'));
-assert.ok(!Object.hasOwn(manifest.domActions, 'createProject'));
-assert.ok(!Object.hasOwn(manifest, 'domFields'));
 const artifactMarkup = 'data-ashfox-action="artifact.download"';
+assertSelectorIsRendered(
+  'artifact.downloadSelector',
+  manifest.artifact.downloadSelector
+);
 assert.equal(
-  manifest.domActions.downloadArtifact,
+  manifest.artifact.downloadSelector,
   `[${artifactMarkup}]`
 );
 assert.equal(productSource.split(artifactMarkup).length - 1, 1);
@@ -181,6 +151,25 @@ assert.equal(
   agentCommandProtocol.resultAttribute,
   manifest.domBridge.result.attribute
 );
+assert.match(manifest.domBridge.request, /requestId/);
+assert.match(manifest.domBridge.request, /inspect\|run\|present\|deliver/);
+assert.match(manifest.domBridge.response, /same-unique-id/);
+assert.deepEqual(
+  Object.keys(manifest.domBridge.examples),
+  ['inspect', 'run', 'present', 'deliver']
+);
+for (const [method, example] of Object.entries(
+  manifest.domBridge.examples
+)) {
+  const envelope = JSON.parse(example) as {
+    requestId: string;
+    method: string;
+    payload?: unknown;
+  };
+  assert.equal(envelope.method, method);
+  assert.ok(envelope.requestId.length > 0);
+  assert.equal(method === 'deliver', envelope.payload === undefined);
+}
 assert.match(
   html,
   /data-ashfox-agent-manifest="\/workbench\/agent-manifest\.json"/
@@ -188,59 +177,29 @@ assert.match(
 assert.match(html, /type="application\/vnd\.ashfox\.agent\+json"/);
 assert.ok(staticFiles.includes('workbench/agent-manifest.json'));
 
-assert.equal(
-  manifest.domState.root,
-  `[${manifest.domState.statusAttribute}]`
-);
-assertAttributeIsRendered(
-  'domState.statusAttribute',
-  manifest.domState.statusAttribute
-);
-assertAttributeIsRendered(
-  'domState.revisionAttribute',
-  manifest.domState.revisionAttribute
-);
-for (const attribute of [
-  manifest.domState.fileOperation.phaseAttribute,
-  manifest.domState.fileOperation.kindAttribute,
-  manifest.domState.fileOperation.operationIdAttribute,
-  manifest.domState.artifact.nameAttribute,
-  manifest.domState.artifact.contentTypeAttribute,
-  manifest.domState.artifact.byteLengthAttribute
-]) {
-  assertAttributeIsRendered(attribute, attribute);
-}
-assert.deepEqual(
-  manifest.domState.fileOperation.terminalPhases,
-  ['idle', 'succeeded', 'cancelled', 'failed']
-);
-assert.match(manifest.export.operation, /derived from the canonical/);
-assert.doesNotMatch(manifest.export.operation, /set format/);
 assert.ok(
-  Buffer.byteLength(JSON.stringify(manifest)) <= 40_960,
-  'the complete machine guide must fit one practical request'
+  Buffer.byteLength(JSON.stringify(manifest)) <= 24_000,
+  'the complete machine guide must stay compact'
 );
 assert.deepEqual(
   manifest.workflow.map((step) => step.stage),
   [
     'start',
-    'specify',
-    'prove',
-    'author',
+    'plan',
+    'model',
     'animate',
     'review',
-    'produce'
+    'deliver'
   ]
 );
 for (const step of manifest.workflow) {
   assert.ok(JSON.stringify(step).length <= 520);
 }
 assert.match(manifest.workflow[0].instruction, /project\.create/);
-assert.match(manifest.workflow[2].instruction, /root part/);
-assert.match(manifest.workflow[3].instruction, /coarse-to-fine/);
-assert.equal(manifest.delivery.requestedPath, 'workspace-relative directory');
-assert.equal(manifest.delivery.defaultDirectory, 'artifacts/');
-assert.equal(manifest.delivery.steps.length, 3);
+assert.match(manifest.workflow[2].instruction, /root/);
+assert.match(manifest.workflow[3].instruction, /animation\.motion\.upsert/);
+assert.equal(manifest.artifact.requestedPath, 'workspace-relative directory');
+assert.equal(manifest.artifact.defaultDirectory, 'artifacts/');
 
 const document = createGltfProject();
 const selectedCube = Object.values(document.scene.nodes)

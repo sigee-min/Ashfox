@@ -1,16 +1,16 @@
 import { createProjectDocument } from '../../project/createProjectDocument';
 import type { ProjectDocument } from '../../model';
+import { resourceToken } from '../../resourceToken';
 import { defineCommand } from '../definition';
-import type { ProjectCreateInput } from '../types';
+import type {
+  ProjectCreateInput,
+  ProjectDocumentCreateInput
+} from '../types';
 import { setProjectTargetCommand } from './setProjectTarget';
 
 const inputSchema = {
   type: 'object',
   properties: {
-    id: {
-      type: 'string',
-      minLength: 1
-    },
     name: {
       type: 'string',
       minLength: 1
@@ -18,27 +18,11 @@ const inputSchema = {
     target: {
       enum: ['gltf', 'glb', 'bedrock', 'geckolib5']
     },
-    namespace: {
-      type: 'string',
-      minLength: 1
-    },
-    modelPath: {
-      type: 'string',
-      minLength: 1
-    },
-    createdAt: {
-      type: 'string',
-      minLength: 1
+    density: {
+      enum: [1, 2, 4]
     }
   },
-  required: [
-    'id',
-    'name',
-    'target',
-    'namespace',
-    'modelPath',
-    'createdAt'
-  ],
+  required: ['name'],
   additionalProperties: false
 } as const;
 
@@ -53,8 +37,8 @@ const applyDefinition = (
 };
 
 const normalizeProjectInput = (
-  input: ProjectCreateInput
-): ProjectCreateInput => ({
+  input: ProjectDocumentCreateInput
+): ProjectDocumentCreateInput => ({
   ...input,
   id: input.id.trim(),
   name: input.name.trim(),
@@ -64,16 +48,25 @@ const normalizeProjectInput = (
 });
 
 export const createProjectFromInput = (
-  input: ProjectCreateInput,
+  input: ProjectDocumentCreateInput,
   revision: string
 ): ProjectDocument => {
   const normalized = normalizeProjectInput(input);
-  const document = createProjectDocument({
+  const empty = createProjectDocument({
     id: normalized.id,
     name: normalized.name,
     revision,
     createdAt: normalized.createdAt
   });
+  const document = normalized.density === undefined
+    ? empty
+    : {
+        ...empty,
+        settings: {
+          ...empty.settings,
+          surfacePixelDensity: normalized.density
+        }
+      };
   return applyDefinition(
     document,
     setProjectTargetCommand,
@@ -85,50 +78,64 @@ export const createProjectFromInput = (
   );
 };
 
+const stableProjectSuffix = (value: string): string => {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(36).padStart(7, '0');
+};
+
+const deriveProjectInput = (
+  document: ProjectDocument,
+  payload: ProjectCreateInput
+): ProjectDocumentCreateInput => {
+  const name = payload.name.trim();
+  const target = payload.target ?? 'glb';
+  const density = payload.density ?? 1;
+  const identitySeed = [
+    document.id,
+    document.revision,
+    document.updatedAt,
+    name
+  ].join('\u0000');
+  const candidateId =
+    `project-${resourceToken(name, 'asset')}-` +
+    stableProjectSuffix(identitySeed);
+  return {
+    id:
+      candidateId === document.id
+        ? `${candidateId}-next`
+        : candidateId,
+    name,
+    target,
+    namespace: 'ashfox',
+    modelPath: resourceToken(name, 'asset'),
+    createdAt: document.updatedAt,
+    density
+  };
+};
+
 export const createProjectCommand = defineCommand({
   name: 'project.create',
   label: 'Create project',
   purpose: 'Start one empty project with a canonical export target.',
   inputSchema,
   apply: (document, payload) => {
-    const normalized = normalizeProjectInput(payload);
-    const emptyField = (
-      ['id', 'name', 'namespace', 'modelPath', 'createdAt'] as const
-    ).find((field) => normalized[field].length === 0);
-    if (emptyField) {
+    const input = deriveProjectInput(document, payload);
+    if (input.name.length === 0) {
       return {
         ok: false,
         error: {
           code: 'invalid_payload',
-          message: `Project ${emptyField} cannot be empty.`,
-          path: `payload.${emptyField}`,
+          message: 'Project name cannot be empty.',
+          path: 'payload.name',
           expected: 'non-empty text'
         }
       };
     }
-    if (normalized.id === document.id) {
-      return {
-        ok: false,
-        error: {
-          code: 'invalid_state',
-          message: 'A new project must use a new project ID.',
-          path: 'payload.id',
-          expected: 'project ID different from the active project'
-        }
-      };
-    }
-    if (!Number.isFinite(Date.parse(normalized.createdAt))) {
-      return {
-        ok: false,
-        error: {
-          code: 'invalid_payload',
-          message: 'Project creation timestamp must be valid ISO date text.',
-          path: 'payload.createdAt',
-          expected: 'ISO 8601 timestamp'
-        }
-      };
-    }
-    const next = createProjectFromInput(normalized, document.revision);
+    const next = createProjectFromInput(input, document.revision);
     return {
       ok: true,
       value: {

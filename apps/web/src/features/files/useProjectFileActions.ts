@@ -7,6 +7,10 @@ import {
 
 import type { ProjectDocument } from '@ashfox/engine-core';
 
+import type {
+  OperationLease,
+  OperationLeaseToken
+} from '../../application/operationLease';
 import {
   createProjectArtifact,
   createTargetArtifact,
@@ -19,7 +23,10 @@ import {
 import type { FileOperationState } from './fileOperationState';
 import type { ProjectArchiveFile } from './projectArchive';
 import type { ProjectAssets } from '../../application/projectAssets';
-import { useFileOperation } from './useFileOperation';
+import {
+  useFileOperation,
+  type FileOperationRunResult
+} from './useFileOperation';
 import { createAnimatedGif } from '../capture/createAnimatedGif';
 import { createBuildGif } from '../capture/createBuildGif';
 import {
@@ -35,6 +42,7 @@ interface UseProjectFileActionsInput {
   document: ProjectDocument;
   assets: ProjectAssets;
   onLoad: (project: ProjectArchiveFile) => void;
+  operationLease: OperationLease;
 }
 
 interface ProjectFileActions {
@@ -44,7 +52,9 @@ interface ProjectFileActions {
   open: (file: File) => void;
   drop: (event: DragEvent<HTMLElement>) => void;
   save: () => void;
-  exportTarget: () => void;
+  exportTarget: (
+    lease?: OperationLeaseToken
+  ) => Promise<FileOperationRunResult<ArtifactFile>>;
   captureGif: (request: GifCaptureRequest) => void;
   cancel: () => void;
 }
@@ -52,13 +62,14 @@ interface ProjectFileActions {
 export const useProjectFileActions = ({
   document,
   assets,
-  onLoad
+  onLoad,
+  operationLease
 }: UseProjectFileActionsInput): ProjectFileActions => {
   const {
     state: operation,
     run,
     cancel
-  } = useFileOperation<ArtifactFile>();
+  } = useFileOperation<ArtifactFile>(operationLease);
 
   const open = useCallback((file: File): void => {
     void run({
@@ -109,9 +120,9 @@ export const useProjectFileActions = ({
     });
   }, [assets, document, run]);
 
-  const exportTarget = useCallback((): void => {
+  const exportTarget = useCallback((lease?: OperationLeaseToken) => {
     const target = projectExportTargetFor(document);
-    void run({
+    return run({
       kind: 'export',
       pendingMessage: `Building ${target.target} export`,
       execute: () => createTargetArtifact(document, assets),
@@ -121,7 +132,7 @@ export const useProjectFileActions = ({
         result: artifact
       }),
       failureMessage: 'Target export failed'
-    });
+    }, lease);
   }, [assets, document, run]);
 
   const captureGif = useCallback(

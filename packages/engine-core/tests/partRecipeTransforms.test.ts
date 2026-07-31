@@ -19,6 +19,7 @@ import { cellKey, parseCellKey } from '../src/modeling/lattice';
 import { rasterizePart } from '../src/modeling/partPrimitiveAdapter';
 import { normalizePartRecipe } from '../src/modeling/partRecipe';
 import {
+  deriveMirrorPartIdMap,
   mirrorPartRecipeSubtree,
   reflectLatticeCell,
   translatePartRecipeSubtree
@@ -422,10 +423,10 @@ const oneSided = execute(createProject('project-mirror-parts'), 'upsert-left', [
   }
 }]);
 const oneSidedSnapshot = JSON.stringify(oneSided);
-const incompleteMirror = executeCommandBatch(
+const collidingMirror = executeCommandBatch(
   oneSided,
   {
-    batchId: 'mirror-incomplete-map',
+    batchId: 'mirror-colliding-target',
     baseProjectId: oneSided.id,
     baseRevision: oneSided.revision,
     operations: [{
@@ -434,23 +435,36 @@ const incompleteMirror = executeCommandBatch(
         rootPartId: 'arm.left',
         axis: 'x',
         plane: 0,
-        partIdMap: [{
-          sourcePartId: 'arm.left',
-          targetPartId: 'arm.right'
-        }]
+        targetRootPartId: 'hand.left'
       }
     }]
   },
   { source: 'agent' }
 );
-assert.equal(incompleteMirror.ok, false);
-if (!incompleteMirror.ok) {
+assert.equal(collidingMirror.ok, false);
+if (!collidingMirror.ok) {
   assert.equal(
-    incompleteMirror.error.path,
-    'operations[0].payload.partIdMap'
+    collidingMirror.error.path,
+    'operations[0].payload.targetRootPartId'
   );
 }
 assert.equal(JSON.stringify(oneSided), oneSidedSnapshot);
+
+const defaultMirrorMap = deriveMirrorPartIdMap(
+  oneSided.modeling!,
+  {
+    rootPartId: 'arm.left',
+    axis: 'x',
+    plane: 0
+  }
+);
+assert.deepEqual(defaultMirrorMap, [{
+  sourcePartId: 'arm.left',
+  targetPartId: 'arm.left.mirror-x-p0'
+}, {
+  sourcePartId: 'hand.left',
+  targetPartId: 'arm.left.mirror-x-p0.hand.left'
+}]);
 
 const bilateral = execute(oneSided, 'mirror-right', [{
   name: 'model.parts.mirror',
@@ -458,25 +472,22 @@ const bilateral = execute(oneSided, 'mirror-right', [{
     rootPartId: 'arm.left',
     axis: 'x',
     plane: 0,
-    partIdMap: [
-      {
-        sourcePartId: 'hand.left',
-        targetPartId: 'hand.right'
-      },
-      {
-        sourcePartId: 'arm.left',
-        targetPartId: 'arm.right'
-      }
-    ]
+    targetRootPartId: 'arm.right'
   }
 }]);
 assert.deepEqual(
   bilateral.modeling?.parts.map((part) => part.partId),
-  ['arm.left', 'arm.right', 'body', 'hand.left', 'hand.right']
+  [
+    'arm.left',
+    'arm.right',
+    'arm.right.hand.left',
+    'body',
+    'hand.left'
+  ]
 );
 assert.equal(
   bilateral.modeling?.parts.find(
-    (part) => part.partId === 'hand.right'
+    (part) => part.partId === 'arm.right.hand.left'
   )?.parentPartId,
   'arm.right'
 );
@@ -495,7 +506,7 @@ if (!bilateralCompiled.ok) {
 }
 for (const [leftId, rightId] of [
   ['arm.left', 'arm.right'],
-  ['hand.left', 'hand.right']
+  ['hand.left', 'arm.right.hand.left']
 ] as const) {
   const left = bilateralCompiled.parts.get(leftId);
   const right = bilateralCompiled.parts.get(rightId);
@@ -510,6 +521,31 @@ for (const [leftId, rightId] of [
       .sort()
   );
 }
+
+const bilateralSnapshot = JSON.stringify(bilateral);
+const mirrorRetry = executeCommandBatch(
+  bilateral,
+  {
+    batchId: 'mirror-right-retry',
+    baseProjectId: bilateral.id,
+    baseRevision: bilateral.revision,
+    operations: [{
+      name: 'model.parts.mirror',
+      payload: {
+        rootPartId: 'arm.left',
+        axis: 'x',
+        plane: 0,
+        targetRootPartId: 'arm.right'
+      }
+    }]
+  },
+  { source: 'agent' }
+);
+assert.equal(mirrorRetry.ok, false);
+if (!mirrorRetry.ok) {
+  assert.equal(mirrorRetry.error.code, 'no_change');
+}
+assert.equal(JSON.stringify(bilateral), bilateralSnapshot);
 
 const crossingBase: PartSpec = {
   kind: 'plate',
@@ -566,10 +602,7 @@ const crossingMirror = executeCommandBatch(
         rootPartId: 'crossing.left',
         axis: 'x',
         plane: 0,
-        partIdMap: [{
-          sourcePartId: 'crossing.left',
-          targetPartId: 'crossing.right'
-        }]
+        targetRootPartId: 'crossing.right'
       }
     }]
   },

@@ -1,5 +1,9 @@
 import type { ProjectDocument } from '../model';
 import {
+  countMotionKeys,
+  MOTION_AUTHORING_LIMITS
+} from '../animation/motionContract';
+import {
   deriveGeneratedTextures
 } from '../textures/textureRecipe';
 import { validateProjectDocument } from '../validation';
@@ -106,6 +110,7 @@ const validateBatch = (
       expected: 'zero or one model.parts.upsert operation'
     });
   }
+  let motionKeyCount = 0;
   for (let index = 0; index < batch.operations.length; index += 1) {
     const operation = batch.operations[index];
     const definition = getCommandDefinition(operation.name);
@@ -134,6 +139,40 @@ const validateBatch = (
         path: `operations[${index}].payload${issue.path.slice(1)}`,
         expected: issue.expected
       });
+    }
+    if (operation.name === 'animation.motion.upsert') {
+      const operationKeyCount = countMotionKeys(
+        operation.payload.motions
+      );
+      if (
+        operationKeyCount >
+        MOTION_AUTHORING_LIMITS.maxKeysPerOperation
+      ) {
+        return failure(document, {
+          code: 'invalid_payload',
+          message:
+            `Animation motion contains ${operationKeyCount} keys, ` +
+            `exceeding the ${MOTION_AUTHORING_LIMITS.maxKeysPerOperation}-key operation budget.`,
+          path: `operations[${index}].payload.motions`,
+          expected:
+            `at most ${MOTION_AUTHORING_LIMITS.maxKeysPerOperation} total keys`
+        });
+      }
+      motionKeyCount += operationKeyCount;
+      if (
+        motionKeyCount >
+        MOTION_AUTHORING_LIMITS.maxKeysPerBatch
+      ) {
+        return failure(document, {
+          code: 'invalid_batch',
+          message:
+            `Animation motions contain ${motionKeyCount} keys, ` +
+            `exceeding the ${MOTION_AUTHORING_LIMITS.maxKeysPerBatch}-key batch budget.`,
+          path: 'operations',
+          expected:
+            `at most ${MOTION_AUTHORING_LIMITS.maxKeysPerBatch} animation motion keys`
+        });
+      }
     }
   }
   return null;

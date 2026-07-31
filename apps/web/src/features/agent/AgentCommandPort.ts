@@ -6,11 +6,18 @@ import {
 import type {
   CommandOutcome
 } from '../../application/commandOutcome';
-import { parseCommandBatch } from './parseCommandBatch';
+import {
+  createOperationLease,
+  type OperationLease,
+  type OperationLeaseToken
+} from '../../application/operationLease';
+import { parseRunRequest } from './parseRunRequest';
 import { parseInspectRequest } from './parseInspectRequest';
 import { parsePresentRequest } from './parsePresentRequest';
 import type {
+  AgentRunRequest,
   AgentCommandPortApi,
+  DeliverResult,
   InspectRequest,
   InspectResult,
   PresentRequest,
@@ -28,23 +35,24 @@ export interface AgentCommandPortDependencies {
   currentRevision: () => string;
   submit: (batch: CommandBatch) => Promise<CommandOutcome>;
   present?: (request: PresentRequest) => Promise<PresentResult>;
+  deliver?: (lease: OperationLeaseToken) => Promise<DeliverResult>;
+  operationLease?: OperationLease;
   onStatusChange?: (status: AgentCommandPortStatus) => void;
 }
 
 interface ActiveBatch {
-  key: string;
   signature: string;
   result: Promise<RunResult>;
 }
 
-interface CompletedBatch {
+interface CompletedRequest {
   signature: string;
   result: RunResult;
 }
 
 interface AgentCommandInput {
   requestId: string;
-  method: 'inspect' | 'run' | 'present';
+  method: 'inspect' | 'run' | 'present' | 'deliver';
   payload?: unknown;
 }
 
@@ -59,10 +67,12 @@ const parseAgentCommandInput = (
   if (
     !isRecord(value) ||
     typeof value.requestId !== 'string' ||
+    value.requestId.trim().length === 0 ||
     (
       value.method !== 'inspect' &&
       value.method !== 'run' &&
-      value.method !== 'present'
+      value.method !== 'present' &&
+      value.method !== 'deliver'
     )
   ) {
     return null;
@@ -84,16 +94,15 @@ const parseSerializedAgentCommandInput = (
   }
 };
 
-const batchSignature = (batch: CommandBatch): string | null => {
+const requestSignature = (
+  request: AgentRunRequest
+): string | null => {
   try {
-    return canonicalJsonString(batch);
+    return canonicalJsonString(request);
   } catch {
     return null;
   }
 };
-
-const batchScopeKey = (batch: CommandBatch): string =>
-  JSON.stringify([batch.baseProjectId, batch.batchId]);
 
 const invalidBatch = (
   revision: string,
@@ -119,20 +128,6 @@ const terminalFailure = (
   error: {
     code: 'invalid_state',
     message
-  }
-});
-
-const projectMismatch = (
-  revision: string,
-  expectedProjectId: string
-): RunResult => ({
-  ok: false,
-  revision,
-  error: {
-    code: 'project_mismatch',
-    message: 'Batch project does not match the active project.',
-    path: 'baseProjectId',
-    expected: expectedProjectId
   }
 });
 
@@ -165,9 +160,16 @@ const resultFromOutcome = (outcome: CommandOutcome): RunResult => {
 
 export class AgentCommandPort implements AgentCommandPortApi {
   private activeBatch: ActiveBatch | null = null;
-  private readonly completedBatches = new Map<string, CompletedBatch>();
+  private activeDelivery: Promise<DeliverResult> | null = null;
+  private readonly completedRequests =
+    new Map<string, CompletedRequest>();
+  private readonly operationLease: OperationLease;
+  private batchSerial = 0;
 
-  constructor(private readonly dependencies: AgentCommandPortDependencies) {}
+  constructor(private readonly dependencies: AgentCommandPortDependencies) {
+    this.operationLease =
+      dependencies.operationLease ?? createOperationLease();
+  }
 
   connect(host: Window): () => void {
     const port = this;
@@ -233,9 +235,28 @@ export class AgentCommandPort implements AgentCommandPortApi {
           await port.present(request.payload as PresentRequest)
         ];
       }
+      if (request.method === 'deliver') {
+        return [
+          request.requestId,
+          request.payload === undefined
+            ? await port.deliver()
+            : {
+                ok: false,
+                revision: port.dependencies.currentRevision(),
+                error: {
+                  code: 'invalid_state',
+                  path: 'payload',
+                  expected: 'no deliver payload'
+                }
+              }
+        ];
+      }
       return [
         request.requestId,
-        await port.run(request.payload as CommandBatch)
+        await port.runConnected(
+          request.payload,
+          request.requestId
+        )
       ];
     }
     function receive(this: HTMLInputElement): void {
@@ -363,14 +384,70 @@ export class AgentCommandPort implements AgentCommandPortApi {
     }
   }
 
-  run(input: CommandBatch): Promise<RunResult> {
+  deliver(): Promise<DeliverResult> {
     const revision = this.dependencies.currentRevision();
-    let parsed: ReturnType<typeof parseCommandBatch>;
+    if (!this.dependencies.deliver) {
+      return Promise.resolve({
+        ok: false,
+        revision,
+        error: {
+          code: 'invalid_state',
+          path: '$',
+          expected: 'connected delivery adapter'
+        }
+      });
+    }
+    if (this.activeDelivery) return this.activeDelivery;
+    if (this.activeBatch) {
+      return Promise.resolve({
+        ok: false,
+        revision,
+        error: {
+          code: 'busy',
+          message: 'A project change is still running.'
+        }
+      });
+    }
+    const lease =
+      this.operationLease.tryAcquire('agent.deliver');
+    if (!lease) {
+      return Promise.resolve({
+        ok: false,
+        revision,
+        error: {
+          code: 'busy',
+          message:
+            `Another operation is still running (${this.operationLease.currentOwner() ?? 'unknown'}).`
+        }
+      });
+    }
+    const result = this.executeDelivery(lease);
+    this.activeDelivery = result;
+    return result;
+  }
+
+  run(input: AgentRunRequest): Promise<RunResult> {
+    return this.runRequest(input);
+  }
+
+  private runConnected(
+    input: unknown,
+    requestId: string
+  ): Promise<RunResult> {
+    return this.runRequest(input, requestId);
+  }
+
+  private runRequest(
+    input: unknown,
+    requestId?: string
+  ): Promise<RunResult> {
+    const revision = this.dependencies.currentRevision();
+    let parsed: ReturnType<typeof parseRunRequest>;
     try {
-      parsed = parseCommandBatch(input);
+      parsed = parseRunRequest(input);
     } catch {
       return Promise.resolve(
-        invalidBatch(revision, '$', 'plain command batch data')
+        invalidBatch(revision, '$', 'plain run request data')
       );
     }
     if (!parsed.ok) {
@@ -384,42 +461,30 @@ export class AgentCommandPort implements AgentCommandPortApi {
       });
     }
 
-    const signature = batchSignature(parsed.batch);
+    const signature = requestSignature(parsed.request);
     if (signature === null) {
       return Promise.resolve(
-        invalidBatch(revision, '$', 'JSON-serializable command batch')
+        invalidBatch(revision, '$', 'JSON-serializable run request')
       );
     }
-    const key = batchScopeKey(parsed.batch);
-    const currentProjectId = this.dependencies.currentProjectId();
-
-    const completed = this.completedBatches.get(key);
+    const completed =
+      requestId === undefined
+        ? undefined
+        : this.completedRequests.get(requestId);
     if (completed) {
-      const isProjectCreationReplay =
-        completed.result.ok &&
-        completed.result.receipt.projectId === currentProjectId;
-      if (
-        parsed.batch.baseProjectId !== currentProjectId &&
-        !isProjectCreationReplay
-      ) {
-        return Promise.resolve(
-          projectMismatch(revision, currentProjectId)
-        );
-      }
       return Promise.resolve(
         completed.signature === signature
           ? completed.result
           : invalidBatch(
               revision,
-              'batchId',
-              'a batch ID that has not been used for different content'
+              'requestId',
+              'a request ID that has not been used for different content'
             )
       );
     }
 
     if (this.activeBatch) {
       if (
-        this.activeBatch.key === key &&
         this.activeBatch.signature === signature
       ) {
         return this.activeBatch.result;
@@ -428,28 +493,63 @@ export class AgentCommandPort implements AgentCommandPortApi {
         terminalFailure(revision, 'Another command batch is already running.')
       );
     }
-    if (parsed.batch.baseProjectId !== currentProjectId) {
-      return Promise.resolve(projectMismatch(revision, currentProjectId));
+    if (this.activeDelivery) {
+      return Promise.resolve(
+        terminalFailure(revision, 'Project delivery is still running.')
+      );
     }
-
-    const result = this.execute(parsed.batch, key, signature);
+    const batch: CommandBatch = {
+      batchId: this.nextBatchId(requestId),
+      baseProjectId: this.dependencies.currentProjectId(),
+      baseRevision: revision,
+      operations: parsed.request.operations
+    };
+    const lease =
+      this.operationLease.tryAcquire('agent.run');
+    if (!lease) {
+      return Promise.resolve(
+        terminalFailure(
+          revision,
+          `Another operation is still running (${this.operationLease.currentOwner() ?? 'unknown'}).`
+        )
+      );
+    }
+    const result = this.execute(batch, lease).then((outcome) => {
+      if (requestId !== undefined) {
+        this.completedRequests.set(requestId, {
+          signature,
+          result: outcome
+        });
+      }
+      return outcome;
+    });
     this.activeBatch = {
-      key,
       signature,
       result
     };
     return result;
   }
 
+  private nextBatchId(requestId?: string): string {
+    if (requestId !== undefined) {
+      return `agent-request:${requestId}`;
+    }
+    this.batchSerial += 1;
+    return `agent-run:${this.batchSerial.toString(36)}`;
+  }
+
   private async execute(
     batch: CommandBatch,
-    key: string,
-    signature: string
+    lease: OperationLeaseToken
   ): Promise<RunResult> {
     this.updateStatus('working');
     let result: RunResult;
     try {
-      result = resultFromOutcome(await this.dependencies.submit(batch));
+      result = resultFromOutcome(
+        await Promise.resolve().then(
+          () => this.dependencies.submit(batch)
+        )
+      );
     } catch (error) {
       result = terminalFailure(
         this.dependencies.currentRevision(),
@@ -459,18 +559,34 @@ export class AgentCommandPort implements AgentCommandPortApi {
       );
     } finally {
       this.activeBatch = null;
+      lease.release();
       this.updateStatus('connected');
     }
-    this.remember(key, signature, result);
     return result;
   }
 
-  private remember(
-    key: string,
-    signature: string,
-    result: RunResult
-  ): void {
-    this.completedBatches.set(key, { signature, result });
+  private async executeDelivery(
+    lease: OperationLeaseToken
+  ): Promise<DeliverResult> {
+    this.updateStatus('working');
+    try {
+      return await Promise.resolve().then(
+        () => this.dependencies.deliver!(lease)
+      );
+    } catch {
+      return {
+        ok: false,
+        revision: this.dependencies.currentRevision(),
+        error: {
+          code: 'export_failed',
+          message: 'Project delivery could not be completed.'
+        }
+      };
+    } finally {
+      this.activeDelivery = null;
+      lease.release();
+      this.updateStatus('connected');
+    }
   }
 
   private updateStatus(status: AgentCommandPortStatus): void {

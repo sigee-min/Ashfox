@@ -188,7 +188,8 @@ const directGeometryAnimation = run(
         }]
       }
     }
-  ]
+  ],
+  'system'
 );
 assert.equal(directGeometryAnimation.ok, false);
 if (!directGeometryAnimation.ok) {
@@ -259,27 +260,14 @@ assert.ok(
 
 const animated = committed(run(authored, 'animate-head', [
   {
-    name: 'animation.clip.upsert',
-    payload: {
-      id: 'idle',
-      name: 'animation.part_safety.idle',
-      durationSeconds: 1,
-      fps: 20,
-      loop: 'loop'
-    }
-  },
-  {
-    name: 'animation.channels.upsert',
+    name: 'animation.motion.upsert',
     payload: {
       clipId: 'idle',
-      channels: [{
-        id: 'head.rotation',
-        targetNodeId: 'bone:head',
-        property: 'rotation',
+      role: 'idle',
+      motions: [{
+        partId: 'head',
         keys: [
-          { id: 'start', timeSeconds: 0, value: [0, 0, 0] },
-          { id: 'middle', timeSeconds: 0.5, value: [10, 0, 0] },
-          { id: 'end', timeSeconds: 1, value: [0, 0, 0] }
+          { phase: 0.5, rotationDegrees: 10 }
         ]
       }]
     }
@@ -291,9 +279,29 @@ const deleted = run(animated, 'delete-animated-head', [{
 }]);
 assert.equal(deleted.ok, true);
 if (!deleted.ok) throw new Error(deleted.error.message);
-assert.ok(deleted.effects.removedEntityIds.includes('head.rotation'));
-assert.ok(deleted.effects.removedEntityIds.includes('idle'));
+assert.ok(
+  deleted.effects.removedEntityIds.includes(
+    'animation:idle:channel:head:rotation'
+  )
+);
+assert.ok(!deleted.effects.removedEntityIds.includes('idle'));
+assert.ok(deleted.effects.changedEntityIds.includes('idle'));
 assert.ok(deleted.effects.removedEntityIds.includes('bone:head'));
+const restoredIdle = deleted.document.animations.idle;
+assert.ok(restoredIdle);
+assert.deepEqual(Object.keys(restoredIdle.channels), [
+  'animation:idle:channel:body:rotation'
+]);
+assert.deepEqual(
+  Object.values(restoredIdle.channels)[0].keys.map(
+    (key) => [key.timeSeconds, key.value]
+  ),
+  [
+    [0, [0, 0, 0]],
+    [1, [0, 0, 0]]
+  ]
+);
+assert.equal(validateProjectDocument(deleted.document).valid, true);
 
 const withForeign = committed(run(authored, 'foreign-far-away', [{
   name: 'scene.cubes.create',

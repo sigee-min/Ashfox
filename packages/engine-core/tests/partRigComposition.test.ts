@@ -88,7 +88,7 @@ const execute = (
       baseRevision: document.revision,
       operations
     },
-    { source: 'agent' }
+    { source: 'system' }
   );
 
 const empty = createProjectFromInput(

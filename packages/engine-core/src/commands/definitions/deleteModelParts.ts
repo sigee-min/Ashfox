@@ -2,6 +2,9 @@ import {
   readCompiledParts
 } from '../../modeling/partInvariants';
 import {
+  ensureRequiredAnimationFallback
+} from '../../animation/implicitRestPose';
+import {
   normalizePartRecipe,
   readPartRecipe,
   withPartRecipe
@@ -42,20 +45,14 @@ export const deleteModelPartsCommand = defineCommand({
   inputSchema: modelPartsDeleteSchema,
   apply: (document, payload) => {
     const recipeResult = readPartRecipe(document);
-    if (!recipeResult.ok || recipeResult.recipe === null) {
+    if (!recipeResult.ok) {
       return {
         ok: false,
         error: {
           code: 'invalid_state',
-          message:
-            recipeResult.ok
-              ? 'Canonical modeling recipe does not exist.'
-              : recipeResult.issues[0]?.message ??
-                'Canonical modeling recipe is invalid.',
-          path:
-            recipeResult.ok
-              ? 'modeling'
-              : recipeResult.issues[0]?.path ?? 'modeling',
+          message: recipeResult.issues[0]?.message ??
+            'Canonical modeling recipe is invalid.',
+          path: recipeResult.issues[0]?.path ?? 'modeling',
           pathScope: 'document'
         }
       };
@@ -72,22 +69,31 @@ export const deleteModelPartsCommand = defineCommand({
         }
       };
     }
-    const missingId = payload.partIds.find(
-      (partId) => !compiled.parts.has(partId)
+    const selectedPartIds = new Set(
+      payload.partIds.filter((partId) =>
+        compiled.parts.has(partId)
+      )
     );
-    if (missingId) {
+    if (
+      recipeResult.recipe === null ||
+      selectedPartIds.size === 0
+    ) {
       return {
-        ok: false,
-        error: {
-          code: 'invalid_state',
-          message: `Compiled part "${missingId}" does not exist.`,
-          path: 'payload.partIds',
-          expected: 'existing compiled part IDs'
+        ok: true,
+        value: {
+          document,
+          summary: 'Delete 0 model parts',
+          effects: {
+            createdEntityIds: [],
+            changedEntityIds: [],
+            removedEntityIds: [],
+            invalidated: []
+          }
         }
       };
     }
     const removedPartIds = descendantPartIds(
-      new Set(payload.partIds),
+      selectedPartIds,
       new Map(
         recipeResult.recipe.parts.map((part) => [
           part.partId,
@@ -141,36 +147,55 @@ export const deleteModelPartsCommand = defineCommand({
         }
       };
     }
-    const nextDocument = projected?.ok
+    const projectedDocument = projected?.ok
       ? projected.document
       : withPartRecipe(removal.document, null);
+    const fallback = ensureRequiredAnimationFallback(
+      projectedDocument
+    );
+    const fallbackClipId = fallback.createdClipId;
+    const restoredClip =
+      fallbackClipId !== null &&
+      document.animations[fallbackClipId] !== undefined;
+    const removedEntityIds = [
+      ...new Set([
+        ...removal.removedEntityIds,
+        ...(projected?.ok ? projected.removedIds : [])
+      ])
+    ].filter(
+      (id) => id !== fallbackClipId
+    );
     return {
       ok: true,
       value: {
-        document: nextDocument,
+        document: fallback.document,
         summary:
           `Delete ${removedPartIds.size} model part` +
           `${removedPartIds.size === 1 ? '' : 's'}`,
         effects: {
-          createdEntityIds: projected?.ok
-            ? [
+          createdEntityIds: [
+            ...(projected?.ok
+              ? [
                 ...(projected.createdTextureId
                   ? [projected.createdTextureId]
                   : []),
                 ...projected.createdIds
               ]
-            : [],
+              : []),
+            ...(fallbackClipId !== null && !restoredClip
+              ? [fallbackClipId]
+              : [])
+          ],
           changedEntityIds: [
             ...removal.changedEntityIds,
             ...(projected?.ok ? projected.changedIds : []),
+            ...(restoredClip && fallbackClipId
+              ? [fallbackClipId]
+              : []),
+            ...fallback.createdChannelIds,
             document.id
           ],
-          removedEntityIds: [
-            ...new Set([
-              ...removal.removedEntityIds,
-              ...(projected?.ok ? projected.removedIds : [])
-            ])
-          ],
+          removedEntityIds,
           invalidated: [
             'scene',
             'textures',

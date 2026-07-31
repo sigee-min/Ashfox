@@ -36,6 +36,9 @@ import { transformModelPartsCommand } from './definitions/transformModelParts';
 import { updateCubeGeometryCommand } from './definitions/updateCubeGeometry';
 import { upsertAnimationChannelsCommand } from './definitions/upsertAnimationChannels';
 import { upsertAnimationClipCommand } from './definitions/upsertAnimationClip';
+import {
+  upsertAnimationMotionCommand
+} from './definitions/upsertAnimationMotion';
 import { upsertAnimationTriggersCommand } from './definitions/upsertAnimationTriggers';
 import { upsertModelPartsCommand } from './definitions/upsertModelParts';
 import type { CommandName, CommandSource } from './types';
@@ -61,8 +64,8 @@ const registrations: Readonly<Record<CommandName, CommandRegistration>> = {
   'model.parts.material': registration(setModelPartMaterialCommand, true),
   'model.parts.delete': registration(deleteModelPartsCommand, true),
   'scene.bones.create': registration(createBonesCommand, false),
-  'scene.locators.create': registration(createLocatorsCommand, true),
-  'scene.locators.update': registration(updateLocatorsCommand, true),
+  'scene.locators.create': registration(createLocatorsCommand, false),
+  'scene.locators.update': registration(updateLocatorsCommand, false),
   'scene.locators.delete': registration(deleteLocatorsCommand, true),
   'scene.nodes.transform': registration(transformNodesCommand, false),
   'scene.nodes.visibility': registration(setNodeVisibilityCommand, false),
@@ -84,30 +87,34 @@ const registrations: Readonly<Record<CommandName, CommandRegistration>> = {
     setSurfacePixelDensityCommand,
     true
   ),
-  'animation.clip.upsert': registration(upsertAnimationClipCommand, true),
+  'animation.clip.upsert': registration(upsertAnimationClipCommand, false),
+  'animation.motion.upsert': registration(
+    upsertAnimationMotionCommand,
+    true
+  ),
   'animation.channels.upsert': registration(
     upsertAnimationChannelsCommand,
-    true
+    false
   ),
   'animation.triggers.upsert': registration(
     upsertAnimationTriggersCommand,
-    true
+    false
   ),
   'animation.tracks.delete': registration(
     deleteAnimationTracksCommand,
-    true
+    false
   ),
   'animation.channels.phase': registration(
     phaseAnimationChannelsCommand,
-    true
+    false
   ),
   'animation.channels.mirror': registration(
     mirrorAnimationChannelsCommand,
-    true
+    false
   ),
   'animation.clip.closeLoop': registration(
     closeAnimationLoopCommand,
-    true
+    false
   ),
   'animation.clip.delete': registration(deleteAnimationClipCommand, true)
 };

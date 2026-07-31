@@ -8,21 +8,23 @@ import {
 } from '@ashfox/engine-core';
 
 import {
-  visualReviewsForRevision,
   type VisualReviewReceipt
 } from './presentationReview';
+import {
+  remainingVisualReviews,
+  visualReviewKey
+} from './visualReviewPlan';
 import {
   WORKBENCH_PLACEHOLDER_PROJECT_ID
 } from '../../application/projectIdentity';
 
 export type InspectWorkflowStage =
   | 'start'
-  | 'specify'
-  | 'prove'
-  | 'author'
+  | 'plan'
+  | 'model'
   | 'animate'
   | 'review'
-  | 'produce';
+  | 'deliver';
 
 export interface InspectWorkflowBlocker {
   code: string;
@@ -43,12 +45,6 @@ type ReadinessFinding =
   | InvariantFinding
   | ProductionReadinessFinding;
 
-const VISUAL_REVIEW_CAMERAS = [
-  'perspective',
-  'front',
-  'side',
-  'top'
-] as const;
 const VISUAL_REVIEW_RESPONSE_LIMIT = 5;
 
 const registeredAgentCommands = new Set(
@@ -183,20 +179,15 @@ const recommendedFor = (
       : blocker?.path.startsWith('formatProfile.')
         ? ['project.target.set']
         : ['project.create'];
-  } else if (stage === 'specify') {
+  } else if (stage === 'plan') {
     candidates = ['project.intent.set'];
-  } else if (stage === 'prove') {
-    candidates = ['model.parts.upsert'];
   } else if (
     (blocker?.entityIds ?? []).some(
       (id) => document.scene.nodes[id]?.kind === 'locator'
     ) ||
     hasCode(blocker ?? { code }, 'locator.')
   ) {
-    candidates = [
-      'scene.locators.update',
-      'scene.locators.delete'
-    ];
+    candidates = ['scene.locators.delete'];
   } else if (
     hasCode(
       blocker ?? { code },
@@ -224,27 +215,17 @@ const recommendedFor = (
   ) {
     candidates = ['model.parts.upsert', 'model.parts.material'];
   } else if (code === 'production.idle_missing') {
-    candidates = [
-      'animation.clip.upsert',
-      'animation.channels.upsert',
-      'animation.clip.closeLoop'
-    ];
+    candidates = ['animation.motion.upsert'];
   } else if (
     code === 'production.idle_channels_missing' ||
     code === 'production.intent_required_clip_channels_missing'
   ) {
-    candidates = [
-      'animation.channels.upsert',
-      'animation.clip.closeLoop'
-    ];
+    candidates = ['animation.motion.upsert'];
   } else if (
     code === 'production.idle_loop_invalid' ||
     code === 'animation.invalid_loop'
   ) {
-    candidates = [
-      'animation.clip.closeLoop',
-      'animation.channels.upsert'
-    ];
+    candidates = ['animation.motion.upsert'];
   } else if (
     stage === 'animate' ||
     hasCode(
@@ -255,11 +236,10 @@ const recommendedFor = (
     )
   ) {
     candidates = [
-      'animation.channels.upsert',
-      'animation.tracks.delete',
-      'animation.clip.upsert'
+      'animation.motion.upsert',
+      'animation.clip.delete'
     ];
-  } else if (stage === 'author') {
+  } else if (stage === 'model') {
     candidates = ['model.parts.upsert'];
   } else {
     candidates = [];
@@ -281,56 +261,6 @@ const fallbackFix = (
     return 'Complete the remaining visual reviews on the current revision.';
   }
   return 'Correct the reported path, then inspect again.';
-};
-
-const visualReviewKey = (
-  mode: 'frame' | 'cycle',
-  camera: 'perspective' | 'front' | 'side' | 'top',
-  clipId: string | null
-): string =>
-  clipId === null
-    ? `${mode}:${camera}`
-    : `${mode}:${camera}:${clipId}`;
-
-const remainingVisualReviews = (
-  document: ProjectDocument,
-  readiness: ProductionReadinessReport,
-  receipts: readonly VisualReviewReceipt[]
-): readonly string[] => {
-  if (readiness.counts.visibleGeometry === 0) return [];
-  const currentReceipts = visualReviewsForRevision(
-    receipts,
-    document.id,
-    document.revision
-  );
-  const completed = new Set(
-    currentReceipts.flatMap((receipt) => {
-      if (
-        receipt.mode === 'cycle' &&
-        receipt.completedCycles < 1
-      ) {
-        return [];
-      }
-      return [
-        visualReviewKey(
-          receipt.mode,
-          receipt.camera,
-          receipt.clipId
-        )
-      ];
-    })
-  );
-  const required = [
-    ...VISUAL_REVIEW_CAMERAS.map((camera) =>
-      visualReviewKey('frame', camera, null)
-    ),
-    ...Object.keys(document.animations)
-      .sort()
-      .map((clipId) =>
-        visualReviewKey('cycle', 'perspective', clipId)
-      )
-  ];
-  return required.filter((review) => !completed.has(review));
 };
 
 export const deriveInspectWorkflow = (
@@ -375,25 +305,25 @@ export const deriveInspectWorkflow = (
     stage = 'start';
     blocker = startup;
   } else if (intent) {
-    stage = 'specify';
+    stage = 'plan';
     blocker = intent;
   } else if (geometry) {
-    stage = 'prove';
+    stage = 'model';
     blocker = geometry;
   } else if (authoring) {
-    stage = 'author';
+    stage = 'model';
     blocker = authoring;
   } else if (animation) {
     stage = 'animate';
     blocker = animation;
   } else if (!readiness.mechanicallyReady) {
-    stage = 'author';
+    stage = 'model';
     blocker = readiness.firstBlockingFinding;
   } else if (remaining.length > 0) {
     stage = 'review';
     blocker = null;
   } else {
-    stage = 'produce';
+    stage = 'deliver';
     blocker = null;
   }
 
@@ -415,7 +345,9 @@ export const deriveInspectWorkflow = (
       : null,
     recommendedCommands,
     remainingVisualReviews:
-      remaining.slice(0, VISUAL_REVIEW_RESPONSE_LIMIT),
+      remaining
+        .slice(0, VISUAL_REVIEW_RESPONSE_LIMIT)
+        .map(visualReviewKey),
     remainingVisualReviewCount: remaining.length,
     visualReviewsTruncated:
       remaining.length > VISUAL_REVIEW_RESPONSE_LIMIT

@@ -101,12 +101,8 @@ const created = projectSessionReducer(hydrated, {
     operations: [{
       name: 'project.create',
       payload: {
-        id: 'project-clean',
         name: 'Clean project',
-        target: 'glb',
-        namespace: 'ashfox',
-        modelPath: 'clean_project',
-        createdAt: '2026-07-29T01:00:00.000Z'
+        target: 'glb'
       }
     }]
   },
@@ -114,12 +110,16 @@ const created = projectSessionReducer(hydrated, {
   source: 'agent',
   committedAt: '2026-07-29T01:00:01.000Z'
 });
-assert.equal(created.history.present.id, 'project-clean');
+assert.match(
+  created.history.present.id,
+  /^project-clean_project-[0-9a-z]+$/
+);
+const createdProjectId = created.history.present.id;
 assert.equal(created.history.present.revision, 'local-0002');
 assert.deepEqual(created.history.past, []);
 assert.deepEqual(created.history.future, []);
 assert.equal(created.history.activity.length, 1);
-assert.equal(created.history.activity[0].projectId, 'project-clean');
+assert.equal(created.history.activity[0].projectId, createdProjectId);
 assert.equal(created.history.lastCommandOutcome?.status, 'committed');
 assert.deepEqual(created.assets, {});
 assert.deepEqual(created.storage, {

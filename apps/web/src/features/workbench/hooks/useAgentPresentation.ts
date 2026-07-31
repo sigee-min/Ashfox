@@ -23,8 +23,8 @@ import {
   type VisualReviewReceipt
 } from '../../agent/presentationReview';
 import type {
-  PresentRequest,
-  PresentResult
+  PresentResult,
+  ViewPresentationRequest
 } from '../../agent/types';
 import type {
   ViewportPresentationFrame
@@ -42,7 +42,7 @@ const FRAME_PRESENTATION_TIMEOUT_MS = 5_000;
 
 interface PresentationViewRequest {
   clipId: string | null;
-  camera: PresentRequest['camera'];
+  camera: ViewPresentationRequest['camera'];
 }
 
 interface UseAgentPresentationInput {
@@ -60,7 +60,7 @@ interface PendingPresentation {
 
 interface AgentPresentationController {
   presentationNonce: number;
-  present: (request: PresentRequest) => Promise<PresentResult>;
+  present: (request: ViewPresentationRequest) => Promise<PresentResult>;
   onPresented: (frame: ViewportPresentationFrame) => void;
   getVisualReviews: (
     projectId: string,
@@ -132,7 +132,7 @@ export const useAgentPresentation = ({
   }, [applyPlaybackEffect, finish]);
 
   const present = useCallback((
-    request: PresentRequest
+    request: ViewPresentationRequest
   ): Promise<PresentResult> => {
     const clip = request.clipId === null
       ? null

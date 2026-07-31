@@ -1,5 +1,6 @@
 import {
   areLatticeCellSetsExactReflections,
+  deriveMirrorPartIdMap,
   mirrorPartRecipeSubtree
 } from '../../modeling/partRecipeTransforms';
 import {
@@ -17,18 +18,16 @@ import { reprojectPartRecipe } from './reprojectPartRecipe';
 
 const firstInexactMirrorPair = (
   document: ProjectDocument,
-  payload: {
-    axis: 'x' | 'y' | 'z';
-    plane: number;
-    partIdMap: readonly {
-      sourcePartId: string;
-      targetPartId: string;
-    }[];
-  }
+  axis: 'x' | 'y' | 'z',
+  plane: number,
+  partIdMap: readonly {
+    sourcePartId: string;
+    targetPartId: string;
+  }[]
 ): readonly [string, string] | null => {
   const compiled = readCompiledParts(document);
   if (!compiled.ok) return null;
-  for (const mapping of payload.partIdMap) {
+  for (const mapping of partIdMap) {
     const source = compiled.parts.get(mapping.sourcePartId);
     const target = compiled.parts.get(mapping.targetPartId);
     if (!source || !target) {
@@ -37,8 +36,8 @@ const firstInexactMirrorPair = (
     if (!areLatticeCellSetsExactReflections(
       source.occupancy.cells,
       target.occupancy.cells,
-      payload.axis,
-      payload.plane
+      axis,
+      plane
     )) {
       return [mapping.sourcePartId, mapping.targetPartId];
     }
@@ -72,9 +71,18 @@ export const mirrorModelPartsCommand = defineCommand({
         }
       };
     }
-    const transformed = mirrorPartRecipeSubtree(
+    const partIdMap = deriveMirrorPartIdMap(
       current.recipe,
       payload
+    );
+    const transformed = mirrorPartRecipeSubtree(
+      current.recipe,
+      {
+        rootPartId: payload.rootPartId,
+        axis: payload.axis,
+        plane: payload.plane,
+        partIdMap
+      }
     );
     if (!transformed.ok) {
       const issue = transformed.issues[0];
@@ -88,10 +96,12 @@ export const mirrorModelPartsCommand = defineCommand({
           path: issue
             ? issue.path.startsWith('modeling.')
               ? 'payload.plane'
-              : `payload.${issue.path}`
+              : issue.path.startsWith('partIdMap')
+                ? 'payload.targetRootPartId'
+                : `payload.${issue.path}`
             : 'payload.rootPartId',
           expected:
-            'one complete non-root subtree mapping to unused stable part IDs'
+            'one non-root subtree with an available deterministic mirror target'
         }
       };
     }
@@ -111,7 +121,7 @@ export const mirrorModelPartsCommand = defineCommand({
           path: documentFailure
             ? failure.path
             : failure.code === 'id_collision'
-              ? 'payload.partIdMap'
+              ? 'payload.targetRootPartId'
               : 'payload.plane',
           pathScope: documentFailure
             ? 'document'
@@ -123,7 +133,9 @@ export const mirrorModelPartsCommand = defineCommand({
     }
     const inexactPair = firstInexactMirrorPair(
       projected.document,
-      payload
+      payload.axis,
+      payload.plane,
+      partIdMap
     );
     if (inexactPair) {
       return {
