@@ -138,6 +138,16 @@ const validateCompleteHierarchy = (
           `Parent part "${part.parentPartId}" does not exist in the canonical recipe.`
       });
     }
+    if (
+      part.parentPartId !== null &&
+      part.attachment === null
+    ) {
+      issues.push({
+        path: `modeling.parts[${index}].attachment`,
+        message:
+          'Canonical child parts require an engine-derived attachment.'
+      });
+    }
   });
   return issues;
 };

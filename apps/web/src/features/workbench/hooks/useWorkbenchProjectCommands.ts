@@ -14,9 +14,6 @@ import {
   type NewProjectInput
 } from '../newProject';
 import {
-  type ProjectExportTarget
-} from '../../../application/projectExportTarget';
-import {
   createProjectSettingsOperations,
   type ProjectSettingsInput
 } from '../projectSettings';
@@ -27,13 +24,11 @@ interface UseWorkbenchProjectCommandsInput {
   document: ProjectDocument;
   selectedNodeId: string | null;
   dispatch: Dispatch<HistoryAction>;
-  exportTargetFile: (target: ProjectExportTarget) => void;
 }
 
 interface WorkbenchProjectCommands {
   createProject: (input: NewProjectInput) => void;
   updateProjectSettings: (input: ProjectSettingsInput) => void;
-  exportProject: (target: ProjectExportTarget) => void;
   commitNodeTransform: (nodeId: string, transform: Transform) => void;
   updateTransformProperty: (
     property: keyof Transform,
@@ -47,8 +42,7 @@ interface WorkbenchProjectCommands {
 export const useWorkbenchProjectCommands = ({
   document,
   selectedNodeId,
-  dispatch,
-  exportTargetFile
+  dispatch
 }: UseWorkbenchProjectCommandsInput): WorkbenchProjectCommands => {
   const execute = useCallback(
     (operations: readonly ProjectCommandOperation[]): void => {
@@ -87,13 +81,6 @@ export const useWorkbenchProjectCommands = ({
       ]);
     },
     [execute]
-  );
-
-  const exportProject = useCallback(
-    (target: ProjectExportTarget): void => {
-      exportTargetFile(target);
-    },
-    [exportTargetFile]
   );
 
   const commitNodeTransform = useCallback(
@@ -161,7 +148,6 @@ export const useWorkbenchProjectCommands = ({
   return {
     createProject,
     updateProjectSettings,
-    exportProject,
     commitNodeTransform,
     updateTransformProperty,
     toggleVisibility,

@@ -84,29 +84,13 @@ const jointSchema = {
   ]
 } as const;
 
-const attachmentSchema = {
-  anyOf: [
-    { enum: [null] },
-    {
-      type: 'object',
-      properties: {
-        parentAnchor: vec3Schema,
-        partAnchor: vec3Schema
-      },
-      required: ['parentAnchor', 'partAnchor'],
-      additionalProperties: false
-    }
-  ]
-} as const;
-
 const commonProperties = {
   partId: idSchema,
   parentPartId: {
     anyOf: [idSchema, { enum: [null] }]
   },
   materialId: idSchema,
-  joint: jointSchema,
-  attachment: attachmentSchema
+  joint: jointSchema
 } as const;
 
 const commonRequired = [
@@ -253,7 +237,7 @@ export const modelPartSpecSchema = {
 export const modelPartsUpsertSchema = {
   type: 'object',
   description:
-    'Author complete semantic parts. Shallow joint intersections are accepted; ashfox assigns every generated cell to one deterministic owner without an overlap-tolerance parameter.',
+    'Author semantic parts in project-space lattice coordinates. For every child, ashfox derives a fixed joint by default, the nearest shared-face anchor and pivot, and a deterministic snap of at most two lattice cells. Shallow intersections remain intentional input and receive one canonical owner.',
   properties: {
     parts: {
       type: 'array',

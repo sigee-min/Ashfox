@@ -52,9 +52,9 @@ const child: PartSpec = {
   joint: { kind: 'hinge', axis: 'x' },
   attachment: {
     parentAnchor: [0, 4, 1],
-    partAnchor: [0, 0, 0]
+    partAnchor: [0, 4, 1]
   },
-  center: [0, 1, 0],
+  center: [0, 5, 1],
   radii: [1, 1, 1],
   profile: 'hard'
 };
@@ -64,7 +64,7 @@ const upsert = (
 ): CommandBatch['operations'][number] => ({
   name: 'model.parts.upsert',
   payload: {
-    parts,
+    parts: parts.map(({ attachment: _attachment, ...part }) => part),
     materials: [
       { id: 'gold', baseColor: '#C58A32' },
       { id: 'charcoal', baseColor: '#252A32' }
@@ -177,6 +177,194 @@ assert.ok(
     )
   )
 );
+
+const snapBase = createProjectFromInput(
+  {
+    id: 'project-derived-attachments',
+    name: 'Derived attachments',
+    target: 'glb',
+    namespace: 'ashfox',
+    modelPath: 'derived_attachments',
+    createdAt: '2026-07-30T00:00:00.000Z'
+  },
+  'revision-derived-attachments'
+);
+const snapped = executeCommandBatch(
+  snapBase,
+  {
+    batchId: 'derive-attachment-chain',
+    baseProjectId: snapBase.id,
+    baseRevision: snapBase.revision,
+    operations: [{
+      name: 'model.parts.upsert',
+      payload: {
+        parts: [{
+          kind: 'mass',
+          partId: 'tip',
+          parentPartId: 'middle',
+          materialId: 'gold',
+          center: [7, 0, 0],
+          radii: [1, 1, 1]
+        }, {
+          kind: 'mass',
+          partId: 'root',
+          materialId: 'gold',
+          center: [0, 0, 0],
+          radii: [2, 2, 2]
+        }, {
+          kind: 'mass',
+          partId: 'middle',
+          parentPartId: 'root',
+          materialId: 'gold',
+          center: [5, 0, 0],
+          radii: [1, 1, 1]
+        }],
+        materials: [{ id: 'gold', baseColor: '#C58A32' }]
+      }
+    }]
+  },
+  { source: 'agent' }
+);
+assert.equal(snapped.ok, true);
+if (!snapped.ok) {
+  throw new Error(snapped.error.message);
+}
+const snappedRecipe = readPartRecipe(snapped.document);
+assert.equal(snappedRecipe.ok, true);
+if (!snappedRecipe.ok || snappedRecipe.recipe === null) {
+  throw new Error('Derived attachment recipe is unavailable.');
+}
+const snappedMiddle = snappedRecipe.recipe.parts.find(
+  (part) => part.partId === 'middle'
+);
+const snappedTip = snappedRecipe.recipe.parts.find(
+  (part) => part.partId === 'tip'
+);
+assert.deepEqual(snappedMiddle?.joint, { kind: 'fixed' });
+assert.deepEqual(snappedMiddle?.attachment, {
+  parentAnchor: [2, 0, 0],
+  partAnchor: [4, 0, 0]
+});
+assert.deepEqual(snappedTip?.attachment, {
+  parentAnchor: [4, 0, 0],
+  partAnchor: [6, 0, 0]
+});
+
+const diagonalSnap = executeCommandBatch(
+  snapBase,
+  {
+    batchId: 'derive-diagonal-attachment',
+    baseProjectId: snapBase.id,
+    baseRevision: snapBase.revision,
+    operations: [{
+      name: 'model.parts.upsert',
+      payload: {
+        parts: [{
+          kind: 'mass',
+          partId: 'root',
+          materialId: 'gold',
+          center: [0, 0, 0],
+          radii: [2, 2, 2]
+        }, {
+          kind: 'mass',
+          partId: 'diagonal',
+          parentPartId: 'root',
+          materialId: 'gold',
+          center: [3, 4, 0],
+          radii: [1, 1, 1]
+        }],
+        materials: [{ id: 'gold', baseColor: '#C58A32' }]
+      }
+    }]
+  },
+  { source: 'agent' }
+);
+assert.equal(diagonalSnap.ok, true);
+if (!diagonalSnap.ok) {
+  throw new Error(diagonalSnap.error.message);
+}
+const diagonalRecipe = readPartRecipe(diagonalSnap.document);
+assert.equal(diagonalRecipe.ok, true);
+if (!diagonalRecipe.ok || diagonalRecipe.recipe === null) {
+  throw new Error('Diagonal attachment recipe is unavailable.');
+}
+assert.deepEqual(
+  diagonalRecipe.recipe.parts.find(
+    (part) => part.partId === 'diagonal'
+  )?.attachment,
+  {
+    parentAnchor: [2, 2, 0],
+    partAnchor: [3, 3, 0]
+  },
+  'a child within the two-cell L1 radius must snap diagonally'
+);
+
+const snappedCompiled = readCompiledParts(snapped.document);
+assert.equal(snappedCompiled.ok, true);
+if (!snappedCompiled.ok) {
+  throw new Error('Derived attachment projection is invalid.');
+}
+assert.deepEqual(
+  snappedCompiled.parts.get('middle')?.bone.transform.pivot,
+  [2, 0, 0]
+);
+assert.deepEqual(
+  snappedCompiled.parts.get('tip')?.bone.transform.pivot,
+  [4, 0, 0]
+);
+
+const expandedRoot = executeCommandBatch(
+  snapped.document,
+  {
+    batchId: 'rederive-after-parent-edit',
+    baseProjectId: snapped.document.id,
+    baseRevision: snapped.document.revision,
+    operations: [{
+      name: 'model.parts.upsert',
+      payload: {
+        parts: [{
+          kind: 'mass',
+          partId: 'root',
+          materialId: 'gold',
+          center: [0, 0, 0],
+          radii: [3, 2, 2]
+        }],
+        materials: []
+      }
+    }]
+  },
+  { source: 'agent' }
+);
+assert.equal(expandedRoot.ok, true);
+if (!expandedRoot.ok) {
+  throw new Error(expandedRoot.error.message);
+}
+const expandedRecipe = readPartRecipe(expandedRoot.document);
+assert.equal(expandedRecipe.ok, true);
+if (!expandedRecipe.ok || expandedRecipe.recipe === null) {
+  throw new Error('Rederived attachment recipe is unavailable.');
+}
+assert.deepEqual(
+  expandedRecipe.recipe.parts.find(
+    (part) => part.partId === 'middle'
+  )?.attachment,
+  {
+    parentAnchor: [3, 0, 0],
+    partAnchor: [5, 0, 0]
+  },
+  'editing a parent must rederive an unchanged child pivot'
+);
+assert.deepEqual(
+  expandedRecipe.recipe.parts.find(
+    (part) => part.partId === 'tip'
+  )?.attachment,
+  {
+    parentAnchor: [4, 0, 0],
+    partAnchor: [6, 0, 0]
+  },
+  'a deeper descendant must remain connected after ancestor rederivation'
+);
+
 const reopenedOrdered = parseProjectDocument(
   JSON.parse(JSON.stringify(ordered))
 );
@@ -460,10 +648,7 @@ assert.ok(
 const detached: PartSpec = {
   ...child,
   partId: 'detached',
-  attachment: {
-    parentAnchor: [40, 40, 40],
-    partAnchor: [0, 0, 0]
-  }
+  center: [40, 40, 40]
 };
 const rejectedDetached = executeCommandBatch(
   ordered,

@@ -4,6 +4,9 @@ import {
   normalizePartSpecs
 } from '../../modeling/partContract';
 import {
+  derivePartAttachments
+} from '../../modeling/partAttachmentDerivation';
+import {
   compilePartScene
 } from '../../modeling/partCompiler';
 import {
@@ -21,7 +24,7 @@ export const upsertModelPartsCommand = defineCommand({
   name: 'model.parts.upsert',
   label: 'Upsert model parts',
   purpose:
-    'Compile tolerant semantic part assembly into deterministic single-owner bones, cuboids, UVs, and generated texture surfaces.',
+    'Compile project-space semantic parts with derived joints, shared-face pivots, shallow seam snapping, single-owner geometry, UVs, and generated texture surfaces.',
   inputSchema: modelPartsUpsertSchema,
   apply: (document, payload) => {
     const normalized = normalizePartSpecs(payload.parts);
@@ -112,8 +115,25 @@ export const upsertModelPartsCommand = defineCommand({
     for (const material of payload.materials) {
       existingMaterials.set(material.id, material);
     }
-    const nextRecipe = normalizePartRecipe(
+    const derived = derivePartAttachments(
       [...existingParts.values()],
+      document.settings.surfacePixelDensity
+    );
+    if (!derived.ok) {
+      return {
+        ok: false,
+        error: {
+          code: 'invalid_state',
+          message: derived.message,
+          path: `payload.${derived.path}`,
+          pathScope: 'operation',
+          expected:
+            'project-space child geometry touching, shallowly intersecting, or within two lattice cells of its parent'
+        }
+      };
+    }
+    const nextRecipe = normalizePartRecipe(
+      derived.parts,
       [...existingMaterials.values()]
     );
     if (!nextRecipe.ok) {

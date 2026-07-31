@@ -64,7 +64,6 @@ const authored = executeCommandBatch(
           parentPartId: null,
           materialId: 'copper',
           joint: { kind: 'fixed' },
-          attachment: null,
           plane: 'xy',
           origin: [0, 0, 0],
           outline: [

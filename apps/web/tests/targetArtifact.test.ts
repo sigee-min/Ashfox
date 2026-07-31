@@ -8,9 +8,11 @@ import {
 
 import {
   artifactContentHash,
-  artifactTargetFor,
   isArtifactCurrent
 } from '../src/features/files/artifactFile';
+import {
+  projectExportTargetFor
+} from '../src/application/projectExportTarget';
 import {
   createProjectArtifact,
   createTargetArtifact
@@ -221,7 +223,10 @@ export const test = (async () => {
   const projectArtifact = await createProjectArtifact(source, assets);
   assert.equal(projectArtifact.projectId, source.id);
   assert.equal(projectArtifact.sourceRevision, source.revision);
-  assert.equal(projectArtifact.target, artifactTargetFor(source));
+  assert.equal(
+    projectArtifact.target,
+    projectExportTargetFor(source).target
+  );
   assert.equal(
     projectArtifact.contentHash,
     await artifactContentHash(projectArtifact.bytes)
@@ -302,7 +307,10 @@ export const test = (async () => {
   assert.ok(glb.name.endsWith('.glb'));
   assert.equal(glb.projectId, glbSource.id);
   assert.equal(glb.sourceRevision, glbSource.revision);
-  assert.equal(glb.target, artifactTargetFor(glbSource));
+  assert.equal(
+    glb.target,
+    projectExportTargetFor(glbSource).target
+  );
   assert.equal(glb.contentHash, await artifactContentHash(glb.bytes));
   assert.equal(isArtifactCurrent(glbSource, glb), true);
   assert.equal(

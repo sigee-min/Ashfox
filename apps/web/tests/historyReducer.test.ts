@@ -47,6 +47,32 @@ const identicalHydration = historyReducer(committed, {
 assert.deepEqual(identicalHydration.past, committed.past);
 assert.equal(identicalHydration.present, committed.present);
 
+const replacementAtSameRevision = {
+  ...committed.present,
+  name: 'External replacement'
+};
+const replacedHydration = historyReducer(committed, {
+  type: 'hydrate',
+  record: {
+    schemaVersion: LOCAL_PROJECT_SCHEMA_VERSION,
+    projectId: committed.present.id,
+    revision: committed.present.revision,
+    document: replacementAtSameRevision,
+    assets: {},
+    activity: [],
+    savedAt: '2026-01-01T00:00:00.750Z'
+  }
+});
+assert.equal(
+  replacedHydration.present.name,
+  'External replacement'
+);
+assert.notEqual(
+  replacedHydration.present.revision,
+  committed.present.revision,
+  'different content at the same external revision must receive a new local revision'
+);
+
 const rejected = historyReducer(committed, {
   type: 'execute',
   batch: {
@@ -203,7 +229,6 @@ const partCommitted = historyReducer(partInitial, {
           parentPartId: null,
           materialId: 'stone',
           joint: { kind: 'fixed' },
-          attachment: null,
           plane: 'xy',
           origin: [-1, 0, -1],
           outline: [

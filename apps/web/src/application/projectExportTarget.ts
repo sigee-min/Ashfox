@@ -5,7 +5,18 @@ import type {
 
 export type VisibleExportPreset = ExportPreset;
 
+export type ProjectArtifactTarget =
+  | VisibleExportPreset
+  | 'ashfox.generic'
+  | 'minecraft.java_block';
+
 export interface ProjectExportTarget {
+  target: ProjectArtifactTarget;
+  namespace: string;
+  modelPath: string;
+}
+
+export interface EditableProjectTarget {
   target: VisibleExportPreset;
   namespace: string;
   modelPath: string;
@@ -47,9 +58,9 @@ export const projectResourceToken = (value: string): string =>
     .replace(/[^a-z0-9_.-]+/g, '_')
     .replace(/^[._-]+|[._-]+$/g, '') || 'asset';
 
-const presetFor = (
+const targetFor = (
   document: ProjectDocument
-): VisibleExportPreset => {
+): ProjectArtifactTarget => {
   switch (document.formatProfile.id) {
     case 'minecraft.bedrock':
       return 'bedrock';
@@ -59,7 +70,7 @@ const presetFor = (
       return document.formatProfile.container;
     case 'ashfox.generic':
     case 'minecraft.java_block':
-      return 'glb';
+      return document.formatProfile.id;
   }
 };
 
@@ -68,7 +79,7 @@ export const projectExportTargetFor = (
 ): ProjectExportTarget => {
   const profile = document.formatProfile;
   return {
-    target: presetFor(document),
+    target: targetFor(document),
     namespace:
       profile.id === 'minecraft.bedrock' ||
       profile.id === 'minecraft.java.geckolib5' ||
@@ -82,23 +93,33 @@ export const projectExportTargetFor = (
   };
 };
 
+export const editableProjectTargetFor = (
+  document: ProjectDocument
+): EditableProjectTarget | null => {
+  const target = projectExportTargetFor(document);
+  return PROJECT_EXPORT_TARGETS.some(
+    (option) => option.id === target.target
+  )
+    ? {
+        target: target.target as VisibleExportPreset,
+        namespace: target.namespace,
+        modelPath: target.modelPath
+      }
+    : null;
+};
+
+export const projectExportTargetLabel = (
+  target: ProjectArtifactTarget
+): string =>
+  PROJECT_EXPORT_TARGETS.find((option) => option.id === target)
+    ?.label ??
+  (
+    target === 'ashfox.generic'
+      ? 'ashfox JSON'
+      : 'Java block model'
+  );
+
 export const isMinecraftExportTarget = (
-  target: VisibleExportPreset
+  target: VisibleExportPreset | null
 ): boolean =>
   target === 'bedrock' || target === 'geckolib5';
-
-export const projectUsesExportTarget = (
-  document: ProjectDocument,
-  target: ProjectExportTarget
-): boolean => {
-  const current = projectExportTargetFor(document);
-  return (
-    current.target === target.target &&
-    current.modelPath === target.modelPath &&
-    (
-      target.target === 'gltf' ||
-      target.target === 'glb' ||
-      current.namespace === target.namespace
-    )
-  );
-};

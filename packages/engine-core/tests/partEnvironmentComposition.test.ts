@@ -20,11 +20,12 @@ const root: PartSpec = {
   outline: [[0, 0], [4, 0], [4, 4], [0, 4]],
   thickness: 4
 };
+const { attachment: _rootAttachment, ...authoredRoot } = root;
 
 const upsert: CommandBatch['operations'][number] = {
   name: 'model.parts.upsert',
   payload: {
-    parts: [root],
+    parts: [authoredRoot],
     materials: [{ id: 'stone', baseColor: '#778899' }]
   }
 };

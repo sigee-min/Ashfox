@@ -58,6 +58,7 @@ const pagedRequest = (
   value: Readonly<Record<string, unknown>>,
   kind: 'catalog' | 'activity'
 ): ParseInspectRequestResult => {
+  const maximumLimit = kind === 'activity' ? 20 : 100;
   const unknown = rejectUnknownProperties(
     value,
     ['kind', 'cursor', 'limit']
@@ -75,10 +76,13 @@ const pagedRequest = (
       typeof value.limit !== 'number' ||
       !Number.isInteger(value.limit) ||
       value.limit < 1 ||
-      value.limit > 100
+      value.limit > maximumLimit
     )
   ) {
-    return failure('limit', 'integer from 1 through 100');
+    return failure(
+      'limit',
+      `integer from 1 through ${maximumLimit}`
+    );
   }
   return {
     ok: true,

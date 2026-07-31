@@ -5,6 +5,10 @@ import {
   type ProjectDocument
 } from '@ashfox/engine-core';
 
+import {
+  WORKBENCH_PLACEHOLDER_PROJECT_ID
+} from '../../application/projectIdentity';
+
 export type NewProjectInput = Omit<
   ProjectCreateInput,
   'id' | 'createdAt'
@@ -26,14 +30,12 @@ export const createProjectOperation = (
   }
 });
 
-export const BLANK_WORKBENCH_PROJECT_ID = 'project-local-workbench';
-
 export const createBlankWorkbenchProject = (
   createdAt: string
 ): ProjectDocument =>
   createProjectFromInput(
     {
-      id: BLANK_WORKBENCH_PROJECT_ID,
+      id: WORKBENCH_PLACEHOLDER_PROJECT_ID,
       name: 'Untitled project',
       target: 'glb',
       namespace: 'ashfox',

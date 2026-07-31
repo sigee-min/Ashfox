@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 
 import {
-  BLANK_WORKBENCH_PROJECT_ID,
   createBlankWorkbenchProject,
   createProjectOperation
 } from '../src/features/workbench/newProject';
+import {
+  WORKBENCH_PLACEHOLDER_PROJECT_ID
+} from '../src/application/projectIdentity';
 
 const operation = createProjectOperation(
   {
@@ -32,7 +34,7 @@ assert.deepEqual(operation, {
 });
 
 const blank = createBlankWorkbenchProject('2026-07-29T00:00:00.000Z');
-assert.equal(blank.id, BLANK_WORKBENCH_PROJECT_ID);
+assert.equal(blank.id, WORKBENCH_PLACEHOLDER_PROJECT_ID);
 assert.equal(blank.name, 'Untitled project');
 assert.equal(blank.formatProfile.id, 'gltf.2');
 assert.equal(blank.formatProfile.container, 'glb');

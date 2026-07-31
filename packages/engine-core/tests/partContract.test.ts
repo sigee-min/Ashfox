@@ -9,6 +9,7 @@ import { validateCommandInput } from '../src/commands/schema';
 import {
   modelPartSpecSchema
 } from '../src/commands/definitions/modelPartSchemas';
+import { normalizePartRecipe } from '../src/modeling/partRecipe';
 
 const rootMass = {
   kind: 'mass',
@@ -29,9 +30,12 @@ if (normalizedMass.ok) {
     profile: 'balanced'
   });
   assert.equal(
-    validateCommandInput(normalizedMass.value, modelPartSpecSchema),
-    null,
-    'normalized PartSpec must satisfy the published command schema'
+    validateCommandInput(
+      normalizedMass.value,
+      modelPartSpecSchema
+    )?.path,
+    '$.attachment',
+    'the normalized recipe contains internal attachment state'
   );
 }
 assert.equal(
@@ -62,6 +66,32 @@ const childSegment = normalizePartSpec({
   ]
 });
 assert.equal(childSegment.ok, true);
+assert.equal(
+  validateCommandInput(
+    {
+      kind: 'segment',
+      partId: 'arm.left',
+      parentPartId: 'body.core',
+      materialId: 'material.gold',
+      joint: { kind: 'hinge', axis: 'z' },
+      attachment: {
+        parentAnchor: [-10, 20, 0],
+        partAnchor: [0, 0, 0]
+      },
+      points: [
+        [-10, 20, 0],
+        [-18, 12, 0]
+      ],
+      radii: [
+        [4, 4, 4],
+        [3, 3, 3]
+      ]
+    },
+    modelPartSpecSchema
+  )?.path,
+  '$.attachment',
+  'agent input must not expose internal attachment coordinates'
+);
 
 const canonicalPlate = normalizePartSpec({
   kind: 'plate',
@@ -155,14 +185,27 @@ const unattachedChild = normalizePartSpec({
   ...rootMass,
   parentPartId: 'body.parent'
 });
-assert.equal(unattachedChild.ok, false);
-if (!unattachedChild.ok) {
-  assert.equal(
-    unattachedChild.issues.some(
-      (issue) =>
-        issue.path === '$.attachment' && issue.code === 'required'
-    ),
-    true
+assert.equal(unattachedChild.ok, true);
+if (unattachedChild.ok) {
+  assert.equal(unattachedChild.value.attachment, null);
+}
+const incompleteRecipe = normalizePartRecipe(
+  [
+    rootMass,
+    {
+      ...rootMass,
+      partId: 'body.child',
+      parentPartId: 'body.core'
+    }
+  ],
+  [{ id: 'material.gold', baseColor: '#C58A32' }]
+);
+assert.equal(incompleteRecipe.ok, false);
+if (!incompleteRecipe.ok) {
+  assert.ok(
+    incompleteRecipe.issues.some(
+      (issue) => issue.path.endsWith('.attachment')
+    )
   );
 }
 

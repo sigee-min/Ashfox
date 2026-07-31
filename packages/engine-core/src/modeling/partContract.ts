@@ -57,6 +57,17 @@ export type RadialPartSpec = ModelRadialPartSpec;
 export type FeaturePartSpec = ModelFeaturePartSpec;
 export type PartSpec = ModelPartSpec;
 export type PartMaterialDefinition = ModelPartMaterial;
+type AuthoringPart<TPart extends PartSpec> =
+  TPart extends PartSpec
+    ? Omit<
+        TPart,
+        'parentPartId' | 'joint' | 'attachment'
+      > & {
+        parentPartId?: string | null;
+        joint?: PartJoint;
+      }
+    : never;
+export type PartAuthoringSpec = AuthoringPart<PartSpec>;
 
 export type PartContractIssueCode =
   | 'type'
@@ -422,15 +433,6 @@ const parseCommon = (
       'A root part must use a fixed joint.'
     );
   }
-  if (hasParent && parentPartId !== null && !hasAttachment) {
-    addIssue(
-      issues,
-      `${path}.attachment`,
-      'required',
-      'A child part requires parent and part anchors.'
-    );
-  }
-
   return partId === null ||
     materialId === null ||
     hasParent && parentPartId === null ||

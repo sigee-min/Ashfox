@@ -1,7 +1,10 @@
 import type {
-  ExportPreset,
   ProjectDocument
 } from '@ashfox/engine-core';
+import {
+  projectExportTargetFor,
+  type ProjectArtifactTarget
+} from '../../application/projectExportTarget';
 
 export type ArtifactKind =
   | 'project'
@@ -9,10 +12,7 @@ export type ArtifactKind =
   | 'build'
   | 'animation';
 
-export type ArtifactTarget =
-  | ExportPreset
-  | 'ashfox.generic'
-  | 'minecraft.java_block';
+export type ArtifactTarget = ProjectArtifactTarget;
 
 export interface ArtifactBinding {
   projectId: string;
@@ -44,25 +44,9 @@ export const createArtifactBinding = async (
 ): Promise<ArtifactBinding> => ({
   projectId: document.id,
   sourceRevision: document.revision,
-  target: artifactTargetFor(document),
+  target: projectExportTargetFor(document).target,
   contentHash: await artifactContentHash(bytes)
 });
-
-export const artifactTargetFor = (
-  document: ProjectDocument
-): ArtifactTarget => {
-  switch (document.formatProfile.id) {
-    case 'minecraft.bedrock':
-      return 'bedrock';
-    case 'minecraft.java.geckolib5':
-      return 'geckolib5';
-    case 'gltf.2':
-      return document.formatProfile.container;
-    case 'ashfox.generic':
-    case 'minecraft.java_block':
-      return document.formatProfile.id;
-  }
-};
 
 export const isArtifactCurrent = (
   document: ProjectDocument,
@@ -70,7 +54,7 @@ export const isArtifactCurrent = (
 ): boolean =>
   artifact.projectId === document.id &&
   artifact.sourceRevision === document.revision &&
-  artifact.target === artifactTargetFor(document);
+  artifact.target === projectExportTargetFor(document).target;
 
 export const safeArtifactName = (value: string): string => {
   const normalized = value.trim().replace(/[^A-Za-z0-9_.-]+/g, '-');

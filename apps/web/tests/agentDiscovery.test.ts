@@ -85,6 +85,8 @@ assert.match(manifest.modeling.canonicalState, /structural drift/);
 assert.match(manifest.modeling.canonicalState, /UV and raster caches/);
 assert.match(manifest.modeling.lattice, /1\/d model unit/);
 assert.match(manifest.modeling.hierarchy, /bone:<partId>/);
+assert.match(manifest.modeling.hierarchy, /not agent input/);
+assert.match(manifest.modeling.hierarchy, /project space/);
 assert.deepEqual(
   Object.keys(manifest.modeling.primitives),
   ['mass', 'segment', 'plate', 'radial', 'feature']
@@ -164,21 +166,13 @@ for (const [name, selector] of Object.entries(manifest.domActions)) {
 }
 assert.ok(!Object.hasOwn(manifest.domActions, 'newProject'));
 assert.ok(!Object.hasOwn(manifest.domActions, 'createProject'));
+assert.ok(!Object.hasOwn(manifest, 'domFields'));
 const artifactMarkup = 'data-ashfox-action="artifact.download"';
 assert.equal(
   manifest.domActions.downloadArtifact,
   `[${artifactMarkup}]`
 );
 assert.equal(productSource.split(artifactMarkup).length - 1, 1);
-for (const [name, selector] of Object.entries(manifest.domFields)) {
-  const attributes = [...selector.matchAll(
-    /\[([\w-]+)="([^"]+)"\]/g
-  )];
-  assert.ok(attributes.length > 0, `domFields.${name} must be exact`);
-  for (const [, attribute, value] of attributes) {
-    assert.ok(productSource.includes(`${attribute}="${value}"`));
-  }
-}
 assert.equal(
   agentCommandProtocol.inputAttribute,
   manifest.domBridge.input.attribute
@@ -220,6 +214,8 @@ assert.deepEqual(
   manifest.domState.fileOperation.terminalPhases,
   ['idle', 'succeeded', 'cancelled', 'failed']
 );
+assert.match(manifest.export.operation, /derived from the canonical/);
+assert.doesNotMatch(manifest.export.operation, /set format/);
 assert.ok(
   Buffer.byteLength(JSON.stringify(manifest)) <= 40_960,
   'the complete machine guide must fit one practical request'
@@ -287,16 +283,20 @@ if (result.ok) {
       idleClips: number;
       idleChannels: number;
     };
-    commands: readonly string[];
+    workflow: {
+      recommendedCommands: readonly string[];
+    };
   };
   assert.equal(data.protocol.workbench, manifest.workbench);
   assert.equal(data.protocol.manifest, manifest.href);
-  assert.deepEqual(
-    data.commands,
-    agentDefinitions.map((definition) => definition.name)
+  assert.ok(data.workflow.recommendedCommands.length <= 3);
+  assert.ok(
+    data.workflow.recommendedCommands.every((command) =>
+      agentDefinitions.some(
+        (definition) => definition.name === command
+      )
+    )
   );
-  assert.ok(data.commands.includes('model.parts.upsert'));
-  assert.ok(!data.commands.includes('scene.cubes.create'));
   assert.equal(
     data.project.surfacePixelDensity,
     document.settings.surfacePixelDensity
@@ -367,6 +367,8 @@ const exactPart: PartSpec = {
   radii: [2, 1, 3],
   profile: 'soft'
 };
+const { attachment: _exactAttachment, ...exactAuthoringPart } =
+  exactPart;
 const emptyModel = createProjectFromInput(
   {
     id: 'inspect-recipe',
@@ -387,7 +389,7 @@ const authoredModel = executeCommandBatch(
     operations: [{
       name: 'model.parts.upsert',
       payload: {
-        parts: [exactPart],
+        parts: [exactAuthoringPart],
         materials: [{
           id: 'copper',
           baseColor: '#A65C35'
@@ -411,7 +413,7 @@ assert.equal(exactInspect.ok, true);
 if (exactInspect.ok) {
   const inspected = exactInspect.data as {
     parts: readonly {
-      spec: PartSpec;
+      spec: Omit<PartSpec, 'attachment'>;
       material: {
         id: string;
         baseColor: string;
@@ -424,7 +426,17 @@ if (exactInspect.ok) {
       };
     }[];
   };
-  assert.deepEqual(inspected.parts[0]?.spec, exactPart);
+  assert.deepEqual(
+    inspected.parts[0]?.spec,
+    exactAuthoringPart
+  );
+  assert.equal(
+    Object.hasOwn(
+      inspected.parts[0]?.spec ?? {},
+      'attachment'
+    ),
+    false
+  );
   assert.deepEqual(inspected.parts[0]?.material, {
     id: 'copper',
     baseColor: '#A65C35'

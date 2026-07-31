@@ -34,9 +34,9 @@ const child: PartSpec = {
   joint: { kind: 'hinge', axis: 'x' },
   attachment: {
     parentAnchor: [0, 4, 1],
-    partAnchor: [0, 0, 0]
+    partAnchor: [0, 4, 1]
   },
-  center: [0, 1, 0],
+  center: [0, 5, 1],
   radii: [1, 1, 1],
   profile: 'hard'
 };
@@ -46,7 +46,7 @@ const upsert = (
 ): CommandBatch['operations'][number] => ({
   name: 'model.parts.upsert',
   payload: {
-    parts,
+    parts: parts.map(({ attachment: _attachment, ...part }) => part),
     materials: [{ id: 'gold', baseColor: '#C58A32' }]
   }
 });

@@ -5,19 +5,23 @@ import {
   getAgentCommandDefinition,
   isSceneNodeEffectivelyVisible,
   isProductionIdleClipName,
-  listAgentCommandDefinitions,
   orthographicContributionMetrics,
   readCompiledParts,
   readPartRecipe,
   type AnimationClip,
   type CommandReceipt,
+  type PartAuthoringSpec,
+  type PartSpec,
   type ProjectDocument,
-  type SceneNode,
   type ValidationReport
 } from '@ashfox/engine-core';
 
 import { boundedSuccess } from './boundedResult';
 import { agentCommandProtocol } from './agentCommandProtocol';
+import { deriveInspectWorkflow } from './inspectWorkflow';
+import type {
+  VisualReviewReceipt
+} from './presentationReview';
 import { schemaHash } from './schemaHash';
 import {
   evaluateAssetMaterialization
@@ -33,7 +37,9 @@ import type {
 const DEFAULT_LIMIT = 2048;
 const DETAIL_LIMIT = 16_384;
 const ID_LIMIT = 10;
-const PAGE_LIMIT = 50;
+const CATALOG_PAGE_LIMIT = 50;
+const ACTIVITY_PAGE_LIMIT = 20;
+const MATERIALIZATION_ISSUE_LIMIT = 20;
 
 const invalidRequest = (
   revision: string,
@@ -57,6 +63,17 @@ const selectedValues = <T>(
     .slice(0, ID_LIMIT)
     .map((id) => record[id])
     .filter((value): value is T => value !== undefined);
+
+const authoringPartSpec = (
+  spec: PartSpec | undefined
+): PartAuthoringSpec | null => {
+  if (!spec) return null;
+  const {
+    attachment: _attachment,
+    ...authoring
+  } = spec;
+  return authoring;
+};
 
 const compiledPartSummaries = (
   document: ProjectDocument,
@@ -148,7 +165,7 @@ const compiledPartSummaries = (
           materialId: part.materialId,
           primitive: part.primitive,
           joint: part.joint,
-          spec: specs.get(part.partId) ?? null,
+          spec: authoringPartSpec(specs.get(part.partId)),
           material:
             materials.get(part.materialId) ?? null,
           boneId: part.bone.id,
@@ -183,7 +200,7 @@ const pageOffset = (
 const inspectCatalog = (
   document: ProjectDocument,
   cursor: string | undefined,
-  limit = PAGE_LIMIT
+  limit = CATALOG_PAGE_LIMIT
 ): unknown | null => {
   const scope = schemaHash({
     projectId: document.id,
@@ -244,7 +261,7 @@ const inspectActivity = (
   document: ProjectDocument,
   activity: readonly CommandReceipt[],
   cursor: string | undefined,
-  limit = PAGE_LIMIT
+  limit = ACTIVITY_PAGE_LIMIT
 ): unknown | null => {
   const scope = schemaHash({
     projectId: document.id,
@@ -293,13 +310,18 @@ const inspectActivity = (
 const inspectDefault = (
   document: ProjectDocument,
   selectedNodeId: string | null,
-  report: ValidationReport
+  report: ValidationReport,
+  visualReviews: readonly VisualReviewReceipt[]
 ): InspectResult => {
-  const commands = listAgentCommandDefinitions()
-    .map((definition) => definition.name);
   const nodes = Object.values(document.scene.nodes);
   const clips = Object.values(document.animations);
   const readiness = evaluateProductionReadiness(document, report);
+  const workflow = deriveInspectWorkflow(
+    document,
+    report,
+    readiness,
+    visualReviews
+  );
   const idleClips = clips.filter((clip) =>
     isProductionIdleClipName(clip.name)
   );
@@ -317,7 +339,7 @@ const inspectDefault = (
       },
       project: {
         id: document.id,
-        name: document.name,
+        name: document.name.slice(0, 120),
         revision: document.revision,
         subject: document.intent?.subject ?? null,
         forward: document.intent?.forward ?? null,
@@ -371,8 +393,7 @@ const inspectDefault = (
           0
         )
       },
-      commands,
-      blockingFinding: readiness.firstBlockingFinding?.path
+      workflow
     },
     DEFAULT_LIMIT
   );
@@ -384,9 +405,17 @@ export const inspectProject = (
   report: ValidationReport,
   request?: InspectRequest,
   activity: readonly CommandReceipt[] = [],
-  assets: ProjectAssets = {}
+  assets: ProjectAssets = {},
+  visualReviews: readonly VisualReviewReceipt[] = []
 ): InspectResult => {
-  if (!request) return inspectDefault(document, selectedNodeId, report);
+  if (!request) {
+    return inspectDefault(
+      document,
+      selectedNodeId,
+      report,
+      visualReviews
+    );
+  }
 
   switch (request.kind) {
     case 'command': {
@@ -514,6 +543,12 @@ export const inspectProject = (
     }
     case 'target': {
       const readiness = evaluateProductionReadiness(document, report);
+      const workflow = deriveInspectWorkflow(
+        document,
+        report,
+        readiness,
+        visualReviews
+      );
       const materialization = evaluateAssetMaterialization(
         document,
         assets
@@ -529,7 +564,17 @@ export const inspectProject = (
           semanticReviewRequired:
             readiness.semanticReviewRequired,
           artifactMaterialized: materialization.materialized,
-          assetMaterialization: materialization,
+          assetMaterialization: {
+            ...materialization,
+            issues: materialization.issues.slice(
+              0,
+              MATERIALIZATION_ISSUE_LIMIT
+            ),
+            issueCount: materialization.issues.length,
+            issuesTruncated:
+              materialization.issues.length >
+              MATERIALIZATION_ISSUE_LIMIT
+          },
           intent: document.intent ?? null,
           counts: {
             errors: readiness.counts.structuralErrors,
@@ -562,7 +607,8 @@ export const inspectProject = (
           readinessFindings: readiness.findings.slice(0, 10),
           readinessFindingsTruncated:
             readiness.findings.length > 10,
-          firstReadinessFinding: readiness.firstBlockingFinding
+          firstReadinessFinding: readiness.firstBlockingFinding,
+          workflow
         },
         DETAIL_LIMIT
       );

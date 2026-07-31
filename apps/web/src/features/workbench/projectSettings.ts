@@ -3,10 +3,15 @@ import type {
   ProjectDocument,
   SurfacePixelDensity
 } from '@ashfox/engine-core';
+import {
+  type EditableProjectTarget,
+  editableProjectTargetFor
+} from '../../application/projectExportTarget';
 
 export interface ProjectSettingsInput {
   name: string;
   surfacePixelDensity: SurfacePixelDensity;
+  exportTarget: EditableProjectTarget | null;
 }
 
 export const createProjectSettingsOperations = (
@@ -29,6 +34,21 @@ export const createProjectSettingsOperations = (
       payload: {
         density: input.surfacePixelDensity
       }
+    });
+  }
+  const currentTarget = editableProjectTargetFor(document);
+  if (
+    input.exportTarget !== null &&
+    (
+      currentTarget === null ||
+      currentTarget.target !== input.exportTarget.target ||
+      currentTarget.namespace !== input.exportTarget.namespace ||
+      currentTarget.modelPath !== input.exportTarget.modelPath
+    )
+  ) {
+    operations.push({
+      name: 'project.target.set',
+      payload: input.exportTarget
     });
   }
   return operations;

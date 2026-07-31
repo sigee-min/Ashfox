@@ -15,8 +15,8 @@ import type {
 } from '../model';
 import type { InvariantFinding } from '../validation';
 import type {
+  PartAuthoringSpec,
   PartMaterialDefinition,
-  PartSpec
 } from '../modeling/partContract';
 
 export type CommandSource = 'web' | 'agent' | 'import' | 'system';
@@ -145,7 +145,7 @@ export interface CommandPayloadMap {
   };
   'project.intent.set': ProjectIntent;
   'model.parts.upsert': {
-    parts: readonly PartSpec[];
+    parts: readonly PartAuthoringSpec[];
     materials: readonly PartMaterialDefinition[];
   };
   'model.parts.mirror': {

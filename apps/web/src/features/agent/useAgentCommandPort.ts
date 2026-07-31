@@ -30,6 +30,9 @@ import {
 } from './AgentCommandPort';
 import { inspectProject } from './inspect';
 import type {
+  VisualReviewReceipt
+} from './presentationReview';
+import type {
   PresentRequest,
   PresentResult
 } from './types';
@@ -44,6 +47,10 @@ interface UseAgentCommandPortInput {
   dispatch: Dispatch<HistoryAction>;
   onFocusEntity: (nodeId: string) => void;
   onPresent: (request: PresentRequest) => Promise<PresentResult>;
+  getVisualReviews: (
+    projectId: string,
+    revision: string
+  ) => readonly VisualReviewReceipt[];
 }
 
 interface PendingCommand {
@@ -76,7 +83,8 @@ export const useAgentCommandPort = ({
   report,
   dispatch,
   onFocusEntity,
-  onPresent
+  onPresent,
+  getVisualReviews
 }: UseAgentCommandPortInput): AgentCommandPortStatus => {
   const [status, setStatus] =
     useState<AgentCommandPortStatus>('connected');
@@ -89,6 +97,7 @@ export const useAgentCommandPort = ({
   const reportRef = useLatestValue(report);
   const onFocusEntityRef = useLatestValue(onFocusEntity);
   const onPresentRef = useLatestValue(onPresent);
+  const getVisualReviewsRef = useLatestValue(getVisualReviews);
 
   const submit = useCallback(
     (batch: CommandBatch): Promise<CommandOutcome> =>
@@ -118,7 +127,11 @@ export const useAgentCommandPort = ({
             reportRef.current,
             request,
             activityRef.current,
-            assetsRef.current
+            assetsRef.current,
+            getVisualReviewsRef.current(
+              documentRef.current.id,
+              documentRef.current.revision
+            )
           ),
         currentProjectId: () => documentRef.current.id,
         currentRevision: () => documentRef.current.revision,

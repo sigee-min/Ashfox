@@ -45,13 +45,13 @@ const mirroredPart = (
     partId === 'left'
       ? {
           parentAnchor: [-2, 2, 2],
-          partAnchor: [1, 0, 0]
+          partAnchor: [-2, 2, 2]
         }
       : {
           parentAnchor: [2, 2, 2],
-          partAnchor: [-1, 0, 0]
+          partAnchor: [2, 2, 2]
         },
-  center: [0, 0, 0],
+  center: partId === 'left' ? [-3, 2, 2] : [3, 2, 2],
   radii: [1, 1, 1],
   profile: 'hard'
 });
@@ -124,7 +124,11 @@ const authored = execute(empty, 'intent-author-complete', [
   {
     name: 'model.parts.upsert',
     payload: {
-      parts: [mirroredPart('right'), body, mirroredPart('left')],
+      parts: [
+        mirroredPart('right'),
+        body,
+        mirroredPart('left')
+      ].map(({ attachment: _attachment, ...part }) => part),
       materials: [
         { id: 'core', baseColor: '#485568' },
         { id: 'accent', baseColor: '#D98A42' }
@@ -330,7 +334,6 @@ const unstable = execute(
           parentPartId: null,
           materialId: 'core',
           joint: { kind: 'fixed' },
-          attachment: null,
           points: [
             [0, 1, 0],
             [0, 5, 0],

@@ -47,6 +47,7 @@ const authorProject = (target: ExportPreset): ProjectDocument => {
     ],
     thickness: 6
   };
+  const { attachment: _attachment, ...authoredPart } = part;
   const operations: ProjectCommandOperation[] = [
     {
       name: 'project.create',
@@ -76,7 +77,7 @@ const authorProject = (target: ExportPreset): ProjectDocument => {
     {
       name: 'model.parts.upsert',
       payload: {
-        parts: [part],
+        parts: [authoredPart],
         materials: [{
           id: 'stone',
           baseColor: '#8E98A3'

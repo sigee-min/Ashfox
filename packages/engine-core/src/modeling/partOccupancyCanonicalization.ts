@@ -58,7 +58,7 @@ export type CanonicalizePartOccupanciesResult =
       message: string;
     };
 
-const canonicalPartOrder = (
+export const canonicalPartOrder = (
   parts: readonly PartSpec[]
 ): readonly PartSpec[] | null => {
   const remaining = new Map(

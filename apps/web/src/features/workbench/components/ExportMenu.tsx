@@ -1,23 +1,16 @@
-import {
-  useEffect,
-  useState,
-  type FormEvent
-} from 'react';
+import type { FormEvent } from 'react';
 
 import type { ProjectDocument } from '@ashfox/engine-core';
 
 import {
-  isMinecraftExportTarget,
-  PROJECT_EXPORT_TARGETS,
-  projectExportTargetFor,
-  type ProjectExportTarget,
+  projectExportTargetLabel,
+  projectExportTargetFor
 } from '../../../application/projectExportTarget';
-import { ProjectTargetFields } from './ProjectTargetFields';
 
 interface ExportMenuProps {
   document: ProjectDocument;
   busy: boolean;
-  onExport: (target: ProjectExportTarget) => void;
+  onExport: () => void;
 }
 
 export function ExportMenu({
@@ -26,31 +19,12 @@ export function ExportMenu({
   onExport
 }: ExportMenuProps) {
   const current = projectExportTargetFor(document);
-  const [target, setTarget] = useState(current.target);
-  const [namespace, setNamespace] = useState(current.namespace);
-  const [modelPath, setModelPath] = useState(current.modelPath);
-
-  useEffect(() => {
-    const next = projectExportTargetFor(document);
-    setTarget(next.target);
-    setNamespace(next.namespace);
-    setModelPath(next.modelPath);
-  }, [document]);
-
-  const trimmedNamespace = namespace.trim();
-  const trimmedModelPath = modelPath.trim();
-  const valid =
-    trimmedModelPath.length > 0 &&
-    (!isMinecraftExportTarget(target) || trimmedNamespace.length > 0);
+  const label = projectExportTargetLabel(current.target);
 
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
-    if (!valid || busy) return;
-    onExport({
-      target,
-      namespace: trimmedNamespace || 'ashfox',
-      modelPath: trimmedModelPath
-    });
+    if (busy) return;
+    onExport();
   };
 
   return (
@@ -61,25 +35,25 @@ export function ExportMenu({
     >
       <div className="popover-heading">
         <strong>Export</strong>
-        <span>Choose one target</span>
+        <span>Uses the project target</span>
       </div>
-      <ProjectTargetFields
-        target={target}
-        namespace={namespace}
-        modelPath={modelPath}
-        onTargetChange={setTarget}
-        onNamespaceChange={setNamespace}
-        onModelPathChange={setModelPath}
-      />
+      <div className="project-facts">
+        <span>
+          <small>Format</small>
+          <strong>{label}</strong>
+        </span>
+        <span>
+          <small>Asset</small>
+          <strong>{current.modelPath}</strong>
+        </span>
+      </div>
       <button
         type="submit"
         className="popover-primary"
         data-ashfox-action="project.export.submit"
-        disabled={!valid || busy}
+        disabled={busy}
       >
-        {busy ? 'Exporting…' : `Export ${PROJECT_EXPORT_TARGETS.find(
-          (option) => option.id === target
-        )?.label ?? target}`}
+        {busy ? 'Exporting…' : `Export ${label}`}
       </button>
     </form>
   );

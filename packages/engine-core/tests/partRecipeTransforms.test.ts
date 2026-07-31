@@ -391,9 +391,9 @@ const arm: PartSpec = {
   joint: { kind: 'hinge', axis: 'z' },
   attachment: {
     parentAnchor: [2, 0, 0],
-    partAnchor: [-1, 0, 0]
+    partAnchor: [2, 0, 0]
   },
-  center: [0, 0, 0],
+  center: [3, 0, 0],
   radii: [1, 1, 1],
   profile: 'balanced'
 };
@@ -405,14 +405,19 @@ const hand: PartSpec = {
   joint: { kind: 'ball' },
   attachment: {
     parentAnchor: [4, 0, 0],
-    partAnchor: [-1, 0, 0]
-  }
+    partAnchor: [4, 0, 0]
+  },
+  center: [5, 0, 0]
 };
+const authoringParts = (
+  parts: readonly PartSpec[]
+) =>
+  parts.map(({ attachment: _attachment, ...part }) => part);
 
 const oneSided = execute(createProject('project-mirror-parts'), 'upsert-left', [{
   name: 'model.parts.upsert',
   payload: {
-    parts: [body, arm, hand],
+    parts: authoringParts([body, arm, hand]),
     materials
   }
 }]);
@@ -543,7 +548,7 @@ const crossingOneSided = execute(
   [{
     name: 'model.parts.upsert',
     payload: {
-      parts: [crossingBase, crossingLeft],
+      parts: authoringParts([crossingBase, crossingLeft]),
       materials
     }
   }]
@@ -616,7 +621,7 @@ const densityTwoModel = execute(
   [{
     name: 'model.parts.upsert',
     payload: {
-      parts: [body, arm],
+      parts: authoringParts([body, arm]),
       materials
     }
   }]
@@ -678,9 +683,9 @@ const chainParts: readonly PartSpec[] = Array.from(
         ? null
         : {
             parentAnchor: [index * 2 - 1, 0, 0],
-            partAnchor: [-1, 0, 0]
+            partAnchor: [index * 2 - 1, 0, 0]
           },
-    center: [0, 0, 0],
+    center: [index * 2, 0, 0],
     radii: [1, 1, 1],
     profile: 'balanced'
   })
@@ -689,14 +694,14 @@ const chainStart = createProject('project-transform-parts');
 const first64 = execute(chainStart, 'upsert-chain-first', [{
   name: 'model.parts.upsert',
   payload: {
-    parts: chainParts.slice(0, 64),
+    parts: authoringParts(chainParts.slice(0, 64)),
     materials: [materials[0]]
   }
 }]);
 const fullChain = execute(first64, 'upsert-chain-rest', [{
   name: 'model.parts.upsert',
   payload: {
-    parts: chainParts.slice(64),
+    parts: authoringParts(chainParts.slice(64)),
     materials: []
   }
 }]);

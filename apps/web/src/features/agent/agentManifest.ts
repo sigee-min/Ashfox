@@ -32,19 +32,19 @@ export const agentManifest = {
     presentMethod: 'present',
     inspect: {
       current:
-        'window.ashfox.inspect() returns revision, target, density, texture resolution, typed counts, agent command names, and the first blocking finding.',
+        'window.ashfox.inspect() returns revision, target, typed counts, and deterministic workflow guidance: current stage, first blocker with its fix, up to three existing command names, and visual reviews still required on this revision.',
       command:
         'window.ashfox.inspect({kind:"command",name:"<commands entry>"}) returns the canonical input schema.',
       catalog:
         'window.ashfox.inspect({kind:"catalog",limit:50}) returns a bounded page of part, texture, and clip IDs; pass nextCursor back as cursor until null.',
       parts:
-        'window.ashfox.inspect({kind:"parts",ids:["<partId>"]}) returns up to 10 exact persisted PartSpecs and materials plus compiled bone IDs, bounds, authored-to-canonical cell retention, parent-contact area, and six-view silhouette contribution.',
+        'window.ashfox.inspect({kind:"parts",ids:["<partId>"]}) returns up to 10 authorable project-space part specs without internal attachment coordinates, plus materials, compiled bone IDs, bounds, authored-to-canonical cell retention, derived parent contact, and six-view silhouette contribution.',
       entities:
         'Use kind entity, texture, or clip with at most 10 IDs. Oversized clip values return a bounded summary with truncated true.',
       activity:
-        'window.ashfox.inspect({kind:"activity",limit:50}) returns bounded receipt summaries; pass nextCursor back as cursor until null.',
+        'window.ashfox.inspect({kind:"activity",limit:20}) returns bounded receipt summaries; pass nextCursor back as cursor until null.',
       validation:
-        'Use kind target for structural validity, mechanical readiness, the mandatory semantic-review flag, and local texture-byte materialization; use kind finding with a path for one exact finding. Export performs the final SHA-256 byte check.'
+        'Use kind target for structural validity, mechanical readiness, revision-bound workflow guidance, the mandatory semantic-review flag, and local texture-byte materialization; use kind finding with a path for one exact finding. Export performs the final SHA-256 byte check.'
     },
     run: {
       call:
@@ -60,22 +60,22 @@ export const agentManifest = {
       call:
         'await window.ashfox.present({kind:"view",mode:"frame",camera:"front",clipId:"<clip-or-null>",timeSeconds:0}); use mode cycle with a clip ID to observe one complete loop.',
       review:
-        'The promise resolves from observed renderer state, not request echo. Review perspective, front, side, and top; use cycle for every authored clip. A cycle resolves after one full observed duration and a paused closing frame. Unfaithful preview features fail closed.'
+        'The promise resolves from observed renderer state, not request echo. Each success records a receipt for that project revision. Review perspective, front, side, and top with clipId null; use perspective cycle for every authored clip. Inspect returns only the reviews still missing on the current revision. A cycle resolves after one full observed duration and a paused closing frame. Unfaithful preview features fail closed.'
     }
   },
   modeling: {
     authority:
-      'The agent specifies semantic parts, tolerant joins, attachments, joints, material IDs, and base colors. ashfox assigns intersecting seam cells to one deterministic owner and alone creates bones, cuboids, stable IDs, UVs, atlas pixels, and texture resolution. Raw bone and cube commands are unavailable to agents.',
+      'The agent specifies project-space semantic parts, parent relationships, optional joint intent, material IDs, and base colors. ashfox derives fixed joints by default, attachment anchors, pivots, shallow seam snaps, and intersecting-cell ownership, then alone creates bones, cuboids, stable IDs, UVs, atlas pixels, and texture resolution. Raw bone and cube commands are unavailable to agents.',
     canonicalState:
-      'ProjectDocument.modeling stores one normalized, sorted PartSpec and material recipe, including authored shallow intersections. Generated scene structure is its deterministic single-owner projection for rendering and export; validation rejects a missing recipe, excessive penetration, consumed parts, or structural drift, while UV and raster caches are rederived.',
+      'ProjectDocument.modeling stores one normalized, sorted internal part and material recipe, including authored shallow intersections and engine-derived attachment data. Generated scene structure is its deterministic single-owner projection for rendering and export; validation rejects a missing recipe, excessive penetration, consumed parts, or structural drift, while UV and raster caches are rederived.',
     intent:
       'project.intent.set persists the literal subject, review direction, grounding, required feature notes, required part/material/clip IDs, and only the exact symmetry pairs that truly apply. Code checks shape, used material IDs, non-empty required clips, grounding, and declared lattice reflections; the rendered subject and feature notes still require visual judgment.',
     grounding:
       'Grounded assets require contact at lattice y=0 and a uniform-volume center of mass whose xz projection lies inside the convex hull of all ground-contact cell corners. This is a deterministic static-support check, not a simulation or a semantic quality score.',
     lattice:
-      'All PartSpec coordinates, radii, sizes, anchors, and thicknesses are integer lattice units. With surface density d in 1, 2, or 4, one lattice unit equals 1/d model unit. Density is immutable while compiled parts exist, so select it before authoring.',
+      'All agent-authored part coordinates, radii, sizes, and thicknesses are integer lattice units. With surface density d in 1, 2, or 4, one lattice unit equals 1/d model unit. Density is immutable while compiled parts exist, so select it before authoring.',
     hierarchy:
-      'A model has exactly one root part. Every child names parentPartId, joint, and attachment. Child geometry is local and translated by parentAnchor - partAnchor. A join may overlap by at most two surface cells; after canonical ownership ashfox snaps the requested joint pivot to the nearest shared face within that range. The child must remain connected and visible. Stable animation bone IDs are bone:<partId>.',
+      'A model has exactly one root part. Every child names parentPartId and may name a joint; attachment coordinates are not agent input. Author all primitive coordinates in project space, touching, shallowly intersecting, or within two lattice cells of the parent. ashfox deterministically snaps the child, derives the nearest shared-face anchor and pivot, and reapplies them when parent geometry changes. The child must remain connected and visible. Stable animation bone IDs are bone:<partId>.',
     joints: {
       fixed:
         'Rigid child relationship with no child transform channels. The one fixed root may carry global asset animation.',
@@ -97,7 +97,7 @@ export const agentManifest = {
         'Small surface relief from face, local anchor, positive 2D size, and depth. Give focal accents a separate high-contrast material and use density 2 or 4 when needed.'
     },
     defaults:
-      'Omitted parentPartId, joint, attachment, profile, innerRadius, and relief normalize to null, fixed, null, balanced, 0, and 1. A child still requires an explicit parentPartId and attachment anchors.',
+      'Omitted parentPartId, joint, profile, innerRadius, and relief normalize to null, fixed, balanced, 0, and 1. A child requires only parentPartId; ashfox derives its attachment.',
     limits:
       'Use at most one model.parts.upsert operation per atomic batch, at most 64 parts per upsert, and bounded checkpoints. The persisted model allows 1,024 parts and 2,097,152 occupied lattice cells; these are safety budgets, never quality targets.',
     materials:
@@ -170,7 +170,7 @@ export const agentManifest = {
     {
       stage: 'author',
       instruction:
-        'Add parts in coarse-to-fine checkpoint batches. Use a one- or two-cell seam intersection when exact face alignment would create a visible gap, then inspect canonicalization and rendered continuity. Correct silhouette and structure before features. Use model.parts.material for palette changes and model.parts.delete for removal.'
+        'Add project-space parts in coarse-to-fine checkpoint batches. Place each child touching, shallowly intersecting, or within two lattice cells of its parent; never author attachment coordinates. Inspect the derived contact and rendered continuity. Correct silhouette and structure before features. Use model.parts.material for palette changes and model.parts.delete for removal.'
     },
     {
       stage: 'animate',
@@ -185,7 +185,7 @@ export const agentManifest = {
     {
       stage: 'produce',
       instruction:
-        'Set the final target, require mechanicallyReady, complete the required visual review, then use the listed save, export, or capture DOM boundary and wait for the matching terminal operation.'
+        'Require the canonical target, mechanicallyReady, and no remaining visual reviews. Activate the listed save, export, or capture DOM boundary and wait for the matching terminal operation.'
     }
   ],
   domBridge: {
@@ -212,11 +212,6 @@ export const agentManifest = {
     startCapture: '[data-ashfox-action="project.capture.start"]',
     cancelCapture: '[data-ashfox-action="project.capture.cancel"]',
     downloadArtifact: '[data-ashfox-action="artifact.download"]'
-  },
-  domFields: {
-    format: '[role="radiogroup"][aria-label="Format"]',
-    namespace: '[aria-label="Project namespace"]',
-    modelPath: '[aria-label="Project model path"]'
   },
   domState: {
     root: '[data-agent-command-port]',
@@ -250,7 +245,7 @@ export const agentManifest = {
         'One self-contained binary GLB with buffers, textures, and animation.'
     },
     operation:
-      'Use project.target.set through run, activate openExport, set format, namespace, and modelPath, then activate submitExport once. Require succeeded, positive byte length, and matching operation ID before downloadArtifact.'
+      'Use project.target.set through run only when the requested target differs. Export has no agent-entered fields: activate openExport, then submitExport once; format, namespace, and model path are derived from the canonical project target. Require succeeded, positive byte length, and matching operation ID before downloadArtifact.'
   },
   recovery: {
     projectMismatch:

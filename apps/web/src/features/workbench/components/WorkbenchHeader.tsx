@@ -11,7 +11,6 @@ import { useArtifactUrl } from '../../files/useArtifactUrl';
 import type { GifCaptureFile } from '../../capture/gifCaptureFile';
 import type { GifCaptureRequest } from '../../capture/gifCaptureRequest';
 import { Icon } from '../Icon';
-import type { ProjectExportTarget } from '../../../application/projectExportTarget';
 import type { CameraMode } from '../../../rendering/cameraPresets';
 import type { ViewportEnvironmentId } from '../../../rendering/viewportEnvironment';
 import { BrandLogo } from './BrandLogo';
@@ -38,7 +37,7 @@ interface WorkbenchHeaderProps {
   onOpen: (file: File) => void;
   onSave: () => void;
   onUpdateProject: (input: ProjectSettingsInput) => void;
-  onExport: (target: ProjectExportTarget) => void;
+  onExport: () => void;
   onActiveClipChange: (clipId: string | null) => void;
   onCapture: (request: GifCaptureRequest) => void;
   onCancelFileOperation: () => void;
@@ -222,7 +221,7 @@ export function WorkbenchHeader({
       <button
         type="button"
         className="target-badge"
-        aria-label="Choose export format"
+        aria-label="Export project target"
         aria-expanded={activeMenu === 'export'}
         onClick={() => toggleMenu('export')}
       >
@@ -250,8 +249,8 @@ export function WorkbenchHeader({
         <ExportMenu
           document={document}
           busy={fileBusy}
-          onExport={(nextTarget) => {
-            onExport(nextTarget);
+          onExport={() => {
+            onExport();
             setActiveMenu(null);
           }}
         />

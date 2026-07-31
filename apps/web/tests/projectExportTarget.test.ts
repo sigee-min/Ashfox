@@ -2,8 +2,7 @@ import assert from 'node:assert/strict';
 
 import { createWorkbenchProject } from '../src/features/workbench/sampleProject';
 import {
-  projectExportTargetFor,
-  projectUsesExportTarget
+  projectExportTargetFor
 } from '../src/application/projectExportTarget';
 
 const geckoProject = createWorkbenchProject();
@@ -13,14 +12,6 @@ assert.deepEqual(geckoTarget, {
   namespace: 'ashfox',
   modelPath: 'moonveil_celestial_kirin'
 });
-assert.equal(projectUsesExportTarget(geckoProject, geckoTarget), true);
-assert.equal(
-  projectUsesExportTarget(geckoProject, {
-    ...geckoTarget,
-    namespace: 'other'
-  }),
-  false
-);
 
 const glbProject = {
   ...geckoProject,
@@ -37,11 +28,16 @@ assert.deepEqual(projectExportTargetFor(glbProject), {
   namespace: 'ashfox',
   modelPath: 'moonveil_celestial_kirin'
 });
-assert.equal(
-  projectUsesExportTarget(glbProject, {
-    target: 'gltf',
-    namespace: 'ashfox',
-    modelPath: 'moonveil_celestial_kirin'
-  }),
-  false
-);
+
+const genericProject = {
+  ...geckoProject,
+  formatProfile: {
+    id: 'ashfox.generic' as const,
+    version: '1' as const
+  }
+};
+assert.deepEqual(projectExportTargetFor(genericProject), {
+  target: 'ashfox.generic',
+  namespace: 'ashfox',
+  modelPath: 'moonveil_celestial_kirin'
+});

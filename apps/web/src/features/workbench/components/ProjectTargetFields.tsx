@@ -5,7 +5,7 @@ import {
 } from '../../../application/projectExportTarget';
 
 interface ProjectTargetFieldsProps {
-  target: VisibleExportPreset;
+  target: VisibleExportPreset | null;
   namespace: string;
   modelPath: string;
   onTargetChange: (target: VisibleExportPreset) => void;
@@ -42,26 +42,32 @@ export function ProjectTargetFields({
           </button>
         ))}
       </div>
-      <div className="export-fields">
-        {isMinecraftExportTarget(target) ? (
+      {target === null ? null : (
+        <div className="export-fields">
+          {isMinecraftExportTarget(target) ? (
+            <label className="popover-field">
+              <span>Namespace</span>
+              <input
+                aria-label="Project namespace"
+                value={namespace}
+                onChange={(event) =>
+                  onNamespaceChange(event.target.value)
+                }
+              />
+            </label>
+          ) : null}
           <label className="popover-field">
-            <span>Namespace</span>
+            <span>Model path</span>
             <input
-              aria-label="Project namespace"
-              value={namespace}
-              onChange={(event) => onNamespaceChange(event.target.value)}
+              aria-label="Project model path"
+              value={modelPath}
+              onChange={(event) =>
+                onModelPathChange(event.target.value)
+              }
             />
           </label>
-        ) : null}
-        <label className="popover-field">
-          <span>Model path</span>
-          <input
-            aria-label="Project model path"
-            value={modelPath}
-            onChange={(event) => onModelPathChange(event.target.value)}
-          />
-        </label>
-      </div>
+        </div>
+      )}
     </>
   );
 }

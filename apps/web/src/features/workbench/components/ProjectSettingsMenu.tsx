@@ -10,9 +10,15 @@ import {
   type SurfacePixelDensity
 } from '@ashfox/engine-core';
 
+import {
+  editableProjectTargetFor,
+  isMinecraftExportTarget,
+  projectExportTargetFor
+} from '../../../application/projectExportTarget';
 import type {
   ProjectSettingsInput
 } from '../projectSettings';
+import { ProjectTargetFields } from './ProjectTargetFields';
 
 interface ProjectSettingsMenuProps {
   document: ProjectDocument;
@@ -50,21 +56,56 @@ export function ProjectSettingsMenu({
   const [name, setName] = useState(document.name);
   const [surfacePixelDensity, setSurfacePixelDensity] =
     useState(document.settings.surfacePixelDensity);
+  const currentTarget = projectExportTargetFor(document);
+  const currentEditableTarget = editableProjectTargetFor(document);
+  const [target, setTarget] = useState(
+    currentEditableTarget?.target ?? null
+  );
+  const [namespace, setNamespace] = useState(currentTarget.namespace);
+  const [modelPath, setModelPath] = useState(currentTarget.modelPath);
 
   useEffect(() => {
+    const nextTarget = projectExportTargetFor(document);
+    const nextEditableTarget = editableProjectTargetFor(document);
     setName(document.name);
     setSurfacePixelDensity(
       document.settings.surfacePixelDensity
     );
-  }, [document.name, document.settings.surfacePixelDensity]);
+    setTarget(nextEditableTarget?.target ?? null);
+    setNamespace(nextTarget.namespace);
+    setModelPath(nextTarget.modelPath);
+  }, [document]);
 
   const trimmedName = name.trim();
-  const canSave =
+  const trimmedNamespace = namespace.trim();
+  const trimmedModelPath = modelPath.trim();
+  const targetChanged =
+    target !== null &&
+    (
+      currentEditableTarget === null ||
+      target !== currentEditableTarget.target ||
+      trimmedNamespace !== currentEditableTarget.namespace ||
+      trimmedModelPath !== currentEditableTarget.modelPath
+    );
+  const valid =
     trimmedName.length > 0 &&
+    (
+      target === null ||
+      (
+        trimmedModelPath.length > 0 &&
+        (
+          !isMinecraftExportTarget(target) ||
+          trimmedNamespace.length > 0
+        )
+      )
+    );
+  const canSave =
+    valid &&
     (
       trimmedName !== document.name ||
       surfacePixelDensity !==
-        document.settings.surfacePixelDensity
+        document.settings.surfacePixelDensity ||
+      targetChanged
     );
 
   const submit = (event: FormEvent<HTMLFormElement>): void => {
@@ -72,7 +113,15 @@ export function ProjectSettingsMenu({
     if (!canSave) return;
     onSave({
       name: trimmedName,
-      surfacePixelDensity
+      surfacePixelDensity,
+      exportTarget:
+        targetChanged && target !== null
+          ? {
+              target,
+              namespace: trimmedNamespace || 'ashfox',
+              modelPath: trimmedModelPath
+            }
+          : null
     });
   };
 
@@ -94,6 +143,14 @@ export function ProjectSettingsMenu({
           onChange={(event) => setName(event.target.value)}
         />
       </label>
+      <ProjectTargetFields
+        target={target}
+        namespace={namespace}
+        modelPath={modelPath}
+        onTargetChange={setTarget}
+        onNamespaceChange={setNamespace}
+        onModelPathChange={setModelPath}
+      />
       <fieldset className="surface-density-field">
         <legend>Surface detail</legend>
         <div className="surface-density-options">

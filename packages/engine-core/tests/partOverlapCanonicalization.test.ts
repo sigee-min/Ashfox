@@ -102,7 +102,9 @@ const executeParts = (
       operations: [{
         name: 'model.parts.upsert',
         payload: {
-          parts,
+          parts: parts.map(
+            ({ attachment: _attachment, ...part }) => part
+          ),
           materials: materialDefinitions
         }
       }]
@@ -295,7 +297,9 @@ for (const depth of [3, 4]) {
   assert.equal(rejected.error.code, 'invalid_state');
   assert.match(
     rejected.error.message,
-    depth === 3 ? /within 2 cells/ : /retains only 0%/
+    depth === 3
+      ? /within 2 cells/
+      : /fully contained|retains only 0%/
   );
   assert.deepEqual(original, before);
 }
