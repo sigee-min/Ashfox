@@ -269,6 +269,15 @@ export const IRONROOT_TRACTOR_DEMO: DemoDefinition = {
   name: 'Ironroot · Arcane Field Tractor',
   modelPath: 'ironroot_arcane_tractor',
   initialSelectionId: null,
+  intent: {
+    subject: 'arcane field tractor',
+    grounding: 'free',
+    features: [
+      'readable tractor silhouette',
+      'connected hood and cab',
+      'four articulated wheels'
+    ]
+  },
   textures: [
     {
       id: T.iron,
@@ -339,6 +348,25 @@ export const IRONROOT_TRACTOR_DEMO: DemoDefinition = {
         ])
       ],
       triggers
+    },
+    {
+      id: 'idle',
+      name: 'Ironroot Idle',
+      durationSeconds: 2,
+      fps: 20,
+      loop: 'loop',
+      channels: [
+        demoChannel(
+          'tractor-idle-exhaust',
+          'bone-exhaust',
+          'rotation',
+          [
+            [0, [0, 0, -2]],
+            [1, [0, 0, 1]],
+            [2, [0, 0, -2]]
+          ]
+        )
+      ]
     }
   ]
 };

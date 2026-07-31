@@ -6,6 +6,7 @@ import {
   type CubeCreateInput,
   type ProjectCommandOperation,
   type ProjectDocument,
+  type ProjectIntentInput,
   type TransformChannelInput,
   type Vec3
 } from '@ashfox/engine-core';
@@ -43,6 +44,7 @@ export interface DemoDefinition {
   name: string;
   modelPath: string;
   initialSelectionId: string | null;
+  intent: ProjectIntentInput;
   textures: readonly DemoTextureSpec[];
   bones: readonly BoneCreateInput[];
   cubes: readonly DemoCubeSpec[];
@@ -165,6 +167,9 @@ const buildStages = (
   [{
     name: 'project.rename',
     payload: { name: definition.name }
+  }, {
+    name: 'project.intent.set',
+    payload: definition.intent
   }],
   ...layerBones(definition.bones).map((bones) => [{
     name: 'scene.bones.create' as const,

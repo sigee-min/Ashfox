@@ -99,13 +99,20 @@ const gltfWithSecondaryClip = (): {
   const secondary = report.clips.find(
     (entry) => entry.clipId === clip.id
   );
-  assert.equal(secondary?.previewable, false);
-  assert.equal(secondary?.exportable, false);
+  assert.equal(
+    secondary?.previewable,
+    true,
+    'visual review follows the lowered GLB transform animation'
+  );
+  assert.equal(secondary?.exportable, true);
   assert.ok(
-    secondary?.exportIssues.some(
-      (issue) => issue.code === 'timeline_trigger'
+    secondary?.exportAdaptations.some(
+      (adaptation) =>
+        adaptation.disposition === 'omitted' &&
+        adaptation.code === 'timeline_trigger'
     )
   );
+  assert.doesNotThrow(() => buildGltf(project));
 }
 
 {
@@ -149,7 +156,8 @@ const gltfWithSecondaryClip = (): {
   const project = structuredClone(createGeckoLib5Project());
   project.formatProfile = {
     id: 'minecraft.bedrock',
-    version: '1.21.0',
+    minecraftVersion: '1.26.0',
+    geometryFormatVersion: '1.21.0',
     animationFormatVersion: '1.8.0',
     namespace: 'ashfox',
     modelPath: 'ashfox_crate',
@@ -199,20 +207,22 @@ const gltfWithSecondaryClip = (): {
   (project.animations as Record<string, AnimationClip>)[secondary.id] =
     secondary;
   const readiness = evaluateProductionReadiness(project);
-  assert.ok(
+  assert.equal(
     readiness.findings.some(
       (finding) =>
         finding.code === 'production.animation_preview_unfaithful' &&
         finding.clipIds?.includes(secondary.id)
     ),
-    'production readiness must inspect non-Idle clips'
+    false,
+    'safe playback omissions do not alter the authored transform preview'
   );
-  assert.ok(
+  assert.equal(
     readiness.findings.some(
       (finding) =>
         finding.code === 'production.animation_export_unsupported' &&
         finding.clipIds?.includes(secondary.id)
     ),
-    'the selected target must be checked for every authored clip'
+    false,
+    'safe playback omissions must not make a numeric clip unexportable'
   );
 }

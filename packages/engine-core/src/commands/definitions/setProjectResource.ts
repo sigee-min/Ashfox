@@ -3,6 +3,9 @@ import {
   configureProjectTarget,
   exportPresetForDocument
 } from './setProjectTarget';
+import {
+  gameVersionForFormatProfile
+} from '../../export/compatibility';
 
 const inputSchema = {
   type: 'object',
@@ -39,7 +42,7 @@ export const setProjectResourceCommand = defineCommand({
             'The current project target has no editable resource location.',
           path: 'formatProfile',
           expected:
-            'gltf, glb, bedrock, or geckolib5 target'
+            'gltf, glb, java_block, bedrock, or geckolib5 target'
         }
       };
     }
@@ -48,6 +51,7 @@ export const setProjectResourceCommand = defineCommand({
       target,
       payload.namespace.trim(),
       payload.modelPath.trim(),
+      gameVersionForFormatProfile(document.formatProfile) ?? undefined,
       'Set project resource location'
     );
   }

@@ -1,5 +1,6 @@
 import type { ProjectDocument, TextureAsset } from '../../../model';
 import { validateProjectDocument } from '../../../validation';
+import { createExportAdaptationReceipt } from '../../adaptations';
 import { createJsonExportFile } from '../../json';
 import { buildMinecraftActorAnimation } from '../../shared/minecraftAnimation';
 import { buildMinecraftGeometry } from '../../shared/minecraftGeometry';
@@ -28,7 +29,7 @@ export const buildMinecraftBedrockGeometry = (document: ProjectDocument) => {
     throw new Error('Project does not use the minecraft.bedrock profile.');
   }
   return buildMinecraftGeometry(document, {
-    formatVersion: profile.version,
+    formatVersion: profile.geometryFormatVersion,
     identifier: profile.geometryIdentifier,
     ...(profile.visibleBounds ? { visibleBounds: profile.visibleBounds } : {})
   });
@@ -66,9 +67,9 @@ export const exportMinecraftBedrock = (document: ProjectDocument): ExportBundle 
     revision: document.revision,
     target: {
       id: 'minecraft.bedrock',
-      version: profile.version
+      version: profile.minecraftVersion
     },
-    rootPath: 'resource-pack',
+    rootPath: 'bedrock-resource-pack-assets',
     entrypoints: [
       geometryPath,
       ...(hasAnimations ? [animationPath] : [])
@@ -86,6 +87,7 @@ export const exportMinecraftBedrock = (document: ProjectDocument): ExportBundle 
         : []),
       ...textureFiles
     ],
-    findings: report.findings
+    findings: report.findings,
+    adaptations: createExportAdaptationReceipt(document)
   };
 };

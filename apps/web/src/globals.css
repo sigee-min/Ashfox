@@ -441,6 +441,10 @@ kbd {
   background: #343b42;
 }
 
+.export-menu .project-facts.has-game-version {
+  grid-template-columns: 0.8fr 1fr 1.2fr;
+}
+
 .project-facts > span {
   display: grid;
   gap: 4px;
@@ -462,6 +466,13 @@ kbd {
   font-weight: 560;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.export-adaptation-note {
+  margin: 0;
+  color: #747f88;
+  font-size: 8px;
+  line-height: 1.4;
 }
 
 .new-project-note {
@@ -649,6 +660,10 @@ kbd {
 }
 
 .export-fields > :only-child {
+  grid-column: 1 / -1;
+}
+
+.export-fields .project-model-path {
   grid-column: 1 / -1;
 }
 

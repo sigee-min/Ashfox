@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   executeCommandBatch,
   type ExportPreset,
+  type MinecraftGameVersion,
   type ProjectDocument
 } from '@ashfox/engine-core';
 
@@ -131,16 +132,18 @@ const authorProject = async (): Promise<ProjectDocument> => {
 
 const projectFor = (
   source: ProjectDocument,
-  target: ExportPreset
+  target: ExportPreset,
+  gameVersion?: MinecraftGameVersion
 ): ProjectDocument => {
   const result = executeCommandBatch(source, {
-    batchId: `batch-web-export-${target}`,
+    batchId: `batch-web-export-${target}-${gameVersion ?? 'default'}`,
     baseProjectId: source.id,
     baseRevision: source.revision,
     operations: [{
       name: 'project.target.set',
       payload: {
-        target
+        target,
+        ...(gameVersion === undefined ? {} : { gameVersion })
       }
     }, {
       name: 'project.resource.set',
@@ -156,6 +159,45 @@ const projectFor = (
     );
   }
   return result.document;
+};
+
+const staticJavaProjectFor = (
+  source: ProjectDocument,
+  gameVersion: '1.21.5' | '1.21.11' | '26.1' | '26.2'
+): ProjectDocument => {
+  const result = executeCommandBatch(source, {
+    batchId: `batch-web-export-java-${gameVersion}`,
+    baseProjectId: source.id,
+    baseRevision: source.revision,
+    operations: [{
+      name: 'project.target.set',
+      payload: {
+        target: 'java_block',
+        gameVersion
+      }
+    }, {
+      name: 'project.resource.set',
+      payload: {
+        namespace: 'ashfox',
+        modelPath: 'artifact_java_block'
+      }
+    }]
+  }, { source: 'system' });
+  if (!result.ok) {
+    throw new Error(
+      `${result.error.message} ${JSON.stringify(result.findings ?? [])}`
+    );
+  }
+  return result.document;
+};
+
+const decodeJsonEntry = (
+  entries: ReadonlyMap<string, Uint8Array>,
+  path: string
+): Record<string, unknown> => {
+  const bytes = entries.get(path);
+  if (!bytes) throw new Error(`ZIP entry ${path} is missing.`);
+  return JSON.parse(new TextDecoder().decode(bytes)) as Record<string, unknown>;
 };
 
 export const test = (async () => {
@@ -259,21 +301,25 @@ export const test = (async () => {
   );
   const expectations: ReadonlyArray<{
     target: ExportPreset;
+    gameVersion: '26.1' | '1.26.30' | null;
     sourceFileCount: number;
     paths: readonly RegExp[];
   }> = [
     {
       target: 'geckolib5',
+      gameVersion: '26.1',
       sourceFileCount: 3,
       paths: [/\.geo\.json$/, /\.animation\.json$/, /\.png$/]
     },
     {
       target: 'bedrock',
+      gameVersion: '1.26.30',
       sourceFileCount: 3,
       paths: [/\.geo\.json$/, /\.animation\.json$/, /\.png$/]
     },
     {
       target: 'gltf',
+      gameVersion: null,
       sourceFileCount: 3,
       paths: [/\.gltf$/, /\.bin$/, /\.png$/]
     }
@@ -286,7 +332,19 @@ export const test = (async () => {
     );
     assert.equal(artifact.contentType, 'application/zip');
     assert.equal(artifact.target, expectation.target);
+    assert.equal(artifact.gameVersion, expectation.gameVersion);
+    if (expectation.gameVersion !== null) {
+      assert.ok(
+        artifact.name.includes(expectation.gameVersion),
+        'Minecraft artifact names must identify their game version'
+      );
+    }
     assert.equal(artifact.sourceRevision, targetSource.revision);
+    assert.equal(
+      artifact.adaptationCount,
+      artifact.adaptations.converted.length +
+        artifact.adaptations.omitted.length
+    );
     assert.equal(
       artifact.sourceFileCount,
       expectation.sourceFileCount
@@ -302,9 +360,126 @@ export const test = (async () => {
     }
   }
 
+  const geckoPrevious = await createTargetArtifact(
+    projectFor(source, 'geckolib5', '1.21.5'),
+    assets
+  );
+  const geckoCurrent = await createTargetArtifact(
+    projectFor(source, 'geckolib5', '26.1'),
+    assets
+  );
+  assert.notEqual(geckoPrevious.name, geckoCurrent.name);
+  assert.equal(geckoPrevious.gameVersion, '1.21.5');
+  assert.equal(geckoCurrent.gameVersion, '26.1');
+
+  for (const expectation of [
+    {
+      gameVersion: '1.21.5' as const,
+      pack: {
+        pack_format: 55,
+        supported_formats: 55
+      }
+    },
+    {
+      gameVersion: '1.21.11' as const,
+      pack: {
+        min_format: [75, 0],
+        max_format: [75, 0]
+      }
+    },
+    {
+      gameVersion: '26.1' as const,
+      pack: {
+        min_format: [84, 0],
+        max_format: [84, 0]
+      }
+    },
+    {
+      gameVersion: '26.2' as const,
+      pack: {
+        min_format: [88, 0],
+        max_format: [88, 0]
+      }
+    }
+  ]) {
+    const javaSource = staticJavaProjectFor(
+      source,
+      expectation.gameVersion
+    );
+    const artifact = await createTargetArtifact(javaSource, assets);
+    assert.equal(artifact.contentType, 'application/zip');
+    assert.equal(artifact.target, 'java_block');
+    assert.equal(artifact.gameVersion, expectation.gameVersion);
+    assert.equal(artifact.sourceFileCount, 4);
+    assert.ok(artifact.name.includes(expectation.gameVersion));
+    assert.ok(
+      Object.keys(javaSource.animations).length > 0,
+      'switching to a static delivery profile must preserve source clips'
+    );
+    assert.ok(
+      artifact.adaptations.omitted.some(
+        (adaptation) => adaptation.path.startsWith('animations.')
+      ),
+      'the artifact receipt must disclose clips omitted by a static target'
+    );
+    assert.equal(
+      artifact.adaptationCount,
+      artifact.adaptations.converted.length +
+        artifact.adaptations.omitted.length
+    );
+
+    const zipEntries = readStoredZip(artifact.bytes);
+    assert.deepEqual(
+      zipEntries.map((entry) => entry.path),
+      [
+        'pack.mcmeta',
+        'assets/ashfox/blockstates/artifact_java_block.json',
+        'assets/ashfox/models/block/artifact_java_block.json',
+        'assets/ashfox/textures/block/artifact_java_block.png'
+      ]
+    );
+    const entries = new Map(
+      zipEntries.map((entry) => [entry.path, entry.bytes])
+    );
+    const metadata = decodeJsonEntry(entries, 'pack.mcmeta');
+    assert.deepEqual(metadata.pack, {
+      ...expectation.pack,
+      description: `${javaSource.name} · generated by ashfox`
+    });
+    const blockstate = decodeJsonEntry(
+      entries,
+      'assets/ashfox/blockstates/artifact_java_block.json'
+    );
+    assert.deepEqual(blockstate, {
+      variants: {
+        '': { model: 'ashfox:block/artifact_java_block' }
+      }
+    });
+    const model = decodeJsonEntry(
+      entries,
+      'assets/ashfox/models/block/artifact_java_block.json'
+    );
+    assert.equal('format_version' in model, false);
+    assert.deepEqual(model.textures, {
+      base: 'ashfox:block/artifact_java_block',
+      particle: '#base'
+    });
+    assert.deepEqual(
+      entries.get(
+        'assets/ashfox/textures/block/artifact_java_block.png'
+      ),
+      texturePng
+    );
+  }
+
   const glb = await createTargetArtifact(glbSource, assets);
   assert.equal(glb.contentType, 'model/gltf-binary');
   assert.equal(glb.sourceFileCount, 1);
+  assert.equal(glb.gameVersion, null);
+  assert.equal(
+    glb.adaptationCount,
+    glb.adaptations.converted.length + glb.adaptations.omitted.length
+  );
   assert.ok(glb.name.endsWith('.glb'));
   assert.equal(glb.projectId, glbSource.id);
   assert.equal(glb.sourceRevision, glbSource.revision);

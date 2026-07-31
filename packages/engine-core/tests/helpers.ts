@@ -29,7 +29,8 @@ export const createJavaProject = (): ProjectDocument => ({
   revision: 'revision-1',
   formatProfile: {
     id: 'minecraft.java_block',
-    version: '1.21.11',
+    minecraftVersion: '1.21.11',
+    resourcePackFormat: 75,
     namespace: 'ashfox',
     modelPath: 'ashfox_crate',
     modelKind: 'block',
@@ -125,7 +126,8 @@ export const createBedrockProject = (): ProjectDocument => {
     ...javaProject,
     formatProfile: {
       id: 'minecraft.bedrock',
-      version: '1.21.0',
+      minecraftVersion: '1.26.0',
+      geometryFormatVersion: '1.21.0',
       animationFormatVersion: '1.8.0',
       namespace: 'ashfox',
       modelPath: 'ashfox_crate',

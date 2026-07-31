@@ -10,6 +10,7 @@ export type ExportTargetId =
 
 export type ExportFileRole =
   | 'model'
+  | 'blockstate'
   | 'geometry'
   | 'animation'
   | 'texture'
@@ -46,6 +47,21 @@ export type ExportFile =
   | BlobCopyExportFile
   | BinaryExportFile;
 
+export interface ExportAdaptation {
+  code: string;
+  path: string;
+  message: string;
+  clipId?: string;
+  channelId?: string;
+  triggerId?: string;
+  keyframeId?: string;
+}
+
+export interface ExportAdaptationReceipt {
+  omitted: readonly ExportAdaptation[];
+  converted: readonly ExportAdaptation[];
+}
+
 export interface ExportBundle {
   schemaVersion: 1;
   projectId: ProjectId;
@@ -58,6 +74,7 @@ export interface ExportBundle {
   entrypoints: readonly string[];
   files: readonly ExportFile[];
   findings: readonly InvariantFinding[];
+  adaptations: ExportAdaptationReceipt;
 }
 
 export interface ResolvedBlob {

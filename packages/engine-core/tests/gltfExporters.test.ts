@@ -153,6 +153,89 @@ const assertArrayClose = (
 }
 
 {
+  const project = structuredClone(createGltfProject('gltf'));
+  const clip = project.animations['clip-idle'];
+  project.animations = {
+    ...project.animations,
+    [clip.id]: {
+      ...clip,
+      startDelay: { kind: 'molang', source: '0.25' },
+      loopDelay: { kind: 'molang', source: '0.5' },
+      animationTimeUpdate: {
+        kind: 'molang',
+        source: 'query.anim_time'
+      },
+      blendWeight: 0.5,
+      overridePreviousAnimation: true,
+      triggers: {
+        'trigger-sound': {
+          id: 'trigger-sound',
+          type: 'sound',
+          keys: [{
+            id: 'key-sound',
+            timeSeconds: 0.25,
+            value: { effect: 'ashfox:chime' }
+          }]
+        },
+        'trigger-particle': {
+          id: 'trigger-particle',
+          type: 'particle',
+          keys: [{
+            id: 'key-particle-safe-omit',
+            timeSeconds: 0.5,
+            value: { effect: 'ashfox:spark' }
+          }]
+        },
+        'trigger-timeline': {
+          id: 'trigger-timeline',
+          type: 'timeline',
+          keys: [{
+            id: 'key-timeline-safe-omit',
+            timeSeconds: 0.75,
+            value: 'variable.phase = 1;'
+          }]
+        }
+      }
+    }
+  };
+  const authoredProject = structuredClone(project);
+  assert.equal(validateProjectDocument(project).valid, true);
+
+  const bundle = exportGltf(project);
+  assert.deepEqual(project, authoredProject);
+  assert.deepEqual(
+    new Set(bundle.adaptations.omitted.map(({ code }) => code)),
+    new Set([
+      'start_delay',
+      'loop_delay',
+      'animation_time_update',
+      'blend_weight',
+      'override_previous_animation',
+      'sound_trigger',
+      'particle_trigger',
+      'timeline_trigger'
+    ])
+  );
+  assert.deepEqual(bundle.adaptations.converted, []);
+  for (const adaptation of bundle.adaptations.omitted) {
+    assert.ok(adaptation.path.length > 0);
+    assert.ok(adaptation.message.length > 0);
+  }
+  const model = bundle.files[0];
+  if (model?.kind !== 'json') {
+    throw new Error('Expected a glTF model artifact.');
+  }
+  const gltf = model.data as {
+    animations?: Array<{ channels: unknown[] }>;
+  };
+  assert.equal(
+    gltf.animations?.[0]?.channels.length,
+    1,
+    'safe event and playback omissions must preserve numeric node animation'
+  );
+}
+
+{
   const bundle = exportGltf(createGltfProject('glb'));
   const model = bundle.files[0];
   assert.equal(model?.kind, 'binary');

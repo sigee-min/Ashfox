@@ -79,6 +79,7 @@ export const landingContent = {
     }
   ],
   formats: [
+    ['Java block', 'A version-matched resource pack with model and textures.'],
     ['GeckoLib 5', 'Geometry, animation, and textures for Minecraft Java.'],
     ['Bedrock', 'Geometry and actor animation for Bedrock workflows.'],
     ['GLB', 'One embedded binary asset for portable delivery.'],

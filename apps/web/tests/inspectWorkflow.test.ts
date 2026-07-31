@@ -228,6 +228,83 @@ assert.equal(reviewed.stage, 'deliver');
 assert.deepEqual(reviewed.remainingVisualReviews, []);
 assert.equal(reviewed.remainingVisualReviewCount, 0);
 
+const staticJavaResult = executeCommandBatch(
+  readyProject,
+  {
+    batchId: 'workflow-java-static',
+    baseProjectId: readyProject.id,
+    baseRevision: readyProject.revision,
+    operations: [{
+      name: 'project.target.set',
+      payload: {
+        target: 'java_block',
+        gameVersion: '1.21.11'
+      }
+    }]
+  },
+  { source: 'agent' }
+);
+assert.equal(staticJavaResult.ok, true);
+if (!staticJavaResult.ok) {
+  throw new Error(staticJavaResult.error.message);
+}
+const staticJava = staticJavaResult.document;
+const staticJavaReport = validateProjectDocument(staticJava);
+const staticJavaReadiness = evaluateProductionReadiness(
+  staticJava,
+  staticJavaReport
+);
+assert.equal(staticJavaReadiness.mechanicallyReady, true);
+assert.deepEqual(
+  staticJava.animations,
+  readyProject.animations,
+  'a static delivery profile must preserve canonical clips'
+);
+
+const incompatibleJava = structuredClone(staticJava);
+if (incompatibleJava.formatProfile.id !== 'minecraft.java_block') {
+  throw new Error('Expected a Java block project.');
+}
+incompatibleJava.formatProfile.resourcePackFormat = 55;
+const incompatibleJavaReport = validateProjectDocument(incompatibleJava);
+const incompatibleJavaGuidance = deriveInspectWorkflow(
+  incompatibleJava,
+  incompatibleJavaReport,
+  evaluateProductionReadiness(
+    incompatibleJava,
+    incompatibleJavaReport
+  )
+);
+assert.equal(incompatibleJavaGuidance.stage, 'start');
+assert.equal(
+  incompatibleJavaGuidance.blocker?.code,
+  'format.unsupported_data'
+);
+assert.deepEqual(incompatibleJavaGuidance.nextActions, [{
+  kind: 'command',
+  name: 'project.target.set'
+}]);
+const staticJavaUnreviewed = deriveInspectWorkflow(
+  staticJava,
+  staticJavaReport,
+  staticJavaReadiness
+);
+assert.equal(staticJavaUnreviewed.stage, 'review');
+assert.deepEqual(staticJavaUnreviewed.remainingVisualReviews, [
+  'frame:perspective',
+  'frame:front',
+  'frame:side',
+  'frame:top'
+]);
+const staticJavaReviewed = deriveInspectWorkflow(
+  staticJava,
+  staticJavaReport,
+  staticJavaReadiness,
+  completeReceipts.slice(0, 4)
+);
+assert.equal(staticJavaReviewed.stage, 'deliver');
+assert.deepEqual(staticJavaReviewed.remainingVisualReviews, []);
+
 const defaultInspect = inspectProject(
   readyProject,
   null,

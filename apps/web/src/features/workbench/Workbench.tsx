@@ -326,6 +326,8 @@ export function Workbench() {
     onPresent: presentAgentView,
     onReview: reviewAgentView,
     onDeliver: projectFiles.exportTarget,
+    onCapture: projectFiles.capture,
+    buildDocuments: buildCaptureDocuments,
     getVisualReviews,
     operationLease
   });

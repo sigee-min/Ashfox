@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import {
   GIFEncoder,
   applyPalette,
@@ -6,37 +5,26 @@ import {
 } from 'gifenc';
 
 import type { CameraMode } from '../../rendering/cameraPresets';
-import { applyCameraPreset } from '../../rendering/cameraPresets';
-import type {
-  ProjectSceneProjection
-} from '../../rendering/sceneTypes';
-import {
-  addViewportLighting,
-  createViewportEnvironment,
-  type ViewportEnvironment
-} from '../../rendering/viewportEnvironment';
 import type { ViewportEnvironmentId } from '../../rendering/viewportEnvironment';
 import {
-  captureAbortError,
-  throwIfCaptureAborted
-} from './captureAbort';
+  createCaptureSurface,
+  disposeCaptureSurface,
+  renderCaptureSurface,
+  type CaptureDimensions,
+  type CaptureSurface
+} from './captureSurface';
 import { GIF_CAPTURE_FPS } from './gifFramePlan';
 
 export const GIF_CAPTURE_WIDTH = 640;
 export const GIF_CAPTURE_HEIGHT = 360;
 
-export interface GifCaptureSurface {
-  renderer: THREE.WebGLRenderer;
-  scene: THREE.Scene;
-  camera: THREE.PerspectiveCamera;
-  renderCanvas: HTMLCanvasElement;
+export interface GifCaptureSurface extends CaptureSurface {
   outputContext: CanvasRenderingContext2D;
   encoder: ReturnType<typeof GIFEncoder>;
-  environment: ViewportEnvironment;
   frameCount: number;
 }
 
-export interface GifCaptureResult {
+export interface GifCaptureResult extends CaptureDimensions {
   bytes: Uint8Array;
   frameCount: number;
   eventCount: number;
@@ -47,31 +35,10 @@ export type GifFrameOverlay = (
   context: CanvasRenderingContext2D
 ) => void;
 
-const createRenderer = (
-  canvas: HTMLCanvasElement
-): THREE.WebGLRenderer => {
-  const renderer = new THREE.WebGLRenderer({
-    canvas,
-    antialias: true,
-    alpha: false,
-    preserveDrawingBuffer: true,
-    powerPreference: 'high-performance'
-  });
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.08;
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFShadowMap;
-  renderer.setPixelRatio(1);
-  renderer.setSize(GIF_CAPTURE_WIDTH, GIF_CAPTURE_HEIGHT, false);
-  return renderer;
-};
-
 export const createGifCaptureSurface = (
   environmentId: ViewportEnvironmentId,
   cameraMode: CameraMode
 ): GifCaptureSurface => {
-  const renderCanvas = window.document.createElement('canvas');
   const outputCanvas = window.document.createElement('canvas');
   outputCanvas.width = GIF_CAPTURE_WIDTH;
   outputCanvas.height = GIF_CAPTURE_HEIGHT;
@@ -82,29 +49,15 @@ export const createGifCaptureSurface = (
     throw new Error('GIF capture canvas is unavailable.');
   }
 
-  const renderer = createRenderer(renderCanvas);
-  const scene = new THREE.Scene();
-  const environment = createViewportEnvironment(environmentId);
-  scene.background = environment.background;
-  scene.fog = environment.fog;
-  addViewportLighting(scene);
-
-  const camera = new THREE.PerspectiveCamera(
-    42,
-    GIF_CAPTURE_WIDTH / GIF_CAPTURE_HEIGHT,
-    0.05,
-    300
-  );
-  applyCameraPreset(camera, cameraMode);
-
   return {
-    renderer,
-    scene,
-    camera,
-    renderCanvas,
+    ...createCaptureSurface({
+      width: GIF_CAPTURE_WIDTH,
+      height: GIF_CAPTURE_HEIGHT,
+      environment: environmentId,
+      cameraMode
+    }),
     outputContext,
     encoder: GIFEncoder(),
-    environment,
     frameCount: 0
   };
 };
@@ -113,7 +66,7 @@ export const encodeGifSurfaceFrame = (
   surface: GifCaptureSurface,
   overlay?: GifFrameOverlay
 ): void => {
-  surface.renderer.render(surface.scene, surface.camera);
+  renderCaptureSurface(surface);
   surface.outputContext.clearRect(
     0,
     0,
@@ -163,33 +116,5 @@ export const finishGifCaptureSurface = (
 export const disposeGifCaptureSurface = (
   surface: GifCaptureSurface
 ): void => {
-  surface.environment.dispose();
-  surface.renderer.dispose();
-};
-
-export const waitForProjectionTextures = async (
-  projection: ProjectSceneProjection,
-  signal: AbortSignal
-): Promise<void> => {
-  throwIfCaptureAborted(signal);
-  let abort: (() => void) | null = null;
-  const aborted = new Promise<never>((_resolve, reject) => {
-    abort = () => reject(captureAbortError());
-    signal.addEventListener('abort', abort, { once: true });
-  });
-  try {
-    await Promise.race([projection.ready, aborted]);
-  } finally {
-    if (abort) signal.removeEventListener('abort', abort);
-  }
-  throwIfCaptureAborted(signal);
-  if (projection.readiness.status === 'failed') {
-    throw new Error(
-      projection.readiness.error ??
-      'A project texture could not be decoded.'
-    );
-  }
-  if (projection.readiness.status !== 'ready') {
-    throw new Error('Project textures did not reach a ready state.');
-  }
+  disposeCaptureSurface(surface);
 };

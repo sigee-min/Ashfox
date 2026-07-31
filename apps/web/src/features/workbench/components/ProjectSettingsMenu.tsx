@@ -5,6 +5,9 @@ import {
 } from 'react';
 
 import {
+  isExportModelPathValid,
+  isExportNamespaceValid,
+  normalizeExportModelPath,
   SURFACE_PIXEL_DENSITIES,
   type ProjectDocument,
   type SurfacePixelDensity
@@ -12,6 +15,7 @@ import {
 
 import {
   editableProjectTargetFor,
+  defaultProjectGameVersionFor,
   isMinecraftExportTarget,
   projectExportTargetFor
 } from '../../../application/projectExportTarget';
@@ -61,6 +65,10 @@ export function ProjectSettingsMenu({
   const [target, setTarget] = useState(
     currentEditableTarget?.target ?? null
   );
+  const [gameVersion, setGameVersion] = useState(
+    currentEditableTarget?.gameVersion ??
+    defaultProjectGameVersionFor(currentEditableTarget?.target ?? null)
+  );
   const [namespace, setNamespace] = useState(currentTarget.namespace);
   const [modelPath, setModelPath] = useState(currentTarget.modelPath);
 
@@ -72,6 +80,10 @@ export function ProjectSettingsMenu({
       document.settings.surfacePixelDensity
     );
     setTarget(nextEditableTarget?.target ?? null);
+    setGameVersion(
+      nextEditableTarget?.gameVersion ??
+      defaultProjectGameVersionFor(nextEditableTarget?.target ?? null)
+    );
     setNamespace(nextTarget.namespace);
     setModelPath(nextTarget.modelPath);
   }, [document]);
@@ -84,6 +96,7 @@ export function ProjectSettingsMenu({
     (
       currentEditableTarget === null ||
       target !== currentEditableTarget.target ||
+      gameVersion !== currentEditableTarget.gameVersion ||
       trimmedNamespace !== currentEditableTarget.namespace ||
       trimmedModelPath !== currentEditableTarget.modelPath
     );
@@ -92,10 +105,13 @@ export function ProjectSettingsMenu({
     (
       target === null ||
       (
-        trimmedModelPath.length > 0 &&
+        isExportModelPathValid(target, trimmedModelPath) &&
         (
           !isMinecraftExportTarget(target) ||
-          trimmedNamespace.length > 0
+          (
+            gameVersion !== null &&
+            isExportNamespaceValid(target, trimmedNamespace)
+          )
         )
       )
     );
@@ -119,7 +135,11 @@ export function ProjectSettingsMenu({
           ? {
               target,
               namespace: trimmedNamespace || 'ashfox',
-              modelPath: trimmedModelPath
+              modelPath: trimmedModelPath,
+              gameVersion:
+                isMinecraftExportTarget(target)
+                  ? gameVersion
+                  : null
             }
           : null
     });
@@ -145,9 +165,15 @@ export function ProjectSettingsMenu({
       </label>
       <ProjectTargetFields
         target={target}
+        gameVersion={gameVersion}
         namespace={namespace}
         modelPath={modelPath}
-        onTargetChange={setTarget}
+        onTargetChange={(nextTarget) => {
+          setTarget(nextTarget);
+          setGameVersion(defaultProjectGameVersionFor(nextTarget));
+          setModelPath(normalizeExportModelPath(nextTarget, modelPath));
+        }}
+        onGameVersionChange={setGameVersion}
         onNamespaceChange={setNamespace}
         onModelPathChange={setModelPath}
       />

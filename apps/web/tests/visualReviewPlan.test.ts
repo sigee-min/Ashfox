@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 
 import {
-  evaluateProductionReadiness
+  evaluateProductionReadiness,
+  formatProfileForExport
 } from '@ashfox/engine-core';
 
 import {
@@ -29,6 +30,33 @@ assert.deepEqual(
     'frame:top',
     'cycle:perspective:clip-idle'
   ]
+);
+
+const javaBlockProfile = formatProfileForExport(
+  'java_block',
+  '26.2',
+  'ashfox',
+  'ashfox_crate'
+);
+assert.ok(javaBlockProfile);
+const staticTargetDocument = {
+  ...document,
+  formatProfile: javaBlockProfile
+};
+assert.equal(
+  Object.keys(staticTargetDocument.animations).length,
+  1,
+  'the static delivery profile must not delete canonical clips'
+);
+assert.deepEqual(
+  requiredVisualReviews(staticTargetDocument).map(visualReviewKey),
+  [
+    'frame:perspective',
+    'frame:front',
+    'frame:side',
+    'frame:top'
+  ],
+  'a static artifact must not require reviews for omitted clip cycles'
 );
 
 const receipt = (

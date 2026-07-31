@@ -5,6 +5,7 @@ import path from 'node:path';
 import {
   createProjectFromInput,
   executeCommandBatch,
+  exportCompatibilityOptions,
   listAgentCommandDefinitions,
   validateProjectDocument,
   type CommandReceipt,
@@ -60,14 +61,38 @@ assert.equal(manifest.workbench, '/workbench/');
 assert.equal(manifest.href, '/workbench/agent-manifest.json');
 assert.equal(manifest.pageApi.global, 'ashfox');
 assert.equal(manifest.pageApi.presentMethod, 'present');
+assert.equal(manifest.pageApi.captureMethod, 'capture');
 assert.equal(manifest.pageApi.deliverMethod, 'deliver');
+assert.deepEqual(
+  manifest.compatibility.options,
+  exportCompatibilityOptions()
+);
+assert.match(manifest.compatibility.contract, /listed target and gameVersion/);
+assert.match(manifest.compatibility.contract, /animationSupport/);
+assert.match(manifest.compatibility.contract, /canonical source unchanged/);
+assert.ok(
+  manifest.compatibility.options
+    .filter((option) => option.target === 'java_block')
+    .every((option) => option.animationSupport === 'none')
+);
 assert.match(manifest.pageApi.present.call, /window\.ashfox\.present/);
 assert.match(manifest.pageApi.present.call, /review:"next"/);
 assert.match(manifest.pageApi.present.accept, /review:"accept"/);
 assert.match(manifest.pageApi.present.accept, /frameNonce/);
 assert.match(manifest.pageApi.present.reject, /review:"reject"/);
 assert.match(manifest.pageApi.present.reject, /issues/);
+assert.match(manifest.pageApi.capture.result, /window\.ashfox\.capture/);
+assert.match(manifest.pageApi.capture.result, /kind:"result"/);
+assert.match(manifest.pageApi.capture.animation, /clipId:"idle"/);
+assert.match(manifest.pageApi.capture.build, /kind:"build"/);
+assert.match(manifest.pageApi.capture.contract, /never raw bytes/);
+assert.match(manifest.pageApi.capture.contract, /camera, background, resolution/);
 assert.match(manifest.pageApi.deliver.call, /window\.ashfox\.deliver/);
+assert.match(manifest.pageApi.deliver.contract, /project profile/);
+assert.match(manifest.pageApi.deliver.contract, /game version/);
+assert.match(manifest.pageApi.deliver.contract, /adaptationCount/);
+assert.match(manifest.pageApi.deliver.contract, /converted,omitted/);
+assert.match(manifest.pageApi.deliver.contract, /never mutates/);
 assert.match(manifest.pageApi.inspect.command, /kind:"command"/);
 assert.match(manifest.pageApi.run.call, /await window\.ashfox\.run/);
 assert.match(manifest.pageApi.run.call, /requestId/);
@@ -76,7 +101,10 @@ assert.match(manifest.setup.manifest, /such as curl/);
 assert.match(manifest.setup.manifest, /Do not navigate/);
 assert.match(manifest.setup.ready, /What would you like to create/);
 
-assert.match(manifest.authoring.project, /name,target\?,density\?/);
+assert.match(
+  manifest.authoring.project,
+  /name,target\?,gameVersion\?,density\?/
+);
 assert.match(manifest.authoring.coordinates, /1\/d model unit/);
 assert.match(manifest.authoring.hierarchy, /derives .*snap/);
 assert.match(manifest.authoring.hierarchy, /UVs/);
@@ -89,14 +117,30 @@ assert.deepEqual(
 );
 assert.match(manifest.animation.command, /animation\.motion\.upsert/);
 assert.match(manifest.animation.idle, /static:true/);
+assert.match(manifest.animation.idle, /preserve them/);
 assert.match(manifest.animation.poses, /rotations/);
 assert.match(manifest.animation.spins, /continuous hinge/);
 assert.match(manifest.animation.patch, /removePartIds/);
 assert.match(manifest.quality.required, /never a quality target/);
+assert.match(manifest.quality.required, /may retain canonical clips/);
 assert.match(manifest.quality.fidelity, /generic humanoid/);
 assert.match(manifest.quality.review, /identity or appeal/);
 
 const agentDefinitions = listAgentCommandDefinitions();
+for (const commandName of ['project.create', 'project.target.set']) {
+  const command = agentDefinitions.find(
+    (definition) => definition.name === commandName
+  );
+  assert.ok(command);
+  const schema = JSON.stringify(command?.inputSchema);
+  assert.match(schema, /gameVersion/);
+  for (const option of exportCompatibilityOptions()) {
+    if (option.gameVersion !== null) {
+      assert.ok(schema.includes(option.gameVersion));
+    }
+  }
+  assert.match(schema, /java_block/);
+}
 assert.equal(
   schemaHash({ properties: { b: 2, a: 1 } }),
   schemaHash({ properties: { a: 1, b: 2 } })
@@ -216,11 +260,14 @@ assert.equal(
   manifest.domBridge.result.attribute
 );
 assert.match(manifest.domBridge.request, /requestId/);
-assert.match(manifest.domBridge.request, /inspect\|run\|present\|deliver/);
+assert.match(
+  manifest.domBridge.request,
+  /inspect\|run\|present\|capture\|deliver/
+);
 assert.match(manifest.domBridge.response, /same-unique-id/);
 assert.deepEqual(
   Object.keys(manifest.domBridge.examples),
-  ['inspect', 'run', 'present', 'deliver']
+  ['inspect', 'run', 'present', 'capture', 'deliver']
 );
 for (const [method, example] of Object.entries(
   manifest.domBridge.examples
@@ -233,6 +280,9 @@ for (const [method, example] of Object.entries(
   assert.equal(envelope.method, method);
   assert.ok(envelope.requestId.length > 0);
   assert.equal(method === 'deliver', envelope.payload === undefined);
+  if (method === 'capture') {
+    assert.deepEqual(envelope.payload, { kind: 'result' });
+  }
 }
 assert.match(
   html,
@@ -262,8 +312,13 @@ for (const step of manifest.workflow) {
 assert.match(manifest.workflow[0].instruction, /project\.create/);
 assert.match(manifest.workflow[2].instruction, /root/);
 assert.match(manifest.workflow[3].instruction, /animation\.motion\.upsert/);
+assert.match(manifest.workflow[4].instruction, /capture/);
 assert.equal(manifest.artifact.requestedPath, 'workspace-relative directory');
 assert.equal(manifest.artifact.defaultDirectory, 'artifacts/');
+assert.match(manifest.artifact.adaptationReceipt, /adaptationCount/);
+assert.match(manifest.artifact.adaptationReceipt, /do not delete/);
+assert.match(manifest.artifact.rule, /capture or deliver/);
+assert.match(manifest.artifact.rule, /metadata only/);
 
 const document = createGltfProject();
 const selectedCube = Object.values(document.scene.nodes)
@@ -450,6 +505,38 @@ const authoredModel = executeCommandBatch(
 assert.equal(authoredModel.ok, true);
 if (!authoredModel.ok) {
   throw new Error('Exact inspect fixture could not be authored.');
+}
+const compatibilityInspect = inspectProject(
+  authoredModel.document,
+  null,
+  validateProjectDocument(authoredModel.document),
+  { kind: 'target' }
+);
+assert.equal(compatibilityInspect.ok, true);
+if (compatibilityInspect.ok) {
+  const compatibility = compatibilityInspect.data as {
+    target: string;
+    gameVersion: string | null;
+    animationSupport: string | null;
+    supportedGameVersions: readonly {
+      version: string;
+      isDefaultVersion: boolean;
+    }[];
+  };
+  assert.equal(compatibility.target, 'geckolib5');
+  assert.equal(compatibility.gameVersion, '26.1');
+  assert.equal(compatibility.animationSupport, 'actor');
+  assert.deepEqual(
+    compatibility.supportedGameVersions.map((option) => ({
+      version: option.version,
+      isDefaultVersion: option.isDefaultVersion
+    })),
+    [
+      { version: '1.21.5', isDefaultVersion: false },
+      { version: '1.21.11', isDefaultVersion: false },
+      { version: '26.1', isDefaultVersion: true }
+    ]
+  );
 }
 const exactInspect = inspectProject(
   authoredModel.document,

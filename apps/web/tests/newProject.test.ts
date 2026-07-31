@@ -12,6 +12,7 @@ const operation = createProjectOperation(
   {
     name: 'Copper Golem',
     target: 'geckolib5',
+    gameVersion: '1.21.11',
     density: 2
   }
 );
@@ -21,6 +22,7 @@ assert.deepEqual(operation, {
   payload: {
     name: 'Copper Golem',
     target: 'geckolib5',
+    gameVersion: '1.21.11',
     density: 2
   }
 });

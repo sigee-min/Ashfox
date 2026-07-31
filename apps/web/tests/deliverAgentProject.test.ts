@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 import {
+  executeCommandBatch,
   validateProjectDocument,
   type ProjectDocument
 } from '@ashfox/engine-core';
@@ -18,8 +19,8 @@ import {
   requiredVisualReviews
 } from '../src/features/agent/visualReviewPlan';
 import type {
-  ArtifactFile
-} from '../src/features/files/artifactFile';
+  TargetArtifactFile
+} from '../src/features/files/browserFileWorkflow';
 import type {
   FileOperationRunResult
 } from '../src/features/files/useFileOperation';
@@ -68,7 +69,7 @@ const reviews: readonly VisualReviewReceipt[] =
     verdict: 'accepted',
     issues: []
   }));
-const artifact: ArtifactFile = {
+const artifact: TargetArtifactFile = {
   kind: 'target',
   name: 'ashfox_crate.glb',
   contentType: 'model/gltf-binary',
@@ -76,9 +77,24 @@ const artifact: ArtifactFile = {
   projectId: document.id,
   sourceRevision: document.revision,
   target: 'glb',
-  contentHash: 'sha256:test'
+  contentHash: 'sha256:test',
+  sourceFileCount: 1,
+  gameVersion: null,
+  adaptationCount: 2,
+  adaptations: {
+    converted: [{
+      code: 'animation.easing_baked',
+      path: 'animations.idle.channels.turn.keys.key-mid',
+      message: 'Baked easing into portable transform keys.'
+    }],
+    omitted: [{
+      code: 'animation.trigger_omitted',
+      path: 'animations.idle.triggers.sound',
+      message: 'Omitted a sound trigger without a GLB equivalent.'
+    }]
+  }
 };
-const delivered: FileOperationRunResult<ArtifactFile> = {
+const delivered: FileOperationRunResult<TargetArtifactFile> = {
   ok: true,
   operationId: 1,
   result: artifact
@@ -170,6 +186,65 @@ export const test = (async (): Promise<void> => {
   if (result.ok) {
     assert.equal(result.artifact.name, artifact.name);
     assert.equal(result.artifact.byteLength, artifact.bytes.byteLength);
+    assert.equal(result.artifact.gameVersion, null);
+    assert.equal(result.artifact.adaptationCount, 2);
+    assert.deepEqual(result.artifact.adaptations, artifact.adaptations);
+  }
+}
+
+{
+  const converted = executeCommandBatch(
+    document,
+    {
+      batchId: 'deliver-geckolib-version',
+      baseProjectId: document.id,
+      baseRevision: document.revision,
+      operations: [{
+        name: 'project.target.set',
+        payload: {
+          target: 'geckolib5',
+          gameVersion: '1.21.5'
+        }
+      }]
+    },
+    { source: 'agent' }
+  );
+  assert.equal(converted.ok, true);
+  if (!converted.ok) throw new Error(converted.error.message);
+  const geckoDocument = converted.document;
+  const geckoReviews: readonly VisualReviewReceipt[] =
+    requiredVisualReviews(geckoDocument).map((review, index) => ({
+      projectId: geckoDocument.id,
+      revision: geckoDocument.revision,
+      mode: review.mode,
+      camera: review.camera,
+      clipId: review.clipId,
+      observedTimeSeconds: 0,
+      completedCycles: review.mode === 'cycle' ? 1 : 0,
+      frameNonce: index + 1,
+      verdict: 'accepted',
+      issues: []
+    }));
+  const geckoArtifact: TargetArtifactFile = {
+    ...artifact,
+    projectId: geckoDocument.id,
+    sourceRevision: geckoDocument.revision,
+    target: 'geckolib5'
+  };
+  const result = await deliverAgentProject({
+    document: geckoDocument,
+    report: validateProjectDocument(geckoDocument),
+    visualReviews: geckoReviews,
+    currentDocument: () => geckoDocument,
+    exportTarget: async () => ({
+      ok: true,
+      operationId: 2,
+      result: geckoArtifact
+    })
+  });
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.artifact.gameVersion, '1.21.5');
   }
 }
 })();

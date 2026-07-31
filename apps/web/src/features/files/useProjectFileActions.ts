@@ -14,7 +14,8 @@ import type {
 import {
   createProjectArtifact,
   createTargetArtifact,
-  parseProjectFile
+  parseProjectFile,
+  type TargetArtifactFile
 } from './browserFileWorkflow';
 import {
   isArtifactCurrent,
@@ -29,11 +30,15 @@ import {
 } from './useFileOperation';
 import { createAnimatedGif } from '../capture/createAnimatedGif';
 import { createBuildGif } from '../capture/createBuildGif';
+import { createResultPng } from '../capture/createResultPng';
 import {
   isGifCaptureFile,
   type GifCaptureFile
 } from '../capture/gifCaptureFile';
 import type { GifCaptureRequest } from '../capture/gifCaptureRequest';
+import type {
+  CaptureArtifactRequest
+} from './captureArtifactRequest';
 import {
   projectExportTargetFor
 } from '../../application/projectExportTarget';
@@ -54,10 +59,26 @@ interface ProjectFileActions {
   save: () => void;
   exportTarget: (
     lease?: OperationLeaseToken
+  ) => Promise<FileOperationRunResult<TargetArtifactFile>>;
+  capture: (
+    request: CaptureArtifactRequest,
+    lease?: OperationLeaseToken
   ) => Promise<FileOperationRunResult<ArtifactFile>>;
   captureGif: (request: GifCaptureRequest) => void;
   cancel: () => void;
 }
+
+const adaptationNotice = (
+  artifact: TargetArtifactFile
+): string => {
+  if (artifact.adaptationCount === 0) return '';
+  const converted = artifact.adaptations.converted.length;
+  const omitted = artifact.adaptations.omitted.length;
+  return [
+    converted === 0 ? null : `${converted} converted`,
+    omitted === 0 ? null : `${omitted} omitted`
+  ].filter((part): part is string => part !== null).join(' · ');
+};
 
 export const useProjectFileActions = ({
   document,
@@ -122,27 +143,37 @@ export const useProjectFileActions = ({
 
   const exportTarget = useCallback((lease?: OperationLeaseToken) => {
     const target = projectExportTargetFor(document);
-    return run({
+    return run<TargetArtifactFile, TargetArtifactFile>({
       kind: 'export',
       pendingMessage: `Building ${target.target} export`,
       execute: () => createTargetArtifact(document, assets),
-      complete: (artifact) => ({
-        phase: 'succeeded',
-        message: `Ready · ${artifact.name} · ${artifact.sourceFileCount} file${artifact.sourceFileCount === 1 ? '' : 's'}`,
-        result: artifact
-      }),
+      complete: (artifact) => {
+        const adaptations = adaptationNotice(artifact);
+        return {
+          phase: 'succeeded',
+          message:
+            `Ready · ${artifact.name} · ${artifact.sourceFileCount} file${artifact.sourceFileCount === 1 ? '' : 's'}` +
+            (adaptations.length === 0 ? '' : ` · ${adaptations}`),
+          result: artifact
+        };
+      },
       failureMessage: 'Target export failed'
     }, lease);
   }, [assets, document, run]);
 
-  const captureGif = useCallback(
-    (request: GifCaptureRequest): void => {
-      void run({
+  const capture = useCallback(
+    (
+      request: CaptureArtifactRequest,
+      lease?: OperationLeaseToken
+    ): Promise<FileOperationRunResult<ArtifactFile>> =>
+      run<ArtifactFile>({
         kind: 'capture',
         pendingMessage:
           request.kind === 'build'
             ? 'Preparing build process GIF'
-            : 'Preparing animation GIF',
+            : request.kind === 'animation'
+              ? 'Preparing animation GIF'
+              : 'Preparing result image',
         execute: ({ signal, reportProgress }) =>
           request.kind === 'build'
             ? createBuildGif(assets, request, {
@@ -151,22 +182,34 @@ export const useProjectFileActions = ({
                   reportProgress(`Captured ${completed}/${total} frames`);
                 }
               })
-            : createAnimatedGif(document, assets, request, {
-                signal,
-                onProgress: (completed, total) => {
-                  reportProgress(`Captured ${completed}/${total} frames`);
-                }
-              }),
+            : request.kind === 'animation'
+              ? createAnimatedGif(document, assets, request, {
+                  signal,
+                  onProgress: (completed, total) => {
+                    reportProgress(`Captured ${completed}/${total} frames`);
+                  }
+                })
+              : createResultPng(document, assets, { signal }),
         complete: (capture) => ({
           phase: 'succeeded',
-          message: 'GIF ready',
+          message:
+            request.kind === 'result' ? 'Image ready' : 'GIF ready',
           result: capture
         }),
-        failureMessage: 'GIF capture failed',
-        cancelledMessage: 'GIF capture cancelled'
-      });
-    },
+        failureMessage:
+          request.kind === 'result'
+            ? 'Result capture failed'
+            : 'GIF capture failed',
+        cancelledMessage: 'Capture cancelled'
+      }, lease),
     [assets, document, run]
+  );
+
+  const captureGif = useCallback(
+    (request: GifCaptureRequest): void => {
+      void capture(request);
+    },
+    [capture]
   );
 
   const artifactFile =
@@ -188,6 +231,7 @@ export const useProjectFileActions = ({
     drop,
     save,
     exportTarget,
+    capture,
     captureGif,
     cancel
   };

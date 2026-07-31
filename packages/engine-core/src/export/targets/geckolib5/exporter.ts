@@ -1,5 +1,6 @@
 import type { ProjectDocument, TextureAsset } from '../../../model';
 import { validateProjectDocument } from '../../../validation';
+import { createExportAdaptationReceipt } from '../../adaptations';
 import { createJsonExportFile } from '../../json';
 import { buildMinecraftActorAnimation } from '../../shared/minecraftAnimation';
 import { buildMinecraftGeometry } from '../../shared/minecraftGeometry';
@@ -66,15 +67,16 @@ export const exportGeckoLib5 = (document: ProjectDocument): ExportBundle => {
     revision: document.revision,
     target: {
       id: 'minecraft.java.geckolib5',
-      version: profile.version
+      version: profile.minecraftVersion
     },
-    rootPath: 'resource-pack',
+    rootPath: 'src/main/resources',
     entrypoints: [modelPath, animationPath],
     files: [
       createJsonExportFile('geometry', modelPath, buildGeckoLib5Geometry(document)),
       createJsonExportFile('animation', animationPath, buildGeckoLib5Animations(document)),
       ...textureFiles
     ],
-    findings: report.findings
+    findings: report.findings,
+    adaptations: createExportAdaptationReceipt(document)
   };
 };

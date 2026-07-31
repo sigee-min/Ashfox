@@ -11,13 +11,21 @@ import {
 import {
   effectivelyVisibleSceneNodeIds
 } from '../../../sceneVisibility';
-import { supportsJavaMultiAxisRotation, validateProjectDocument } from '../../../validation';
+import { validateProjectDocument } from '../../../validation';
+import { createExportAdaptationReceipt } from '../../adaptations';
+import {
+  supportsJavaBlockMultiAxisRotation
+} from '../../compatibility';
 import { createJsonExportFile } from '../../json';
 import {
   ProjectExportError,
   type BlobCopyExportFile,
   type ExportBundle
 } from '../../types';
+import {
+  buildMinecraftJavaBlockState,
+  buildMinecraftJavaPackMetadata
+} from './resourcePack';
 
 export interface MinecraftJavaFace {
   uv: [number, number, number, number];
@@ -53,7 +61,6 @@ export interface MinecraftJavaElement {
 }
 
 export interface MinecraftJavaModel {
-  format_version: string;
   parent?: string;
   ambientocclusion?: boolean;
   gui_light?: 'front';
@@ -84,7 +91,10 @@ const compileJavaRotation = (
   const canUseAxisRotation =
     activeAxes.length <= 1 && Math.abs(primary.angle) <= 45;
 
-  if (canUseAxisRotation || !supportsJavaMultiAxisRotation(profile.version)) {
+  if (
+    canUseAxisRotation ||
+    !supportsJavaBlockMultiAxisRotation(profile.minecraftVersion)
+  ) {
     const axes = ['x', 'y', 'z'] as const;
     return {
       origin,
@@ -197,7 +207,6 @@ export const buildMinecraftJavaModel = (document: ProjectDocument): MinecraftJav
     )
     .sort((left, right) => left.id.localeCompare(right.id));
   const model: MinecraftJavaModel = {
-    format_version: profile.version,
     ...(profile.parent ? { parent: profile.parent } : {}),
     ...(profile.ambientOcclusion === false ? { ambientocclusion: false } : {}),
     ...(profile.guiLight === 'front' ? { gui_light: 'front' as const } : {}),
@@ -222,7 +231,11 @@ export const exportMinecraftJavaBlock = (document: ProjectDocument): ExportBundl
     throw new ProjectExportError('Minecraft Java export validation failed.', report.findings);
   }
   const profile = document.formatProfile;
-  const modelPath = `assets/${profile.namespace}/models/${profile.modelKind}/${profile.modelPath}.json`;
+  const packMetadataPath = 'pack.mcmeta';
+  const modelPath =
+    `assets/${profile.namespace}/models/block/${profile.modelPath}.json`;
+  const blockstatePath =
+    `assets/${profile.namespace}/blockstates/${profile.modelPath}.json`;
   const model = buildMinecraftJavaModel(document);
   const textureFiles = Object.values(document.textures)
     .sort((left, right) => left.id.localeCompare(right.id))
@@ -234,14 +247,29 @@ export const exportMinecraftJavaBlock = (document: ProjectDocument): ExportBundl
     revision: document.revision,
     target: {
       id: 'minecraft.java_block',
-      version: profile.version
+      version: profile.minecraftVersion
     },
     rootPath: 'resource-pack',
-    entrypoints: [modelPath],
+    entrypoints: [
+      packMetadataPath,
+      blockstatePath,
+      modelPath
+    ],
     files: [
+      createJsonExportFile(
+        'manifest',
+        packMetadataPath,
+        buildMinecraftJavaPackMetadata(document)
+      ),
+      createJsonExportFile(
+        'blockstate',
+        blockstatePath,
+        buildMinecraftJavaBlockState(document)
+      ),
       createJsonExportFile('model', modelPath, model),
       ...textureFiles
     ],
-    findings: report.findings
+    findings: report.findings,
+    adaptations: createExportAdaptationReceipt(document)
   };
 };

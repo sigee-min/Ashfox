@@ -19,19 +19,23 @@ import type {
   PartAuthoringSpec,
   PartMaterialDefinition,
 } from '../modeling/partContract';
+import type {
+  ExportPreset,
+  MinecraftGameVersion
+} from '../export/compatibility';
+
+export type {
+  ExportPreset,
+  MinecraftGameVersion
+} from '../export/compatibility';
 
 export type CommandSource = 'web' | 'agent' | 'import' | 'system';
 export type SceneAxis = 'x' | 'y' | 'z';
 export type AlignmentMode = 'minimum' | 'center' | 'maximum';
-export type ExportPreset =
-  | 'gltf'
-  | 'glb'
-  | 'bedrock'
-  | 'geckolib5';
-
 export interface ProjectCreateInput {
   name: string;
   target?: ExportPreset;
+  gameVersion?: MinecraftGameVersion;
   density?: SurfacePixelDensity;
 }
 
@@ -39,6 +43,7 @@ export interface ProjectDocumentCreateInput {
   id: ProjectId;
   name: string;
   target: ExportPreset;
+  gameVersion?: MinecraftGameVersion;
   namespace: string;
   modelPath: string;
   createdAt: string;
@@ -47,6 +52,7 @@ export interface ProjectDocumentCreateInput {
 
 export interface ProjectTargetInput {
   target: ExportPreset;
+  gameVersion?: MinecraftGameVersion;
 }
 
 export interface ProjectIntentInput {

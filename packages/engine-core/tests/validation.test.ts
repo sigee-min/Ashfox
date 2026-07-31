@@ -37,6 +37,30 @@ const clone = <T>(value: T): T => structuredClone(value);
 
 {
   const project = clone(createJavaProject()) as ProjectDocument;
+  const root = project.scene.nodes['bone-root'];
+  project.scene.nodes['locator-output-only'] = {
+    id: 'locator-output-only',
+    kind: 'locator',
+    name: 'effect_origin',
+    parentId: 'bone-root',
+    transform: structuredClone(root.transform),
+    visible: true
+  };
+  const report = validateProjectDocument(project);
+  assert.equal(report.valid, true);
+  assert.equal(
+    report.findings.some(
+      (finding) =>
+        finding.code === 'format.unsupported_data' &&
+        finding.entityIds?.includes('locator-output-only')
+    ),
+    false,
+    'Java export may omit locators without deleting canonical scene nodes'
+  );
+}
+
+{
+  const project = clone(createJavaProject()) as ProjectDocument;
   const outer = project.scene.nodes['cube-body'];
   if (outer.kind !== 'cube') throw new Error('fixture cube missing');
   outer.transform = {
@@ -222,6 +246,21 @@ const clone = <T>(value: T): T => structuredClone(value);
 
 {
   const project = clone(createGltfProject()) as ProjectDocument;
+  project.animations['clip-idle']
+    .channels['channel-root-rotation'].keys = [];
+  const report = validateProjectDocument(project);
+  assert.equal(report.valid, true);
+  assert.equal(
+    report.findings.some(
+      (finding) => finding.path.endsWith('.keys')
+    ),
+    false,
+    'an empty glTF channel is omitted by export instead of invalidating its source clip'
+  );
+}
+
+{
+  const project = clone(createGltfProject()) as ProjectDocument;
   const clip = project.animations['clip-idle'];
   const channel = clip.channels['channel-root-rotation'];
   const keyframe = channel.keys[1];
@@ -286,7 +325,8 @@ const clone = <T>(value: T): T => structuredClone(value);
   const project = clone(createGeckoLib5Project()) as ProjectDocument;
   project.formatProfile = {
     id: 'minecraft.bedrock',
-    version: '1.21.0',
+    minecraftVersion: '1.26.0',
+    geometryFormatVersion: '1.21.0',
     animationFormatVersion: '1.8.0',
     namespace: 'ashfox',
     modelPath: 'ashfox_crate',
@@ -323,12 +363,14 @@ const clone = <T>(value: T): T => structuredClone(value);
     ]
   };
   const report = validateProjectDocument(project);
-  assert.equal(report.valid, false);
-  assert.ok(
+  assert.equal(report.valid, true);
+  assert.equal(
     report.findings.some(
       (finding) =>
         finding.code === 'format.unsupported_data' &&
         finding.path.startsWith('animations.clip-idle.triggers.')
-    )
+    ),
+    false,
+    'glTF event tracks are safe export omissions, not canonical errors'
   );
 }

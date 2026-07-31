@@ -5,7 +5,7 @@ import type {
 } from '../src/rendering/sceneTypes';
 import {
   waitForProjectionTextures
-} from '../src/features/capture/gifCaptureSurface';
+} from '../src/features/capture/captureSurface';
 
 const projection = (
   readiness: ProjectSceneProjection['readiness'],

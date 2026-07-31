@@ -1,4 +1,5 @@
 import type {
+  MinecraftGameVersion,
   ProjectCommandOperation,
   ProjectDocument,
   SurfacePixelDensity
@@ -13,6 +14,18 @@ export interface ProjectSettingsInput {
   surfacePixelDensity: SurfacePixelDensity;
   exportTarget: EditableProjectTarget | null;
 }
+
+const targetPayload = (
+  target: EditableProjectTarget
+): {
+  target: EditableProjectTarget['target'];
+  gameVersion?: MinecraftGameVersion;
+} => ({
+  target: target.target,
+  ...(target.gameVersion === null
+    ? {}
+    : { gameVersion: target.gameVersion })
+});
 
 export const createProjectSettingsOperations = (
   document: ProjectDocument,
@@ -37,27 +50,28 @@ export const createProjectSettingsOperations = (
     });
   }
   const currentTarget = editableProjectTargetFor(document);
-  const targetChanged =
+  const targetPresetChanged =
     input.exportTarget !== null &&
     (
       currentTarget === null ||
       currentTarget.target !== input.exportTarget.target
     );
+  const targetVersionChanged =
+    input.exportTarget !== null &&
+    currentTarget?.gameVersion !== input.exportTarget.gameVersion;
   if (
     input.exportTarget !== null &&
-    targetChanged
+    (targetPresetChanged || targetVersionChanged)
   ) {
     operations.push({
       name: 'project.target.set',
-      payload: {
-        target: input.exportTarget.target
-      }
+      payload: targetPayload(input.exportTarget)
     });
   }
   if (
     input.exportTarget !== null &&
     (
-      targetChanged ||
+      targetPresetChanged ||
       currentTarget === null ||
       currentTarget.namespace !== input.exportTarget.namespace ||
       currentTarget.modelPath !== input.exportTarget.modelPath

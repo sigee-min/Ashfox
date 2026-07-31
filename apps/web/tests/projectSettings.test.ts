@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 
 import {
+  createProjectFromInput
+} from '@ashfox/engine-core';
+
+import {
   createBlankWorkbenchProject
 } from '../src/features/workbench/newProject';
 import {
@@ -74,13 +78,15 @@ assert.deepEqual(
     exportTarget: {
       target: 'bedrock',
       namespace: 'ashfox',
-      modelPath: 'copper_truck'
+      modelPath: 'copper_truck',
+      gameVersion: '1.26.0'
     }
   }),
   [{
     name: 'project.target.set',
     payload: {
-      target: 'bedrock'
+      target: 'bedrock',
+      gameVersion: '1.26.0'
     }
   }, {
     name: 'project.resource.set',
@@ -90,4 +96,40 @@ assert.deepEqual(
     }
   }],
   'target changes must use the canonical target command'
+);
+
+const geckoProject = createProjectFromInput(
+  {
+    id: 'settings-gecko',
+    name: 'Versioned creature',
+    target: 'geckolib5',
+    gameVersion: '1.21.11',
+    namespace: 'ashfox',
+    modelPath: 'versioned_creature',
+    createdAt: '2026-07-31T00:00:00.000Z'
+  },
+  'local-0001'
+);
+const geckoTarget = editableProjectTargetFor(geckoProject);
+assert.ok(geckoTarget);
+if (!geckoTarget) {
+  throw new Error('Expected the GeckoLib target to be editable.');
+}
+assert.deepEqual(
+  createProjectSettingsOperations(geckoProject, {
+    name: geckoProject.name,
+    surfacePixelDensity: 1,
+    exportTarget: {
+      ...geckoTarget,
+      gameVersion: '1.21.5'
+    }
+  }),
+  [{
+    name: 'project.target.set',
+    payload: {
+      target: 'geckolib5',
+      gameVersion: '1.21.5'
+    }
+  }],
+  'changing only the game version must not rewrite resource settings'
 );

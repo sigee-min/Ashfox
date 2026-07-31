@@ -238,7 +238,7 @@ for (const [id, x, z] of legData) {
   const hoof = `bone-leg-${id}-hoof`;
   cubes.push(
     demoCube(`cube-leg-${id}-upper`, upper, pivotOf(upper), [x, 11.2, z], [3.5, 7, 3.8], T.coat),
-    demoCube(`cube-leg-${id}-moon-band`, upper, pivotOf(upper), [x, 8.4, z], [3.7, 1, 4], T.gold),
+    demoCube(`cube-leg-${id}-moon-band`, upper, pivotOf(upper), [x, 8.4, z], [4.5, 1, 4.8], T.gold),
     demoCube(`cube-leg-${id}-lower`, lower, pivotOf(lower), [x, 6.2, z - 0.2], [2.6, 5.5, 2.8], T.moonlight),
     demoCube(`cube-leg-${id}-hoof`, hoof, pivotOf(hoof), [x, 2.5, z - 1], [3.2, 2.5, 4.4], T.hoof),
     demoCube(`cube-leg-${id}-hoof-rune`, hoof, pivotOf(hoof), [x, 2.8, z - 3.28], [1.2, 0.85, 0.25], T.aura)
@@ -450,6 +450,15 @@ export const MOONVEIL_KIRIN_DEMO: DemoDefinition = {
   name: 'Moonveil · Celestial Kirin',
   modelPath: 'moonveil_celestial_kirin',
   initialSelectionId: null,
+  intent: {
+    subject: 'celestial fantasy kirin',
+    grounding: 'free',
+    features: [
+      'recognizable quadruped body plan',
+      'branching celestial antlers',
+      'precise surface-bound eyes'
+    ]
+  },
   textures: [
     {
       id: T.coat,
@@ -486,7 +495,7 @@ export const MOONVEIL_KIRIN_DEMO: DemoDefinition = {
   cubes,
   animations: [
     {
-      id: 'animation-moonveil-idle',
+      id: 'idle',
       name: 'Moonveil Idle',
       durationSeconds: 3.6,
       fps: 20,

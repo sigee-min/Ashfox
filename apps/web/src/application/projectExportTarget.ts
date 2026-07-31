@@ -1,25 +1,31 @@
 import type {
   ExportPreset,
+  MinecraftGameVersion,
   ProjectDocument
+} from '@ashfox/engine-core';
+import {
+  exportCompatibilityOptions,
+  gameVersionForFormatProfile
 } from '@ashfox/engine-core';
 
 export type VisibleExportPreset = ExportPreset;
 
 export type ProjectArtifactTarget =
   | VisibleExportPreset
-  | 'ashfox.generic'
-  | 'minecraft.java_block';
+  | 'ashfox.generic';
 
 export interface ProjectExportTarget {
   target: ProjectArtifactTarget;
   namespace: string;
   modelPath: string;
+  gameVersion: MinecraftGameVersion | null;
 }
 
 export interface EditableProjectTarget {
   target: VisibleExportPreset;
   namespace: string;
   modelPath: string;
+  gameVersion: MinecraftGameVersion | null;
 }
 
 export interface ProjectExportTargetOption {
@@ -28,28 +34,61 @@ export interface ProjectExportTargetOption {
   detail: string;
 }
 
-export const PROJECT_EXPORT_TARGETS: readonly ProjectExportTargetOption[] = [
-  {
-    id: 'geckolib5',
-    label: 'GeckoLib 5',
-    detail: 'Minecraft Java animated asset'
-  },
-  {
-    id: 'bedrock',
-    label: 'Bedrock',
-    detail: 'Geometry and actor animation'
-  },
-  {
-    id: 'glb',
-    label: 'GLB',
-    detail: 'Single embedded binary'
-  },
-  {
-    id: 'gltf',
-    label: 'glTF',
-    detail: 'JSON with external resources'
+export interface ProjectGameVersionOption {
+  value: MinecraftGameVersion;
+  label: string;
+  isDefaultVersion: boolean;
+}
+
+const TARGET_DETAILS: Readonly<Record<VisibleExportPreset, string>> = {
+  gltf: 'JSON with external resources',
+  glb: 'Single embedded binary',
+  java_block: 'Static Java block model',
+  bedrock: 'Geometry and actor animation',
+  geckolib5: 'Java animated asset'
+};
+
+const targetOptions = new Map<
+  VisibleExportPreset,
+  ProjectExportTargetOption
+>();
+for (const option of exportCompatibilityOptions()) {
+  if (targetOptions.has(option.target)) continue;
+  targetOptions.set(option.target, {
+    id: option.target,
+    label: option.label,
+    detail: TARGET_DETAILS[option.target]
+  });
+}
+
+export const PROJECT_EXPORT_TARGETS = Object.freeze(
+  [...targetOptions.values()]
+) as readonly ProjectExportTargetOption[];
+
+export const projectGameVersionOptionsFor = (
+  target: VisibleExportPreset | null
+): readonly ProjectGameVersionOption[] => {
+  if (target === null) return [];
+  const options: ProjectGameVersionOption[] = [];
+  for (const option of exportCompatibilityOptions(target)) {
+    if (option.gameVersion === null) continue;
+    options.push({
+      value: option.gameVersion,
+      label: option.gameVersionLabel ?? option.gameVersion,
+      isDefaultVersion: option.isDefaultVersion
+    });
   }
-];
+  return options;
+};
+
+export const defaultProjectGameVersionFor = (
+  target: VisibleExportPreset | null
+): MinecraftGameVersion | null => {
+  const options = projectGameVersionOptionsFor(target);
+  return (
+    options.find((option) => option.isDefaultVersion) ?? options[0]
+  )?.value ?? null;
+};
 
 export const projectResourceToken = (value: string): string =>
   value
@@ -66,10 +105,11 @@ const targetFor = (
       return 'bedrock';
     case 'minecraft.java.geckolib5':
       return 'geckolib5';
+    case 'minecraft.java_block':
+      return 'java_block';
     case 'gltf.2':
       return document.formatProfile.container;
     case 'ashfox.generic':
-    case 'minecraft.java_block':
       return document.formatProfile.id;
   }
 };
@@ -89,7 +129,8 @@ export const projectExportTargetFor = (
     modelPath:
       profile.id === 'ashfox.generic'
         ? projectResourceToken(document.name)
-        : profile.modelPath
+        : profile.modelPath,
+    gameVersion: gameVersionForFormatProfile(profile)
   };
 };
 
@@ -103,7 +144,8 @@ export const editableProjectTargetFor = (
     ? {
         target: target.target as VisibleExportPreset,
         namespace: target.namespace,
-        modelPath: target.modelPath
+        modelPath: target.modelPath,
+        gameVersion: target.gameVersion
       }
     : null;
 };
@@ -116,10 +158,10 @@ export const projectExportTargetLabel = (
   (
     target === 'ashfox.generic'
       ? 'ashfox JSON'
-      : 'Java block model'
+      : target
   );
 
 export const isMinecraftExportTarget = (
   target: VisibleExportPreset | null
 ): boolean =>
-  target === 'bedrock' || target === 'geckolib5';
+  projectGameVersionOptionsFor(target).length > 0;

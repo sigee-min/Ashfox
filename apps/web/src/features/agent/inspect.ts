@@ -3,6 +3,7 @@ import {
   CANONICAL_IDLE_CLIP_ID,
   canonicalizePartOccupancies,
   evaluateProductionReadiness,
+  exportCompatibilityOptions,
   getAgentCommandDefinition,
   isSceneNodeEffectivelyVisible,
   orthographicContributionMetrics,
@@ -10,6 +11,8 @@ import {
   readCompiledParts,
   readPartRecipe,
   type CommandReceipt,
+  type ExportCompatibilityOption,
+  type MinecraftGameVersion,
   type PartSpec,
   type ProjectDocument,
   type ValidationReport
@@ -27,6 +30,8 @@ import {
   evaluateAssetMaterialization
 } from '../files/assetMaterialization';
 import {
+  editableProjectTargetFor,
+  projectGameVersionOptionsFor,
   projectExportTargetFor
 } from '../../application/projectExportTarget';
 import type {
@@ -43,6 +48,39 @@ const ID_LIMIT = 10;
 const CATALOG_PAGE_LIMIT = 50;
 const ACTIVITY_PAGE_LIMIT = 20;
 const MATERIALIZATION_ISSUE_LIMIT = 20;
+
+const exportCompatibilitySummary = (
+  document: ProjectDocument
+): {
+  gameVersion: MinecraftGameVersion | null;
+  animationSupport: ExportCompatibilityOption['animationSupport'] | null;
+  supportedGameVersions: readonly {
+    version: MinecraftGameVersion;
+    label: string;
+    isDefaultVersion: boolean;
+  }[];
+} => {
+  const target = editableProjectTargetFor(document);
+  const options = target === null
+    ? []
+    : exportCompatibilityOptions(target.target);
+  const selected = target === null
+    ? null
+    : options.find(
+        (option) => option.gameVersion === target.gameVersion
+      ) ?? options.find((option) => option.isDefaultVersion) ?? null;
+  return {
+    gameVersion: target?.gameVersion ?? null,
+    animationSupport: selected?.animationSupport ?? null,
+    supportedGameVersions: target === null
+      ? []
+      : projectGameVersionOptionsFor(target.target).map((option) => ({
+          version: option.value,
+          label: option.label,
+          isDefaultVersion: option.isDefaultVersion
+        }))
+  };
+};
 
 const invalidRequest = (
   revision: string,
@@ -358,6 +396,7 @@ const inspectDefault = (
   const idleClip =
     document.animations[CANONICAL_IDLE_CLIP_ID];
   const exportTarget = projectExportTargetFor(document);
+  const compatibility = exportCompatibilitySummary(document);
   return boundedSuccess(
     document.revision,
     {
@@ -381,6 +420,10 @@ const inspectDefault = (
         forward: document.intent?.forward ?? null,
         grounding: document.intent?.grounding ?? null,
         target: exportTarget.target,
+        gameVersion: compatibility.gameVersion,
+        animationSupport: compatibility.animationSupport,
+        supportedGameVersions:
+          compatibility.supportedGameVersions,
         profileId: document.formatProfile.id,
         structurallyValid: readiness.structurallyValid,
         mechanicallyReady: readiness.mechanicallyReady,
@@ -662,10 +705,15 @@ export const inspectProject = (
         assets
       );
       const exportTarget = projectExportTargetFor(document);
+      const compatibility = exportCompatibilitySummary(document);
       return boundedSuccess(
         document.revision,
         {
           target: exportTarget.target,
+          gameVersion: compatibility.gameVersion,
+          animationSupport: compatibility.animationSupport,
+          supportedGameVersions:
+            compatibility.supportedGameVersions,
           profileId: document.formatProfile.id,
           formatProfile: document.formatProfile,
           settings: document.settings,

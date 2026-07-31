@@ -1,12 +1,13 @@
 import {
   evaluateProductionReadiness,
+  gameVersionForFormatProfile,
   type ProjectDocument,
   type ValidationReport
 } from '@ashfox/engine-core';
 
 import type {
-  ArtifactFile
-} from '../files/artifactFile';
+  TargetArtifactFile
+} from '../files/browserFileWorkflow';
 import type {
   FileOperationRunResult
 } from '../files/useFileOperation';
@@ -26,7 +27,7 @@ interface DeliverAgentProjectInput {
   visualReviews: readonly VisualReviewReceipt[];
   currentDocument: () => ProjectDocument;
   exportTarget: () => Promise<
-    FileOperationRunResult<ArtifactFile>
+    FileOperationRunResult<TargetArtifactFile>
   >;
 }
 
@@ -122,7 +123,12 @@ export const deliverAgentProject = async ({
       contentType: artifact.contentType,
       byteLength: artifact.bytes.byteLength,
       target: artifact.target,
-      contentHash: artifact.contentHash
+      gameVersion: gameVersionForFormatProfile(
+        document.formatProfile
+      ),
+      contentHash: artifact.contentHash,
+      adaptationCount: artifact.adaptationCount,
+      adaptations: artifact.adaptations
     }
   };
 };

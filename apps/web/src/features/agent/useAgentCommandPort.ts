@@ -32,6 +32,12 @@ import type {
   ArtifactFile
 } from '../files/artifactFile';
 import type {
+  TargetArtifactFile
+} from '../files/browserFileWorkflow';
+import type {
+  CaptureArtifactRequest
+} from '../files/captureArtifactRequest';
+import type {
   FileOperationRunResult
 } from '../files/useFileOperation';
 import { useLatestValue } from '../../hooks/useLatestValue';
@@ -44,6 +50,7 @@ import type {
   VisualReviewReceipt
 } from './presentationReview';
 import type {
+  AgentCaptureRequest,
   PresentRequest,
   PresentResult,
   ViewPresentationRequest
@@ -54,6 +61,9 @@ import {
 import {
   deliverAgentProject
 } from './deliverAgentProject';
+import {
+  captureAgentProject
+} from './captureAgentProject';
 
 interface UseAgentCommandPortInput {
   document: ProjectDocument;
@@ -72,8 +82,13 @@ interface UseAgentCommandPortInput {
     request: Exclude<PresentRequest, { review: 'next' }>
   ) => Promise<PresentResult>;
   onDeliver: (lease: OperationLeaseToken) => Promise<
-    FileOperationRunResult<ArtifactFile>
+    FileOperationRunResult<TargetArtifactFile>
   >;
+  onCapture: (
+    request: CaptureArtifactRequest,
+    lease: OperationLeaseToken
+  ) => Promise<FileOperationRunResult<ArtifactFile>>;
+  buildDocuments: readonly ProjectDocument[];
   getVisualReviews: (
     projectId: string,
     revision: string
@@ -115,6 +130,8 @@ export const useAgentCommandPort = ({
   onPresent,
   onReview,
   onDeliver,
+  onCapture,
+  buildDocuments,
   getVisualReviews,
   operationLease
 }: UseAgentCommandPortInput): AgentCommandPortStatus => {
@@ -133,6 +150,8 @@ export const useAgentCommandPort = ({
   const onPresentRef = useLatestValue(onPresent);
   const onReviewRef = useLatestValue(onReview);
   const onDeliverRef = useLatestValue(onDeliver);
+  const onCaptureRef = useLatestValue(onCapture);
+  const buildDocumentsRef = useLatestValue(buildDocuments);
   const getVisualReviewsRef = useLatestValue(getVisualReviews);
 
   const submit = useCallback(
@@ -251,6 +270,26 @@ export const useAgentCommandPort = ({
             ),
             currentDocument: () => documentRef.current,
             exportTarget: () => onDeliverRef.current(lease)
+          });
+        },
+        capture: (
+          request: AgentCaptureRequest,
+          lease: OperationLeaseToken
+        ) => {
+          const current = documentRef.current;
+          return captureAgentProject({
+            request,
+            document: current,
+            report: reportRef.current,
+            visualReviews: getVisualReviewsRef.current(
+              current.id,
+              current.revision
+            ),
+            buildDocuments: buildDocumentsRef.current,
+            activity: activityRef.current,
+            currentDocument: () => documentRef.current,
+            capture: onCaptureRef.current,
+            lease
           });
         },
         onStatusChange: (nextStatus) => {

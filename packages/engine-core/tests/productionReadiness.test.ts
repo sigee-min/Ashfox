@@ -278,47 +278,48 @@ assert.ok(
   )
 );
 
-const unfaithfulPreview = structuredClone(
+const adaptedPreview = structuredClone(
   withCanonicalIdle(createGeckoLib5Project())
 );
-unfaithfulPreview.intent = {
+adaptedPreview.intent = {
   subject: 'Crate',
   forward: 'north',
   grounding: 'free',
   features: ['Human confirms the crate reads correctly.']
 };
-const unfaithfulClip =
-  unfaithfulPreview.animations.idle;
-const unfaithfulChannel =
-  unfaithfulClip.channels['channel-root-rotation'];
-const unfaithfulKeys = [...unfaithfulChannel.keys];
-unfaithfulKeys[unfaithfulKeys.length - 1] = {
-  ...unfaithfulKeys[unfaithfulKeys.length - 1],
-  value: unfaithfulKeys[0].value
+const adaptedClip =
+  adaptedPreview.animations.idle;
+const adaptedChannel =
+  adaptedClip.channels['channel-root-rotation'];
+const adaptedKeys = [...adaptedChannel.keys];
+adaptedKeys[adaptedKeys.length - 1] = {
+  ...adaptedKeys[adaptedKeys.length - 1],
+  value: adaptedKeys[0].value
 };
-unfaithfulPreview.animations = {
-  ...unfaithfulPreview.animations,
+adaptedPreview.animations = {
+  ...adaptedPreview.animations,
   idle: {
-    ...unfaithfulClip,
+    ...adaptedClip,
     channels: {
-      ...unfaithfulClip.channels,
+      ...adaptedClip.channels,
       'channel-root-rotation': {
-        ...unfaithfulChannel,
-        keys: unfaithfulKeys
+        ...adaptedChannel,
+        keys: adaptedKeys
       }
     }
   }
 };
-const unfaithfulReadiness =
-  evaluateProductionReadiness(unfaithfulPreview);
-assert.equal(unfaithfulReadiness.mechanicallyReady, false);
-assert.ok(
-  unfaithfulReadiness.findings.some(
+const adaptedReadiness =
+  evaluateProductionReadiness(adaptedPreview);
+assert.equal(adaptedReadiness.mechanicallyReady, true);
+assert.equal(
+  adaptedReadiness.findings.some(
     (finding) =>
       finding.code ===
       'production.animation_preview_unfaithful'
   ),
-  'an otherwise closed Idle must fail readiness when live preview omits its trigger semantics'
+  false,
+  'event tracks omitted by the numeric preview must not block delivery'
 );
 
 const untextured = structuredClone(ready);

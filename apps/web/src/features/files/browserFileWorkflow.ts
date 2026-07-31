@@ -1,10 +1,13 @@
 import {
   exportProductionProject,
   exportProductionProjectResolved,
+  gameVersionForFormatProfile,
   staleGeneratedTextureIds,
   type BlobRef,
+  type ExportAdaptationReceipt,
   type ExportBundle,
   type ExportFile,
+  type MinecraftGameVersion,
   type ProjectDocument,
   type ResolvedBlob,
   type TextureAsset
@@ -35,6 +38,9 @@ const UNSYNCHRONIZED_TEXTURE_MESSAGE =
 export interface TargetArtifactFile extends ArtifactFile {
   kind: 'target';
   sourceFileCount: number;
+  gameVersion: MinecraftGameVersion | null;
+  adaptationCount: number;
+  adaptations: ExportAdaptationReceipt;
 }
 
 export const parseProjectFile = async (
@@ -235,12 +241,20 @@ const extensionForBundle = (bundle: ExportBundle): string =>
     ? bundle.files[0].path.split('.').at(-1) ?? 'bin'
     : 'zip';
 
+const adaptationCount = (
+  adaptations: ExportAdaptationReceipt
+): number =>
+  adaptations.converted.length + adaptations.omitted.length;
+
 export const createTargetArtifact = async (
   document: ProjectDocument,
   assets: ProjectAssets
 ): Promise<TargetArtifactFile> => {
   const prepared = await createExportBundle(document, assets);
   const { bundle } = prepared;
+  const gameVersion = gameVersionForFormatProfile(
+    prepared.document.formatProfile
+  );
   const entries = await Promise.all(
     bundle.files.map(async (file) => ({
       path: file.path,
@@ -257,16 +271,25 @@ export const createTargetArtifact = async (
       name: `${name}.${extensionForBundle(bundle)}`,
       bytes,
       contentType: file.contentType,
-      sourceFileCount: 1
+      sourceFileCount: 1,
+      gameVersion,
+      adaptationCount: adaptationCount(bundle.adaptations),
+      adaptations: bundle.adaptations
     };
   }
   const bytes = createStoredZip(entries);
   return {
     ...await createArtifactBinding(prepared.document, bytes),
     kind: 'target',
-    name: `${name}-${safeArtifactName(bundle.target.id)}.zip`,
+    name:
+      `${name}-${safeArtifactName(bundle.target.id)}` +
+      `${gameVersion === null ? '' : `-${safeArtifactName(gameVersion)}`}` +
+      '.zip',
     bytes,
     contentType: 'application/zip',
-    sourceFileCount: entries.length
+    sourceFileCount: entries.length,
+    gameVersion,
+    adaptationCount: adaptationCount(bundle.adaptations),
+    adaptations: bundle.adaptations
   };
 };

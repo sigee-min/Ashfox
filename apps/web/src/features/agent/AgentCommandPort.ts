@@ -14,9 +14,12 @@ import {
 import { parseRunRequest } from './parseRunRequest';
 import { parseInspectRequest } from './parseInspectRequest';
 import { parsePresentRequest } from './parsePresentRequest';
+import { parseCaptureRequest } from './parseCaptureRequest';
 import type {
+  AgentCaptureRequest,
   AgentRunRequest,
   AgentCommandPortApi,
+  CaptureResult,
   DeliverResult,
   InspectRequest,
   InspectResult,
@@ -39,6 +42,10 @@ export interface AgentCommandPortDependencies {
   currentRevision: () => string;
   submit: (batch: CommandBatch) => Promise<CommandOutcome>;
   present?: (request: PresentRequest) => Promise<PresentResult>;
+  capture?: (
+    request: AgentCaptureRequest,
+    lease: OperationLeaseToken
+  ) => Promise<CaptureResult>;
   deliver?: (lease: OperationLeaseToken) => Promise<DeliverResult>;
   operationLease?: OperationLease;
   onStatusChange?: (status: AgentCommandPortStatus) => void;
@@ -49,6 +56,11 @@ interface ActiveBatch {
   result: Promise<RunResult>;
 }
 
+interface ActiveCapture {
+  signature: string;
+  result: Promise<CaptureResult>;
+}
+
 interface CompletedRequest {
   signature: string;
   result: RunResult;
@@ -57,7 +69,7 @@ interface CompletedRequest {
 
 interface AgentCommandInput {
   requestId: string;
-  method: 'inspect' | 'run' | 'present' | 'deliver';
+  method: 'inspect' | 'run' | 'present' | 'capture' | 'deliver';
   payload?: unknown;
 }
 
@@ -82,6 +94,7 @@ const parseAgentCommandInput = (
       value.method !== 'inspect' &&
       value.method !== 'run' &&
       value.method !== 'present' &&
+      value.method !== 'capture' &&
       value.method !== 'deliver'
     )
   ) {
@@ -171,6 +184,7 @@ const resultFromOutcome = (outcome: CommandOutcome): RunResult => {
 export class AgentCommandPort implements AgentCommandPortApi {
   private activeBatch: ActiveBatch | null = null;
   private activePresentation: Promise<PresentResult> | null = null;
+  private activeCapture: ActiveCapture | null = null;
   private activeDelivery: Promise<DeliverResult> | null = null;
   private readonly completedRequests =
     new Map<string, CompletedRequest>();
@@ -243,6 +257,14 @@ export class AgentCommandPort implements AgentCommandPortApi {
         return [
           request.requestId,
           await port.present(request.payload as PresentRequest)
+        ];
+      }
+      if (request.method === 'capture') {
+        return [
+          request.requestId,
+          await port.capture(
+            request.payload as AgentCaptureRequest
+          )
         ];
       }
       if (request.method === 'deliver') {
@@ -382,6 +404,7 @@ export class AgentCommandPort implements AgentCommandPortApi {
     if (
       this.activeBatch ||
       this.activeDelivery ||
+      this.activeCapture ||
       this.activePresentation
     ) {
       return {
@@ -416,6 +439,89 @@ export class AgentCommandPort implements AgentCommandPortApi {
     return result;
   }
 
+  capture(input: AgentCaptureRequest): Promise<CaptureResult> {
+    const revision = this.dependencies.currentRevision();
+    let parsed: ReturnType<typeof parseCaptureRequest>;
+    try {
+      parsed = parseCaptureRequest(input);
+    } catch {
+      parsed = {
+        ok: false,
+        error: {
+          code: 'invalid_request',
+          path: '$',
+          expected: 'plain capture request data'
+        }
+      };
+    }
+    if (!parsed.ok) {
+      return Promise.resolve({
+        ok: false,
+        revision,
+        error: parsed.error
+      });
+    }
+    if (!this.dependencies.capture) {
+      return Promise.resolve({
+        ok: false,
+        revision,
+        error: {
+          code: 'invalid_state',
+          path: '$',
+          expected: 'connected capture adapter'
+        }
+      });
+    }
+
+    const signature = canonicalJsonString(parsed.request);
+    if (this.activeCapture) {
+      return this.activeCapture.signature === signature
+        ? this.activeCapture.result
+        : Promise.resolve({
+            ok: false,
+            revision,
+            error: {
+              code: 'busy',
+              message: 'Another capture is still running.'
+            }
+          });
+    }
+    if (
+      this.activeBatch ||
+      this.activePresentation ||
+      this.activeDelivery
+    ) {
+      return Promise.resolve({
+        ok: false,
+        revision,
+        error: {
+          code: 'busy',
+          message: 'Another agent operation is still running.'
+        }
+      });
+    }
+
+    const lease =
+      this.operationLease.tryAcquire('agent.capture');
+    if (!lease) {
+      return Promise.resolve({
+        ok: false,
+        revision,
+        error: {
+          code: 'busy',
+          message:
+            `Another operation is still running (${this.operationLease.currentOwner() ?? 'unknown'}).`
+        }
+      });
+    }
+    const result = this.executeCapture(
+      parsed.request,
+      lease
+    );
+    this.activeCapture = { signature, result };
+    return result;
+  }
+
   deliver(): Promise<DeliverResult> {
     const revision = this.dependencies.currentRevision();
     if (!this.dependencies.deliver) {
@@ -430,7 +536,11 @@ export class AgentCommandPort implements AgentCommandPortApi {
       });
     }
     if (this.activeDelivery) return this.activeDelivery;
-    if (this.activeBatch || this.activePresentation) {
+    if (
+      this.activeBatch ||
+      this.activePresentation ||
+      this.activeCapture
+    ) {
       return Promise.resolve({
         ok: false,
         revision,
@@ -568,6 +678,14 @@ export class AgentCommandPort implements AgentCommandPortApi {
         )
       );
     }
+    if (this.activeCapture) {
+      return Promise.resolve(
+        terminalFailure(
+          revision,
+          'A capture is still running.'
+        )
+      );
+    }
     const batch: CommandBatch = {
       batchId: `agent-request:${requestId}`,
       baseProjectId: currentProjectId,
@@ -649,6 +767,35 @@ export class AgentCommandPort implements AgentCommandPortApi {
       };
     } finally {
       this.activeDelivery = null;
+      lease.release();
+      this.updateStatus('connected');
+    }
+  }
+
+  private async executeCapture(
+    request: AgentCaptureRequest,
+    lease: OperationLeaseToken
+  ): Promise<CaptureResult> {
+    this.updateStatus('working');
+    try {
+      return await Promise.resolve().then(
+        () => this.dependencies.capture!(request, lease)
+      );
+    } catch (error) {
+      return {
+        ok: false,
+        revision: this.dependencies.currentRevision(),
+        error: {
+          code: isAbortError(error)
+            ? 'cancelled'
+            : 'capture_failed',
+          message: isAbortError(error)
+            ? 'Capture was cancelled.'
+            : 'Capture could not be completed.'
+        }
+      };
+    } finally {
+      this.activeCapture = null;
       lease.release();
       this.updateStatus('connected');
     }

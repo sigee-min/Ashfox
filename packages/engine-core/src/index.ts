@@ -36,6 +36,7 @@ export {
   type TextureCompositionRegion
 } from './textures/textureRecipe';
 export * from './export/types';
+export * from './export/compatibility';
 export {
   ProductionExportError,
   exportProductionProject,
@@ -51,6 +52,12 @@ export {
   type MinecraftJavaFace,
   type MinecraftJavaModel
 } from './export/targets/javaBlock/exporter';
+export {
+  buildMinecraftJavaBlockState,
+  buildMinecraftJavaPackMetadata,
+  type MinecraftJavaBlockState,
+  type MinecraftJavaPackMetadata
+} from './export/targets/javaBlock/resourcePack';
 export {
   buildMinecraftBedrockAnimations,
   buildMinecraftBedrockGeometry

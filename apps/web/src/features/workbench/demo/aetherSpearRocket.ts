@@ -356,6 +356,15 @@ export const AETHER_SPEAR_ROCKET_DEMO: DemoDefinition = {
   name: 'Aether Spear · Runic Exploration Rocket',
   modelPath: 'aether_spear_rocket',
   initialSelectionId: null,
+  intent: {
+    subject: 'runic exploration rocket',
+    grounding: 'free',
+    features: [
+      'tall launch-ready silhouette',
+      'readable engine cluster',
+      'articulated fins and solar panels'
+    ]
+  },
   textures: [
     {
       id: T.hull,
@@ -420,6 +429,25 @@ export const AETHER_SPEAR_ROCKET_DEMO: DemoDefinition = {
         ...panelChannels
       ],
       triggers: launchTriggers
+    },
+    {
+      id: 'idle',
+      name: 'Aether Spear Idle',
+      durationSeconds: 2,
+      fps: 20,
+      loop: 'loop',
+      channels: [
+        demoChannel(
+          'rocket-idle-core',
+          'bone-core',
+          'scale',
+          [
+            [0, [1, 1, 1]],
+            [1, [1.04, 1.04, 1.04]],
+            [2, [1, 1, 1]]
+          ]
+        )
+      ]
     }
   ]
 };

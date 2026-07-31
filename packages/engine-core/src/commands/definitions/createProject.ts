@@ -9,24 +9,42 @@ import type {
 import {
   configureProjectTarget
 } from './setProjectTarget';
+import {
+  EXPORT_COMPATIBILITY_REGISTRY
+} from '../../export/compatibility';
+import type {
+  CommandInputSchema
+} from '../schema';
 
-const inputSchema = {
-  type: 'object',
-  properties: {
-    name: {
-      type: 'string',
-      minLength: 1
+const inputSchema: CommandInputSchema = {
+  anyOf: EXPORT_COMPATIBILITY_REGISTRY.map((compatibility) => ({
+    type: 'object' as const,
+    properties: {
+      name: {
+        type: 'string' as const,
+        minLength: 1
+      },
+      target: {
+        enum: [compatibility.target]
+      },
+      ...(compatibility.gameVersion === null
+        ? {}
+        : {
+            gameVersion: {
+              enum: [compatibility.gameVersion]
+            }
+          }),
+      density: {
+        enum: [1, 2, 4]
+      }
     },
-    target: {
-      enum: ['gltf', 'glb', 'bedrock', 'geckolib5']
-    },
-    density: {
-      enum: [1, 2, 4]
-    }
-  },
-  required: ['name'],
-  additionalProperties: false
-} as const;
+    required:
+      compatibility.gameVersion === null
+        ? ['name']
+        : ['name', 'target'],
+    additionalProperties: false
+  }))
+};
 
 const normalizeProjectInput = (
   input: ProjectDocumentCreateInput
@@ -63,7 +81,8 @@ export const createProjectFromInput = (
     document,
     normalized.target,
     normalized.namespace,
-    normalized.modelPath
+    normalized.modelPath,
+    normalized.gameVersion
   );
   if (!configured.ok) {
     throw new Error(configured.error.message);
@@ -86,6 +105,7 @@ const deriveProjectInput = (
 ): ProjectDocumentCreateInput => {
   const name = payload.name.trim();
   const target = payload.target ?? 'glb';
+  const gameVersion = payload.gameVersion;
   const density = payload.density ?? 1;
   const identitySeed = [
     document.id,
@@ -103,6 +123,7 @@ const deriveProjectInput = (
         : candidateId,
     name,
     target,
+    gameVersion,
     namespace: 'ashfox',
     modelPath: resourceToken(name, 'asset'),
     createdAt: document.updatedAt,
@@ -113,7 +134,7 @@ const deriveProjectInput = (
 export const createProjectCommand = defineCommand({
   name: 'project.create',
   label: 'Create project',
-  purpose: 'Start one empty project with a canonical export target.',
+  purpose: 'Start one empty project with a canonical target and compatible game version.',
   inputSchema,
   apply: (document, payload) => {
     const input = deriveProjectInput(document, payload);

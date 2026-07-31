@@ -7,6 +7,7 @@ import {
   validateProjectDocument,
   type InvariantFinding
 } from '../../../validation';
+import { createExportAdaptationReceipt } from '../../adaptations';
 import { createJsonExportFile } from '../../json';
 import {
   BlobResolutionError,
@@ -311,7 +312,8 @@ const createGltfBundle = (
     rootPath: 'gltf',
     entrypoints: [modelPath],
     files: [modelFile, ...binaryFiles, ...compiled.textureFiles],
-    findings
+    findings,
+    adaptations: createExportAdaptationReceipt(document)
   };
 };
 

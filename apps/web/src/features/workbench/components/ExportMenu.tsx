@@ -37,16 +37,30 @@ export function ExportMenu({
         <strong>Export</strong>
         <span>Uses the project target</span>
       </div>
-      <div className="project-facts">
+      <div
+        className={`project-facts${
+          current.gameVersion === null ? '' : ' has-game-version'
+        }`}
+      >
         <span>
           <small>Format</small>
           <strong>{label}</strong>
         </span>
+        {current.gameVersion === null ? null : (
+          <span>
+            <small>Game version</small>
+            <strong>{current.gameVersion}</strong>
+          </span>
+        )}
         <span>
           <small>Asset</small>
           <strong>{current.modelPath}</strong>
         </span>
       </div>
+      <p className="export-adaptation-note">
+        Data this target cannot represent may be converted or omitted.
+        Your project stays unchanged.
+      </p>
       <button
         type="submit"
         className="popover-primary"

@@ -190,7 +190,8 @@ const startupFinding = (
         'identity.',
         'format.invalid_namespace',
         'format.invalid_resource_path',
-        'format.invalid_identifier'
+        'format.invalid_identifier',
+        'format.unsupported_data'
       ) &&
       finding.code !== 'document.invalid_intent'
   );

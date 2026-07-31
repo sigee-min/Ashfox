@@ -38,6 +38,12 @@ import { readProjectIntent } from './project/projectIntent';
 import {
   analyzeProjectAnimationCapabilities
 } from './animation/capability';
+import {
+  supportsJavaBlockMultiAxisRotation
+} from './export/compatibility';
+import {
+  validateExportCompatibilityProfile
+} from './export/compatibilityValidation';
 
 export type InvariantSeverity = 'error' | 'warning' | 'info';
 
@@ -144,7 +150,6 @@ const RESOURCE_PATH_PATTERN = /^[a-z0-9_./-]+$/;
 const TEXTURE_KEY_PATTERN = /^[a-z0-9_.-]+$/;
 const JAVA_MODEL_PATH_PATTERN = /^[a-z0-9_./-]+$/;
 const BEDROCK_GEOMETRY_IDENTIFIER_PATTERN = /^geometry\.[a-z0-9_.-]+$/;
-const MINECRAFT_ANIMATION_IDENTIFIER_PATTERN = /^animation\.[a-z0-9_.-]+$/;
 const GLTF_MODEL_PATH_PATTERN = /^[A-Za-z0-9_./-]+$/;
 const ANIMATION_LOOP_MODES = new Set<string>([
   'once',
@@ -218,20 +223,6 @@ const isIdentityPosition = (value: Vec3): boolean => value.every((entry) => Math
 const isIdentityRotation = isIdentityPosition;
 const isIdentityScale = (value: Vec3): boolean =>
   value.every((entry) => Math.abs(entry - 1) <= EPSILON);
-
-const compareVersionParts = (left: string, right: string): number => {
-  const leftParts = left.split('.').map((part) => Number.parseInt(part, 10) || 0);
-  const rightParts = right.split('.').map((part) => Number.parseInt(part, 10) || 0);
-  const length = Math.max(leftParts.length, rightParts.length);
-  for (let index = 0; index < length; index += 1) {
-    const difference = (leftParts[index] ?? 0) - (rightParts[index] ?? 0);
-    if (difference !== 0) return difference;
-  }
-  return 0;
-};
-
-export const supportsJavaMultiAxisRotation = (version: string): boolean =>
-  compareVersionParts(version, '1.21.11') >= 0;
 
 const validateResourceLocation = (
   location: MinecraftResourceLocation,
@@ -766,7 +757,10 @@ const validateAnimationClip = (
         clipIds: [clip.id]
       });
     }
-    if (channel.keys.length === 0) {
+    if (
+      channel.keys.length === 0 &&
+      document.formatProfile.id !== 'gltf.2'
+    ) {
       add({
         code: 'animation.invalid_timing',
         severity: 'error',
@@ -972,14 +966,16 @@ const validateJavaProfile = (
   const profile = document.formatProfile;
   if (profile.id !== 'minecraft.java_block') return;
 
-  if (!isNonEmptyString(profile.version)) {
+  if (String(profile.modelKind) !== 'block') {
     add({
-      code: 'document.required_value',
+      code: 'format.unsupported_data',
       severity: 'error',
-      message: 'Java model format version must be a non-empty string.',
-      path: 'formatProfile.version'
+      message: 'Java block export requires modelKind "block".',
+      path: 'formatProfile.modelKind',
+      fix: 'Select the Java block target again.'
     });
   }
+
   if (!RESOURCE_NAMESPACE_PATTERN.test(profile.namespace)) {
     add({
       code: 'format.invalid_namespace',
@@ -1099,14 +1095,17 @@ const validateJavaProfile = (
     if (!isSceneNodeEffectivelyVisible(document, nodeId)) {
       continue;
     }
-    if (node.kind === 'mesh' || node.kind === 'locator') {
+    if (node.kind === 'locator') {
+      continue;
+    }
+    if (node.kind === 'mesh') {
       add({
         code: 'format.unsupported_data',
         severity: 'error',
-        message: `Java block/item models do not support ${node.kind} nodes.`,
+        message: 'Java block models do not support mesh nodes.',
         path,
         entityIds: [nodeId],
-        fix: 'Bake the node into cubes or choose another export target.'
+        fix: 'Bake the mesh into cubes or choose another export target.'
       });
       continue;
     }
@@ -1119,7 +1118,7 @@ const validateJavaProfile = (
         add({
           code: 'format.unbaked_transform',
           severity: 'error',
-          message: 'Java block/item export requires bone transforms to be baked into cubes.',
+          message: 'Java block export requires bone transforms to be baked into cubes.',
           path: `${path}.transform`,
           entityIds: [nodeId]
         });
@@ -1131,7 +1130,7 @@ const validateJavaProfile = (
       add({
         code: 'format.unbaked_transform',
         severity: 'error',
-        message: 'Java block/item export requires cube scale to be baked into bounds.',
+        message: 'Java block export requires cube scale to be baked into bounds.',
         path: `${path}.transform.scale`,
         entityIds: [nodeId]
       });
@@ -1156,14 +1155,14 @@ const validateJavaProfile = (
       add({
         code: 'format.coordinate_overflow',
         severity: 'error',
-        message: 'Java block/item element coordinates must remain between -16 and 32 after inflate.',
+        message: 'Java block element coordinates must remain between -16 and 32 after inflate.',
         path: `${path}.bounds`,
         entityIds: [nodeId]
       });
     }
 
     const activeRotations = node.transform.rotation.filter((value) => Math.abs(value) > EPSILON);
-    if (!supportsJavaMultiAxisRotation(profile.version)) {
+    if (!supportsJavaBlockMultiAxisRotation(profile.minecraftVersion)) {
       const angle = activeRotations[0] ?? 0;
       if (
         activeRotations.length > 1 ||
@@ -1172,7 +1171,7 @@ const validateJavaProfile = (
         add({
           code: 'format.rotation_unsupported',
           severity: 'error',
-          message: `Java ${profile.version} supports one rotation axis at -45, -22.5, 0, 22.5, or 45 degrees.`,
+          message: `Java ${profile.minecraftVersion} supports one rotation axis at -45, -22.5, 0, 22.5, or 45 degrees.`,
           path: `${path}.transform.rotation`,
           entityIds: [nodeId]
         });
@@ -1217,21 +1216,6 @@ const validateMinecraftActorProfile = (
   }
   const targetName =
     profile.id === 'minecraft.bedrock' ? 'Bedrock' : 'GeckoLib 5';
-  const geometryVersion =
-    profile.id === 'minecraft.bedrock'
-      ? profile.version
-      : profile.geometryFormatVersion;
-  if (
-    profile.id === 'minecraft.java.geckolib5' &&
-    profile.version !== '5'
-  ) {
-    add({
-      code: 'format.unsupported_data',
-      severity: 'error',
-      message: 'GeckoLib target version must be 5.',
-      path: 'formatProfile.version'
-    });
-  }
   if (
     profile.id === 'minecraft.java.geckolib5' &&
     !['entity', 'block', 'item'].includes(profile.assetKind)
@@ -1252,37 +1236,6 @@ const validateMinecraftActorProfile = (
       severity: 'error',
       message: 'Bedrock geometryKind must be entity or block.',
       path: 'formatProfile.geometryKind'
-    });
-  }
-
-  if (!isNonEmptyString(geometryVersion)) {
-    add({
-      code: 'document.required_value',
-      severity: 'error',
-      message: `${targetName} geometry format version must be a non-empty string.`,
-      path:
-        profile.id === 'minecraft.bedrock'
-          ? 'formatProfile.version'
-          : 'formatProfile.geometryFormatVersion'
-    });
-  }
-  if (profile.animationFormatVersion !== '1.8.0') {
-    add({
-      code: 'format.unsupported_data',
-      severity: 'error',
-      message: `${targetName} actor animation output requires format version 1.8.0.`,
-      path: 'formatProfile.animationFormatVersion'
-    });
-  }
-  if (
-    profile.id === 'minecraft.java.geckolib5' &&
-    !isNonEmptyString(profile.minecraftVersion)
-  ) {
-    add({
-      code: 'document.required_value',
-      severity: 'error',
-      message: 'GeckoLib 5 profiles require a Minecraft version.',
-      path: 'formatProfile.minecraftVersion'
     });
   }
   if (!RESOURCE_NAMESPACE_PATTERN.test(profile.namespace)) {
@@ -1552,30 +1505,8 @@ const validateMinecraftActorProfile = (
     }
   }
 
-  const animationNames = new Map<string, string>();
   for (const [clipId, clip] of Object.entries(document.animations)) {
     const clipPath = `animations.${clipId}`;
-    if (!MINECRAFT_ANIMATION_IDENTIFIER_PATTERN.test(clip.name)) {
-      add({
-        code: 'format.invalid_identifier',
-        severity: 'error',
-        message: `${targetName} animation names must start with "animation." and use lowercase resource characters.`,
-        path: `${clipPath}.name`,
-        clipIds: [clipId]
-      });
-    }
-    const existingName = animationNames.get(clip.name);
-    if (existingName) {
-      add({
-        code: 'animation.name_duplicate',
-        severity: 'error',
-        message: `${targetName} animation name "${clip.name}" is duplicated.`,
-        path: `${clipPath}.name`,
-        clipIds: [existingName, clipId]
-      });
-    }
-    animationNames.set(clip.name, clipId);
-
     const targetProperties = new Map<string, string>();
     for (const [channelId, channel] of Object.entries(clip.channels)) {
       const channelPath = `${clipPath}.channels.${channelId}`;
@@ -2319,6 +2250,7 @@ export const validateProjectDocument = (
   }
 
   if (options.includeFormatProfile !== false) {
+    validateExportCompatibilityProfile(document).forEach(add);
     validateJavaProfile(document, add);
     validateMinecraftActorProfile(document, add);
     validateGltfProfile(document, add);

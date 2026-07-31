@@ -4,7 +4,10 @@ import {
 } from 'react';
 
 import {
+  defaultProjectGameVersionFor,
+  isMinecraftExportTarget,
   PROJECT_EXPORT_TARGETS,
+  projectGameVersionOptionsFor,
   type VisibleExportPreset
 } from '../../../application/projectExportTarget';
 import type { NewProjectInput } from '../newProject';
@@ -18,16 +21,23 @@ export function NewProjectMenu({
 }: NewProjectMenuProps) {
   const [name, setName] = useState('Untitled project');
   const [target, setTarget] = useState<VisibleExportPreset>('glb');
+  const [gameVersion, setGameVersion] = useState(
+    defaultProjectGameVersionFor('glb')
+  );
+  const gameVersions = projectGameVersionOptionsFor(target);
 
   const trimmedName = name.trim();
-  const valid = trimmedName.length > 0;
+  const valid =
+    trimmedName.length > 0 &&
+    (!isMinecraftExportTarget(target) || gameVersion !== null);
 
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     if (!valid) return;
     onCreate({
       name: trimmedName,
-      target
+      target,
+      ...(gameVersion === null ? {} : { gameVersion })
     });
   };
 
@@ -63,13 +73,37 @@ export function NewProjectMenu({
             role="radio"
             aria-checked={target === option.id}
             className={target === option.id ? 'is-selected' : ''}
-            onClick={() => setTarget(option.id)}
+            onClick={() => {
+              setTarget(option.id);
+              setGameVersion(defaultProjectGameVersionFor(option.id));
+            }}
           >
             <strong>{option.label}</strong>
             <small>{option.detail}</small>
           </button>
         ))}
       </div>
+      {isMinecraftExportTarget(target) ? (
+        <label className="popover-field">
+          <span>Game version</span>
+          <select
+            aria-label="New project Minecraft game version"
+            value={gameVersion ?? ''}
+            onChange={(event) => {
+              const next = gameVersions.find(
+                (option) => option.value === event.target.value
+              );
+              if (next) setGameVersion(next.value);
+            }}
+          >
+            {gameVersions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       <p className="new-project-note">
         Your current project remains in local browser storage.
       </p>

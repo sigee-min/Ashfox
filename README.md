@@ -36,7 +36,7 @@ fully supported part of this repository.
 | Setup | Load one plugin and connect localhost MCP | Give your agent one manifest instruction |
 | Workspace | Your open Blockbench project | A browser-local `.ashfox` project |
 | Agent access | MCP tools | Connected or in-app browser |
-| Exports | Blockbench-supported targets | GeckoLib 5, Bedrock, GLB, and glTF |
+| Exports | Blockbench-supported targets | Java block, GeckoLib 5, Bedrock, GLB, and glTF |
 
 Both workflows are open source and local-first. The web workbench is optional;
 you do not need to switch away from Blockbench.

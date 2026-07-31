@@ -1,4 +1,4 @@
-export const PROJECT_DOCUMENT_SCHEMA_VERSION = 3 as const;
+export const PROJECT_DOCUMENT_SCHEMA_VERSION = 4 as const;
 
 export type ProjectId = string;
 export type EntityId = string;
@@ -35,10 +35,11 @@ export interface GenericFormatProfile {
 
 export interface MinecraftJavaBlockFormatProfile {
   id: 'minecraft.java_block';
-  version: string;
+  minecraftVersion: '1.21.5' | '1.21.11' | '26.1' | '26.2';
+  resourcePackFormat: 55 | 75 | 84 | 88;
   namespace: string;
   modelPath: string;
-  modelKind: 'block' | 'item';
+  modelKind: 'block';
   parent?: string;
   ambientOcclusion?: boolean;
   guiLight?: 'front' | 'side';
@@ -46,7 +47,8 @@ export interface MinecraftJavaBlockFormatProfile {
 
 export interface MinecraftBedrockFormatProfile {
   id: 'minecraft.bedrock';
-  version: string;
+  minecraftVersion: '1.21.130' | '1.26.0' | '1.26.30';
+  geometryFormatVersion: '1.21.0';
   animationFormatVersion: '1.8.0';
   namespace: string;
   modelPath: string;
@@ -63,8 +65,8 @@ export interface MinecraftBedrockFormatProfile {
 export interface MinecraftJavaGeckoLib5FormatProfile {
   id: 'minecraft.java.geckolib5';
   version: '5';
-  minecraftVersion: string;
-  geometryFormatVersion: string;
+  minecraftVersion: '1.21.5' | '1.21.11' | '26.1';
+  geometryFormatVersion: '1.12.0';
   animationFormatVersion: '1.8.0';
   namespace: string;
   assetKind: 'entity' | 'block' | 'item';

@@ -13,7 +13,9 @@ import {
   compactCommandReceipt
 } from '../src/features/agent/compactReceipt';
 import type {
+  AgentCaptureRequest,
   AgentRunRequest,
+  CaptureResult,
   DeliverResult,
   PresentRequest,
   PresentResult
@@ -65,6 +67,25 @@ const committed = (commandId: string): CommandOutcome => ({
   status: 'committed',
   commandId,
   receipt: receipt(commandId)
+});
+
+const captured = (
+  kind: AgentCaptureRequest['kind'] = 'result'
+): CaptureResult => ({
+  ok: true,
+  revision: 'local-0001',
+  artifact: {
+    kind,
+    name: kind === 'result' ? 'asset.png' : `asset-${kind}.gif`,
+    contentType: kind === 'result' ? 'image/png' : 'image/gif',
+    byteLength: 256,
+    contentHash: 'sha256:capture-test',
+    width: 1280,
+    height: 720,
+    ...(kind === 'result'
+      ? {}
+      : { frameCount: 20, fps: 10 })
+  }
 });
 
 type FakeInputListener = (this: FakeElement) => void;
@@ -431,7 +452,10 @@ export const test = (async (): Promise<void> => {
       contentType: 'model/gltf-binary',
       byteLength: 128,
       target: 'glb',
-      contentHash: 'sha256:test'
+      gameVersion: null,
+      contentHash: 'sha256:test',
+      adaptationCount: 0,
+      adaptations: { converted: [], omitted: [] }
     }
   });
   assert.deepEqual(await duplicate, await first);
@@ -961,6 +985,7 @@ for (const failure of [
   const operationLease = createOperationLease();
   let submits = 0;
   let deliveries = 0;
+  let captures = 0;
   const port = new AgentCommandPort({
     inspect: () => ({
       ok: true,
@@ -980,6 +1005,10 @@ for (const failure of [
         revision: 'local-0001',
         error: { code: 'export_failed' }
       };
+    },
+    capture: async () => {
+      captures += 1;
+      return captured();
     },
     operationLease
   });
@@ -1003,10 +1032,16 @@ for (const failure of [
     if (!blockedDelivery.ok) {
       assert.equal(blockedDelivery.error.code, 'busy');
     }
+    const blockedCapture = await port.capture({ kind: 'result' });
+    assert.equal(blockedCapture.ok, false);
+    if (!blockedCapture.ok) {
+      assert.equal(blockedCapture.error.code, 'busy');
+    }
     fileLease.release();
   }
   assert.equal(submits, 0);
   assert.equal(deliveries, 0);
+  assert.equal(captures, 0);
 }
 
 {
@@ -1077,7 +1112,10 @@ for (const failure of [
           contentType: 'model/gltf-binary',
           byteLength: 128,
           target: 'glb',
-          contentHash: 'sha256:test'
+          gameVersion: null,
+          contentHash: 'sha256:test',
+          adaptationCount: 0,
+          adaptations: { converted: [], omitted: [] }
         }
       };
     },
@@ -1154,5 +1192,249 @@ for (const failure of [
     'working',
     'connected'
   ]);
+}
+
+{
+  const operationLease = createOperationLease();
+  const statuses: AgentCommandPortStatus[] = [];
+  const observedRequests: AgentCaptureRequest[] = [];
+  let captures = 0;
+  let presentations = 0;
+  let deliveries = 0;
+  let resolveCapture:
+    ((result: CaptureResult) => void) | undefined;
+  const port = new AgentCommandPort({
+    inspect: () => ({
+      ok: true,
+      revision: 'local-0001',
+      data: null
+    }),
+    currentProjectId: () => 'project-test',
+    currentRevision: () => 'local-0001',
+    submit: async (batch) => committed(batch.batchId),
+    present: async () => {
+      presentations += 1;
+      throw new Error('must not present during capture');
+    },
+    capture: (request, lease) => {
+      captures += 1;
+      observedRequests.push(request);
+      assert.equal(operationLease.isActive(lease), true);
+      return new Promise<CaptureResult>((resolve) => {
+        resolveCapture = resolve;
+      });
+    },
+    deliver: async () => {
+      deliveries += 1;
+      throw new Error('must not deliver during capture');
+    },
+    operationLease,
+    onStatusChange: (status) => statuses.push(status)
+  });
+
+  const first = port.capture({
+    kind: 'animation',
+    clipId: 'idle'
+  });
+  const duplicate = port.capture({
+    clipId: 'idle',
+    kind: 'animation'
+  });
+  assert.equal(
+    duplicate,
+    first,
+    'an identical active capture must return the same promise'
+  );
+  assert.equal(operationLease.currentOwner(), 'agent.capture');
+
+  const competingCapture = await port.capture({ kind: 'build' });
+  assert.equal(competingCapture.ok, false);
+  if (!competingCapture.ok) {
+    assert.equal(competingCapture.error.code, 'busy');
+  }
+  const competingRun = await port.run(
+    runRequest('Blocked by capture')
+  );
+  assert.equal(competingRun.ok, false);
+  const competingPresent = await port.present({ review: 'next' });
+  assert.equal(competingPresent.ok, false);
+  const competingDelivery = await port.deliver();
+  assert.equal(competingDelivery.ok, false);
+  if (!competingDelivery.ok) {
+    assert.equal(competingDelivery.error.code, 'busy');
+  }
+  assert.equal(presentations, 0);
+  assert.equal(deliveries, 0);
+
+  await Promise.resolve();
+  assert.equal(captures, 1);
+  assert.deepEqual(observedRequests, [{
+    kind: 'animation',
+    clipId: 'idle'
+  }]);
+  assert.ok(resolveCapture);
+  resolveCapture(captured('animation'));
+  const result = await first;
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.artifact.kind, 'animation');
+    assert.equal(Object.hasOwn(result.artifact, 'bytes'), false);
+  }
+  assert.equal(operationLease.currentOwner(), null);
+  assert.deepEqual(statuses, ['working', 'connected']);
+}
+
+{
+  let captures = 0;
+  const port = new AgentCommandPort({
+    inspect: () => ({
+      ok: true,
+      revision: 'local-0001',
+      data: null
+    }),
+    currentProjectId: () => 'project-test',
+    currentRevision: () => 'local-0001',
+    submit: async (batch) => committed(batch.batchId),
+    capture: async () => {
+      captures += 1;
+      return captured();
+    }
+  });
+
+  for (const request of [
+    { kind: 'result', clipId: 'idle' },
+    { kind: 'animation', clipId: '' },
+    { kind: 'animation', clipId: 'x'.repeat(129) },
+    { kind: 'animation', unexpected: true },
+    { kind: 'unknown' }
+  ]) {
+    const result = await port.capture(
+      request as unknown as AgentCaptureRequest
+    );
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.equal(result.error.code, 'invalid_request');
+    }
+  }
+  assert.equal(captures, 0);
+}
+
+for (const [failure, expectedCode] of [
+  [
+    Object.assign(new Error('cancelled'), { name: 'AbortError' }),
+    'cancelled'
+  ],
+  [new Error('unexpected'), 'capture_failed']
+] as const) {
+  const operationLease = createOperationLease();
+  const statuses: AgentCommandPortStatus[] = [];
+  let captures = 0;
+  const port = new AgentCommandPort({
+    inspect: () => ({
+      ok: true,
+      revision: 'local-0001',
+      data: null
+    }),
+    currentProjectId: () => 'project-test',
+    currentRevision: () => 'local-0001',
+    submit: async (batch) => committed(batch.batchId),
+    capture: () => {
+      captures += 1;
+      if (captures === 1) throw failure;
+      return Promise.resolve(captured());
+    },
+    operationLease,
+    onStatusChange: (status) => statuses.push(status)
+  });
+
+  const failed = await port.capture({ kind: 'result' });
+  assert.equal(failed.ok, false);
+  if (!failed.ok) assert.equal(failed.error.code, expectedCode);
+  assert.equal(operationLease.currentOwner(), null);
+  assert.equal((await port.capture({ kind: 'result' })).ok, true);
+  assert.equal(operationLease.currentOwner(), null);
+  assert.deepEqual(statuses, [
+    'working',
+    'connected',
+    'working',
+    'connected'
+  ]);
+}
+
+{
+  const fakeDocument = new FakeDocument();
+  const fakeWindow = { document: fakeDocument };
+  let resolveCapture:
+    ((result: CaptureResult) => void) | undefined;
+  const observedRequests: AgentCaptureRequest[] = [];
+  const port = new AgentCommandPort({
+    inspect: () => ({
+      ok: true,
+      revision: 'local-0001',
+      data: { state: 'inspected' }
+    }),
+    currentProjectId: () => 'project-test',
+    currentRevision: () => 'local-0001',
+    submit: async (batch) => committed(batch.batchId),
+    capture: (request) => {
+      observedRequests.push(request);
+      return new Promise<CaptureResult>((resolve) => {
+        resolveCapture = resolve;
+      });
+    }
+  });
+  const disconnect = port.connect(fakeWindow as unknown as Window);
+  const inputAttribute = 'data-agent-command-port-input';
+  const resultAttribute = 'data-agent-command-port-result';
+  const currentInput = (): FakeElement => {
+    const value = fakeDocument.body.children.find(
+      (child) => child.attributes.has(inputAttribute)
+    );
+    assert.ok(value);
+    return value;
+  };
+  const resultElement = fakeDocument.head.children.find(
+    (child) => child.attributes.has(resultAttribute)
+  );
+  assert.ok(resultElement);
+
+  const captureInput = currentInput();
+  captureInput.value = JSON.stringify({
+    requestId: 'capture-first',
+    method: 'capture',
+    payload: {
+      kind: 'animation',
+      clipId: 'idle'
+    }
+  });
+  captureInput.dispatch('input');
+  await new Promise<void>((resolve) => setImmediate(resolve));
+
+  const inspectInput = currentInput();
+  inspectInput.value = JSON.stringify({
+    requestId: 'inspect-after-capture',
+    method: 'inspect'
+  });
+  inspectInput.dispatch('input');
+  assert.ok(resolveCapture);
+  resolveCapture(captured('animation'));
+  await new Promise<void>((resolve) => setImmediate(resolve));
+
+  assert.deepEqual(observedRequests, [{
+    kind: 'animation',
+    clipId: 'idle'
+  }]);
+  const responses = resultElement.attributeWrites
+    .filter(
+      (write) =>
+        write.name === resultAttribute &&
+        write.value.length > 0
+    )
+    .map((write) => JSON.parse(write.value).requestId);
+  assert.deepEqual(responses, [
+    'capture-first',
+    'inspect-after-capture'
+  ]);
+  disconnect();
 }
 })();

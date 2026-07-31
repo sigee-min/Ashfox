@@ -25,7 +25,7 @@ Undo to review complete changes.
 - articulated low-poly creatures, vehicles, props, and blocks;
 - pixel textures with consistent UV scale;
 - bones, pivots, and reusable animation clips;
-- GeckoLib 5, Bedrock, GLB, and glTF exports.
+- Java block, GeckoLib 5, Bedrock, GLB, and glTF exports.
 
 ## Choose a guide
 
@@ -37,8 +37,8 @@ Undo to review complete changes.
   tractor, rocket, and kirin projects.
 - [Export a finished asset](guides/save-and-export.md) — validate and deliver
   the configured target.
-- [Choose an export format](guides/choose-a-format.md) — decide between
-  GeckoLib 5, Bedrock, GLB, and glTF.
+- [Choose an export format](guides/choose-a-format.md) — choose the receiving
+  game version and artifact format.
 - [Troubleshooting](guides/troubleshooting.md) — solve common browser, texture,
   animation, and download problems.
 

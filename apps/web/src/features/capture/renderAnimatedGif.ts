@@ -16,9 +16,9 @@ import {
   disposeGifCaptureSurface,
   encodeGifSurfaceFrame,
   finishGifCaptureSurface,
-  waitForProjectionTextures,
   type GifCaptureResult
 } from './gifCaptureSurface';
+import { waitForProjectionTextures } from './captureSurface';
 import {
   createGifFramePlan,
   GIF_CAPTURE_FPS
@@ -83,6 +83,8 @@ export const renderAnimatedGif = async (
     throwIfCaptureAborted(options.signal);
     return {
       bytes: finishGifCaptureSurface(surface),
+      width: surface.width,
+      height: surface.height,
       frameCount: plan.frames.length,
       eventCount: plan.eventCount,
       fps: plan.fps

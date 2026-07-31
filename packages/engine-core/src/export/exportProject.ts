@@ -4,6 +4,7 @@ import {
   type ProductionReadinessReport
 } from '../productionReadiness';
 import { validateProjectDocument } from '../validation';
+import { createExportAdaptationReceipt } from './adaptations';
 import { createJsonExportFile } from './json';
 import { exportMinecraftBedrock } from './targets/bedrock/exporter';
 import { exportGeckoLib5 } from './targets/geckolib5/exporter';
@@ -38,7 +39,8 @@ const exportGenericProject = (document: ProjectDocument): ExportBundle => {
         document
       )
     ],
-    findings: report.findings
+    findings: report.findings,
+    adaptations: createExportAdaptationReceipt(document)
   };
 };
 

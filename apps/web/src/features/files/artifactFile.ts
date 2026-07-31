@@ -9,6 +9,7 @@ import {
 export type ArtifactKind =
   | 'project'
   | 'target'
+  | 'result'
   | 'build'
   | 'animation';
 

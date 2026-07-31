@@ -24,6 +24,9 @@ import {
 import {
   loopClipTransformChannelsClose
 } from './animation/loopClosure';
+import {
+  animationSupportForFormatProfile
+} from './export/compatibility';
 
 export { CANONICAL_IDLE_CLIP_ID } from './animation/idleContract';
 
@@ -187,6 +190,8 @@ export const evaluateProductionReadiness = (
 
   const canonicalIdle =
     document.animations[CANONICAL_IDLE_CLIP_ID];
+  const targetSupportsAnimations =
+    animationSupportForFormatProfile(document.formatProfile) !== 'none';
   const idleClips = canonicalIdle ? [canonicalIdle] : [];
   const allNonCanonicalIdleIds = Object.values(document.animations)
     .filter(
@@ -210,7 +215,7 @@ export const evaluateProductionReadiness = (
       count + (idleChannelsByClip.get(clip.id)?.length ?? 0),
     0
   );
-  if (idleClips.length === 0) {
+  if (targetSupportsAnimations && idleClips.length === 0) {
     findings.push({
       code: 'production.idle_missing',
       severity: 'error',
@@ -230,7 +235,7 @@ export const evaluateProductionReadiness = (
           : 'Create animation.motion.upsert {clipId:"idle",role:"idle",durationFrames:20,static:true}, or author a moving idle with closed poses.'
     });
   }
-  for (const clip of idleClips) {
+  for (const clip of targetSupportsAnimations ? idleClips : []) {
     const visibleChannels =
       idleChannelsByClip.get(clip.id) ?? [];
     if (visibleChannels.length === 0) {
@@ -264,6 +269,7 @@ export const evaluateProductionReadiness = (
 
   for (const clip of Object.values(document.animations)) {
     if (
+      !targetSupportsAnimations ||
       clip.id === CANONICAL_IDLE_CLIP_ID ||
       clip.loop !== 'loop' ||
       loopClipTransformChannelsClose(clip)
@@ -288,7 +294,10 @@ export const evaluateProductionReadiness = (
   for (const clipCapability of animationCapability.clips) {
     const clip = document.animations[clipCapability.clipId];
     if (!clip) continue;
-    if (!clipCapability.previewable) {
+    if (
+      targetSupportsAnimations &&
+      !clipCapability.previewable
+    ) {
       const issueCodes = [
         ...new Set(
           clipCapability.previewIssues.map((issue) => issue.code)
@@ -306,7 +315,10 @@ export const evaluateProductionReadiness = (
           'Delete this clip, then recreate it with animation.motion.upsert poses or hinge spins.'
       });
     }
-    if (!clipCapability.exportable) {
+    if (
+      targetSupportsAnimations &&
+      !clipCapability.exportable
+    ) {
       const issueCodes = [
         ...new Set(
           clipCapability.exportIssues.map((issue) => issue.code)

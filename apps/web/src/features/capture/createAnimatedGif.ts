@@ -1,5 +1,5 @@
 import {
-  analyzeAnimationPreview,
+  blockingAnimationPreviewIssues,
   type ProjectDocument
 } from '@ashfox/engine-core';
 
@@ -33,7 +33,10 @@ export const createAnimatedGif = async (
 ): Promise<GifCaptureFile> => {
   const clip = document.animations[options.clipId];
   if (!clip) throw new Error('Choose an animation clip before capture.');
-  const previewIssues = analyzeAnimationPreview(clip);
+  const previewIssues = blockingAnimationPreviewIssues(
+    clip,
+    document.formatProfile.id
+  );
   if (previewIssues.length > 0) {
     const issueCodes = [
       ...new Set(previewIssues.map((issue) => issue.code))

@@ -39,10 +39,10 @@ interface FileOperationSpec<T, TResult> {
 
 interface FileOperationController<TResult> {
   state: FileOperationState<TResult>;
-  run: <T>(
-    spec: FileOperationSpec<T, TResult>,
+  run: <T, TCompletion extends TResult = TResult>(
+    spec: FileOperationSpec<T, TCompletion>,
     lease?: OperationLeaseToken
-  ) => Promise<FileOperationRunResult<TResult>>;
+  ) => Promise<FileOperationRunResult<TCompletion>>;
   cancel: () => void;
 }
 
@@ -77,10 +77,10 @@ export const useFileOperation = <TResult>(
   } | null>(null);
 
   const run = useCallback(
-    async <T,>(
-      spec: FileOperationSpec<T, TResult>,
+    async <T, TCompletion extends TResult = TResult>(
+      spec: FileOperationSpec<T, TCompletion>,
       inheritedLease?: OperationLeaseToken
-    ): Promise<FileOperationRunResult<TResult>> => {
+    ): Promise<FileOperationRunResult<TCompletion>> => {
       if (activeRef.current !== null) {
         return {
           ok: false,

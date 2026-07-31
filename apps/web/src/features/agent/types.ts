@@ -1,7 +1,9 @@
 import type {
   AnimationPreviewIssue,
   CommandSource,
+  ExportAdaptationReceipt,
   InvariantFinding,
+  MinecraftGameVersion,
   ProjectCommandOperation
 } from '@ashfox/engine-core';
 import type {
@@ -175,7 +177,10 @@ export interface DeliverSuccess {
     contentType: string;
     byteLength: number;
     target: string;
+    gameVersion: MinecraftGameVersion | null;
     contentHash: string;
+    adaptationCount: number;
+    adaptations: ExportAdaptationReceipt;
   };
 }
 
@@ -196,10 +201,54 @@ export interface DeliverFailure {
 
 export type DeliverResult = DeliverSuccess | DeliverFailure;
 
+export type AgentCaptureRequest =
+  | { kind: 'result' }
+  | { kind: 'animation'; clipId?: string }
+  | { kind: 'build' };
+
+export interface CaptureArtifactMetadata {
+  kind: AgentCaptureRequest['kind'];
+  name: string;
+  contentType: string;
+  byteLength: number;
+  contentHash: string;
+  width?: number;
+  height?: number;
+  frameCount?: number;
+  eventCount?: number;
+  fps?: number;
+}
+
+export interface CaptureSuccess {
+  ok: true;
+  revision: string;
+  artifact: CaptureArtifactMetadata;
+}
+
+export interface CaptureFailure {
+  ok: false;
+  revision: string;
+  error: {
+    code:
+      | 'invalid_request'
+      | 'busy'
+      | 'cancelled'
+      | 'invalid_state'
+      | 'capture_failed'
+      | 'stale_revision';
+    message?: string;
+    path?: string;
+    expected?: string;
+  };
+}
+
+export type CaptureResult = CaptureSuccess | CaptureFailure;
+
 export interface AgentCommandPortApi {
   inspect(request?: InspectRequest): InspectResult;
   run(request: AgentRunRequest): Promise<RunResult>;
   present(request: PresentRequest): Promise<PresentResult>;
+  capture(request: AgentCaptureRequest): Promise<CaptureResult>;
   deliver(): Promise<DeliverResult>;
 }
 

@@ -1,4 +1,5 @@
 import {
+  exportCompatibilityOptions,
   listAgentCommandDefinitions
 } from '@ashfox/engine-core';
 
@@ -13,12 +14,19 @@ const commands = listAgentCommandDefinitions().map((definition) => ({
   schemaHash: schemaHash(definition.inputSchema)
 }));
 
+const compatibility = exportCompatibilityOptions();
+
 export const agentManifest = {
   protocol: agentCommandProtocol.protocol,
   workbench: agentCommandProtocol.workbench,
   href: agentCommandProtocol.href,
   description:
-    'Canonical machine guide for creating, reviewing, and exporting one complete low-poly asset with ashfox.',
+    'Canonical machine guide for creating, reviewing, capturing, and exporting one complete low-poly asset with ashfox.',
+  compatibility: {
+    options: compatibility,
+    contract:
+      'Choose only a listed target and gameVersion pair. Omit gameVersion for glTF or GLB. If a Minecraft gameVersion is omitted, ashfox selects that target’s curated default. gameVersion is the tested consumer compatibility target; listed versions may share stable geometry or animation schema values. animationSupport "none" omits clips from the artifact while keeping the canonical source unchanged; "actor" and "scene" require canonical idle.'
+  },
   setup: {
     manifest:
       'Fetch this JSON with a direct system HTTP request such as curl. Do not navigate the controlled browser away from the workbench.',
@@ -32,6 +40,7 @@ export const agentManifest = {
     inspectMethod: 'inspect',
     runMethod: 'run',
     presentMethod: 'present',
+    captureMethod: 'capture',
     deliverMethod: 'deliver',
     inspect: {
       current:
@@ -63,15 +72,25 @@ export const agentManifest = {
       contract:
         'next renders the next missing revision-bound view or complete animation cycle and returns verdict "pending". Inspect the rendered frame, then explicitly accept or reject that exact frameNonce. Only an accepted verdict satisfies review; rejection blocks delivery until a project mutation creates a new revision.'
     },
+    capture: {
+      result:
+        'await window.ashfox.capture({kind:"result"})',
+      animation:
+        'await window.ashfox.capture({kind:"animation",clipId:"idle"})',
+      build:
+        'await window.ashfox.capture({kind:"build"})',
+      contract:
+        'Supply only kind and optional animation clipId. ashfox derives camera, background, resolution, timing, and file options from the active revision and canonical capture policy. An omitted clipId selects the canonical animation. The result returns file metadata and SHA-256, never raw bytes. Identical active captures share one promise; a different concurrent capture is rejected.'
+    },
     deliver: {
       call: 'await window.ashfox.deliver()',
       contract:
-        'No export payload is accepted. The current target and revision derive the artifact format and options. Delivery rejects mechanical blockers, rejected frames, or unfinished visual reviews and returns name, target, byte length, and SHA-256 hash.'
+        'No export payload is accepted. The project profile is the single authority for target, game version, artifact format, and export options. Delivery rejects mechanical blockers, rejected frames, or unfinished visual reviews and returns artifact metadata plus adaptationCount and adaptations {converted,omitted}. Each adaptation has code, path, and message; it describes artifact lowering and never mutates the canonical project.'
     }
   },
   authoring: {
     project:
-      'Start with project.create {name,target?,density?}. Target defaults to glb and density defaults to 1. IDs, timestamps, namespace, and model path are derived. Use density 2 or 4 for smaller surface pixels before adding geometry.',
+      'Start with project.create {name,target?,gameVersion?,density?}. Read compatibility.options or inspect the command schema before choosing a Minecraft version. Target defaults to glb, each Minecraft target has one curated default version, and density defaults to 1. IDs, timestamps, namespace, and model path are derived. Use density 2 or 4 for smaller surface pixels before adding geometry.',
     intent:
       'Set project.intent.set {subject,forward?,grounding?,features?}. Each call replaces the intent; omitted values become north, free, and []. Features are short visual review criteria, not entity IDs.',
     coordinates:
@@ -100,7 +119,7 @@ export const agentManifest = {
     command:
       'Use animation.motion.upsert {clipId,role?,durationFrames?,static?,poses?,spins?,removePartIds?}. A new clip requires role and durationFrames. It derives seconds, names, bone/channel/key IDs, canonical 20 FPS sampling, interpolation, shortest rotation paths, and final loop closure.',
     idle:
-      'Every asset needs clipId "idle" with role "idle". Use durationFrames:20 and static:true for an intentional motionless idle; otherwise provide actual closed pose motion.',
+      'Every animation-capable target needs clipId "idle" with role "idle". Use durationFrames:20 and static:true for an intentional motionless idle; otherwise provide actual closed pose motion. Static delivery profiles omit clips from the artifact but preserve them in the canonical project.',
     poses:
       'poses is an ordered list of {rotations:{partId:angleOrXYZ}}. Use a scalar for a hinge and [x,y,z] degrees for root or ball joints. Every referenced part must appear in the first pose; later omissions carry its previous submitted rotation forward. Name every part that should move; no counterpart motion is invented.',
     spins:
@@ -112,7 +131,7 @@ export const agentManifest = {
   },
   quality: {
     required:
-      'A complete asset has intentional geometry, generated texture coverage, and idle animation. Part count is never a quality target.',
+      'A complete asset has intentional geometry and generated texture coverage. Animation-capable targets also require canonical idle. A static profile may retain canonical clips for later animated delivery. Part count is never a quality target.',
     structure:
       'Prioritize a recognizable silhouette, correct anatomy or construction, believable proportions, connected major masses, readable focal features, and useful articulation before small detail.',
     fidelity:
@@ -124,7 +143,7 @@ export const agentManifest = {
     {
       stage: 'start',
       instruction:
-        'Inspect. Submit an operation nextAction directly. For a command nextAction, inspect its schema and provide the project-specific payload. An empty workbench starts with project.create {name,target,density}.'
+        'Inspect. Submit an operation nextAction directly. For a command nextAction, inspect its schema and provide the project-specific payload. An empty workbench starts with project.create {name,target,gameVersion?,density}; gameVersion is only for a supported Minecraft target.'
     },
     {
       stage: 'plan',
@@ -139,12 +158,12 @@ export const agentManifest = {
     {
       stage: 'animate',
       instruction:
-        'Create canonical idle with animation.motion.upsert, then requested loops or one-shots from ordered poses or hinge spins.'
+        'For an animation-capable target, create canonical idle with animation.motion.upsert, then requested loops or one-shots from ordered poses or hinge spins. Skip this stage when inspect reports a static target.'
     },
     {
       stage: 'review',
       instruction:
-        'Call present({review:"next"}), inspect the actual render, and accept or reject its frameNonce. Revise every rejection before requesting another frame.'
+        'Call present({review:"next"}), inspect the actual render, and accept or reject its frameNonce. Revise every rejection. After acceptance, optionally capture a result image, animation, or recorded build.'
     },
     {
       stage: 'deliver',
@@ -164,9 +183,9 @@ export const agentManifest = {
   },
   domBridge: {
     purpose:
-      'Fallback transport when window.ashfox is unavailable. It forwards inspect, run, present, or deliver and owns no project mutation.',
+      'Fallback transport when window.ashfox is unavailable. It forwards inspect, run, present, capture, or deliver and owns no project mutation.',
     request:
-      '{"requestId":"unique-id","method":"inspect|run|present|deliver","payload":"optional for inspect, required for run/present, omitted for deliver"}',
+      '{"requestId":"unique-id","method":"inspect|run|present|capture|deliver","payload":"optional for inspect, required for run/present/capture, omitted for deliver"}',
     response:
       '{"requestId":"same-unique-id","result":{"ok":true|false,"revision":"..."}}',
     examples: {
@@ -176,6 +195,8 @@ export const agentManifest = {
         '{"requestId":"run-1","method":"run","payload":{"operations":[{"name":"project.create","payload":{"name":"My asset"}}]}}',
       present:
         '{"requestId":"present-1","method":"present","payload":{"review":"next"}}',
+      capture:
+        '{"requestId":"capture-1","method":"capture","payload":{"kind":"result"}}',
       deliver:
         '{"requestId":"deliver-1","method":"deliver"}'
     },
@@ -196,8 +217,10 @@ export const agentManifest = {
     downloadSelector: '[data-ashfox-action="artifact.download"]',
     requestedPath: 'workspace-relative directory',
     defaultDirectory: 'artifacts/',
+    adaptationReceipt:
+      'A successful deliver result includes adaptationCount and complete adaptations.converted and adaptations.omitted arrays. Treat omitted items as absent only from that artifact; do not delete their source data.',
     rule:
-      'After deliver succeeds, transfer the prepared artifact through the connected browser, verify the actual file, and report its workspace-relative path and format.'
+      'After capture or deliver succeeds, transfer the prepared artifact through the connected browser, verify the actual file, and report its workspace-relative path and format. API responses contain metadata only; never copy encoded file bytes through model context.'
   },
   commands
 } as const;

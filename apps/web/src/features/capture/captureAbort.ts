@@ -1,5 +1,5 @@
 export const captureAbortError = (): DOMException =>
-  new DOMException('GIF capture cancelled.', 'AbortError');
+  new DOMException('Capture cancelled.', 'AbortError');
 
 export const throwIfCaptureAborted = (
   signal: AbortSignal

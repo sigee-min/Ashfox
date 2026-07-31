@@ -8,7 +8,7 @@ import {
 } from 'react';
 
 import {
-  analyzeAnimationPreview,
+  blockingAnimationPreviewIssues,
   type ProjectDocument
 } from '@ashfox/engine-core';
 
@@ -158,7 +158,10 @@ export const useAgentPresentation = ({
       ? Math.min(request.timeSeconds, clip.durationSeconds)
       : 0;
     const previewIssues = clip
-      ? analyzeAnimationPreview(clip)
+      ? blockingAnimationPreviewIssues(
+          clip,
+          document.formatProfile.id
+        )
       : [];
     if (previewIssues.length > 0) {
       return Promise.resolve({
@@ -238,6 +241,7 @@ export const useAgentPresentation = ({
     });
   }, [
     document.animations,
+    document.formatProfile.id,
     document.id,
     document.revision,
     finish,

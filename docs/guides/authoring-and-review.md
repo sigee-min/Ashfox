@@ -10,10 +10,12 @@ Describe:
 - **subject** — creature, vehicle, prop, block, or environment piece;
 - **style** — Minecraft-like pixels, chunky low-poly, mechanical, organic, or
   another clear direction;
-- **target** — GeckoLib 5, Bedrock, GLB, or glTF;
+- **target** — Java block, GeckoLib 5, Bedrock, GLB, or glTF;
+- **game version** — choose one of the versions shown for a Minecraft target;
 - **structure** — important parts, proportions, symmetry, and articulation;
 - **surface** — base-color palette, material separation, and focal details;
-- **motion** — required clips, pace, weight, and loop behavior.
+- **motion** — for an animated target, required clips, pace, weight, and loop
+  behavior.
 
 ```text
 Create a moonlit fantasy kirin for GeckoLib 5.

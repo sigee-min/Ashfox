@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 
-import type {
-  CommandReceipt,
-  ProjectDocument
+import {
+  gameVersionForFormatProfile,
+  type CommandReceipt,
+  type ProjectDocument
 } from '@ashfox/engine-core';
 
 import type { ArtifactFile } from '../../files/artifactFile';
@@ -46,15 +47,18 @@ interface WorkbenchHeaderProps {
 const targetLabel = (
   document: ProjectDocument
 ): readonly [string, string] => {
+  const gameVersion = gameVersionForFormatProfile(
+    document.formatProfile
+  );
   switch (document.formatProfile.id) {
     case 'ashfox.generic':
       return ['ashfox', 'JSON'];
     case 'minecraft.java_block':
-      return ['Java', document.formatProfile.modelKind];
+      return ['Java', gameVersion ?? document.formatProfile.modelKind];
     case 'minecraft.bedrock':
-      return ['Bedrock', document.formatProfile.geometryKind];
+      return ['Bedrock', gameVersion ?? document.formatProfile.geometryKind];
     case 'minecraft.java.geckolib5':
-      return ['GeckoLib 5', document.formatProfile.assetKind];
+      return ['GeckoLib 5', gameVersion ?? document.formatProfile.assetKind];
     case 'gltf.2':
       return [
         document.formatProfile.container.toUpperCase(),

@@ -63,12 +63,42 @@ export interface AnimationExportIssue {
   keyframeId?: string;
 }
 
+export type AnimationExportAdaptationDisposition =
+  | 'omitted'
+  | 'converted';
+
+export type AnimationExportAdaptationCode =
+  | 'animations_unsupported'
+  | 'channels_missing'
+  | 'channel_keys_missing'
+  | 'start_delay'
+  | 'loop_delay'
+  | 'animation_time_update'
+  | 'blend_weight'
+  | 'override_previous_animation'
+  | 'sound_trigger'
+  | 'particle_trigger'
+  | 'timeline_trigger';
+
+export interface AnimationExportAdaptation {
+  disposition: AnimationExportAdaptationDisposition;
+  code: AnimationExportAdaptationCode;
+  targetId: AnimationExportTarget;
+  clipId: string;
+  path: string;
+  message: string;
+  channelId?: string;
+  triggerId?: string;
+  keyframeId?: string;
+}
+
 export interface ClipAnimationCapability {
   clipId: string;
   previewable: boolean;
   exportable: boolean;
   previewIssues: readonly AnimationPreviewIssue[];
   exportIssues: readonly AnimationExportIssue[];
+  exportAdaptations: readonly AnimationExportAdaptation[];
 }
 
 export interface ProjectAnimationCapabilityReport {
@@ -214,6 +244,27 @@ const issue = (
   ...ids
 });
 
+const adaptation = (
+  targetId: AnimationExportTarget,
+  clip: AnimationClip,
+  disposition: AnimationExportAdaptationDisposition,
+  code: AnimationExportAdaptationCode,
+  path: string,
+  message: string,
+  ids: Pick<
+    AnimationExportAdaptation,
+    'channelId' | 'triggerId' | 'keyframeId'
+  > = {}
+): AnimationExportAdaptation => ({
+  disposition,
+  code,
+  targetId,
+  clipId: clip.id,
+  path,
+  message,
+  ...ids
+});
+
 const triggerIssueCode = (
   trigger: AnimationTriggerTrack
 ): 'sound_trigger' | 'particle_trigger' | 'timeline_trigger' =>
@@ -225,88 +276,12 @@ const analyzeGltfClip = (
 ): readonly AnimationExportIssue[] => {
   const issues: AnimationExportIssue[] = [];
   const clipPath = `animations.${clip.id}`;
-  if (Object.keys(clip.channels).length === 0) {
-    issues.push(issue(
-      targetId,
-      clip,
-      'channels_missing',
-      `${clipPath}.channels`,
-      'glTF animations require at least one transform channel.'
-    ));
-  }
-  if (clip.startDelay !== undefined) {
-    issues.push(issue(
-      targetId,
-      clip,
-      'start_delay',
-      `${clipPath}.startDelay`,
-      'Core glTF cannot preserve an animation start delay.'
-    ));
-  }
-  if (clip.loopDelay !== undefined) {
-    issues.push(issue(
-      targetId,
-      clip,
-      'loop_delay',
-      `${clipPath}.loopDelay`,
-      'Core glTF cannot preserve an animation loop delay.'
-    ));
-  }
-  if (clip.animationTimeUpdate !== undefined) {
-    issues.push(issue(
-      targetId,
-      clip,
-      'animation_time_update',
-      `${clipPath}.animationTimeUpdate`,
-      'Core glTF cannot preserve a custom animation time expression.'
-    ));
-  }
-  if (clip.blendWeight !== undefined && clip.blendWeight !== 1) {
-    issues.push(issue(
-      targetId,
-      clip,
-      'blend_weight',
-      `${clipPath}.blendWeight`,
-      'Core glTF cannot preserve a non-neutral animation blend weight.'
-    ));
-  }
-  if (clip.overridePreviousAnimation === true) {
-    issues.push(issue(
-      targetId,
-      clip,
-      'override_previous_animation',
-      `${clipPath}.overridePreviousAnimation`,
-      'Core glTF cannot preserve animation override semantics.'
-    ));
-  }
-
-  for (const trigger of Object.values(clip.triggers).sort((left, right) =>
-    left.id.localeCompare(right.id)
-  )) {
-    if (trigger.keys.length === 0) continue;
-    issues.push(issue(
-      targetId,
-      clip,
-      triggerIssueCode(trigger),
-      `${clipPath}.triggers.${trigger.id}`,
-      `Core glTF has no ${trigger.type} trigger contract.`,
-      { triggerId: trigger.id }
-    ));
-  }
 
   for (const channel of Object.values(clip.channels).sort((left, right) =>
     left.id.localeCompare(right.id)
   )) {
     const channelPath = `${clipPath}.channels.${channel.id}`;
     if (channel.keys.length === 0) {
-      issues.push(issue(
-        targetId,
-        clip,
-        'channel_keys_missing',
-        `${channelPath}.keys`,
-        'glTF transform channels require at least one keyframe.',
-        { channelId: channel.id }
-      ));
       continue;
     }
     if (
@@ -375,6 +350,103 @@ const analyzeGltfClip = (
     }
   }
   return issues;
+};
+
+const analyzeGltfClipAdaptations = (
+  clip: AnimationClip,
+  targetId: AnimationExportTarget
+): readonly AnimationExportAdaptation[] => {
+  const adaptations: AnimationExportAdaptation[] = [];
+  const clipPath = `animations.${clip.id}`;
+  if (Object.keys(clip.channels).length === 0) {
+    adaptations.push(adaptation(
+      targetId,
+      clip,
+      'omitted',
+      'channels_missing',
+      `${clipPath}.channels`,
+      'The clip has no transform channels, so core glTF omits the empty animation while the ashfox project keeps it.'
+    ));
+  }
+  if (clip.startDelay !== undefined) {
+    adaptations.push(adaptation(
+      targetId,
+      clip,
+      'omitted',
+      'start_delay',
+      `${clipPath}.startDelay`,
+      'Core glTF has no playback start-delay contract; the export omits it while the ashfox project keeps it.'
+    ));
+  }
+  if (clip.loopDelay !== undefined) {
+    adaptations.push(adaptation(
+      targetId,
+      clip,
+      'omitted',
+      'loop_delay',
+      `${clipPath}.loopDelay`,
+      'Core glTF has no playback loop-delay contract; the export omits it while the ashfox project keeps it.'
+    ));
+  }
+  if (clip.animationTimeUpdate !== undefined) {
+    adaptations.push(adaptation(
+      targetId,
+      clip,
+      'omitted',
+      'animation_time_update',
+      `${clipPath}.animationTimeUpdate`,
+      'Core glTF has no custom playback-time expression; the export omits it while the ashfox project keeps it.'
+    ));
+  }
+  if (clip.blendWeight !== undefined && clip.blendWeight !== 1) {
+    adaptations.push(adaptation(
+      targetId,
+      clip,
+      'omitted',
+      'blend_weight',
+      `${clipPath}.blendWeight`,
+      'Core glTF has no clip blend-weight contract; the export omits it while the ashfox project keeps it.'
+    ));
+  }
+  if (clip.overridePreviousAnimation === true) {
+    adaptations.push(adaptation(
+      targetId,
+      clip,
+      'omitted',
+      'override_previous_animation',
+      `${clipPath}.overridePreviousAnimation`,
+      'Core glTF has no animation override contract; the export omits it while the ashfox project keeps it.'
+    ));
+  }
+  for (const trigger of Object.values(clip.triggers).sort((left, right) =>
+    left.id.localeCompare(right.id)
+  )) {
+    if (trigger.keys.length === 0) continue;
+    adaptations.push(adaptation(
+      targetId,
+      clip,
+      'omitted',
+      triggerIssueCode(trigger),
+      `${clipPath}.triggers.${trigger.id}`,
+      `Core glTF has no ${trigger.type} trigger contract; the export omits this track while the ashfox project keeps it.`,
+      { triggerId: trigger.id }
+    ));
+  }
+  for (const channel of Object.values(clip.channels).sort((left, right) =>
+    left.id.localeCompare(right.id)
+  )) {
+    if (channel.keys.length > 0) continue;
+    adaptations.push(adaptation(
+      targetId,
+      clip,
+      'omitted',
+      'channel_keys_missing',
+      `${clipPath}.channels.${channel.id}.keys`,
+      'The transform channel has no keyframes, so core glTF omits it while the ashfox project keeps it.',
+      { channelId: channel.id }
+    ));
+  }
+  return adaptations;
 };
 
 const analyzeMinecraftClip = (
@@ -476,13 +548,7 @@ export const analyzeAnimationExport = (
     case 'ashfox.generic':
       return [];
     case 'minecraft.java_block':
-      return [issue(
-        targetId,
-        clip,
-        'animations_unsupported',
-        `animations.${clip.id}`,
-        'Java block/item models cannot contain animation clips.'
-      )];
+      return [];
     case 'minecraft.bedrock':
     case 'minecraft.java.geckolib5':
       return analyzeMinecraftClip(clip, targetId);
@@ -491,18 +557,71 @@ export const analyzeAnimationExport = (
   }
 };
 
+export const analyzeAnimationExportAdaptations = (
+  clip: AnimationClip,
+  targetId: AnimationExportTarget
+): readonly AnimationExportAdaptation[] => {
+  switch (targetId) {
+    case 'ashfox.generic':
+    case 'minecraft.bedrock':
+    case 'minecraft.java.geckolib5':
+      return [];
+    case 'minecraft.java_block':
+      return [adaptation(
+        targetId,
+        clip,
+        'omitted',
+        'animations_unsupported',
+        `animations.${clip.id}`,
+        'Java block models are static, so this export omits the animation clip while the ashfox project keeps it.'
+      )];
+    case 'gltf.2':
+      return analyzeGltfClipAdaptations(clip, targetId);
+  }
+};
+
+const NON_TRANSFORM_PREVIEW_ISSUES = new Set<
+  AnimationPreviewIssueCode
+>([
+  'sound_trigger',
+  'particle_trigger',
+  'timeline_trigger'
+]);
+
+export const blockingAnimationPreviewIssues = (
+  clip: AnimationClip,
+  targetId: AnimationExportTarget
+): readonly AnimationPreviewIssue[] => {
+  if (targetId === 'minecraft.java_block') return [];
+  const omittedByTarget = new Set<string>(
+    analyzeAnimationExportAdaptations(clip, targetId)
+      .filter((item) => item.disposition === 'omitted')
+      .map((item) => item.code)
+  );
+  return analyzeAnimationPreview(clip).filter(
+    (item) =>
+      !NON_TRANSFORM_PREVIEW_ISSUES.has(item.code) &&
+      !omittedByTarget.has(item.code)
+  );
+};
+
 export const analyzeClipAnimationCapability = (
   clip: AnimationClip,
   targetId: AnimationExportTarget
 ): ClipAnimationCapability => {
-  const previewIssues = analyzeAnimationPreview(clip);
+  const previewIssues = blockingAnimationPreviewIssues(clip, targetId);
   const exportIssues = analyzeAnimationExport(clip, targetId);
+  const exportAdaptations = analyzeAnimationExportAdaptations(
+    clip,
+    targetId
+  );
   return {
     clipId: clip.id,
     previewable: previewIssues.length === 0,
     exportable: exportIssues.length === 0,
     previewIssues,
-    exportIssues
+    exportIssues,
+    exportAdaptations
   };
 };
 

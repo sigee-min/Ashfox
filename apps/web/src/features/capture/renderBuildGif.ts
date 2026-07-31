@@ -25,9 +25,9 @@ import {
   disposeGifCaptureSurface,
   encodeGifSurfaceFrame,
   finishGifCaptureSurface,
-  waitForProjectionTextures,
   type GifCaptureResult
 } from './gifCaptureSurface';
+import { waitForProjectionTextures } from './captureSurface';
 import { resolveBuildReviewClip } from './buildReviewClip';
 import { createCaptureProjection } from './createCaptureProjection';
 
@@ -146,6 +146,8 @@ export const renderBuildGif = async (
     throwIfCaptureAborted(options.signal);
     return {
       bytes: finishGifCaptureSurface(surface),
+      width: surface.width,
+      height: surface.height,
       frameCount: plan.frames.length,
       eventCount: plan.events.length,
       fps: plan.fps

@@ -13,7 +13,7 @@ types, Blockbench globals, or persistence implementations.
 Implemented targets:
 
 - deterministic canonical project JSON;
-- Minecraft Java block/item resource-pack model bundles;
+- Minecraft Java block resource-pack model bundles;
 - Minecraft Bedrock geometry and actor-animation resource-pack bundles;
 - GeckoLib 5-compatible geometry and actor-animation bundles;
 - glTF 2.0 JSON, external-resource GLB, and self-contained GLB binaries.
