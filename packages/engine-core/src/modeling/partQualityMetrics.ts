@@ -5,7 +5,7 @@ import {
   parseCellKey,
   worldToLattice
 } from './lattice';
-import type { CompiledPartState } from './partInvariants';
+import type { CompiledPartState } from './partInvariants/types';
 import type {
   Axis,
   LatticePoint,

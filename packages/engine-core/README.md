@@ -26,3 +26,6 @@ materialization belongs to the application layer.
 The constrained modeling authority, algorithms, invariants, and proof boundary
 are specified in
 [Constrained Modeling Kernel](../../docs/architecture/constrained-modeling-kernel.md).
+
+The runtime dependency direction, ownership map, and extension paths are in
+[Codebase map](../../docs/architecture/codebase.md).

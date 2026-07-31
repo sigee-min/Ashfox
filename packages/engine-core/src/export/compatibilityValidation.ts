@@ -3,7 +3,7 @@ import type {
 } from '../model';
 import type {
   InvariantFinding
-} from '../validation';
+} from '../validation/types';
 import {
   exportCompatibilityFor,
   exportCompatibilityOptions,

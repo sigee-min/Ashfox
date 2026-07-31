@@ -1,5 +1,4 @@
 import {
-  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -8,8 +7,6 @@ import {
 } from 'react';
 
 import {
-  evaluateProductionReadiness,
-  type CommandBatch,
   type CommandReceipt,
   type ProjectDocument,
   type ValidationReport
@@ -46,6 +43,12 @@ import {
   type AgentCommandPortStatus
 } from './AgentCommandPort';
 import { inspectProject } from './inspect';
+import {
+  presentAgentProject
+} from './presentAgentProject';
+import {
+  useAgentCommandSubmission
+} from './port/useAgentCommandSubmission';
 import type {
   VisualReviewReceipt
 } from './presentationReview';
@@ -55,9 +58,6 @@ import type {
   PresentResult,
   ViewPresentationRequest
 } from './types';
-import {
-  nextVisualReview
-} from './visualReviewPlan';
 import {
   deliverAgentProject
 } from './deliverAgentProject';
@@ -96,27 +96,6 @@ interface UseAgentCommandPortInput {
   operationLease: OperationLease;
 }
 
-interface PendingCommand {
-  commandId: string;
-  resolve: (outcome: CommandOutcome) => void;
-}
-
-const waitForPresentation = (): Promise<void> =>
-  new Promise<void>((resolve) => {
-    let settled = false;
-    let frame = 0;
-    let timer = 0;
-    const finish = (): void => {
-      if (settled) return;
-      settled = true;
-      window.cancelAnimationFrame(frame);
-      window.clearTimeout(timer);
-      resolve();
-    };
-    frame = window.requestAnimationFrame(finish);
-    timer = window.setTimeout(finish, 250);
-  });
-
 export const useAgentCommandPort = ({
   document,
   projectGeneration,
@@ -138,7 +117,6 @@ export const useAgentCommandPort = ({
   const [status, setStatus] =
     useState<AgentCommandPortStatus>('connected');
   const mountedRef = useRef(true);
-  const pendingRef = useRef<PendingCommand | null>(null);
   const documentRef = useLatestValue(document);
   const projectGenerationRef =
     useLatestValue(projectGeneration);
@@ -146,31 +124,18 @@ export const useAgentCommandPort = ({
   const assetsRef = useLatestValue(assets);
   const selectedNodeIdRef = useLatestValue(selectedNodeId);
   const reportRef = useLatestValue(report);
-  const onFocusEntityRef = useLatestValue(onFocusEntity);
   const onPresentRef = useLatestValue(onPresent);
   const onReviewRef = useLatestValue(onReview);
   const onDeliverRef = useLatestValue(onDeliver);
   const onCaptureRef = useLatestValue(onCapture);
   const buildDocumentsRef = useLatestValue(buildDocuments);
   const getVisualReviewsRef = useLatestValue(getVisualReviews);
-
-  const submit = useCallback(
-    (batch: CommandBatch): Promise<CommandOutcome> =>
-      new Promise<CommandOutcome>((resolve) => {
-        pendingRef.current = {
-          commandId: batch.batchId,
-          resolve
-        };
-        dispatch({
-          type: 'execute',
-          batch,
-          actorId: 'ashfox-agent',
-          source: 'agent',
-          committedAt: new Date().toISOString()
-        });
-      }),
-    [dispatch]
-  );
+  const { submit, cancelPending } = useAgentCommandSubmission({
+    document,
+    commandOutcomes,
+    dispatch,
+    onFocusEntity
+  });
 
   const port = useMemo<AgentCommandPort>(
     () =>
@@ -196,67 +161,17 @@ export const useAgentCommandPort = ({
         submit,
         operationLease,
         present: (request: PresentRequest) => {
-          if (request.review !== 'next') {
-            return onReviewRef.current(request);
-          }
           const current = documentRef.current;
-          const readiness = evaluateProductionReadiness(
-            current,
-            reportRef.current
-          );
-          if (!readiness.mechanicallyReady) {
-            return Promise.resolve({
-              ok: false,
-              revision: current.revision,
-              error: {
-                code: 'invalid_state',
-                path:
-                  readiness.firstBlockingFinding?.path ?? '$',
-                expected:
-                  readiness.firstBlockingFinding?.fix ??
-                  'mechanically ready project before visual review'
-              }
-            });
-          }
-          const visualReviews = getVisualReviewsRef.current(
-            current.id,
-            current.revision
-          );
-          const rejected = visualReviews.find(
-            (receipt) => receipt.verdict === 'rejected'
-          );
-          if (rejected) {
-            return Promise.resolve({
-              ok: false,
-              revision: current.revision,
-              error: {
-                code: 'invalid_state',
-                path: 'review',
-                expected:
-                  `revise rejected visual issues: ${rejected.issues.join(', ')}`
-              }
-            });
-          }
-          const review = nextVisualReview(
-            current,
-            readiness,
-            visualReviews
-          );
-          if (!review) {
-            return Promise.resolve({
-              ok: false,
-              revision: current.revision,
-              error: {
-                code: 'invalid_state',
-                path: 'review',
-                expected:
-                  'a remaining revision-bound visual review from inspect'
-              }
-            });
-          }
-          return onPresentRef.current({
-            ...review,
-            timeSeconds: 0
+          return presentAgentProject({
+            request,
+            document: current,
+            report: reportRef.current,
+            visualReviews: getVisualReviewsRef.current(
+              current.id,
+              current.revision
+            ),
+            review: onReviewRef.current,
+            present: onPresentRef.current
           });
         },
         deliver: (lease) => {
@@ -300,48 +215,14 @@ export const useAgentCommandPort = ({
   );
 
   useEffect(() => {
-    const pending = pendingRef.current;
-    if (!pending) return;
-    const commandOutcome = commandOutcomes.find(
-      (outcome) => outcome.commandId === pending.commandId
-    );
-    if (!commandOutcome) return;
-    pendingRef.current = null;
-
-    if (commandOutcome.status === 'committed') {
-      const effects = commandOutcome.receipt.effects;
-      const focusId = [
-        ...effects.createdEntityIds,
-        ...effects.changedEntityIds
-      ].find((id) => documentRef.current.scene.nodes[id] !== undefined);
-      if (focusId) {
-        onFocusEntityRef.current(focusId);
-      }
-    }
-
-    void waitForPresentation().then(() => pending.resolve(commandOutcome));
-  }, [commandOutcomes]);
-
-  useEffect(() => {
     mountedRef.current = true;
     const disconnect = port.connect(window);
     return () => {
       mountedRef.current = false;
       disconnect();
-      const pending = pendingRef.current;
-      if (!pending) return;
-      pendingRef.current = null;
-      pending.resolve({
-        status: 'rejected',
-        commandId: pending.commandId,
-        revision: documentRef.current.revision,
-        error: {
-          code: 'invalid_state',
-          message: 'Command batch was cancelled.'
-        }
-      });
+      cancelPending();
     };
-  }, [port]);
+  }, [cancelPending, port]);
 
   return status;
 };

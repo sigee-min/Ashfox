@@ -1,11 +1,10 @@
 import type { ProjectDocument, TextureAsset } from '../../../model';
-import { validateProjectDocument } from '../../../validation';
-import { createExportAdaptationReceipt } from '../../adaptations';
 import { createJsonExportFile } from '../../json';
+import { createExportBundle } from '../../pipeline/createBundle';
+import { validateExportTarget } from '../../pipeline/validateTarget';
 import { buildMinecraftActorAnimation } from '../../shared/minecraftAnimation';
 import { buildMinecraftGeometry } from '../../shared/minecraftGeometry';
 import {
-  ProjectExportError,
   type BlobCopyExportFile,
   type ExportBundle
 } from '../../types';
@@ -47,11 +46,11 @@ export const buildMinecraftBedrockAnimations = (document: ProjectDocument) => {
 };
 
 export const exportMinecraftBedrock = (document: ProjectDocument): ExportBundle => {
-  const report = validateProjectDocument(document);
-  if (!report.valid || document.formatProfile.id !== 'minecraft.bedrock') {
-    throw new ProjectExportError('Minecraft Bedrock export validation failed.', report.findings);
-  }
-  const profile = document.formatProfile;
+  const validation = validateExportTarget(document, {
+    profileId: 'minecraft.bedrock',
+    errorMessage: 'Minecraft Bedrock export validation failed.'
+  });
+  const profile = validation.profile;
   const directory = profile.geometryKind === 'block' ? 'blocks' : 'entity';
   const geometryPath = `models/${directory}/${profile.modelPath}.geo.json`;
   const animationPath = `animations/${profile.animationPath}.animation.json`;
@@ -61,10 +60,7 @@ export const exportMinecraftBedrock = (document: ProjectDocument): ExportBundle 
     .sort((left, right) => left.id.localeCompare(right.id))
     .map(createTextureCopy);
 
-  return {
-    schemaVersion: 1,
-    projectId: document.id,
-    revision: document.revision,
+  return createExportBundle(document, validation.findings, {
     target: {
       id: 'minecraft.bedrock',
       version: profile.minecraftVersion
@@ -87,7 +83,5 @@ export const exportMinecraftBedrock = (document: ProjectDocument): ExportBundle 
         : []),
       ...textureFiles
     ],
-    findings: report.findings,
-    adaptations: createExportAdaptationReceipt(document)
-  };
+  });
 };

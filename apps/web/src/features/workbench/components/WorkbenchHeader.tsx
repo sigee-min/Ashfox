@@ -21,8 +21,11 @@ import { NewProjectMenu } from './NewProjectMenu';
 import { ProjectSettingsMenu } from './ProjectSettingsMenu';
 import type { NewProjectInput } from '../newProject';
 import type { ProjectSettingsInput } from '../projectSettings';
-
-type HeaderMenu = 'new' | 'project' | 'export' | 'capture' | null;
+import { HeaderFileActions } from './header/HeaderFileActions';
+import type {
+  HeaderMenu,
+  OpenHeaderMenu
+} from './header/headerMenu';
 
 interface WorkbenchHeaderProps {
   document: ProjectDocument;
@@ -92,14 +95,6 @@ export function WorkbenchHeader({
   const artifactUrl = useArtifactUrl(artifactFile);
   const target = targetLabel(document);
   const fileBusy = fileOperation.phase === 'running';
-  const openLabel =
-    fileBusy && fileOperation.kind === 'open' ? 'Opening…' : 'Open';
-  const saveLabel =
-    fileBusy && fileOperation.kind === 'save' ? 'Saving…' : 'Save';
-  const exportLabel =
-    fileBusy && fileOperation.kind === 'export' ? 'Exporting…' : 'Export';
-  const captureBusy = fileBusy && fileOperation.kind === 'capture';
-  const captureLabel = captureBusy ? 'Capturing…' : 'Capture';
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent): void => {
@@ -109,7 +104,7 @@ export function WorkbenchHeader({
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, []);
 
-  const toggleMenu = (menu: Exclude<HeaderMenu, null>): void => {
+  const toggleMenu = (menu: OpenHeaderMenu): void => {
     setActiveMenu((current) => current === menu ? null : menu);
   };
 
@@ -132,89 +127,17 @@ export function WorkbenchHeader({
         <strong>{document.name}</strong>
       </button>
       <div className="header-spacer" />
-      <div
-        className="file-actions"
-        title={fileOperation.message ?? 'Project files'}
-        aria-busy={fileBusy}
-      >
-        <button
-          type="button"
-          disabled={fileBusy}
-          aria-expanded={activeMenu === 'new'}
-          data-ashfox-action="project.new.open"
-          onClick={() => toggleMenu('new')}
-        >
-          New
-        </button>
-        <button
-          type="button"
-          disabled={fileBusy}
-          data-ashfox-action="project.open"
-          onClick={() => openInputRef.current?.click()}
-        >
-          {openLabel}
-        </button>
-        <input
-          ref={openInputRef}
-          type="file"
-          hidden
-          aria-label="Open project file"
-          accept=".ashfox,application/vnd.ashfox.project+zip,application/zip"
-          data-ashfox-action="project.open.input"
-          onChange={(event) => {
-            const file = event.currentTarget.files?.[0];
-            event.currentTarget.value = '';
-            if (file) onOpen(file);
-          }}
-        />
-        <button
-          type="button"
-          disabled={fileBusy}
-          data-ashfox-action="project.save"
-          onClick={onSave}
-        >
-          {saveLabel}
-        </button>
-        <button
-          type="button"
-          className="is-primary"
-          disabled={fileBusy}
-          aria-expanded={activeMenu === 'export'}
-          data-ashfox-action="project.export.open"
-          onClick={() => toggleMenu('export')}
-        >
-          {exportLabel}
-        </button>
-        <button
-          type="button"
-          className="is-capture"
-          disabled={fileBusy && !captureBusy}
-          aria-expanded={activeMenu === 'capture'}
-          data-ashfox-action="project.capture.open"
-          onClick={() => toggleMenu('capture')}
-        >
-          {captureLabel}
-        </button>
-        {artifactFile && artifactUrl ? (
-          <a
-            ref={artifactAnchorRef}
-            className="artifact-download-action"
-            href={artifactUrl}
-            download={artifactFile.name}
-            aria-label={`Download ${artifactFile.name}`}
-            data-ashfox-action="artifact.download"
-            data-ashfox-artifact-name={artifactFile.name}
-            data-ashfox-artifact-content-type={artifactFile.contentType}
-            data-ashfox-artifact-byte-length={artifactFile.bytes.byteLength}
-            data-ashfox-artifact-project-id={artifactFile.projectId}
-            data-ashfox-artifact-source-revision={artifactFile.sourceRevision}
-            data-ashfox-artifact-target={artifactFile.target}
-            data-ashfox-artifact-content-hash={artifactFile.contentHash}
-          >
-            <Icon name="download" />
-          </a>
-        ) : null}
-      </div>
+      <HeaderFileActions
+        activeMenu={activeMenu}
+        fileOperation={fileOperation}
+        artifactFile={artifactFile}
+        artifactUrl={artifactUrl}
+        openInputRef={openInputRef}
+        artifactAnchorRef={artifactAnchorRef}
+        onToggleMenu={toggleMenu}
+        onOpen={onOpen}
+        onSave={onSave}
+      />
       <span
         className="file-notice"
         aria-live="polite"

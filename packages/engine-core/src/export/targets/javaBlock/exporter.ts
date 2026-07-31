@@ -11,14 +11,13 @@ import {
 import {
   effectivelyVisibleSceneNodeIds
 } from '../../../sceneVisibility';
-import { validateProjectDocument } from '../../../validation';
-import { createExportAdaptationReceipt } from '../../adaptations';
 import {
   supportsJavaBlockMultiAxisRotation
 } from '../../compatibility';
 import { createJsonExportFile } from '../../json';
+import { createExportBundle } from '../../pipeline/createBundle';
+import { validateExportTarget } from '../../pipeline/validateTarget';
 import {
-  ProjectExportError,
   type BlobCopyExportFile,
   type ExportBundle
 } from '../../types';
@@ -226,11 +225,11 @@ export const buildMinecraftJavaModel = (document: ProjectDocument): MinecraftJav
 };
 
 export const exportMinecraftJavaBlock = (document: ProjectDocument): ExportBundle => {
-  const report = validateProjectDocument(document);
-  if (!report.valid || document.formatProfile.id !== 'minecraft.java_block') {
-    throw new ProjectExportError('Minecraft Java export validation failed.', report.findings);
-  }
-  const profile = document.formatProfile;
+  const validation = validateExportTarget(document, {
+    profileId: 'minecraft.java_block',
+    errorMessage: 'Minecraft Java export validation failed.'
+  });
+  const profile = validation.profile;
   const packMetadataPath = 'pack.mcmeta';
   const modelPath =
     `assets/${profile.namespace}/models/block/${profile.modelPath}.json`;
@@ -241,10 +240,7 @@ export const exportMinecraftJavaBlock = (document: ProjectDocument): ExportBundl
     .sort((left, right) => left.id.localeCompare(right.id))
     .map(createTextureCopy);
 
-  return {
-    schemaVersion: 1,
-    projectId: document.id,
-    revision: document.revision,
+  return createExportBundle(document, validation.findings, {
     target: {
       id: 'minecraft.java_block',
       version: profile.minecraftVersion
@@ -269,7 +265,5 @@ export const exportMinecraftJavaBlock = (document: ProjectDocument): ExportBundl
       createJsonExportFile('model', modelPath, model),
       ...textureFiles
     ],
-    findings: report.findings,
-    adaptations: createExportAdaptationReceipt(document)
-  };
+  });
 };

@@ -4,28 +4,26 @@ import {
   createOccupancyGrid,
   parseCellKey
 } from './lattice';
-import type {
-  GeometryPartSpec,
-  PartSpec
-} from './partContract';
 import {
-  isGeometryPartSpec
+  isGeometryPartSpec,
+  type GeometryPartSpec,
+  type PartSpec
 } from './partContract';
 import { rasterizePart } from './partPrimitiveAdapter';
 import {
   orthographicContributionMetrics,
   resolveAttachmentAnchor
 } from './partQualityMetrics';
-import type {
-  LatticePoint,
-  CellKey,
-  OccupancyGrid,
-  SurfacePixelDensity
-} from './types';
 import {
   surfaceFeaturePixels,
   validateSurfaceFeaturePlacement
 } from './surfaceFeature';
+import type {
+  CellKey,
+  LatticePoint,
+  OccupancyGrid,
+  SurfacePixelDensity
+} from './types';
 
 export const PART_OCCUPANCY_POLICY = {
   minimumRetainedNumerator: 1,
@@ -56,15 +54,13 @@ export interface CanonicalPartOccupancy {
 }
 
 export type CanonicalizePartOccupanciesResult =
-  | {
-      ok: true;
-      parts: readonly CanonicalPartOccupancy[];
-    }
-  | {
-      ok: false;
-      path: string;
-      message: string;
-    };
+  | { ok: true; parts: readonly CanonicalPartOccupancy[] }
+  | { ok: false; path: string; message: string };
+
+type CanonicalizationFailure = Extract<
+  CanonicalizePartOccupanciesResult,
+  { ok: false }
+>;
 
 export const canonicalPartOrder = (
   parts: readonly PartSpec[]
@@ -130,119 +126,111 @@ const maximumTrimDepth = (
     for (const [x, y, z] of NEIGHBOR_OFFSETS) {
       const neighbor =
         `${cell.x + x},${cell.y + y},${cell.z + z}` as CellKey;
-      if (!authored.has(neighbor) || distances.has(neighbor)) {
-        continue;
-      }
+      if (!authored.has(neighbor) || distances.has(neighbor)) continue;
       distances.set(neighbor, nextDistance);
       queue.push(neighbor);
-      if (trimmed.has(neighbor)) {
-        maximum = Math.max(maximum, nextDistance);
-      }
+      if (trimmed.has(neighbor)) maximum = Math.max(maximum, nextDistance);
     }
   }
   return maximum;
 };
 
-export const canonicalizePartOccupancies = (
-  parts: readonly PartSpec[],
-  density: SurfacePixelDensity
-): CanonicalizePartOccupanciesResult => {
-  const ordered = canonicalPartOrder(parts);
-  if (!ordered) {
+const canonicalizeGeometryPart = (
+  spec: GeometryPartSpec,
+  density: SurfacePixelDensity,
+  ownerByCell: Map<CellKey, string>
+): CanonicalPartOccupancy | CanonicalizationFailure => {
+  const authored = rasterizePart(density, spec);
+  if (authored.cells.size === 0) {
     return {
       ok: false,
-      path: 'parts',
-      message:
-        'Part hierarchy must contain unique IDs, existing parents, and no cycles.'
+      path: `parts.${spec.partId}`,
+      message: 'Part primitive produced no occupied cells.'
     };
   }
+  const retainedKeys: CellKey[] = [];
+  const trimmedKeys = new Set<CellKey>();
+  const trimmedBy = new Set<string>();
+  for (const key of authored.cells) {
+    const owner = ownerByCell.get(key);
+    if (owner === undefined) {
+      retainedKeys.push(key);
+    } else {
+      trimmedKeys.add(key);
+      trimmedBy.add(owner);
+    }
+  }
+  if (isMostlyConsumed(authored.cells.size, retainedKeys.length)) {
+    const retainedPercent = Math.round(
+      (retainedKeys.length / authored.cells.size) * 100
+    );
+    return {
+      ok: false,
+      path: `parts.${spec.partId}`,
+      message: `Part "${spec.partId}" retains only ${retainedPercent}% of its authored cells after deterministic seam ownership. Move or resize it so more than 20% remains.`
+    };
+  }
+  const trimDepth = maximumTrimDepth(
+    authored.cells,
+    retainedKeys,
+    trimmedKeys
+  );
+  if (trimDepth > PART_OCCUPANCY_POLICY.maximumTrimDepthCells) {
+    return {
+      ok: false,
+      path: `parts.${spec.partId}`,
+      message: `Part "${spec.partId}" penetrates ${trimDepth} surface cells into earlier geometry. Keep authored seam overlap within ${PART_OCCUPANCY_POLICY.maximumTrimDepthCells} cells.`
+    };
+  }
+  const canonical = createOccupancyGrid(
+    density,
+    retainedKeys.map(parseCellKey)
+  );
+  if (!isSixConnected(canonical)) {
+    return {
+      ok: false,
+      path: `parts.${spec.partId}`,
+      message: `Canonical seam ownership disconnects part "${spec.partId}". Move or resize the join so the retained cells remain one volume.`
+    };
+  }
+  for (const key of canonical.cells) ownerByCell.set(key, spec.partId);
+  return {
+    spec,
+    authored,
+    canonical,
+    canonicalAttachmentAnchor: null,
+    metric: {
+      partId: spec.partId,
+      authoredCellCount: authored.cells.size,
+      canonicalCellCount: canonical.cells.size,
+      trimmedCellCount: authored.cells.size - canonical.cells.size,
+      retainedFraction: canonical.cells.size / authored.cells.size,
+      maximumTrimDepthCells: trimDepth,
+      canonicalAttachmentAnchor: null,
+      attachmentSnapDistanceCells: 0,
+      trimmedByPartIds: [...trimmedBy].sort(compareStableText)
+    }
+  };
+};
 
+const canonicalizeGeometry = (
+  ordered: readonly PartSpec[],
+  density: SurfacePixelDensity
+): readonly CanonicalPartOccupancy[] | CanonicalizationFailure => {
   const ownerByCell = new Map<CellKey, string>();
   const canonical: CanonicalPartOccupancy[] = [];
   for (const spec of ordered.filter(isGeometryPartSpec)) {
-    const authored = rasterizePart(density, spec);
-    if (authored.cells.size === 0) {
-      return {
-        ok: false,
-        path: `parts.${spec.partId}`,
-        message: 'Part primitive produced no occupied cells.'
-      };
-    }
-
-    const retainedKeys: CellKey[] = [];
-    const trimmedKeys = new Set<CellKey>();
-    const trimmedBy = new Set<string>();
-    for (const key of authored.cells) {
-      const owner = ownerByCell.get(key);
-      if (owner === undefined) {
-        retainedKeys.push(key);
-      } else {
-        trimmedKeys.add(key);
-        trimmedBy.add(owner);
-      }
-    }
-    if (isMostlyConsumed(authored.cells.size, retainedKeys.length)) {
-      const retainedPercent = Math.round(
-        (retainedKeys.length / authored.cells.size) * 100
-      );
-      return {
-        ok: false,
-        path: `parts.${spec.partId}`,
-        message:
-          `Part "${spec.partId}" retains only ${retainedPercent}% of its authored cells after deterministic seam ownership. Move or resize it so more than 20% remains.`
-      };
-    }
-    const trimDepth = maximumTrimDepth(
-      authored.cells,
-      retainedKeys,
-      trimmedKeys
-    );
-    if (trimDepth > PART_OCCUPANCY_POLICY.maximumTrimDepthCells) {
-      return {
-        ok: false,
-        path: `parts.${spec.partId}`,
-        message:
-          `Part "${spec.partId}" penetrates ${trimDepth} surface cells into earlier geometry. Keep authored seam overlap within ${PART_OCCUPANCY_POLICY.maximumTrimDepthCells} cells.`
-      };
-    }
-
-    const canonicalGrid = createOccupancyGrid(
-      density,
-      retainedKeys.map(parseCellKey)
-    );
-    if (!isSixConnected(canonicalGrid)) {
-      return {
-        ok: false,
-        path: `parts.${spec.partId}`,
-        message:
-          `Canonical seam ownership disconnects part "${spec.partId}". Move or resize the join so the retained cells remain one volume.`
-      };
-    }
-    for (const key of canonicalGrid.cells) {
-      ownerByCell.set(key, spec.partId);
-    }
-    canonical.push({
-      spec,
-      authored,
-      canonical: canonicalGrid,
-      canonicalAttachmentAnchor: null,
-      metric: {
-        partId: spec.partId,
-        authoredCellCount: authored.cells.size,
-        canonicalCellCount: canonicalGrid.cells.size,
-        trimmedCellCount:
-          authored.cells.size - canonicalGrid.cells.size,
-        retainedFraction:
-          canonicalGrid.cells.size / authored.cells.size,
-        maximumTrimDepthCells: trimDepth,
-        canonicalAttachmentAnchor: null,
-        attachmentSnapDistanceCells: 0,
-        trimmedByPartIds: [...trimmedBy].sort(compareStableText)
-      }
-    });
+    const result = canonicalizeGeometryPart(spec, density, ownerByCell);
+    if ('ok' in result) return result;
+    canonical.push(result);
   }
+  return canonical;
+};
 
-  const canonicalByPart = new Map(
+const resolveAttachments = (
+  canonical: readonly CanonicalPartOccupancy[]
+): readonly CanonicalPartOccupancy[] | CanonicalizationFailure => {
+  const byPart = new Map(
     canonical.map((part) => [part.spec.partId, part])
   );
   const resolved: CanonicalPartOccupancy[] = [];
@@ -252,14 +240,13 @@ export const canonicalizePartOccupancies = (
       resolved.push(part);
       continue;
     }
-    const parent = canonicalByPart.get(parentPartId);
+    const parent = byPart.get(parentPartId);
     const attachment = part.spec.attachment;
     if (!parent || !attachment) {
       return {
         ok: false,
         path: `parts.${part.spec.partId}.attachment`,
-        message:
-          `Part "${part.spec.partId}" requires an existing parent and attachment anchors.`
+        message: `Part "${part.spec.partId}" requires an existing parent and attachment anchors.`
       };
     }
     const anchor = resolveAttachmentAnchor(
@@ -275,21 +262,15 @@ export const canonicalizePartOccupancies = (
     );
     if (
       !anchor ||
-      anchor.distanceCells >
-        PART_OCCUPANCY_POLICY.maximumTrimDepthCells
+      anchor.distanceCells > PART_OCCUPANCY_POLICY.maximumTrimDepthCells
     ) {
       return {
         ok: false,
         path: `parts.${part.spec.partId}.attachment`,
-        message:
-          `Part "${part.spec.partId}" has no parent contact within ${PART_OCCUPANCY_POLICY.maximumTrimDepthCells} surface cells of its requested attachment anchor.`
+        message: `Part "${part.spec.partId}" has no parent contact within ${PART_OCCUPANCY_POLICY.maximumTrimDepthCells} surface cells of its requested attachment anchor.`
       };
     }
-    const canonicalAttachmentAnchor = {
-      x: anchor.anchor.x,
-      y: anchor.anchor.y,
-      z: anchor.anchor.z
-    };
+    const canonicalAttachmentAnchor = { ...anchor.anchor };
     resolved.push({
       ...part,
       canonicalAttachmentAnchor,
@@ -304,64 +285,69 @@ export const canonicalizePartOccupancies = (
       }
     });
   }
+  return resolved;
+};
 
+const validateSilhouette = (
+  parts: readonly CanonicalPartOccupancy[]
+): CanonicalizationFailure | null => {
   const visiblePartIds = new Set(
     orthographicContributionMetrics(
       new Map(
-        resolved.map((part) => [
+        parts.map((part) => [
           part.spec.partId,
-          {
-            partId: part.spec.partId,
-            occupancy: part.canonical
-          }
+          { partId: part.spec.partId, occupancy: part.canonical }
         ])
       )
     )
       .filter((metric) => metric.visibleCellCount > 0)
       .map((metric) => metric.partId)
   );
-  const hidden = resolved.find(
+  const hidden = parts.find(
     (part) => !visiblePartIds.has(part.spec.partId)
   );
-  if (hidden) {
-    return {
-      ok: false,
-      path: `parts.${hidden.spec.partId}`,
-      message:
-        `Canonical seam ownership leaves part "${hidden.spec.partId}" without an orthographic silhouette contribution.`
-    };
-  }
+  return hidden
+    ? {
+        ok: false,
+        path: `parts.${hidden.spec.partId}`,
+        message: `Canonical seam ownership leaves part "${hidden.spec.partId}" without an orthographic silhouette contribution.`
+      }
+    : null;
+};
 
+const validateFeatures = (
+  ordered: readonly PartSpec[],
+  geometry: readonly CanonicalPartOccupancy[]
+): CanonicalizationFailure | null => {
+  const byPart = new Map(
+    geometry.map((part) => [part.spec.partId, part])
+  );
   const environment = new Set<CellKey>(
-    resolved.flatMap((part) => [...part.canonical.cells])
+    geometry.flatMap((part) => [...part.canonical.cells])
   );
   const featurePixelOwners = new Map<string, string>();
   for (const feature of ordered.filter(
     (part): part is Extract<PartSpec, { kind: 'feature' }> =>
       part.kind === 'feature'
   )) {
-    const parent = feature.parentPartId === null
-      ? undefined
-      : canonicalByPart.get(feature.parentPartId);
+    const parent =
+      feature.parentPartId === null
+        ? undefined
+        : byPart.get(feature.parentPartId);
     if (!parent) {
       return {
         ok: false,
         path: `parts.${feature.partId}.parentPartId`,
-        message:
-          `Surface feature "${feature.partId}" requires a geometric parent.`
+        message: `Surface feature "${feature.partId}" requires a geometric parent.`
       };
     }
-    const placementIssue = validateSurfaceFeaturePlacement(
+    const issue = validateSurfaceFeaturePlacement(
       feature,
       parent.canonical,
       environment
     );
-    if (placementIssue) {
-      return {
-        ok: false,
-        path: placementIssue.path,
-        message: placementIssue.message
-      };
+    if (issue) {
+      return { ok: false, path: issue.path, message: issue.message };
     }
     for (const pixel of surfaceFeaturePixels(feature)) {
       const owner = featurePixelOwners.get(pixel.key);
@@ -377,5 +363,27 @@ export const canonicalizePartOccupancies = (
       featurePixelOwners.set(pixel.key, feature.partId);
     }
   }
-  return { ok: true, parts: resolved };
+  return null;
+};
+
+export const canonicalizePartOccupancies = (
+  parts: readonly PartSpec[],
+  density: SurfacePixelDensity
+): CanonicalizePartOccupanciesResult => {
+  const ordered = canonicalPartOrder(parts);
+  if (!ordered) {
+    return {
+      ok: false,
+      path: 'parts',
+      message: 'Part hierarchy must contain unique IDs, existing parents, and no cycles.'
+    };
+  }
+  const canonical = canonicalizeGeometry(ordered, density);
+  if ('ok' in canonical) return canonical;
+  const resolved = resolveAttachments(canonical);
+  if ('ok' in resolved) return resolved;
+  const silhouetteIssue = validateSilhouette(resolved);
+  if (silhouetteIssue) return silhouetteIssue;
+  const featureIssue = validateFeatures(ordered, resolved);
+  return featureIssue ?? { ok: true, parts: resolved };
 };

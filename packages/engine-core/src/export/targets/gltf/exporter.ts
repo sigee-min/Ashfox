@@ -1,27 +1,26 @@
 import type {
-  AssetId,
   ProjectDocument,
   TextureAsset
 } from '../../../model';
+import { validateExportTarget } from '../../pipeline/validateTarget';
 import {
-  validateProjectDocument,
-  type InvariantFinding
-} from '../../../validation';
-import { createExportAdaptationReceipt } from '../../adaptations';
-import { createJsonExportFile } from '../../json';
-import {
-  BlobResolutionError,
   ExportMaterializationRequiredError,
-  ProjectExportError,
-  type BinaryExportFile,
-  type BlobResolver,
   type BlobCopyExportFile,
-  type ExportBundle,
-  type ResolvedBlob
+  type ExportBundle
 } from '../../types';
 import { compileGltfAnimations } from './animationCompiler';
 import { GltfBinaryWriter } from './binaryWriter';
-import { buildGlb } from './glb';
+import type {
+  CompiledGltf,
+  GltfBuildOptions
+} from './buildTypes';
+import { createGltfBundle } from './bundle';
+import {
+  orderedTextures,
+  requireResolvedTexture,
+  resolveGltfTextures,
+  type GltfResolvedExportOptions
+} from './resolvedTextures';
 import { compileGltfScene } from './sceneCompiler';
 import type {
   GltfDocument,
@@ -30,19 +29,13 @@ import type {
   GltfSampler
 } from './types';
 
-export interface GltfBuildOptions {
-  resolvedTextures?: ReadonlyMap<AssetId, ResolvedBlob>;
-}
-
-export interface GltfResolvedExportOptions {
-  resolveBlob: BlobResolver;
-}
-
-export interface CompiledGltf {
-  document: GltfDocument;
-  binary: Uint8Array;
-  textureFiles: BlobCopyExportFile[];
-}
+export type {
+  CompiledGltf,
+  GltfBuildOptions
+} from './buildTypes';
+export type {
+  GltfResolvedExportOptions
+} from './resolvedTextures';
 
 const textureExtension = (texture: TextureAsset): 'png' | 'jpg' =>
   texture.source.contentType === 'image/jpeg' ? 'jpg' : 'png';
@@ -71,58 +64,6 @@ const unitScaleFor = (document: ProjectDocument): number => {
   }
 };
 
-const validateResolvedTexture = (
-  texture: TextureAsset,
-  resolved: ResolvedBlob
-): ResolvedBlob => {
-  if (!(resolved.bytes instanceof Uint8Array)) {
-    throw new BlobResolutionError(
-      'blob.invalid_bytes',
-      texture.id,
-      texture.source,
-      `Resolved texture "${texture.id}" did not provide Uint8Array bytes.`
-    );
-  }
-  if (resolved.contentType !== texture.source.contentType) {
-    throw new BlobResolutionError(
-      'blob.content_type_mismatch',
-      texture.id,
-      texture.source,
-      `Resolved texture "${texture.id}" has content type "${resolved.contentType}", expected "${texture.source.contentType}".`
-    );
-  }
-  if (
-    texture.source.byteLength !== undefined &&
-    resolved.bytes.byteLength !== texture.source.byteLength
-  ) {
-    throw new BlobResolutionError(
-      'blob.byte_length_mismatch',
-      texture.id,
-      texture.source,
-      `Resolved texture "${texture.id}" has ${resolved.bytes.byteLength} bytes, expected ${texture.source.byteLength}.`
-    );
-  }
-  return resolved;
-};
-
-const requireResolvedTexture = (
-  texture: TextureAsset,
-  resolvedTextures: ReadonlyMap<AssetId, ResolvedBlob> | undefined
-): ResolvedBlob => {
-  const resolved = resolvedTextures?.get(texture.id);
-  if (!resolved) {
-    throw new ExportMaterializationRequiredError(
-      `Embedded GLB export requires resolved bytes for texture "${texture.id}".`
-    );
-  }
-  return validateResolvedTexture(texture, resolved);
-};
-
-const sortedTextures = (document: ProjectDocument): TextureAsset[] =>
-  Object.values(document.textures).sort((left, right) =>
-    left.id.localeCompare(right.id)
-  );
-
 export const buildGltf = (
   document: ProjectDocument,
   options: GltfBuildOptions = {}
@@ -141,7 +82,7 @@ export const buildGltf = (
     modelDirectory.length > 0
       ? `${modelDirectory}/textures`
       : 'textures';
-  const textures = sortedTextures(document);
+  const textures = orderedTextures(document);
   const materialByTextureId = new Map<string, number>();
   const samplers: GltfSampler[] = [];
   const materials: GltfMaterial[] = [];
@@ -262,108 +203,12 @@ export const buildGltf = (
   };
 };
 
-const createGltfBundle = (
-  document: ProjectDocument,
-  compiled: CompiledGltf,
-  findings: readonly InvariantFinding[]
-): ExportBundle => {
-  const profile = document.formatProfile;
-  if (profile.id !== 'gltf.2') {
-    throw new Error('Project does not use the gltf.2 profile.');
-  }
-  const modelPath = `${profile.modelPath}.${profile.container}`;
-  const binaryPath = `${profile.modelPath}.bin`;
-  const modelFile =
-    profile.container === 'gltf'
-      ? createJsonExportFile(
-          'model',
-          modelPath,
-          compiled.document,
-          'model/gltf+json'
-        )
-      : ({
-          kind: 'binary',
-          role: 'model',
-          path: modelPath,
-          contentType: 'model/gltf-binary',
-          data: buildGlb(compiled.document, compiled.binary)
-        } satisfies BinaryExportFile);
-  const binaryFiles: BinaryExportFile[] =
-    profile.container === 'gltf' && compiled.binary.byteLength > 0
-      ? [
-          {
-            kind: 'binary',
-            role: 'buffer',
-            path: binaryPath,
-            contentType: 'application/octet-stream',
-            data: compiled.binary
-          }
-        ]
-      : [];
-
-  return {
-    schemaVersion: 1,
-    projectId: document.id,
-    revision: document.revision,
-    target: {
-      id: 'gltf.2',
-      version: profile.version
-    },
-    rootPath: 'gltf',
-    entrypoints: [modelPath],
-    files: [modelFile, ...binaryFiles, ...compiled.textureFiles],
-    findings,
-    adaptations: createExportAdaptationReceipt(document)
-  };
-};
-
-const validateGltfExport = (
-  document: ProjectDocument
-): readonly InvariantFinding[] => {
-  const report = validateProjectDocument(document);
-  if (!report.valid || document.formatProfile.id !== 'gltf.2') {
-    throw new ProjectExportError(
-      'glTF 2.0 export validation failed.',
-      report.findings
-    );
-  }
-  return report.findings;
-};
-
-const resolveTexture = async (
-  texture: TextureAsset,
-  resolveBlob: BlobResolver
-): Promise<readonly [AssetId, ResolvedBlob]> => {
-  let resolved: ResolvedBlob | null;
-  try {
-    resolved = await resolveBlob(texture.source);
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    throw new BlobResolutionError(
-      'blob.read_failed',
-      texture.id,
-      texture.source,
-      `Failed to resolve texture "${texture.id}": ${reason}`
-    );
-  }
-  if (!resolved) {
-    throw new BlobResolutionError(
-      'blob.not_found',
-      texture.id,
-      texture.source,
-      `Texture blob "${texture.source.bucket}/${texture.source.key}" was not found.`
-    );
-  }
-  validateResolvedTexture(texture, resolved);
-  return [texture.id, resolved];
-};
-
 export const exportGltf = (document: ProjectDocument): ExportBundle => {
-  const findings = validateGltfExport(document);
-  const profile = document.formatProfile;
-  if (profile.id !== 'gltf.2') {
-    throw new Error('Project does not use the gltf.2 profile.');
-  }
+  const validation = validateExportTarget(document, {
+    profileId: 'gltf.2',
+    errorMessage: 'glTF 2.0 export validation failed.'
+  });
+  const profile = validation.profile;
   if (
     profile.imageStorage === 'embedded' &&
     Object.keys(document.textures).length > 0
@@ -373,29 +218,28 @@ export const exportGltf = (document: ProjectDocument): ExportBundle => {
     );
   }
   const compiled = buildGltf(document);
-  return createGltfBundle(document, compiled, findings);
+  return createGltfBundle(document, compiled, validation.findings);
 };
 
 export const exportGltfResolved = async (
   document: ProjectDocument,
   options: GltfResolvedExportOptions
 ): Promise<ExportBundle> => {
-  const findings = validateGltfExport(document);
-  const profile = document.formatProfile;
-  if (profile.id !== 'gltf.2') {
-    throw new Error('Project does not use the gltf.2 profile.');
-  }
+  const validation = validateExportTarget(document, {
+    profileId: 'gltf.2',
+    errorMessage: 'glTF 2.0 export validation failed.'
+  });
+  const profile = validation.profile;
   if (profile.imageStorage === 'external') {
     const compiled = buildGltf(document);
-    return createGltfBundle(document, compiled, findings);
+    return createGltfBundle(document, compiled, validation.findings);
   }
-  const entries = await Promise.all(
-    sortedTextures(document).map((texture) =>
-      resolveTexture(texture, options.resolveBlob)
-    )
+  const resolvedTextures = await resolveGltfTextures(
+    document,
+    options.resolveBlob
   );
   const compiled = buildGltf(document, {
-    resolvedTextures: new Map(entries)
+    resolvedTextures
   });
-  return createGltfBundle(document, compiled, findings);
+  return createGltfBundle(document, compiled, validation.findings);
 };

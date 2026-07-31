@@ -1,11 +1,10 @@
 import type { ProjectDocument, TextureAsset } from '../../../model';
-import { validateProjectDocument } from '../../../validation';
-import { createExportAdaptationReceipt } from '../../adaptations';
 import { createJsonExportFile } from '../../json';
+import { createExportBundle } from '../../pipeline/createBundle';
+import { validateExportTarget } from '../../pipeline/validateTarget';
 import { buildMinecraftActorAnimation } from '../../shared/minecraftAnimation';
 import { buildMinecraftGeometry } from '../../shared/minecraftGeometry';
 import {
-  ProjectExportError,
   type BlobCopyExportFile,
   type ExportBundle
 } from '../../types';
@@ -48,11 +47,11 @@ export const buildGeckoLib5Animations = (document: ProjectDocument) => {
 };
 
 export const exportGeckoLib5 = (document: ProjectDocument): ExportBundle => {
-  const report = validateProjectDocument(document);
-  if (!report.valid || document.formatProfile.id !== 'minecraft.java.geckolib5') {
-    throw new ProjectExportError('GeckoLib 5 export validation failed.', report.findings);
-  }
-  const profile = document.formatProfile;
+  const validation = validateExportTarget(document, {
+    profileId: 'minecraft.java.geckolib5',
+    errorMessage: 'GeckoLib 5 export validation failed.'
+  });
+  const profile = validation.profile;
   const modelPath =
     `assets/${profile.namespace}/geckolib/models/${profile.assetKind}/${profile.modelPath}.geo.json`;
   const animationPath =
@@ -61,10 +60,7 @@ export const exportGeckoLib5 = (document: ProjectDocument): ExportBundle => {
     .sort((left, right) => left.id.localeCompare(right.id))
     .map(createTextureCopy);
 
-  return {
-    schemaVersion: 1,
-    projectId: document.id,
-    revision: document.revision,
+  return createExportBundle(document, validation.findings, {
     target: {
       id: 'minecraft.java.geckolib5',
       version: profile.minecraftVersion
@@ -76,7 +72,5 @@ export const exportGeckoLib5 = (document: ProjectDocument): ExportBundle => {
       createJsonExportFile('animation', animationPath, buildGeckoLib5Animations(document)),
       ...textureFiles
     ],
-    findings: report.findings,
-    adaptations: createExportAdaptationReceipt(document)
-  };
+  });
 };
