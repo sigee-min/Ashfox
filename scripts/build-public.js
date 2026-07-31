@@ -5,6 +5,9 @@ const repoRoot = path.resolve(__dirname, '..');
 const webOutput = path.join(repoRoot, 'apps', 'web', 'dist');
 const siteOutput = path.join(repoRoot, 'apps', 'site', 'dist');
 const publicOutput = path.join(repoRoot, 'dist', 'public');
+const {
+  buildSkillRelease
+} = require('./build-skill-release');
 
 const requireFile = (target) => {
   if (!fs.statSync(target, { throwIfNoEntry: false })?.isFile()) {
@@ -52,6 +55,7 @@ copyDirectoryContents(
   path.join(webOutput, 'workbench'),
   workbenchOutput
 );
+buildSkillRelease(publicOutput);
 removeSourceMaps(publicOutput);
 
 fs.writeFileSync(
@@ -83,6 +87,20 @@ fs.writeFileSync(
 
 /workbench/agent-manifest.json
   Cache-Control: public, max-age=0, must-revalidate
+
+/skills/ashfox/latest.json
+  Cache-Control: public, max-age=0, must-revalidate
+
+/skills/ashfox/files/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+/skills/ashfox/ashfox.skill
+  Cache-Control: public, max-age=0, must-revalidate
+  Content-Type: application/zip
+
+/skills/ashfox/ashfox.zip
+  Cache-Control: public, max-age=0, must-revalidate
+  Content-Type: application/zip
 
 /assets/app.*
   Cache-Control: public, max-age=0, must-revalidate
@@ -136,5 +154,15 @@ if (
 ) {
   throw new Error('Agent manifest must exist only below /workbench/.');
 }
+requireFile(path.join(publicOutput, 'skills', 'ashfox', 'latest.json'));
+requireFile(path.join(publicOutput, 'skills', 'ashfox', 'ashfox.skill'));
+requireFile(path.join(publicOutput, 'skills', 'ashfox', 'ashfox.zip'));
+requireFile(path.join(
+  publicOutput,
+  'skills',
+  'ashfox',
+  'files',
+  'SKILL.md'
+));
 
 console.log(`ashfox public bundle ready: ${publicOutput}`);

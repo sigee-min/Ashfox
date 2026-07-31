@@ -11,12 +11,13 @@ import { fileURLToPath } from 'node:url';
 
 import { loadDocumentation } from '../src/docs.mjs';
 import {
+  galleryPageRoute,
   renderDocumentationPage,
+  renderGalleryPage,
   renderLandingPage,
   renderNotFoundPage
 } from '../src/templates.mjs';
-import { landingContent } from '../src/content.mjs';
-import { createSinglePlayGif } from '../src/gifPlayback.mjs';
+import { galleryContent } from '../src/content.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = path.resolve(siteRoot, '..', '..');
@@ -29,8 +30,11 @@ const outputRoot = path.join(siteRoot, 'dist');
 const workbenchUrl = '/workbench/';
 const siteOrigin = 'https://ashfox.io';
 
-const hashedAsset = async (sourceName) => {
-  const bytes = await readFile(path.join(sourceRoot, sourceName));
+const hashedAsset = async (sourceName, transform) => {
+  const source = await readFile(path.join(sourceRoot, sourceName));
+  const bytes = transform
+    ? Buffer.from(transform(source.toString('utf8')))
+    : source;
   const extension = path.extname(sourceName);
   const name = path.basename(sourceName, extension);
   const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 12);
@@ -62,25 +66,49 @@ ${routes.map((route) => `  <url><loc>${escapeXml(new URL(route, siteOrigin).toSt
 </urlset>
 `;
 
-const prepareHeroReels = async () => {
-  for (const sequence of landingContent.demo.sequences) {
-    const destination = path.join(outputRoot, sequence.reel);
-    const bytes = await readFile(destination);
-    await writeFile(destination, createSinglePlayGif(bytes));
-  }
-};
-
 await rm(outputRoot, { recursive: true, force: true });
 await mkdir(path.join(outputRoot, 'assets'), { recursive: true });
 
+const playbackAsset = await hashedAsset('landingPlayback.js');
+const playbackSpecifier = `./${path.basename(playbackAsset)}`;
+const galleryAsset = await hashedAsset('gallery.js');
+const gallerySpecifier = `./${path.basename(galleryAsset)}`;
 const assets = {
   css: await hashedAsset('site.css'),
-  js: await hashedAsset('site.js')
+  js: await hashedAsset('site.js', (source) => {
+    const replacements = [
+      ['./landingPlayback.js', playbackSpecifier],
+      ['./gallery.js', gallerySpecifier]
+    ];
+    for (const [sourceSpecifier] of replacements) {
+      if (!source.includes(sourceSpecifier)) {
+        throw new Error(`Site module import is missing: ${sourceSpecifier}`);
+      }
+    }
+    return replacements.reduce(
+      (output, [sourceSpecifier, destinationSpecifier]) =>
+        output.replace(sourceSpecifier, destinationSpecifier),
+      source
+    );
+  })
 };
 const config = { siteOrigin, workbenchUrl };
 const documents = await loadDocumentation(docsRoot);
+const galleryPageCount = Math.ceil(
+  galleryContent.items.length / galleryContent.pageSize
+);
+const galleryRoutes = Array.from(
+  { length: galleryPageCount },
+  (_, pageIndex) => galleryPageRoute(pageIndex)
+);
 
 await writeRoute('/', renderLandingPage({ assets, config }));
+for (let pageIndex = 0; pageIndex < galleryPageCount; pageIndex += 1) {
+  await writeRoute(
+    galleryPageRoute(pageIndex),
+    renderGalleryPage({ assets, config, pageIndex })
+  );
+}
 for (const document of documents) {
   await writeRoute(
     document.route,
@@ -92,7 +120,6 @@ await writeFile(
   renderNotFoundPage({ assets, config })
 );
 await cp(publicRoot, outputRoot, { recursive: true });
-await prepareHeroReels();
 await cp(brandRoot, path.join(outputRoot, 'brand'), { recursive: true });
 await writeFile(
   path.join(outputRoot, '_headers'),
@@ -125,11 +152,15 @@ await writeFile(
 
 /media/*
   Cache-Control: public, max-age=604800
+
+/media/showcase/*.gif
+  Cache-Control: public, max-age=3600, must-revalidate
 `
 );
 await writeFile(
   path.join(outputRoot, '_redirects'),
   `/docs /docs/ 301
+/gallery /gallery/ 301
 `
 );
 await writeFile(
@@ -142,9 +173,15 @@ Sitemap: ${siteOrigin}/sitemap.xml
 );
 await writeFile(
   path.join(outputRoot, 'sitemap.xml'),
-  sitemap(['/', '/workbench/', ...documents.map((document) => document.route)])
+  sitemap([
+    '/',
+    '/workbench/',
+    ...galleryRoutes,
+    ...documents.map((document) => document.route)
+  ])
 );
 
 console.log(
-  `ashfox static site built: ${documents.length} docs, ${outputRoot}`
+  `ashfox static site built: ${documents.length} docs, ` +
+  `${galleryPageCount} gallery pages, ${outputRoot}`
 );

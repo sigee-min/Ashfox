@@ -13,6 +13,7 @@ const contentTypes = {
   '.jpg': 'image/jpeg',
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.mp4': 'video/mp4',
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
   '.txt': 'text/plain; charset=utf-8',
@@ -50,7 +51,11 @@ http.createServer((request, response) => {
     response.end();
     return;
   }
-  if (url.pathname === '/workbench' || url.pathname === '/docs') {
+  if (
+    url.pathname === '/workbench' ||
+    url.pathname === '/docs' ||
+    url.pathname === '/gallery'
+  ) {
     response.writeHead(301, { Location: `${url.pathname}/` });
     response.end();
     return;
@@ -64,15 +69,40 @@ http.createServer((request, response) => {
   const contentType =
     contentTypes[path.extname(file).toLowerCase()] ??
     'application/octet-stream';
-  response.writeHead(200, {
+  const fileSize = fs.statSync(file).size;
+  const range = request.headers.range?.match(/^bytes=(\d*)-(\d*)$/);
+  let start = 0;
+  let end = fileSize - 1;
+  if (range) {
+    const [, requestedStart, requestedEnd] = range;
+    if (!requestedStart && requestedEnd) {
+      start = Math.max(0, fileSize - Number.parseInt(requestedEnd, 10));
+    } else {
+      start = Number.parseInt(requestedStart || '0', 10);
+      if (requestedEnd) end = Number.parseInt(requestedEnd, 10);
+    }
+    end = Math.min(end, fileSize - 1);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) {
+      response.writeHead(416, {
+        'Content-Range': `bytes */${fileSize}`
+      });
+      response.end();
+      return;
+    }
+  }
+  const headers = {
+    'Accept-Ranges': 'bytes',
     'Cache-Control': 'no-store',
+    'Content-Length': String(end - start + 1),
     'Content-Type': contentType
-  });
+  };
+  if (range) headers['Content-Range'] = `bytes ${start}-${end}/${fileSize}`;
+  response.writeHead(range ? 206 : 200, headers);
   if (request.method === 'HEAD') {
     response.end();
     return;
   }
-  fs.createReadStream(file).pipe(response);
+  fs.createReadStream(file, { start, end }).pipe(response);
 }).listen(port, host, () => {
   console.log(`ashfox preview: http://${host}:${port}/`);
 });

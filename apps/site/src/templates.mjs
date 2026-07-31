@@ -1,4 +1,5 @@
 import {
+  galleryContent,
   landingContent,
   sectionLabels,
   sectionOrder
@@ -66,7 +67,7 @@ const siteHeader = ({ active }) => `
     </a>
     <nav class="primary-nav" aria-label="Primary navigation">
       <a href="/#quick-start">Get started</a>
-      <a href="/#showcase">Examples</a>
+      <a ${active === 'gallery' ? 'aria-current="page"' : ''} href="/gallery/">Gallery</a>
       <a ${active === 'docs' ? 'aria-current="page"' : ''} href="/docs/">Docs</a>
     </nav>
     <div class="header-actions">
@@ -81,6 +82,7 @@ const pageShell = ({
   body,
   config,
   description,
+  headLinks = '',
   path,
   robots = 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1',
   structuredData,
@@ -115,6 +117,7 @@ const pageShell = ({
     <meta name="twitter:image" content="${escapeHtml(socialImage)}">
     <meta name="twitter:image:alt" content="ashfox — Build. Watch. Export.">
     ${config.siteOrigin ? `<link rel="canonical" href="${escapeHtml(canonical)}">` : ''}
+    ${headLinks}
     <link rel="icon" href="/brand/ashfox-mark.svg" type="image/svg+xml">
     <link rel="stylesheet" href="${assets.css}">
     <script type="module" src="${assets.js}"></script>
@@ -132,6 +135,7 @@ const pageShell = ({
       </a>
       <p>AI-native low-poly workbench.</p>
       <div class="footer-links">
+        <a href="/gallery/">Gallery</a>
         <a href="/docs/">Documentation</a>
         <a href="${githubUrl}">GitHub</a>
         <span>© <span data-current-year></span> ashfox</span>
@@ -147,20 +151,35 @@ const landingDemo = (demo) => `
     id="demo"
     data-agent-demo
     data-sequences="${escapeHtml(JSON.stringify(demo.sequences))}"
+    data-empty-src="/media/showcase/empty-workspace.jpg"
   >
-    <div class="studio-capture">
+    <div
+      class="studio-capture"
+      data-demo-viewport
+      role="img"
+      aria-label="${escapeHtml(`${demo.sequences[0].name} completed in ashfox`)}"
+    >
       <img
+        class="studio-poster"
         src="${escapeHtml(demo.sequences[0].poster)}"
-        data-demo-reel
-        data-empty-src="/media/showcase/empty-workspace.jpg"
+        data-demo-poster
         width="1280"
         height="720"
-        alt="${escapeHtml(`ashfox building ${demo.sequences[0].name} from an empty scene`)}"
+        alt=""
+        aria-hidden="true"
         decoding="async"
         fetchpriority="high"
       >
+      <video
+        class="studio-playback"
+        data-demo-player
+        data-media-state="poster"
+        muted
+        playsinline
+        preload="metadata"
+        aria-hidden="true"
+      ></video>
       <span class="capture-live"><i></i> Live viewport</span>
-      <div class="capture-scan" aria-hidden="true"></div>
     </div>
     <div class="agent-dock">
       <div class="agent-work-status" aria-live="polite">
@@ -191,32 +210,44 @@ const landingDemo = (demo) => `
 `;
 
 const landingStory = ({ story }) => `
-  <section class="story-section" id="showcase" data-scroll-story>
+  <section
+    class="story-section"
+    id="showcase"
+    data-scroll-story
+    data-sequences="${escapeHtml(JSON.stringify(story))}"
+  >
     <div class="story-intro" data-reveal>
       <p class="eyebrow"><span></span>One coherent workflow</p>
-      <h2>One request. A complete asset.</h2>
+      <h2><span>One request.</span><span>A complete asset.</span></h2>
       <p>Follow the result from editable structure to authored motion.</p>
     </div>
     <div class="story-track">
       <span class="story-axis" aria-hidden="true"><i></i></span>
       <div class="story-stage">
-        <div class="story-frame">
-          ${story.map((chapter, index) => `
-            <div
-              class="story-media"
-              data-story-media="${index}"
-              data-active="${index === 0 ? 'true' : 'false'}"
-            >
-              <img
-                src="${escapeHtml(chapter.poster)}"
-                data-story-src="${escapeHtml(chapter.media)}"
-                width="1280"
-                height="720"
-                alt="${escapeHtml(chapter.alt)}"
-                loading="lazy"
-              >
-            </div>
-          `).join('')}
+        <div
+          class="story-frame"
+          data-story-desktop-host
+          role="img"
+          aria-label="${escapeHtml(story[0].alt)}"
+        >
+          <img
+            class="story-poster"
+            src="${escapeHtml(story[0].poster)}"
+            data-story-desktop-poster
+            width="1280"
+            height="720"
+            alt=""
+            aria-hidden="true"
+          >
+          <video
+            class="story-playback"
+            data-story-player
+            data-media-state="poster"
+            muted
+            playsinline
+            preload="metadata"
+            aria-hidden="true"
+          ></video>
         </div>
         <div class="story-stage-meta" aria-hidden="true">
           <span data-story-position>01 / 0${story.length}</span>
@@ -229,14 +260,19 @@ const landingStory = ({ story }) => `
             class="story-chapter ${index % 2 === 0 ? 'story-chapter-left' : 'story-chapter-right'}"
             data-story-chapter="${index}"
           >
-            <div class="story-mobile-media">
+            <div
+              class="story-mobile-media"
+              data-story-mobile-host="${index}"
+              role="img"
+              aria-label="${escapeHtml(chapter.alt)}"
+            >
               <img
+                class="story-poster"
                 src="${escapeHtml(chapter.poster)}"
-                data-story-mobile="${index}"
-                data-story-src="${escapeHtml(chapter.media)}"
                 width="1280"
                 height="720"
-                alt="${escapeHtml(chapter.alt)}"
+                alt=""
+                aria-hidden="true"
                 loading="lazy"
               >
             </div>
@@ -327,7 +363,9 @@ export const renderLandingPage = ({ assets, config }) => {
       <section class="hero">
         <div class="hero-copy">
           <p class="eyebrow"><span></span>${content.eyebrow}</p>
-          <h1>${content.title}</h1>
+          <h1>${content.titleLines
+            .map((line) => `<span>${escapeHtml(line)}</span>`)
+            .join('')}</h1>
           <p class="hero-summary">${content.summary}</p>
           <div class="hero-actions">
             <button
@@ -466,6 +504,165 @@ export const renderLandingPage = ({ assets, config }) => {
       ]
     },
     title: 'ashfox'
+  });
+};
+
+export const galleryPageRoute = (pageIndex) =>
+  pageIndex === 0 ? '/gallery/' : `/gallery/page/${pageIndex + 1}/`;
+
+const galleryPagination = ({ currentPage, pageCount }) => pageCount < 2
+  ? ''
+  : `
+  <nav class="gallery-pagination" aria-label="Gallery pages">
+    ${currentPage > 0
+      ? `<a class="gallery-page-direction" href="${galleryPageRoute(currentPage - 1)}" rel="prev">← Previous</a>`
+      : '<span class="gallery-page-direction" aria-disabled="true">← Previous</span>'}
+    <span class="gallery-pages">
+      ${Array.from({ length: pageCount }, (_, pageIndex) => `
+        <a
+          href="${galleryPageRoute(pageIndex)}"
+          ${pageIndex === currentPage ? 'aria-current="page"' : ''}
+          aria-label="Gallery page ${pageIndex + 1}"
+        >${pageIndex + 1}</a>
+      `).join('')}
+    </span>
+    ${currentPage < pageCount - 1
+      ? `<a class="gallery-page-direction" href="${galleryPageRoute(currentPage + 1)}" rel="next">Next →</a>`
+      : '<span class="gallery-page-direction" aria-disabled="true">Next →</span>'}
+  </nav>
+`;
+
+const galleryCard = (item, index) => `
+  <article class="gallery-card">
+    <button
+      class="gallery-preview"
+      type="button"
+      data-gallery-card
+      data-gallery-id="${escapeHtml(item.galleryId)}"
+      data-gif="${escapeHtml(item.gif)}"
+      data-preview-state="poster"
+      aria-label="Watch ${escapeHtml(item.name)} build process"
+      aria-pressed="false"
+    >
+      <span
+        class="gallery-media"
+        data-gallery-media
+        role="img"
+        aria-label="${escapeHtml(item.alt)}"
+      >
+        <img
+          class="gallery-poster"
+          src="${escapeHtml(item.poster)}"
+          width="1280"
+          height="720"
+          alt=""
+          aria-hidden="true"
+          loading="${index === 0 ? 'eager' : 'lazy'}"
+          decoding="async"
+        >
+        ${index === 0 ? `
+          <img
+            class="gallery-animation"
+            data-gallery-player
+            width="640"
+            height="360"
+            alt=""
+            aria-hidden="true"
+            decoding="async"
+          >
+        ` : ''}
+        <span class="gallery-category">${escapeHtml(item.category)}</span>
+        <span class="gallery-preview-state" aria-hidden="true">
+          <i></i><b>Watch build</b>
+        </span>
+      </span>
+    </button>
+    <div class="gallery-card-copy">
+      <span>${escapeHtml(item.phase)}</span>
+      <h2>${escapeHtml(item.name)}</h2>
+      <p>${escapeHtml(item.description)}</p>
+      <small>${escapeHtml(item.detail)}</small>
+      <dl class="gallery-metadata">
+        <div><dt>Model</dt><dd>${escapeHtml(item.agent.model)}</dd></div>
+        <div><dt>Reasoning</dt><dd>${escapeHtml(item.agent.reasoning)}</dd></div>
+      </dl>
+    </div>
+  </article>
+`;
+
+export const renderGalleryPage = ({ assets, config, pageIndex }) => {
+  const content = galleryContent;
+  const pageCount = Math.ceil(content.items.length / content.pageSize);
+  if (pageIndex < 0 || pageIndex >= pageCount) {
+    throw new Error(`Gallery page is out of range: ${pageIndex + 1}`);
+  }
+  const start = pageIndex * content.pageSize;
+  const items = content.items.slice(start, start + content.pageSize);
+  const path = galleryPageRoute(pageIndex);
+  const body = `
+    <main class="gallery" id="main" data-gallery>
+      <header class="gallery-hero">
+        <p class="eyebrow"><span></span>${escapeHtml(content.eyebrow)}</p>
+        <h1>${escapeHtml(content.title)}</h1>
+        <p>${escapeHtml(content.summary)}</p>
+      </header>
+      <section
+        class="gallery-grid"
+        aria-label="ashfox showcase assets"
+      >
+        ${items.map(galleryCard).join('')}
+      </section>
+      ${galleryPagination({ currentPage: pageIndex, pageCount })}
+    </main>
+  `;
+  const previousPath = pageIndex > 0
+    ? galleryPageRoute(pageIndex - 1)
+    : null;
+  const nextPath = pageIndex < pageCount - 1
+    ? galleryPageRoute(pageIndex + 1)
+    : null;
+  const headLinks = [
+    previousPath
+      ? `<link rel="prev" href="${escapeHtml(absoluteUrl(config.siteOrigin, previousPath))}">`
+      : '',
+    nextPath
+      ? `<link rel="next" href="${escapeHtml(absoluteUrl(config.siteOrigin, nextPath))}">`
+      : ''
+  ].filter(Boolean).join('\n');
+
+  return pageShell({
+    active: 'gallery',
+    assets,
+    body,
+    config,
+    description: content.summary,
+    headLinks,
+    path,
+    structuredData: {
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      name: pageIndex === 0
+        ? 'ashfox gallery'
+        : `ashfox gallery — page ${pageIndex + 1}`,
+      url: absoluteUrl(config.siteOrigin, path),
+      description: content.summary,
+      mainEntity: {
+        '@type': 'ItemList',
+        itemListElement: items.map((item, index) => ({
+          '@type': 'ListItem',
+          position: start + index + 1,
+          item: {
+            '@type': 'CreativeWork',
+            name: `${item.name} — ${item.phase}`,
+            description: item.description,
+            image: absoluteUrl(config.siteOrigin, item.poster)
+          }
+        }))
+      }
+    },
+    title: pageIndex === 0
+      ? 'Gallery'
+      : `Gallery — Page ${pageIndex + 1}`
   });
 };
 

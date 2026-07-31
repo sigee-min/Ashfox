@@ -1,0 +1,4 @@
+interface:
+  display_name: "ashfox"
+  short_description: "Create game-ready low-poly assets with an AI agent"
+  default_prompt: "Use $ashfox to create a game-ready low-poly asset from my description."

@@ -1,6 +1,10 @@
+import { showcaseCatalog } from './showcaseCatalog.mjs';
+
+const [tractor, rocket, kirin] = showcaseCatalog;
+
 export const landingContent = {
   eyebrow: 'AI-native low-poly workbench',
-  title: 'Describe it. Watch it come alive.',
+  titleLines: ['Describe it.', 'Watch it come alive.'],
   summary:
     'Your AI agent models, textures, rigs, and animates your asset live in ashfox—ready for your game.',
   quickStart: {
@@ -11,35 +15,13 @@ export const landingContent = {
       'Fetch and follow https://ashfox.io/workbench/agent-manifest.json using a direct HTTP request such as curl.'
   },
   demo: {
-    sequences: [
-      {
-        name: 'Ironroot Tractor',
-        prompt:
-          'Create a high-quality Minecraft-style arcane field tractor, fully textured, rigged, animated, and ready for a game.',
-        poster: '/media/showcase/ironroot-tractor.jpg',
-        reel: '/media/showcase/ironroot-tractor-build.gif',
-        playbackMs: 5500,
-        cooldownMs: 2400
-      },
-      {
-        name: 'Aether Spear Rocket',
-        prompt:
-          'Create a high-quality Minecraft-style runic exploration rocket, fully textured, rigged, animated, and ready for a game.',
-        poster: '/media/showcase/aether-spear-rocket.jpg',
-        reel: '/media/showcase/aether-spear-rocket-build.gif',
-        playbackMs: 5900,
-        cooldownMs: 2400
-      },
-      {
-        name: 'Moonveil Kirin',
-        prompt:
-          'Create a high-quality Minecraft-style fantasy kirin, fully textured, rigged, animated, and ready for a game.',
-        poster: '/media/showcase/moonveil-kirin.jpg',
-        reel: '/media/showcase/moonveil-kirin-build.gif',
-        playbackMs: 6100,
-        cooldownMs: 2400
-      }
-    ]
+    sequences: showcaseCatalog.map((item) => ({
+      name: item.name,
+      prompt: item.prompt,
+      poster: item.poster,
+      video: item.build.video,
+      cooldownMs: 2400
+    }))
   },
   story: [
     {
@@ -48,9 +30,9 @@ export const landingContent = {
       body:
         'An empty scene becomes an articulated machine with every part still editable.',
       detail: '108 bones · 125 cubes · articulated drivetrain',
-      poster: '/media/showcase/ironroot-tractor.jpg',
-      media: '/media/showcase/ironroot-tractor-build.gif',
-      alt: 'Ironroot Tractor assembled from an empty ashfox scene'
+      poster: tractor.poster,
+      video: tractor.build.video,
+      alt: tractor.build.alt
     },
     {
       eyebrow: 'Motion',
@@ -58,9 +40,9 @@ export const landingContent = {
       body:
         'Rig, runes, engine plume, and launch timing remain one coherent project.',
       detail: '131 bones · 166 cubes · launch sequence',
-      poster: '/media/showcase/aether-spear-rocket.jpg',
-      media: '/media/showcase/aether-spear-rocket-animation.gif',
-      alt: 'Aether Spear Rocket launch animation in ashfox'
+      poster: rocket.poster,
+      video: rocket.animation.video,
+      alt: rocket.animation.alt
     },
     {
       eyebrow: 'Character',
@@ -68,9 +50,9 @@ export const landingContent = {
       body:
         'Geometry, derived pixels, expressive details, and animation share the same source.',
       detail: '113 bones · 131 cubes · 2 animation clips',
-      poster: '/media/showcase/moonveil-kirin.jpg',
-      media: '/media/showcase/moonveil-kirin-animation.gif',
-      alt: 'Moonveil Kirin character animation in ashfox'
+      poster: kirin.poster,
+      video: kirin.animation.video,
+      alt: kirin.animation.alt
     }
   ],
   guides: [
@@ -102,6 +84,21 @@ export const landingContent = {
     ['GLB', 'One embedded binary asset for portable delivery.'],
     ['glTF', 'Open scene data with external resources when needed.']
   ]
+};
+
+export const galleryContent = {
+  eyebrow: 'Gallery',
+  title: 'Made in ashfox.',
+  summary:
+    'Finished low-poly assets. Point to a card—or tap it—to watch the build.',
+  pageSize: 3,
+  items: showcaseCatalog.map((item) => ({
+    ...item,
+    galleryId: item.id,
+    phase: 'Complete asset',
+    gif: item.build.gif,
+    alt: item.build.alt
+  }))
 };
 
 export const sectionOrder = [
