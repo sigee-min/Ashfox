@@ -189,10 +189,7 @@ const gltfWithSecondaryClip = (): {
     subject: 'Crate',
     forward: 'north',
     grounding: 'free',
-    requiredFeatures: ['Human confirms the crate reads correctly.'],
-    requiredPartIds: [],
-    requiredMaterialIds: [],
-    requiredClipIds: []
+    features: ['Human confirms the crate reads correctly.']
   };
   const secondary = cloneClip(idle, 'clip-wave', 'Wave');
   (secondary as { startDelay: object }).startDelay = {

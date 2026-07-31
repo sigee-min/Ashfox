@@ -1,13 +1,15 @@
 import {
   isPartBaseColor,
   isPartId,
-  normalizePartSpecs
+  normalizePartSpecs,
+  type PartAuthoringSpec
 } from '../../modeling/partContract';
 import {
-  derivePartAttachments
+  derivePartAttachments,
+  inferFixedPartParents
 } from '../../modeling/partAttachmentDerivation';
 import {
-  preserveExistingPartAuthoringDefaults
+  completePartAuthoringSpec
 } from '../../modeling/partAuthoring';
 import {
   compilePartScene
@@ -22,6 +24,11 @@ import {
 } from '../../textures/generatedMaterial';
 import { defineCommand } from '../definition';
 import { modelPartsUpsertSchema } from './modelPartSchemas';
+
+const hasOwn = (
+  value: object,
+  key: PropertyKey
+): boolean => Object.prototype.hasOwnProperty.call(value, key);
 
 export const upsertModelPartsCommand = defineCommand({
   name: 'model.parts.upsert',
@@ -48,12 +55,65 @@ export const upsertModelPartsCommand = defineCommand({
         (part) => [part.partId, part]
       )
     );
-    const authoredParts = payload.parts.map((part) =>
-      preserveExistingPartAuthoringDefaults(
+    const omittedParentPartIds = new Set<string>();
+    const partIndexById = new Map<string, number>();
+    const authoredParts: PartAuthoringSpec[] = [];
+    for (
+      let index = 0;
+      index < payload.parts.length;
+      index += 1
+    ) {
+      const part = payload.parts[index];
+      partIndexById.set(part.partId, index);
+      const existing = existingParts.get(part.partId);
+      const sameKind = existing?.kind === part.kind;
+      if (!sameKind) {
+        const requiresExplicitParent =
+          part.kind === 'feature' ||
+          part.joint?.kind === 'hinge' ||
+          part.joint?.kind === 'ball';
+        if (
+          requiresExplicitParent &&
+          (
+            !hasOwn(part, 'parentPartId') ||
+            part.parentPartId === null
+          )
+        ) {
+          return {
+            ok: false,
+            error: {
+              code: 'invalid_payload',
+              message:
+                part.kind === 'feature'
+                  ? 'A new surface feature requires an explicit parentPartId.'
+                  : 'A new articulated part requires an explicit parentPartId.',
+              path: `payload.parts[${index}].parentPartId`,
+              expected: 'an existing or same-batch parent part ID'
+            }
+          };
+        }
+        if (!hasOwn(part, 'parentPartId')) {
+          omittedParentPartIds.add(part.partId);
+        }
+      }
+      const completed = completePartAuthoringSpec(
         part,
-        existingParts.get(part.partId)
-      )
-    );
+        sameKind ? existing : undefined
+      );
+      if (!completed.ok) {
+        return {
+          ok: false,
+          error: {
+            code: 'invalid_payload',
+            message: completed.issue.message,
+            path:
+              `payload.parts[${index}].${completed.issue.path}`,
+            expected: 'one canonical geometry authority per field'
+          }
+        };
+      }
+      authoredParts.push(completed.value);
+    }
     const normalized = normalizePartSpecs(authoredParts);
     if (!normalized.ok) {
       const issue = normalized.issues[0];
@@ -125,8 +185,26 @@ export const upsertModelPartsCommand = defineCommand({
     for (const material of materials) {
       existingMaterials.set(material.id, material);
     }
-    const derived = derivePartAttachments(
+    const inferred = inferFixedPartParents(
       [...existingParts.values()],
+      omittedParentPartIds,
+      document.settings.surfacePixelDensity
+    );
+    if (!inferred.ok) {
+      const index = partIndexById.get(inferred.partId) ?? 0;
+      return {
+        ok: false,
+        error: {
+          code: 'invalid_payload',
+          message: inferred.message,
+          path: `payload.parts[${index}].parentPartId`,
+          expected:
+            'exactly one geometric contact parent, or an explicit parentPartId'
+        }
+      };
+    }
+    const derived = derivePartAttachments(
+      inferred.parts,
       document.settings.surfacePixelDensity
     );
     if (!derived.ok) {

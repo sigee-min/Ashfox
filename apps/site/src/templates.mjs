@@ -363,7 +363,7 @@ export const renderLandingPage = ({ assets, config }) => {
           <p class="eyebrow"><span></span>Export</p>
           <h2>Ready for the game.</h2>
           <p>Export the same finished project for Minecraft or any supported 3D pipeline.</p>
-          <a class="text-link" href="/docs/guides/save-and-export/">Save and export guide <span>→</span></a>
+          <a class="text-link" href="/docs/guides/save-and-export/">Export guide <span>→</span></a>
         </div>
         <div class="format-grid">
           ${content.formats.map(([name, description], index) => `

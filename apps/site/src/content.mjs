@@ -91,7 +91,7 @@ export const landingContent = {
     {
       index: '03',
       label: 'Deliver',
-      title: 'Save and export',
+      title: 'Export',
       body: 'Keep the editable project or export a file ready for your target.',
       href: '/docs/guides/save-and-export/'
     }

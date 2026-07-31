@@ -28,6 +28,8 @@ import {
 const runRequest = (
   name = 'Port test'
 ): AgentRunRequest => ({
+  requestId:
+    `request-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
   operations: [{
     name: 'project.rename',
     payload: {
@@ -150,6 +152,15 @@ export const test = (async (): Promise<void> => {
       ok: true,
       revision: 'local-0001',
       data: {
+        review: request.review,
+        verdict:
+          request.review === 'accept'
+            ? 'accepted'
+            : request.review === 'reject'
+              ? 'rejected'
+              : 'pending',
+        issues:
+          request.review === 'reject' ? request.issues : [],
         frameNonce: 42,
         mode: 'frame',
         camera: 'front',
@@ -187,6 +198,26 @@ export const test = (async (): Promise<void> => {
   if (!unknownInspectProperty.ok) {
     assert.equal(unknownInspectProperty.error.path, 'ignored');
   }
+  const invalidClipInspect = port.inspect({
+    kind: 'clip',
+    ids: ['idle']
+  } as unknown as {
+    kind: 'clip';
+    id: string;
+  });
+  assert.equal(invalidClipInspect.ok, false);
+  if (!invalidClipInspect.ok) {
+    assert.equal(invalidClipInspect.error.path, 'ids');
+  }
+  assert.equal(
+    port.inspect({
+      kind: 'clip',
+      id: 'idle',
+      trackId: 'animation:idle:channel:body:rotation',
+      limit: 25
+    }).ok,
+    true
+  );
   assert.deepEqual(
     await port.present({
       review: 'next'
@@ -195,6 +226,9 @@ export const test = (async (): Promise<void> => {
       ok: true,
       revision: 'local-0001',
       data: {
+        review: 'next',
+        verdict: 'pending',
+        issues: [],
         frameNonce: 42,
         mode: 'frame',
         camera: 'front',
@@ -207,6 +241,37 @@ export const test = (async (): Promise<void> => {
       }
     }
   );
+  const acceptedFrame = await port.present({
+    review: 'accept',
+    frameNonce: 42
+  });
+  assert.equal(acceptedFrame.ok, true);
+  if (acceptedFrame.ok) {
+    assert.equal(acceptedFrame.data.verdict, 'accepted');
+    assert.deepEqual(acceptedFrame.data.issues, []);
+  }
+  const rejectedFrame = await port.present({
+    review: 'reject',
+    frameNonce: 42,
+    issues: ['connection', 'material']
+  });
+  assert.equal(rejectedFrame.ok, true);
+  if (rejectedFrame.ok) {
+    assert.equal(rejectedFrame.data.verdict, 'rejected');
+    assert.deepEqual(
+      rejectedFrame.data.issues,
+      ['connection', 'material']
+    );
+  }
+  const emptyRejection = await port.present({
+    review: 'reject',
+    frameNonce: 42,
+    issues: []
+  });
+  assert.equal(emptyRejection.ok, false);
+  if (!emptyRejection.ok) {
+    assert.equal(emptyRejection.error.path, 'issues');
+  }
   const invalidPresent = await port.present({
     review: 'all'
   } as unknown as PresentRequest);
@@ -225,20 +290,110 @@ export const test = (async (): Promise<void> => {
   assert.deepEqual(await port.run(runRequest()), {
     ok: true,
     revision: 'local-0002',
-    receipt: compactCommandReceipt(receipt('agent-run:1'))
+    receipt: compactCommandReceipt(
+      receipt('agent-request:request-port-test')
+    )
   });
   assert.equal(submits, 1);
   assert.deepEqual(submitted[0], {
-    batchId: 'agent-run:1',
+    batchId: 'agent-request:request-port-test',
     baseProjectId: 'project-test',
     baseRevision: 'local-0001',
     operations: runRequest().operations
   });
-  assert.deepEqual(statuses, ['working', 'connected']);
+  assert.deepEqual(statuses, [
+    'working',
+    'connected',
+    'working',
+    'connected',
+    'working',
+    'connected',
+    'working',
+    'connected'
+  ]);
+
+  const retried = await port.run(runRequest());
+  assert.equal(retried.ok, true);
+  assert.equal(submits, 1);
 
   const secondResult = await port.run(runRequest('Second request'));
   assert.equal(secondResult.ok, true);
   assert.equal(submits, 2);
+}
+
+{
+  let submits = 0;
+  const port = new AgentCommandPort({
+    inspect: () => ({
+      ok: true,
+      revision: 'local-0001',
+      data: null
+    }),
+    currentProjectId: () => 'project-long-session',
+    currentRevision: () => 'local-0001',
+    submit: async (batch) => {
+      submits += 1;
+      return committed(batch.batchId);
+    }
+  });
+  const requests = Array.from(
+    { length: 140 },
+    (_, index) => runRequest(`Long session ${index}`)
+  );
+  for (const request of requests) {
+    assert.equal((await port.run(request)).ok, true);
+  }
+  assert.equal(submits, requests.length);
+  assert.deepEqual(
+    await port.run(requests[0]),
+    await port.run(requests[0])
+  );
+  assert.equal(
+    submits,
+    requests.length,
+    'completed request identity must survive the complete page session'
+  );
+}
+
+{
+  let submittedName = '';
+  let submits = 0;
+  const port = new AgentCommandPort({
+    inspect: () => ({
+      ok: true,
+      revision: 'local-0001',
+      data: null
+    }),
+    currentProjectId: () => 'project-snapshot',
+    currentRevision: () => 'local-0001',
+    submit: async (batch) => {
+      submits += 1;
+      submittedName = (
+        batch.operations[0].payload as { name: string }
+      ).name;
+      return committed(batch.batchId);
+    }
+  });
+  const mutable = runRequest('Snapshot original') as {
+    requestId: string;
+    operations: {
+      name: 'project.rename';
+      payload: { name: string };
+    }[];
+  };
+  const pending = port.run(mutable);
+  mutable.operations[0].payload.name = 'Mutated after submit';
+  assert.equal((await pending).ok, true);
+  assert.equal(
+    submittedName,
+    'Snapshot original',
+    'signature and submission must use one immutable boundary snapshot'
+  );
+  const replay = await port.run(
+    runRequest('Snapshot original')
+  );
+  assert.equal(replay.ok, true);
+  assert.equal(submits, 1);
 }
 
 {
@@ -299,6 +454,7 @@ export const test = (async (): Promise<void> => {
     }
   });
   const invalid = await port.run({
+    requestId: 'invalid-empty',
     operations: []
   });
   assert.equal(invalid.ok, false);
@@ -315,6 +471,7 @@ export const test = (async (): Promise<void> => {
     assert.equal(unknownRequestProperty.error.path, 'ignored');
   }
   const unknownOperationProperty = await port.run({
+    requestId: 'unknown-operation-property',
     operations: [{
       name: 'project.rename',
       payload: { name: 'Must not submit' },
@@ -332,6 +489,7 @@ export const test = (async (): Promise<void> => {
   assert.equal(submits, 0);
 
   const rawGeometry = await port.run({
+    requestId: 'raw-geometry',
     operations: [{
       name: 'scene.cubes.create',
       payload: {
@@ -424,6 +582,7 @@ export const test = (async (): Promise<void> => {
   const value = runRequest();
   const first = port.run(value);
   const duplicate = port.run({
+    requestId: value.requestId,
     operations: [{
       payload: { name: 'Port test' },
       name: 'project.rename'
@@ -434,7 +593,7 @@ export const test = (async (): Promise<void> => {
   assert.equal(competing.ok, false);
   if (!competing.ok) assert.equal(competing.error.code, 'invalid_state');
   assert.ok(resolveSubmit);
-  resolveSubmit(committed('agent-run:1'));
+  resolveSubmit(committed('agent-request:request-port-test'));
   assert.deepEqual(await duplicate, await first);
   assert.equal(
     submits,
@@ -517,7 +676,7 @@ for (const failure of [
     }
   });
   firstInput.dispatch('input');
-  await Promise.resolve();
+  await new Promise<void>((resolve) => setImmediate(resolve));
   const secondInput = currentInput();
   assert.notEqual(
     secondInput,
@@ -534,6 +693,9 @@ for (const failure of [
     ok: true,
     revision: 'local-0001',
     data: {
+      review: 'next',
+      verdict: 'pending',
+      issues: [],
       frameNonce: 1,
       mode: 'frame',
       camera: 'front',
@@ -570,6 +732,7 @@ for (const failure of [
   const fakeWindow = { document: fakeDocument };
   let submits = 0;
   let currentProjectId = 'project-old';
+  let projectGeneration = 0;
   const port = new AgentCommandPort({
     inspect: () => ({
       ok: true,
@@ -577,12 +740,15 @@ for (const failure of [
       data: null
     }),
     currentProjectId: () => currentProjectId,
+    currentProjectSession: () =>
+      `${projectGeneration}:${currentProjectId}`,
     currentRevision: () => 'local-0001',
     submit: async (value) => {
       submits += 1;
       assert.equal(value.batchId, 'agent-request:repeat-run');
       assert.equal(value.baseProjectId, 'project-old');
       currentProjectId = 'project-new';
+      projectGeneration = 1;
       return {
         ...committed(value.batchId),
         receipt: {
@@ -603,7 +769,7 @@ for (const failure of [
   };
   const projectRequest = (
     name: string
-  ): AgentRunRequest => ({
+  ): Omit<AgentRunRequest, 'requestId'> => ({
     operations: [{
       name: 'project.create',
       payload: { name }
@@ -645,6 +811,68 @@ for (const failure of [
   assert.equal(lastResult.ok, false);
   assert.equal(lastResult.error.code, 'invalid_batch');
   assert.equal(lastResult.error.path, 'requestId');
+
+  projectGeneration = 2;
+  dispatchRun('Bridge project');
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(
+    submits,
+    1,
+    'a completed request must not replay into a replaced project session'
+  );
+  const crossProjectResult = JSON.parse(
+    resultElement.attributes.get(
+      'data-agent-command-port-result'
+    ) ?? '{}'
+  ).result;
+  assert.equal(crossProjectResult.ok, false);
+  assert.equal(crossProjectResult.error.path, 'requestId');
+  assert.match(
+    crossProjectResult.error.expected,
+    /active project session/
+  );
+  disconnect();
+}
+
+{
+  const fakeDocument = new FakeDocument();
+  const fakeWindow = { document: fakeDocument };
+  const port = new AgentCommandPort({
+    inspect: () => ({
+      ok: true,
+      revision: 'local-0001',
+      data: null
+    }),
+    currentProjectId: () => 'project-envelope',
+    currentRevision: () => 'local-0001',
+    submit: async (batch) => committed(batch.batchId)
+  });
+  const disconnect = port.connect(fakeWindow as unknown as Window);
+  const input = fakeDocument.body.children.find(
+    (child) =>
+      child.attributes.has('data-agent-command-port-input')
+  );
+  const resultElement = fakeDocument.head.children.find(
+    (child) =>
+      child.attributes.has('data-agent-command-port-result')
+  );
+  assert.ok(input);
+  assert.ok(resultElement);
+  input.value = JSON.stringify({
+    requestId: 'invalid envelope id',
+    method: 'inspect',
+    unexpected: true
+  });
+  input.dispatch('input');
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const response = JSON.parse(
+    resultElement.attributes.get(
+      'data-agent-command-port-result'
+    ) ?? '{}'
+  );
+  assert.equal(response.requestId, null);
+  assert.equal(response.result.ok, false);
+  assert.equal(response.result.error.code, 'invalid_request');
   disconnect();
 }
 
@@ -690,13 +918,15 @@ for (const failure of [
     }
   });
   firstInput.dispatch('input');
-  await Promise.resolve();
+  await new Promise<void>((resolve) => setImmediate(resolve));
 
   const queuedInput = currentInput();
   queuedInput.value = JSON.stringify({
     requestId: 'queued-run',
     method: 'run',
-    payload: runRequest()
+    payload: {
+      operations: runRequest().operations
+    }
   });
   queuedInput.dispatch('input');
   disconnect();
@@ -705,6 +935,9 @@ for (const failure of [
     ok: true,
     revision: 'local-0001',
     data: {
+      review: 'next',
+      verdict: 'pending',
+      issues: [],
       frameNonce: 1,
       mode: 'frame',
       camera: 'front',
@@ -808,7 +1041,9 @@ for (const failure of [
   }
   await Promise.resolve();
   assert.ok(resolveSubmit);
-  resolveSubmit(committed('agent-run:1'));
+  resolveSubmit(
+    committed('agent-request:request-lease-held-by-run')
+  );
   assert.equal((await running).ok, true);
   assert.equal(operationLease.currentOwner(), null);
 }

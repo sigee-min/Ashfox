@@ -1,9 +1,9 @@
 import type {
   GeneratedNodeProvenance,
+  ModelGeometryPrimitive,
   SceneNode,
   SurfacePixelDensity
 } from '../model';
-import type { PartPrimitive } from './partContract';
 import type { PartJoint } from './partContract';
 import type { LatticeBounds } from './types';
 import { stableBoundsKey } from './lattice';
@@ -12,7 +12,7 @@ export interface CompiledPartProvenance {
   partId: string;
   parentPartId: string | null;
   materialId: string;
-  primitive: PartPrimitive;
+  primitive: ModelGeometryPrimitive;
   joint: PartJoint;
 }
 

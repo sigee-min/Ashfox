@@ -50,13 +50,13 @@ bones, or UV coordinates:
 - “Make the right horn match the left horn in silhouette and placement.”
 - “Move each wheel attachment to the center of its axle.”
 - “Preserve the body proportions while widening only the rear track.”
-- “Phase the four leg cycles evenly.”
+- “Stagger the four leg cycles evenly.”
 - “Close the idle loop without changing its duration.”
 
 ashfox applies related edits together, so Activity and Undo represent the whole
-correction rather than dozens of disconnected field changes. The editable
-`.ashfox` recipe preserves those semantic parts after save and reopen; generated
-cubes and UV coordinates remain derived output.
+correction rather than dozens of disconnected field changes. The semantic part
+recipe remains the authoring authority; generated cubes and UV coordinates are
+derived output.
 
 ## Review the model
 
@@ -75,6 +75,9 @@ visible, and moving parts have useful pivots without resting intersections.
 - Look for stretched pixels, seams, empty faces, and mismatched material color.
 - Confirm that one square pixel has exactly the same size on every face.
 - Keep important accents visible at the distance where the asset will be used.
+- Use one zero-depth eye feature per visible eye. Its iris base color, face,
+  anchor, and pixel size are authored once; ashfox derives the outline, pupil,
+  highlight, UV projection, and atlas pixels. Do not stack eye cubes.
 - Let ashfox derive the tonal pixel surface pattern from each base color.
   Coplanar generated surfaces share world-lattice pattern coordinates, so a
   cuboid split does not restart the pattern.
@@ -89,4 +92,4 @@ problem can be named.
 Stop refining when the silhouette, focal details, surface treatment, and motion
 are readable and export validation has no blocking issue.
 
-Next: [Save, open, export, and capture](save-and-export.md).
+Next: [Export a finished asset](save-and-export.md).

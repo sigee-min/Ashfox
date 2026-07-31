@@ -69,10 +69,10 @@ const roundTripParts = (): readonly PartAuthoringSpec[] => [{
   partId: 'feature.detail',
   parentPartId: 'core',
   materialId: 'stone',
+  motif: 'eye',
   face: 'down',
-  anchor: [0, -6, 0],
-  size: [2, 2],
-  relief: 1
+  anchor: [0, -4, 0],
+  size: [4, 3]
 }];
 
 const compiledVisualSnapshot = (

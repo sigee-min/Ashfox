@@ -143,10 +143,15 @@ const duplicateUpsert = run(
   'duplicate-upsert',
   [upsert([root]), upsert([root])]
 );
-assert.equal(duplicateUpsert.ok, false);
+assert.equal(duplicateUpsert.ok, true);
 if (!duplicateUpsert.ok) {
-  assert.equal(duplicateUpsert.error.code, 'invalid_batch');
+  throw new Error(duplicateUpsert.error.message);
 }
+assert.equal(
+  validateProjectDocument(duplicateUpsert.document).valid,
+  true,
+  'sequential upserts in one atomic batch must remain canonical'
+);
 
 const bodyCube = Object.values(authored.scene.nodes).find(
   (node) =>
@@ -264,11 +269,11 @@ const animated = committed(run(authored, 'animate-head', [
     payload: {
       clipId: 'idle',
       role: 'idle',
-      motions: [{
-        partId: 'head',
-        keys: [
-          { phase: 0.5, rotationDegrees: 10 }
-        ]
+      durationFrames: 20,
+      poses: [{
+        rotations: { head: -10 }
+      }, {
+        rotations: { head: 10 }
       }]
     }
   }
@@ -284,22 +289,13 @@ assert.ok(
     'animation:idle:channel:head:rotation'
   )
 );
-assert.ok(!deleted.effects.removedEntityIds.includes('idle'));
-assert.ok(deleted.effects.changedEntityIds.includes('idle'));
+assert.ok(deleted.effects.removedEntityIds.includes('idle'));
+assert.ok(!deleted.effects.changedEntityIds.includes('idle'));
 assert.ok(deleted.effects.removedEntityIds.includes('bone:head'));
-const restoredIdle = deleted.document.animations.idle;
-assert.ok(restoredIdle);
-assert.deepEqual(Object.keys(restoredIdle.channels), [
-  'animation:idle:channel:body:rotation'
-]);
 assert.deepEqual(
-  Object.values(restoredIdle.channels)[0].keys.map(
-    (key) => [key.timeSeconds, key.value]
-  ),
-  [
-    [0, [0, 0, 0]],
-    [1, [0, 0, 0]]
-  ]
+  deleted.document.animations,
+  {},
+  'part deletion must not invent replacement motion'
 );
 assert.equal(validateProjectDocument(deleted.document).valid, true);
 

@@ -22,6 +22,7 @@ export * from './textures/uvAtlas';
 export * from './textures/deterministicPixel';
 export * from './textures/pixelSurfacePattern';
 export * from './textures/pixelRectShade';
+export * from './textures/eyeMotif';
 export {
   GENERATED_ATLAS_MIN_RESOLUTION,
   GENERATED_ATLAS_MAX_RESOLUTION,
@@ -30,6 +31,7 @@ export {
   hasTextureSurfaceArea,
   staleGeneratedTextureIds,
   type GeneratedSurfacePattern,
+  type GeneratedSurfaceMarking,
   type TextureComposition,
   type TextureCompositionRegion
 } from './textures/textureRecipe';

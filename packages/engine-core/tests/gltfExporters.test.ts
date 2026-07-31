@@ -473,6 +473,40 @@ const assertArrayClose = (
   const project = structuredClone(createGltfProject('gltf'));
   const channel = project.animations['clip-idle']
     .channels['channel-root-rotation'];
+  (channel.keys[0] as {
+    value: readonly [number, number, number];
+  }).value = [0, 0, 0];
+  (channel.keys[1] as {
+    value: readonly [number, number, number];
+  }).value = [90, 90, 0];
+  const compiled = buildGltf(project);
+  const animation = compiled.document.animations?.[0];
+  const rotationChannel = animation?.channels.find(
+    (entry) => entry.target.path === 'rotation'
+  );
+  if (!animation || !rotationChannel) {
+    throw new Error('Expected a glTF rotation channel.');
+  }
+  const sampler =
+    animation.samplers[rotationChannel.sampler];
+  const input =
+    compiled.document.accessors?.[sampler.input];
+  assert.equal(input?.count, 21);
+  const output = readFloatAccessor(
+    compiled,
+    sampler.output
+  );
+  assertArrayClose(
+    output.slice(10 * 4, 11 * 4),
+    quaternionFromEuler([45, 45, 0]),
+    'glTF rotation baking must sample the same 20 fps Euler pose as live preview'
+  );
+}
+
+{
+  const project = structuredClone(createGltfProject('gltf'));
+  const channel = project.animations['clip-idle']
+    .channels['channel-root-rotation'];
   (channel.keys[0] as { timeSeconds: number }).timeSeconds = 0.5;
   const compiled = buildGltf(project);
   const sampler = compiled.document.animations?.[0]?.samplers[0];
@@ -480,7 +514,7 @@ const assertArrayClose = (
     sampler === undefined
       ? undefined
       : compiled.document.accessors?.[sampler.input];
-  assert.equal(inputAccessor?.count, 3);
+  assert.equal(inputAccessor?.count, 21);
   assert.deepEqual(inputAccessor?.min, [0]);
 }
 
@@ -494,7 +528,7 @@ const assertArrayClose = (
     sampler === undefined
       ? undefined
       : compiled.document.accessors?.[sampler.input];
-  assert.equal(inputAccessor?.count, 3);
+  assert.equal(inputAccessor?.count, 41);
   assert.deepEqual(inputAccessor?.max, [2]);
 }
 

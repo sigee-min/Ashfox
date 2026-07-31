@@ -5,7 +5,11 @@ import {
   parseCellKey
 } from './lattice';
 import type {
+  GeometryPartSpec,
   PartSpec
+} from './partContract';
+import {
+  isGeometryPartSpec
 } from './partContract';
 import { rasterizePart } from './partPrimitiveAdapter';
 import {
@@ -18,6 +22,10 @@ import type {
   OccupancyGrid,
   SurfacePixelDensity
 } from './types';
+import {
+  surfaceFeaturePixels,
+  validateSurfaceFeaturePlacement
+} from './surfaceFeature';
 
 export const PART_OCCUPANCY_POLICY = {
   minimumRetainedNumerator: 1,
@@ -40,7 +48,7 @@ export interface PartOccupancyCanonicalizationMetric {
 }
 
 export interface CanonicalPartOccupancy {
-  spec: PartSpec;
+  spec: GeometryPartSpec;
   authored: OccupancyGrid;
   canonical: OccupancyGrid;
   canonicalAttachmentAnchor: LatticePoint | null;
@@ -151,7 +159,7 @@ export const canonicalizePartOccupancies = (
 
   const ownerByCell = new Map<CellKey, string>();
   const canonical: CanonicalPartOccupancy[] = [];
-  for (const spec of ordered) {
+  for (const spec of ordered.filter(isGeometryPartSpec)) {
     const authored = rasterizePart(density, spec);
     if (authored.cells.size === 0) {
       return {
@@ -322,6 +330,52 @@ export const canonicalizePartOccupancies = (
       message:
         `Canonical seam ownership leaves part "${hidden.spec.partId}" without an orthographic silhouette contribution.`
     };
+  }
+
+  const environment = new Set<CellKey>(
+    resolved.flatMap((part) => [...part.canonical.cells])
+  );
+  const featurePixelOwners = new Map<string, string>();
+  for (const feature of ordered.filter(
+    (part): part is Extract<PartSpec, { kind: 'feature' }> =>
+      part.kind === 'feature'
+  )) {
+    const parent = feature.parentPartId === null
+      ? undefined
+      : canonicalByPart.get(feature.parentPartId);
+    if (!parent) {
+      return {
+        ok: false,
+        path: `parts.${feature.partId}.parentPartId`,
+        message:
+          `Surface feature "${feature.partId}" requires a geometric parent.`
+      };
+    }
+    const placementIssue = validateSurfaceFeaturePlacement(
+      feature,
+      parent.canonical,
+      environment
+    );
+    if (placementIssue) {
+      return {
+        ok: false,
+        path: placementIssue.path,
+        message: placementIssue.message
+      };
+    }
+    for (const pixel of surfaceFeaturePixels(feature)) {
+      const owner = featurePixelOwners.get(pixel.key);
+      if (owner) {
+        return {
+          ok: false,
+          path: `parts.${feature.partId}.anchor`,
+          message:
+            `Surface features "${owner}" and "${feature.partId}" ` +
+            'overlap on the same generated surface pixels.'
+        };
+      }
+      featurePixelOwners.set(pixel.key, feature.partId);
+    }
   }
   return { ok: true, parts: resolved };
 };

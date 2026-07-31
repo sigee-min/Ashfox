@@ -1,11 +1,21 @@
 import assert from 'node:assert/strict';
 
 import {
-  preserveExistingPartAuthoringDefaults,
+  completePartAuthoringSpec,
   projectSpacePartAuthoringSpec,
   type PartAuthoringSpec,
   type PartSpec
 } from '../src';
+
+const complete = (
+  input: PartAuthoringSpec,
+  existing?: PartSpec
+): PartAuthoringSpec => {
+  const result = completePartAuthoringSpec(input, existing);
+  assert.equal(result.ok, true);
+  if (!result.ok) throw new Error(result.issue.message);
+  return result.value;
+};
 
 const existingRadial: PartSpec = {
   kind: 'radial',
@@ -43,22 +53,21 @@ assert.deepEqual(
 const radialUpdate: PartAuthoringSpec = {
   kind: 'radial',
   partId: 'wheel',
-  materialId: 'rubber',
-  axis: 'x',
-  center: [9, 2, 0],
-  outerRadius: 5,
-  depth: 2
+  outerRadius: 5
 };
 assert.deepEqual(
-  preserveExistingPartAuthoringDefaults(
-    radialUpdate,
-    existingRadial
-  ),
+  complete(radialUpdate, existingRadial),
   {
-    ...radialUpdate,
+    kind: 'radial',
+    partId: 'wheel',
     parentPartId: 'body',
+    materialId: 'rubber',
     joint: { kind: 'hinge', axis: 'x' },
-    innerRadius: 2
+    axis: 'x',
+    center: [8, 2, 0],
+    outerRadius: 5,
+    innerRadius: 2,
+    depth: 2
   }
 );
 
@@ -68,49 +77,155 @@ const existingFeature: PartSpec = {
   parentPartId: 'head',
   materialId: 'eye',
   joint: { kind: 'fixed' },
-  attachment: {
-    parentAnchor: [0, 4, 2],
-    partAnchor: [0, 4, 2]
-  },
+  attachment: null,
+  motif: 'eye',
   face: 'south',
   anchor: [0, 4, 2],
-  size: [2, 2],
-  relief: 3
+  size: [4, 3]
 };
+
+const patchFixtures: readonly PartSpec[] = [{
+  kind: 'mass',
+  partId: 'body',
+  parentPartId: null,
+  materialId: 'gold',
+  joint: { kind: 'fixed' },
+  attachment: null,
+  center: [0, 0, 0],
+  radii: [4, 3, 2],
+  profile: 'soft'
+}, {
+  kind: 'segment',
+  partId: 'tail',
+  parentPartId: 'body',
+  materialId: 'gold',
+  joint: { kind: 'ball' },
+  attachment: {
+    parentAnchor: [4, 0, 0],
+    partAnchor: [0, 0, 0]
+  },
+  points: [[0, 0, 0], [3, 1, 0]],
+  radii: [[1, 1, 1], [2, 1, 1]],
+  profile: 'hard'
+}, {
+  kind: 'plate',
+  partId: 'wing',
+  parentPartId: 'body',
+  materialId: 'gold',
+  joint: { kind: 'fixed' },
+  attachment: {
+    parentAnchor: [0, 2, 0],
+    partAnchor: [0, 0, 0]
+  },
+  plane: 'xz',
+  origin: [0, 0, 0],
+  outline: [[0, 0], [5, 0], [4, 3], [0, 3]],
+  thickness: 2
+}, existingRadial, existingFeature];
+
+for (const fixture of patchFixtures) {
+  assert.deepEqual(
+    complete(
+      {
+        kind: fixture.kind,
+        partId: fixture.partId
+      } as PartAuthoringSpec,
+      fixture
+    ),
+    projectSpacePartAuthoringSpec(fixture),
+    `${fixture.kind} patch must preserve every omitted field`
+  );
+}
+
 const featureUpdate: PartAuthoringSpec = {
   kind: 'feature',
   partId: 'eye',
+  anchor: [1, 4, 2]
+};
+assert.deepEqual(complete(featureUpdate, existingFeature), {
+  kind: 'feature',
+  partId: 'eye',
+  parentPartId: 'head',
   materialId: 'eye',
+  joint: { kind: 'fixed' },
+  motif: 'eye',
   face: 'south',
   anchor: [1, 4, 2],
-  size: [2, 2]
-};
-assert.equal(
-  preserveExistingPartAuthoringDefaults(
-    featureUpdate,
-    existingFeature
-  ).relief,
-  3
-);
+  size: [4, 3]
+});
 
 const explicitFeatureUpdate: PartAuthoringSpec = {
   ...featureUpdate,
   parentPartId: 'face',
-  joint: { kind: 'ball' },
-  relief: 1
+  joint: { kind: 'fixed' }
 };
 assert.deepEqual(
-  preserveExistingPartAuthoringDefaults(
-    explicitFeatureUpdate,
-    existingFeature
-  ),
-  explicitFeatureUpdate
+  complete(explicitFeatureUpdate, existingFeature),
+  {
+    kind: 'feature',
+    partId: 'eye',
+    parentPartId: 'face',
+    materialId: 'eye',
+    joint: { kind: 'fixed' },
+    motif: 'eye',
+    face: 'south',
+    anchor: [1, 4, 2],
+    size: [4, 3]
+  }
 );
 
-const newFeature = preserveExistingPartAuthoringDefaults(
+const newFeature = complete(
   featureUpdate,
   undefined
 );
 assert.equal(Object.hasOwn(newFeature, 'parentPartId'), false);
 assert.equal(Object.hasOwn(newFeature, 'joint'), false);
-assert.equal(Object.hasOwn(newFeature, 'relief'), false);
+assert.equal(Object.hasOwn(newFeature, 'motif'), false);
+
+const segment = complete({
+  kind: 'segment',
+  partId: 'tail',
+  materialId: 'gold',
+  points: [[0, 0, 0], [2, 0, 0], [4, 1, 0]],
+  radii: [1, 2, 1]
+});
+assert.equal(segment.kind, 'segment');
+if (segment.kind === 'segment') {
+  assert.deepEqual(segment.radii, [
+    [1, 2, 1],
+    [1, 2, 1],
+    [1, 2, 1]
+  ]);
+}
+
+const rectangle = complete({
+  kind: 'plate',
+  partId: 'wing',
+  materialId: 'gold',
+  plane: 'xy',
+  origin: [0, 0, 0],
+  size: [6, 3],
+  thickness: 1
+});
+assert.equal(rectangle.kind, 'plate');
+if (rectangle.kind === 'plate') {
+  assert.equal(Object.hasOwn(rectangle, 'size'), false);
+  assert.deepEqual(rectangle.outline, [
+    [0, 0],
+    [6, 0],
+    [6, 3],
+    [0, 3]
+  ]);
+}
+
+const conflictingPlate = completePartAuthoringSpec({
+  kind: 'plate',
+  partId: 'conflict',
+  materialId: 'gold',
+  plane: 'xy',
+  origin: [0, 0, 0],
+  size: [2, 2],
+  outline: [[0, 0], [2, 0], [0, 2]],
+  thickness: 1
+}, undefined);
+assert.equal(conflictingPlate.ok, false);

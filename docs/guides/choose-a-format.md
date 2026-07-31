@@ -45,9 +45,8 @@ Minecraft-only expressions, sound events, particle events, and timeline events
 do not have a direct glTF equivalent. Remove or replace them before exporting
 to GLB or glTF.
 
-## Single-file choices
+## Delivery choices
 
-- `.ashfox` is always one self-contained editable project.
 - Embedded GLB is one finished 3D asset.
 - GeckoLib 5 and Bedrock require several target files, delivered as one ZIP.
 - glTF normally uses several related resources, delivered as one ZIP.
@@ -55,6 +54,6 @@ to GLB or glTF.
 ## Before exporting
 
 Ask the agent to play every required animation, inspect texture assignment and
-pixel scale, confirm the Minecraft namespace and model path, and resolve all
-blocking validation findings. Have it save the `.ashfox` source before
-delivering the target export.
+pixel scale, confirm the configured target, and resolve every blocking finding.
+Target resource identifiers and export options are derived automatically. The
+agent delivers only after every revision-bound visual review is accepted.

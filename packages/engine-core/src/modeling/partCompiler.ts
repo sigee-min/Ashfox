@@ -20,6 +20,7 @@ import {
   type PartInvariantIssue
 } from './partInvariants';
 import {
+  type GeometryPartSpec,
   type PartMaterialDefinition,
   type PartSpec
 } from './partContract';
@@ -172,7 +173,7 @@ const worldPoint = (
 ];
 
 const boneForPart = (
-  part: PartSpec,
+  part: GeometryPartSpec,
   density: 1 | 2 | 4,
   canonicalAttachmentAnchor: LatticePoint | null
 ): BoneNode => {
@@ -209,7 +210,7 @@ const boneForPart = (
 
 const cubeForCuboid = (
   document: ProjectDocument,
-  part: PartSpec,
+  part: GeometryPartSpec,
   cuboid: Cuboid,
   baseColor: string,
   textureId: string

@@ -14,7 +14,13 @@ export type InspectRequest =
   | { kind: 'parts'; ids: readonly string[] }
   | { kind: 'entity'; ids: readonly string[] }
   | { kind: 'texture'; ids: readonly string[] }
-  | { kind: 'clip'; ids: readonly string[] }
+  | {
+      kind: 'clip';
+      id: string;
+      trackId?: string;
+      cursor?: string;
+      limit?: number;
+    }
   | { kind: 'activity'; cursor?: string; limit?: number }
   | { kind: 'target' }
   | { kind: 'finding'; path: string };
@@ -87,12 +93,34 @@ export interface RunFailure {
 export type RunResult = RunSuccess | RunFailure;
 
 export interface AgentRunRequest {
+  requestId: string;
   operations: readonly ProjectCommandOperation[];
 }
 
-export interface PresentRequest {
-  review: 'next';
-}
+export type VisualReviewIssue =
+  | 'silhouette'
+  | 'proportion'
+  | 'connection'
+  | 'clipping'
+  | 'focal_detail'
+  | 'material'
+  | 'pivot'
+  | 'motion'
+  | 'other';
+
+export type PresentRequest =
+  | {
+      review: 'next';
+    }
+  | {
+      review: 'accept';
+      frameNonce: number;
+    }
+  | {
+      review: 'reject';
+      frameNonce: number;
+      issues: readonly VisualReviewIssue[];
+    };
 
 export interface ViewPresentationRequest {
   mode: 'frame' | 'cycle';
@@ -105,6 +133,9 @@ export interface PresentSuccess {
   ok: true;
   revision: string;
   data: {
+    review: PresentRequest['review'];
+    verdict: 'pending' | 'accepted' | 'rejected';
+    issues: readonly VisualReviewIssue[];
     frameNonce: number;
     mode: ViewPresentationRequest['mode'];
     camera: CameraMode;

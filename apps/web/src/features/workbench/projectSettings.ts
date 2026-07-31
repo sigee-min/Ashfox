@@ -37,18 +37,38 @@ export const createProjectSettingsOperations = (
     });
   }
   const currentTarget = editableProjectTargetFor(document);
-  if (
+  const targetChanged =
     input.exportTarget !== null &&
     (
       currentTarget === null ||
-      currentTarget.target !== input.exportTarget.target ||
+      currentTarget.target !== input.exportTarget.target
+    );
+  if (
+    input.exportTarget !== null &&
+    targetChanged
+  ) {
+    operations.push({
+      name: 'project.target.set',
+      payload: {
+        target: input.exportTarget.target
+      }
+    });
+  }
+  if (
+    input.exportTarget !== null &&
+    (
+      targetChanged ||
+      currentTarget === null ||
       currentTarget.namespace !== input.exportTarget.namespace ||
       currentTarget.modelPath !== input.exportTarget.modelPath
     )
   ) {
     operations.push({
-      name: 'project.target.set',
-      payload: input.exportTarget
+      name: 'project.resource.set',
+      payload: {
+        namespace: input.exportTarget.namespace,
+        modelPath: input.exportTarget.modelPath
+      }
     });
   }
   return operations;

@@ -36,7 +36,10 @@ export const transformModelPartsCommand = defineCommand({
     }
     const transformed = translatePartRecipeSubtree(
       current.recipe,
-      payload
+      {
+        rootPartId: payload.rootPartId,
+        translation: payload.by
+      }
     );
     if (!transformed.ok) {
       const issue = transformed.issues[0];
@@ -49,7 +52,7 @@ export const transformModelPartsCommand = defineCommand({
             'Part subtree cannot be translated.',
           path: issue
             ? issue.path.startsWith('modeling.')
-              ? 'payload.translation'
+              ? 'payload.by'
               : `payload.${issue.path}`
             : 'payload.rootPartId',
           expected: 'an existing canonical part subtree'
@@ -71,7 +74,7 @@ export const transformModelPartsCommand = defineCommand({
           message: failure.message,
           path: documentFailure
             ? failure.path
-            : 'payload.translation',
+            : 'payload.by',
           pathScope: documentFailure
             ? 'document'
             : 'operation',
@@ -87,7 +90,7 @@ export const transformModelPartsCommand = defineCommand({
         summary:
           `Translate ${transformed.affectedPartIds.length} model part` +
           `${transformed.affectedPartIds.length === 1 ? '' : 's'} ` +
-          `by [${payload.translation.join(',')}] lattice units`,
+          `by [${payload.by.join(',')}] lattice units`,
         effects: {
           createdEntityIds: [
             ...(projected.createdTextureId

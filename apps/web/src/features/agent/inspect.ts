@@ -1,15 +1,14 @@
 import {
   attachmentContactMetrics,
+  CANONICAL_IDLE_CLIP_ID,
   canonicalizePartOccupancies,
   evaluateProductionReadiness,
   getAgentCommandDefinition,
   isSceneNodeEffectivelyVisible,
-  isProductionIdleClipName,
   orthographicContributionMetrics,
   projectSpacePartAuthoringSpec,
   readCompiledParts,
   readPartRecipe,
-  type AnimationClip,
   type CommandReceipt,
   type PartSpec,
   type ProjectDocument,
@@ -19,6 +18,7 @@ import {
 import { boundedSuccess } from './boundedResult';
 import { agentCommandProtocol } from './agentCommandProtocol';
 import { deriveInspectWorkflow } from './inspectWorkflow';
+import { inspectClipAuthoring } from './inspectClip';
 import type {
   VisualReviewReceipt
 } from './presentationReview';
@@ -26,6 +26,9 @@ import { schemaHash } from './schemaHash';
 import {
   evaluateAssetMaterialization
 } from '../files/assetMaterialization';
+import {
+  projectExportTargetFor
+} from '../../application/projectExportTarget';
 import type {
   ProjectAssets
 } from '../../application/projectAssets';
@@ -63,6 +66,30 @@ const selectedValues = <T>(
     .slice(0, ID_LIMIT)
     .map((id) => record[id])
     .filter((value): value is T => value !== undefined);
+
+const missingRecordId = <T>(
+  record: Readonly<Record<string, T>>,
+  ids: readonly string[]
+): { id: string; index: number } | null => {
+  const index = ids.findIndex(
+    (id) => record[id] === undefined
+  );
+  return index < 0 ? null : { id: ids[index], index };
+};
+
+const missingPartId = (
+  document: ProjectDocument,
+  ids: readonly string[]
+): { id: string; index: number } | null => {
+  const recipe = readPartRecipe(document);
+  const known = new Set(
+    recipe.ok && recipe.recipe
+      ? recipe.recipe.parts.map((part) => part.partId)
+      : []
+  );
+  const index = ids.findIndex((id) => !known.has(id));
+  return index < 0 ? null : { id: ids[index], index };
+};
 
 const authoringPartSpec = (
   spec: PartSpec | undefined
@@ -139,9 +166,35 @@ const compiledPartSummaries = (
     valid: projectionFinding === undefined,
     firstIssue: projectionFinding ?? null,
     parts: ids
-      .map((id) => compiled.parts.get(id))
-      .filter((part) => part !== undefined)
-      .map((part) => {
+      .map((id): unknown => {
+        const spec = specs.get(id);
+        if (!spec) return null;
+        if (spec.kind === 'feature') {
+          return {
+            partId: spec.partId,
+            parentPartId: spec.parentPartId,
+            materialId: spec.materialId,
+            primitive: spec.kind,
+            joint: spec.joint,
+            spec: authoringPartSpec(spec),
+            material: materials.get(spec.materialId) ?? null,
+            projection: {
+              kind: 'surface',
+              motif: spec.motif,
+              face: spec.face,
+              anchor: spec.anchor,
+              size: spec.size
+            },
+            boneId: null,
+            cubeCount: 0,
+            modelBounds: null,
+            canonicalization: null,
+            attachmentContact: null,
+            orthographicContribution: []
+          };
+        }
+        const part = compiled.parts.get(id);
+        if (!part) return null;
         const from = [0, 1, 2].map((axis) =>
           Math.min(
             ...part.cubes.map((cube) => cube.bounds.from[axis])
@@ -158,7 +211,7 @@ const compiledPartSummaries = (
           materialId: part.materialId,
           primitive: part.primitive,
           joint: part.joint,
-          spec: authoringPartSpec(specs.get(part.partId)),
+          spec: authoringPartSpec(spec),
           material:
             materials.get(part.materialId) ?? null,
           boneId: part.bone.id,
@@ -171,6 +224,7 @@ const compiledPartSummaries = (
             projectionByPart.get(part.partId) ?? []
         };
       })
+      .filter((part) => part !== null)
   };
 };
 
@@ -235,21 +289,6 @@ const inspectCatalog = (
   };
 };
 
-const clipSummaries = (
-  clips: readonly AnimationClip[]
-): readonly unknown[] =>
-  clips.map((clip) => ({
-    id: clip.id,
-    name: clip.name,
-    durationSeconds: clip.durationSeconds,
-    fps: clip.fps,
-    loop: clip.loop,
-    channelCount: Object.keys(clip.channels).length,
-    triggerCount: Object.keys(clip.triggers).length,
-    channelIds: Object.keys(clip.channels).sort().slice(0, 20),
-    triggerIds: Object.keys(clip.triggers).sort().slice(0, 20)
-  }));
-
 const inspectActivity = (
   document: ProjectDocument,
   activity: readonly CommandReceipt[],
@@ -304,7 +343,8 @@ const inspectDefault = (
   document: ProjectDocument,
   selectedNodeId: string | null,
   report: ValidationReport,
-  visualReviews: readonly VisualReviewReceipt[]
+  visualReviews: readonly VisualReviewReceipt[],
+  operationOwner: string | null
 ): InspectResult => {
   const nodes = Object.values(document.scene.nodes);
   const clips = Object.values(document.animations);
@@ -315,13 +355,16 @@ const inspectDefault = (
     readiness,
     visualReviews
   );
-  const idleClips = clips.filter((clip) =>
-    isProductionIdleClipName(clip.name)
-  );
+  const idleClip =
+    document.animations[CANONICAL_IDLE_CLIP_ID];
+  const exportTarget = projectExportTargetFor(document);
   return boundedSuccess(
     document.revision,
     {
-      commandPort: 'connected',
+      commandPort: {
+        status: operationOwner === null ? 'connected' : 'working',
+        operation: operationOwner
+      },
       protocol: {
         workbench: agentCommandProtocol.workbench,
         manifest: agentCommandProtocol.href,
@@ -337,7 +380,8 @@ const inspectDefault = (
         subject: document.intent?.subject ?? null,
         forward: document.intent?.forward ?? null,
         grounding: document.intent?.grounding ?? null,
-        target: document.formatProfile.id,
+        target: exportTarget.target,
+        profileId: document.formatProfile.id,
         structurallyValid: readiness.structurallyValid,
         mechanicallyReady: readiness.mechanicallyReady,
         semanticReviewRequired:
@@ -380,11 +424,9 @@ const inspectDefault = (
           (count, clip) => count + Object.keys(clip.triggers).length,
           0
         ),
-        idleClips: idleClips.length,
-        idleChannels: idleClips.reduce(
-          (count, clip) => count + Object.keys(clip.channels).length,
-          0
-        )
+        idleClips: idleClip ? 1 : 0,
+        idleChannels:
+          idleClip ? Object.keys(idleClip.channels).length : 0
       },
       workflow
     },
@@ -399,14 +441,16 @@ export const inspectProject = (
   request?: InspectRequest,
   activity: readonly CommandReceipt[] = [],
   assets: ProjectAssets = {},
-  visualReviews: readonly VisualReviewReceipt[] = []
+  visualReviews: readonly VisualReviewReceipt[] = [],
+  operationOwner: string | null = null
 ): InspectResult => {
   if (!request) {
     return inspectDefault(
       document,
       selectedNodeId,
       report,
-      visualReviews
+      visualReviews,
+      operationOwner
     );
   }
 
@@ -463,6 +507,20 @@ export const inspectProject = (
           `at most ${ID_LIMIT} part IDs`
         );
       }
+      {
+        const missing = missingPartId(document, request.ids);
+        if (missing) {
+          return {
+            ok: false,
+            revision: document.revision,
+            error: {
+              code: 'not_found',
+              path: `ids[${missing.index}]`,
+              expected: 'existing canonical part ID'
+            }
+          };
+        }
+      }
       return boundedSuccess(
         document.revision,
         compiledPartSummaries(document, request.ids, report),
@@ -475,6 +533,23 @@ export const inspectProject = (
           'ids',
           `at most ${ID_LIMIT} entity IDs`
         );
+      }
+      {
+        const missing = missingRecordId(
+          document.scene.nodes,
+          request.ids
+        );
+        if (missing) {
+          return {
+            ok: false,
+            revision: document.revision,
+            error: {
+              code: 'not_found',
+              path: `ids[${missing.index}]`,
+              expected: 'existing scene entity ID'
+            }
+          };
+        }
       }
       return boundedSuccess(
         document.revision,
@@ -489,34 +564,74 @@ export const inspectProject = (
           `at most ${ID_LIMIT} texture IDs`
         );
       }
+      {
+        const missing = missingRecordId(
+          document.textures,
+          request.ids
+        );
+        if (missing) {
+          return {
+            ok: false,
+            revision: document.revision,
+            error: {
+              code: 'not_found',
+              path: `ids[${missing.index}]`,
+              expected: 'existing texture ID'
+            }
+          };
+        }
+      }
       return boundedSuccess(
         document.revision,
         selectedValues(document.textures, request.ids),
         DETAIL_LIMIT
       );
     case 'clip': {
-      if (request.ids.length > ID_LIMIT) {
+      const clip = document.animations[request.id];
+      if (!clip) {
+        return {
+          ok: false,
+          revision: document.revision,
+          error: {
+            code: 'not_found',
+            path: 'id',
+            expected: 'existing animation clip ID'
+          }
+        };
+      }
+      if (
+        request.trackId !== undefined &&
+        !clip.channels[request.trackId]
+      ) {
+        return {
+          ok: false,
+          revision: document.revision,
+          error: {
+            code: 'not_found',
+            path: 'trackId',
+            expected: 'existing transform track ID in this clip'
+          }
+        };
+      }
+      const authoring = inspectClipAuthoring(
+        document,
+        clip,
+        request.trackId,
+        request.cursor,
+        request.limit
+      );
+      if (authoring === null) {
         return invalidRequest(
           document.revision,
-          'ids',
-          `at most ${ID_LIMIT} clip IDs`
+          'cursor',
+          'clip page cursor from the previous response'
         );
       }
-      const clips = selectedValues(document.animations, request.ids);
-      const exact = boundedSuccess(
+      return boundedSuccess(
         document.revision,
-        clips,
+        authoring,
         DETAIL_LIMIT
       );
-      if (exact.ok) return exact;
-      const summary = boundedSuccess(
-        document.revision,
-        clipSummaries(clips),
-        DETAIL_LIMIT
-      );
-      return summary.ok
-        ? { ...summary, truncated: true }
-        : summary;
     }
     case 'activity': {
       const data = inspectActivity(
@@ -546,12 +661,14 @@ export const inspectProject = (
         document,
         assets
       );
+      const exportTarget = projectExportTargetFor(document);
       return boundedSuccess(
         document.revision,
         {
+          target: exportTarget.target,
+          profileId: document.formatProfile.id,
           formatProfile: document.formatProfile,
           settings: document.settings,
-          valid: readiness.structurallyValid,
           structurallyValid: readiness.structurallyValid,
           mechanicallyReady: readiness.mechanicallyReady,
           semanticReviewRequired:
@@ -583,19 +700,7 @@ export const inspectProject = (
               readiness.counts.untexturedVisibleFaces,
             idleClips: readiness.counts.idleClips,
             idleChannels: readiness.counts.idleChannels,
-            requiredFeatures:
-              readiness.counts.requiredFeatures,
-            requiredParts: readiness.counts.requiredParts,
-            missingParts: readiness.counts.missingParts,
-            requiredMaterials:
-              readiness.counts.requiredMaterials,
-            missingMaterials:
-              readiness.counts.missingMaterials,
-            requiredClips: readiness.counts.requiredClips,
-            missingClips: readiness.counts.missingClips,
-            symmetryPairs: readiness.counts.symmetryPairs,
-            symmetryMismatches:
-              readiness.counts.symmetryMismatches
+            features: readiness.counts.features
           },
           readinessFindings: readiness.findings.slice(0, 10),
           readinessFindingsTruncated:

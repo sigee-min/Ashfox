@@ -19,17 +19,18 @@ export const deleteLocatorsCommand = defineCommand({
     'Delete existing attachment locators and dependent animation event references.',
   inputSchema,
   apply: (document, payload) => {
-    const invalidId = payload.locatorIds.find(
+    const invalidIndex = payload.locatorIds.findIndex(
       (locatorId) =>
         document.scene.nodes[locatorId]?.kind !== 'locator'
     );
-    if (invalidId) {
+    if (invalidIndex >= 0) {
+      const invalidId = payload.locatorIds[invalidIndex];
       return {
         ok: false,
         error: {
           code: 'invalid_state',
           message: `Locator "${invalidId}" does not exist.`,
-          path: 'payload.locatorIds',
+          path: `payload.locatorIds[${invalidIndex}]`,
           expected: 'existing locator IDs'
         }
       };

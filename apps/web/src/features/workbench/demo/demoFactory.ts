@@ -183,7 +183,11 @@ const buildStages = (
   [{
     name: 'project.target.set',
     payload: {
-      target: 'geckolib5',
+      target: 'geckolib5'
+    }
+  }, {
+    name: 'project.resource.set',
+    payload: {
       namespace: 'ashfox',
       modelPath: definition.modelPath
     }

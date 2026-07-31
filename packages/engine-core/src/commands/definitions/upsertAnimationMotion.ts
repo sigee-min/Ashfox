@@ -2,9 +2,6 @@ import {
   compileAnimationMotion
 } from '../../animation/motionAuthoring';
 import {
-  withoutImplicitRestPose
-} from '../../animation/implicitRestPose';
-import {
   MOTION_AUTHORING_LIMITS
 } from '../../animation/motionContract';
 import {
@@ -49,20 +46,51 @@ const inputSchema = {
     role: {
       enum: ['idle', 'loop', 'once'],
       description:
-        'Idle is the one canonical idle clip; loop and once require explicit motions.'
+        'Required for a new clip. Omit on an existing clip to preserve its name and loop mode; an explicit value changes the whole clip role.'
     },
-    durationSeconds: {
+    durationFrames: {
       type: 'number',
-      minimum: 0.05,
-      maximum: 60
-    },
-    motions: {
-      type: 'array',
-      minItems: 0,
-      maxItems:
-        MOTION_AUTHORING_LIMITS.maxMotionsPerOperation,
+      integer: true,
+      minimum: 1,
+      maximum: MOTION_AUTHORING_LIMITS.maxDurationFrames,
       description:
-        `Complete part motions with at most ${MOTION_AUTHORING_LIMITS.maxKeysPerOperation} total keys.`,
+        'Required for a new clip. Omit on an existing clip to preserve duration, FPS, channel times, and trigger times. An explicit value retimes the whole clip at 20 FPS and rejects when a preserved key or trigger would land between frames.'
+    },
+    static: {
+      type: 'boolean',
+      description:
+        'Explicitly create a motionless idle. Valid only for the idle role.'
+    },
+    poses: {
+      type: 'array',
+      minItems: 1,
+      maxItems: MOTION_AUTHORING_LIMITS.maxPosesPerOperation,
+      description:
+        'Ordered whole-clip poses. Every referenced part must appear in the first pose; later omissions hold its previous submitted rotation. The engine distributes poses over canonical frames and closes loops.',
+      items: {
+        type: 'object',
+        properties: {
+          rotations: {
+            type: 'object',
+            properties: {},
+            minProperties: 1,
+            maxProperties:
+              MOTION_AUTHORING_LIMITS.maxPartTracksPerOperation,
+            additionalProperties: rotationDegreesSchema,
+            description:
+              'Map compiled part IDs to hinge scalar angles or root/ball XYZ angles.'
+          }
+        },
+        required: ['rotations'],
+        additionalProperties: false
+      }
+    },
+    spins: {
+      type: 'array',
+      minItems: 1,
+      maxItems: MOTION_AUTHORING_LIMITS.maxSpinsPerOperation,
+      description:
+        'Continuous hinge rotations baked at canonical 20 fps.',
       items: {
         type: 'object',
         properties: {
@@ -72,42 +100,46 @@ const inputSchema = {
             maxLength: PART_CONTRACT_LIMITS.maxIdLength,
             pattern: PART_ID_PATTERN_SOURCE
           },
-          keys: {
-            type: 'array',
-            minItems: 1,
-            maxItems:
-              MOTION_AUTHORING_LIMITS.maxKeysPerMotion,
-            items: {
-              type: 'object',
-              properties: {
-                phase: {
-                  type: 'number',
-                  minimum: 0,
-                  maximum: 1,
-                  description:
-                    'Normalized clip time. Loop endpoints are derived; a supplied closing key must equal phase 0.'
-                },
-                rotationDegrees: rotationDegreesSchema
-              },
-              required: ['phase', 'rotationDegrees'],
-              additionalProperties: false
-            }
+          turns: {
+            type: 'number',
+            minimum: 0.01,
+            maximum: 64
+          },
+          direction: {
+            enum: ['positive', 'negative'],
+            description:
+              'Direction around the hinge local positive axis; positive is the default.'
           }
         },
-        required: ['partId', 'keys'],
+        required: ['partId', 'turns'],
         additionalProperties: false
+      }
+    },
+    removePartIds: {
+      type: 'array',
+      minItems: 1,
+      maxItems:
+        MOTION_AUTHORING_LIMITS.maxPartTracksPerOperation,
+      uniqueItems: true,
+      description:
+        'Explicitly delete only these part rotation tracks while preserving every omitted track.',
+      items: {
+        type: 'string',
+        minLength: 1,
+        maxLength: PART_CONTRACT_LIMITS.maxIdLength,
+        pattern: PART_ID_PATTERN_SOURCE
       }
     }
   },
-  required: ['clipId', 'role'],
+  required: ['clipId'],
   additionalProperties: false
 } as const;
 
 export const upsertAnimationMotionCommand = defineCommand({
   name: 'animation.motion.upsert',
-  label: 'Create complete part motion',
+  label: 'Create or patch canonical motion',
   purpose:
-    'Create or replace one complete joint-aware numeric clip from normalized part poses; replacement removes omitted basic channels and requires advanced clips to be deleted and recreated in the same atomic batch.',
+    'Create or patch one joint-aware clip from ordered poses and continuous hinge spins; patch timing and role are preserved unless explicitly supplied, omitted part tracks are preserved, and only removePartIds deletes tracks.',
   inputSchema,
   apply: (document, payload) => {
     const compiled = compileAnimationMotion(document, payload);
@@ -122,38 +154,24 @@ export const upsertAnimationMotionCommand = defineCommand({
       current,
       removedTrackIds
     } = compiled;
-    const animations = withoutImplicitRestPose(
-      document.animations
-    );
-    const removedPlaceholderIds = Object.keys(
-      document.animations
-    ).filter(
-      (id) =>
-        animations[id] === undefined &&
-        id !== clip.id
-    );
     return {
       ok: true,
       value: {
         document: {
           ...document,
           animations: {
-            ...animations,
+            ...document.animations,
             [clip.id]: clip
           }
         },
         summary:
-          `${current ? 'Replace' : 'Create'} ` +
-          `${payload.role} motion ${clip.id}`,
+          `${current ? 'Patch' : 'Create'} motion ${clip.id}`,
         effects: {
           createdEntityIds: current ? [] : [clip.id],
           changedEntityIds: current
             ? [clip.id, ...Object.keys(clip.channels)]
             : Object.keys(clip.channels),
-          removedEntityIds: [
-            ...removedTrackIds,
-            ...removedPlaceholderIds
-          ],
+          removedEntityIds: removedTrackIds,
           invalidated: [
             'animations',
             'validation',

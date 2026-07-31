@@ -25,33 +25,6 @@ assert.equal(
   decideProjectWrite(candidate, candidate).status,
   'unchanged'
 );
-const legacyDocument = structuredClone(document) as
-  typeof document & {
-    settings: typeof document.settings & {
-      uvPixelsPerUnit?: number;
-    };
-  };
-delete (
-  legacyDocument.settings as Partial<typeof document.settings>
-).surfacePixelDensity;
-legacyDocument.settings.uvPixelsPerUnit = 1;
-const legacyRecord = {
-  ...candidate,
-  document: legacyDocument
-};
-const normalizedLegacy = decideProjectWrite(
-  legacyRecord,
-  candidate
-);
-assert.equal(normalizedLegacy.status, 'unchanged');
-assert.equal(
-  normalizedLegacy.current.document.settings.surfacePixelDensity,
-  1
-);
-assert.equal(
-  'uvPixelsPerUnit' in normalizedLegacy.current.document.settings,
-  false
-);
 assert.equal(
   decideProjectWrite(
     {

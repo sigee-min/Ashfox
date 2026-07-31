@@ -78,6 +78,9 @@ const success = (
     ok: true,
     revision: frame.revision,
     data: {
+      review: 'next',
+      verdict: 'pending',
+      issues: [],
       frameNonce: frame.frameNonce,
       mode: session.mode,
       camera: frame.camera,

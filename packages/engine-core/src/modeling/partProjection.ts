@@ -15,6 +15,9 @@ import {
   readPartRecipe
 } from './partRecipe';
 import {
+  isGeometryPartSpec
+} from './partContract';
+import {
   canonicalizePartOccupancies
 } from './partOccupancyCanonicalization';
 import type {
@@ -56,7 +59,8 @@ export const validatePartRecipeProjection = (
     }
     return issues;
   }
-  if (parts.size !== recipe.parts.length) {
+  const geometryParts = recipe.parts.filter(isGeometryPartSpec);
+  if (parts.size !== geometryParts.length) {
     issues.push({
       code: 'projection',
       path: 'modeling.parts',
@@ -96,7 +100,7 @@ export const validatePartRecipeProjection = (
     .filter((texture) => texture.atlasMode === 'generate')
     .sort((left, right) => compareStableText(left.id, right.id))[0]?.id;
 
-  for (const spec of recipe.parts) {
+  for (const spec of geometryParts) {
     const actual = parts.get(spec.partId);
     if (!actual) {
       issues.push({

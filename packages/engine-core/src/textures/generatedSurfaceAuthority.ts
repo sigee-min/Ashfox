@@ -2,6 +2,7 @@ import {
   CUBE_FACE_DIRECTIONS,
   type CubeFaceDirection,
   type CubeNode,
+  type ModelFeaturePartSpec,
   type ProjectDocument
 } from '../model';
 import {
@@ -11,6 +12,13 @@ import {
 import {
   PART_CONTRACT_LIMITS
 } from '../modeling/partContract';
+import {
+  readPartRecipe
+} from '../modeling/partRecipe';
+import {
+  orientedSurfaceFeatureRect,
+  surfaceFeaturePlane
+} from '../modeling/surfaceFeature';
 import type {
   LatticeBounds,
   LatticePoint
@@ -30,9 +38,24 @@ export interface GeneratedSurfacePattern {
   };
 }
 
+export interface GeneratedSurfaceMarking {
+  id: string;
+  motif: 'eye';
+  color: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  motifX: number;
+  motifY: number;
+  motifWidth: number;
+  motifHeight: number;
+}
+
 export interface CompiledFaceAuthority {
   external: boolean;
   pattern?: GeneratedSurfacePattern;
+  markings?: readonly GeneratedSurfaceMarking[];
 }
 
 export interface CompiledSurfaceAuthority {
@@ -276,6 +299,96 @@ const emptyAuthority = (
   nodeIds
 });
 
+const intersection = (
+  left: { x: number; y: number; width: number; height: number },
+  right: { x: number; y: number; width: number; height: number }
+): { x: number; y: number; width: number; height: number } | null => {
+  const x = Math.max(left.x, right.x);
+  const y = Math.max(left.y, right.y);
+  const maximumX = Math.min(left.x + left.width, right.x + right.width);
+  const maximumY = Math.min(left.y + left.height, right.y + right.height);
+  return maximumX <= x || maximumY <= y
+    ? null
+    : { x, y, width: maximumX - x, height: maximumY - y };
+};
+
+const addSurfaceFeatureMarkings = (
+  document: ProjectDocument,
+  cubes: readonly CubeNode[],
+  boundsByNode: ReadonlyMap<string, LatticeBounds>,
+  grid: GeneratedSurfaceGrid,
+  faces: Map<string, CompiledFaceAuthority>
+): void => {
+  const recipe = readPartRecipe(document);
+  if (!recipe.ok || recipe.recipe === null) return;
+  const colors = new Map(
+    recipe.recipe.materials.map((material) => [
+      material.id,
+      material.baseColor
+    ])
+  );
+  const features = recipe.recipe.parts
+    .filter(
+      (part): part is ModelFeaturePartSpec =>
+        part.kind === 'feature'
+    )
+    .sort((left, right) => left.partId.localeCompare(right.partId));
+  for (const feature of features) {
+    const featureRect = orientedSurfaceFeatureRect(feature);
+    const plane = surfaceFeaturePlane(feature);
+    const color = colors.get(feature.materialId);
+    if (!color) continue;
+    for (const cube of cubes) {
+      if (cube.generation?.partId !== feature.parentPartId) continue;
+      const bounds = boundsByNode.get(cube.id);
+      const size = grid.faceSize(cube, feature.face);
+      const key = generatedSurfaceFaceKey(cube.id, feature.face);
+      const authority = faces.get(key);
+      if (
+        !bounds ||
+        !size ||
+        !authority?.external ||
+        facePlane(bounds, feature.face) !== plane
+      ) {
+        continue;
+      }
+      const faceOrigin = patternOrigin(
+        cube,
+        feature.face,
+        grid.texelsPerModelUnit
+      );
+      const faceRect = {
+        x: faceOrigin[0],
+        y: faceOrigin[1],
+        width: size.width,
+        height: size.height
+      };
+      const clipped = intersection(featureRect, faceRect);
+      if (!clipped) continue;
+      const marking: GeneratedSurfaceMarking = {
+        id: feature.partId,
+        motif: feature.motif,
+        color,
+        x: clipped.x - faceRect.x,
+        y: clipped.y - faceRect.y,
+        width: clipped.width,
+        height: clipped.height,
+        motifX: clipped.x - featureRect.x,
+        motifY: clipped.y - featureRect.y,
+        motifWidth: featureRect.width,
+        motifHeight: featureRect.height
+      };
+      faces.set(key, {
+        ...authority,
+        markings: [
+          ...(authority.markings ?? []),
+          marking
+        ]
+      });
+    }
+  }
+};
+
 export const buildCompiledSurfaceAuthority = (
   document: ProjectDocument,
   grid: GeneratedSurfaceGrid
@@ -372,6 +485,13 @@ export const buildCompiledSurfaceAuthority = (
       }
     });
   }
+  addSurfaceFeatureMarkings(
+    document,
+    cubes,
+    boundsByNode,
+    grid,
+    faces
+  );
   return { faces, nodeIds };
 };
 

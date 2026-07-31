@@ -1,5 +1,5 @@
 import {
-  GENERATED_PART_PRIMITIVES,
+  MODEL_GEOMETRY_PRIMITIVES,
   IDENTITY_TRANSFORM,
   type BoneNode,
   type CubeNode,
@@ -198,7 +198,6 @@ const readPart = (
     provenance.parentPartId !== null ||
     (
       provenance.joint.kind === 'fixed' &&
-      provenance.primitive !== 'feature' &&
       bones[0]?.transform.pivot.every((value) => value === 0)
     );
   if (
@@ -532,7 +531,7 @@ export const readCompiledParts = (
       generation.authority !== 'ashfox.part-compiler' ||
       !isPartId(generation.partId) ||
       !isPartId(generation.materialId) ||
-      !GENERATED_PART_PRIMITIVES.includes(generation.primitive) ||
+      !MODEL_GEOMETRY_PRIMITIVES.includes(generation.primitive) ||
       !isValidJoint(generation.joint) ||
       (generation.role !== 'bone' && generation.role !== 'geometry') ||
       (

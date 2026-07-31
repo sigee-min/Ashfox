@@ -16,6 +16,7 @@ export type CommandInputSchema = (
       minimum?: number;
       maximum?: number;
       integer?: boolean;
+      multipleOf?: number;
     }
   | {
       type: 'boolean';
@@ -31,7 +32,10 @@ export type CommandInputSchema = (
       type: 'object';
       properties: Readonly<Record<string, CommandInputSchema>>;
       required?: readonly string[];
-      additionalProperties: boolean;
+      atLeastOne?: readonly string[];
+      minProperties?: number;
+      maxProperties?: number;
+      additionalProperties: boolean | CommandInputSchema;
     }
   | {
       enum: readonly JsonPrimitive[];
@@ -153,6 +157,23 @@ const validateNumber = (
       expected: 'safe integer'
     };
   }
+  if (
+    schema.multipleOf !== undefined &&
+    (
+      !Number.isFinite(schema.multipleOf) ||
+      schema.multipleOf <= 0 ||
+      Math.abs(
+        value / schema.multipleOf -
+        Math.round(value / schema.multipleOf)
+      ) > Number.EPSILON * 16
+    )
+  ) {
+    return {
+      path,
+      message: 'Number is not on the required increment.',
+      expected: `multiple of ${schema.multipleOf}`
+    };
+  }
   if (schema.minimum !== undefined && value < schema.minimum) {
     return {
       path,
@@ -221,6 +242,27 @@ const validateObject = (
   if (!isRecord(value)) {
     return { path, message: 'Expected an object.', expected: 'object' };
   }
+  const propertyCount = Object.keys(value).length;
+  if (
+    schema.minProperties !== undefined &&
+    propertyCount < schema.minProperties
+  ) {
+    return {
+      path,
+      message: 'Object has too few properties.',
+      expected: `at least ${schema.minProperties} property/properties`
+    };
+  }
+  if (
+    schema.maxProperties !== undefined &&
+    propertyCount > schema.maxProperties
+  ) {
+    return {
+      path,
+      message: 'Object has too many properties.',
+      expected: `at most ${schema.maxProperties} property/properties`
+    };
+  }
   for (const key of schema.required ?? []) {
     if (!(key in value)) {
       return {
@@ -230,16 +272,35 @@ const validateObject = (
       };
     }
   }
-  if (!schema.additionalProperties) {
-    const unknownKey = Object.keys(value).find(
-      (key) => !(key in schema.properties)
-    );
-    if (unknownKey) {
+  if (
+    schema.atLeastOne !== undefined &&
+    !schema.atLeastOne.some((key) => key in value)
+  ) {
+    return {
+      path,
+      message: 'One of the required alternatives is missing.',
+      expected: `at least one of ${schema.atLeastOne.join(', ')}`
+    };
+  }
+  const unknownKeys = Object.keys(value).filter(
+    (key) => !(key in schema.properties)
+  );
+  if (schema.additionalProperties === false) {
+    if (unknownKeys[0]) {
       return {
-        path: `${path}.${unknownKey}`,
+        path: `${path}.${unknownKeys[0]}`,
         message: 'Property is not part of this command.',
         expected: 'registered property'
       };
+    }
+  } else if (typeof schema.additionalProperties === 'object') {
+    for (const key of unknownKeys) {
+      const issue = validateCommandInput(
+        value[key],
+        schema.additionalProperties,
+        `${path}.${key}`
+      );
+      if (issue) return issue;
     }
   }
   for (const [key, propertySchema] of Object.entries(schema.properties)) {

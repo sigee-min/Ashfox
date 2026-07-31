@@ -1,36 +1,32 @@
 import type {
   AnimationClip,
+  AnimationTriggerTrack,
   ProjectDocument,
   TransformChannel
 } from '../model';
-import {
-  readCompiledParts,
-  type CompiledPartState
-} from '../modeling/partInvariants';
 import { compiledPartBoneId } from '../modeling/provenance';
 import { resourceToken } from '../resourceToken';
 import { compareStableText } from '../stableOrder';
 import {
-  countMotionKeys,
-  MOTION_AUTHORING_LIMITS
+  MOTION_AUTHORING_FPS,
+  MOTION_AUTHORING_LIMITS,
+  motionAuthoringIssue,
+  type AnimationMotionUpsertInput,
+  type ResolvedAnimationMotionInput,
+  type MotionAuthoringIssue
 } from './motionContract';
-import type {
-  AnimationMotionKeyInput,
-  AnimationPartMotionInput,
-  CommandPayloadMap
-} from '../commands/types';
+import {
+  compileMotionTracks
+} from './motionPoseCompiler';
+import {
+  CANONICAL_IDLE_CLIP_ID,
+  idleClipNumericallyCloses
+} from './idleContract';
+import {
+  transformChannelClosesLoop
+} from './loopClosure';
 
-export const MOTION_AUTHORING_FPS = 20;
-
-type Rotation = readonly [number, number, number];
-
-export interface MotionAuthoringIssue {
-  code: 'invalid_payload' | 'invalid_state';
-  message: string;
-  path: string;
-  expected: string;
-  pathScope?: 'document';
-}
+export { MOTION_AUTHORING_FPS };
 
 export type CompileAnimationMotionResult =
   | {
@@ -44,189 +40,10 @@ export type CompileAnimationMotionResult =
       issue: MotionAuthoringIssue;
     };
 
-type ChannelBuildResult =
-  | {
-      ok: true;
-      channel: TransformChannel;
-    }
-  | {
-      ok: false;
-      issue: MotionAuthoringIssue;
-    };
-
-const issue = (
-  code: MotionAuthoringIssue['code'],
-  message: string,
-  path: string,
-  expected: string,
-  pathScope?: MotionAuthoringIssue['pathScope']
-): MotionAuthoringIssue => ({
-  code,
-  message,
-  path,
-  expected,
-  ...(pathScope ? { pathScope } : {})
-});
-
-const zeroRotation = (): Rotation => [0, 0, 0];
-
-const rotationsEqual = (
-  left: Rotation,
-  right: Rotation
-): boolean =>
-  left.every((value, index) => value === right[index]);
-
-const isMotionIssue = (
-  value: Rotation | MotionAuthoringIssue
-): value is MotionAuthoringIssue =>
-  !Array.isArray(value);
-
-const rotationFor = (
-  part: CompiledPartState,
-  key: AnimationMotionKeyInput,
-  keyPath: string,
-  motionPath: string
-): Rotation | MotionAuthoringIssue => {
-  if (
-    part.parentPartId !== null &&
-    part.joint.kind === 'fixed'
-  ) {
-    return issue(
-      'invalid_payload',
-      `Fixed child part "${part.partId}" cannot be animated.`,
-      `${motionPath}.partId`,
-      'a hinge part, ball part, or the root part'
-    );
-  }
-  if (part.joint.kind === 'hinge') {
-    if (typeof key.rotationDegrees !== 'number') {
-      return issue(
-        'invalid_payload',
-        `Hinge part "${part.partId}" requires one scalar angle.`,
-        `${keyPath}.rotationDegrees`,
-        `degree number around the ${part.joint.axis}-axis`
-      );
-    }
-    const rotation: [number, number, number] = [0, 0, 0];
-    const axisIndex = part.joint.axis === 'x'
-      ? 0
-      : part.joint.axis === 'y'
-        ? 1
-        : 2;
-    rotation[axisIndex] = key.rotationDegrees;
-    return rotation;
-  }
-  if (typeof key.rotationDegrees === 'number') {
-    return issue(
-      'invalid_payload',
-      `Part "${part.partId}" requires an XYZ rotation vector.`,
-      `${keyPath}.rotationDegrees`,
-      'three degree numbers [x, y, z]'
-    );
-  }
-  return key.rotationDegrees;
-};
-
-const channelIdFor = (
-  clipId: string,
-  partId: string
-): string =>
-  `animation:${clipId}:channel:${partId}:rotation`;
-
-const keyIdFor = (
-  clipId: string,
-  partId: string,
-  frame: number
-): string =>
-  `animation:${clipId}:key:${partId}:${frame}`;
-
-const buildMotionChannel = (
-  clipId: string,
-  durationSeconds: number,
-  frameCount: number,
-  loop: boolean,
-  part: CompiledPartState,
-  motion: AnimationPartMotionInput,
-  motionIndex: number
-): ChannelBuildResult => {
-  const motionPath = `payload.motions[${motionIndex}]`;
-  const valuesByFrame = new Map<number, Rotation>();
-  const pathsByFrame = new Map<number, string>();
-  for (const [keyIndex, key] of motion.keys.entries()) {
-    const keyPath = `${motionPath}.keys[${keyIndex}]`;
-    const rotation = rotationFor(
-      part,
-      key,
-      keyPath,
-      motionPath
-    );
-    if (isMotionIssue(rotation)) {
-      return { ok: false, issue: rotation };
-    }
-    const frame = Math.round(key.phase * frameCount);
-    if (valuesByFrame.has(frame)) {
-      return {
-        ok: false,
-        issue: issue(
-          'invalid_payload',
-          `Motion keys for part "${part.partId}" ` +
-            'collapse to the same sampled frame.',
-          `${keyPath}.phase`,
-          `phases separated by at least ${1 / frameCount}`
-        )
-      };
-    }
-    valuesByFrame.set(frame, rotation);
-    pathsByFrame.set(frame, keyPath);
-  }
-  if (!valuesByFrame.has(0)) {
-    valuesByFrame.set(0, zeroRotation());
-  }
-  if (loop) {
-    const start = valuesByFrame.get(0) ?? zeroRotation();
-    const closing = valuesByFrame.get(frameCount);
-    if (closing && !rotationsEqual(start, closing)) {
-      return {
-        ok: false,
-        issue: issue(
-          'invalid_payload',
-          `Loop motion for part "${part.partId}" has a closing ` +
-            'rotation that differs from its opening rotation.',
-          `${pathsByFrame.get(frameCount) ?? motionPath}.rotationDegrees`,
-          'the phase 0 rotation, or omit the closing key to derive it'
-        )
-      };
-    }
-    valuesByFrame.set(frameCount, start);
-  }
-
-  return {
-    ok: true,
-    channel: {
-      id: channelIdFor(clipId, part.partId),
-      targetNodeId: compiledPartBoneId(part.partId),
-      property: 'rotation',
-      keys: [...valuesByFrame.entries()]
-        .sort(([left], [right]) => left - right)
-        .map(([frame, value]) => ({
-          id: keyIdFor(clipId, part.partId, frame),
-          timeSeconds:
-            frame === frameCount
-              ? durationSeconds
-              : (frame / frameCount) * durationSeconds,
-          value,
-          interpolation: 'linear' as const
-        }))
-    }
-  };
-};
-
 const animationName = (
   document: ProjectDocument,
   clipId: string,
-  role: CommandPayloadMap[
-    'animation.motion.upsert'
-  ]['role']
+  role: ResolvedAnimationMotionInput['role']
 ): string => {
   const modelPath =
     'modelPath' in document.formatProfile
@@ -243,162 +60,154 @@ const animationName = (
   return `animation.${model}.${suffix}`;
 };
 
-const defaultIdleMotion = (
-  parts: ReadonlyMap<string, CompiledPartState>
-): readonly AnimationPartMotionInput[] | null => {
-  const root = [...parts.values()]
-    .filter((part) => part.parentPartId === null)
-    .sort((left, right) =>
-      compareStableText(left.partId, right.partId)
-    )[0];
-  return root
-    ? [{
-        partId: root.partId,
-        keys: [{
-          phase: 0,
-          rotationDegrees: zeroRotation()
-        }]
-      }]
-    : null;
-};
+interface ResolvedMotionRequest {
+  payload: ResolvedAnimationMotionInput;
+  name: string;
+  durationSeconds: number;
+  fps: number;
+  loop: AnimationClip['loop'];
+  roleSpecified: boolean;
+  durationSpecified: boolean;
+}
 
-type ResolveMotionsResult =
+type ResolveMotionRequestResult =
   | {
       ok: true;
-      motions: readonly AnimationPartMotionInput[];
+      value: ResolvedMotionRequest;
     }
   | {
       ok: false;
       issue: MotionAuthoringIssue;
     };
 
-const resolveMotions = (
-  parts: ReadonlyMap<string, CompiledPartState>,
-  payload: CommandPayloadMap['animation.motion.upsert']
-): ResolveMotionsResult => {
-  const requested = payload.motions ?? [];
-  const duplicatePartId = requested
-    .map((motion) => motion.partId)
-    .find((id, index, ids) => ids.indexOf(id) !== index);
-  if (duplicatePartId) {
+const existingMotionRole = (
+  clip: AnimationClip
+): ResolvedAnimationMotionInput['role'] =>
+  clip.loop !== 'loop'
+    ? 'once'
+    : clip.id === CANONICAL_IDLE_CLIP_ID
+      ? 'idle'
+      : 'loop';
+
+const resolveMotionRequest = (
+  document: ProjectDocument,
+  input: AnimationMotionUpsertInput,
+  current: AnimationClip | undefined
+): ResolveMotionRequestResult => {
+  if (!current && input.role === undefined) {
     return {
       ok: false,
-      issue: issue(
+      issue: motionAuthoringIssue(
         'invalid_payload',
-        `Part "${duplicatePartId}" has more than one motion entry.`,
-        'payload.motions',
-        'one complete motion entry per part'
+        'A new animation clip requires an explicit role.',
+        'payload.role',
+        'idle | loop | once'
       )
     };
   }
-  if (requested.length > 0) {
-    return { ok: true, motions: requested };
-  }
-  if (payload.role !== 'idle') {
+  if (!current && input.durationFrames === undefined) {
     return {
       ok: false,
-      issue: issue(
+      issue: motionAuthoringIssue(
         'invalid_payload',
-        'Loop and one-shot clips require at least one part motion.',
-        'payload.motions',
-        'one or more part motions'
+        'A new animation clip requires an explicit duration.',
+        'payload.durationFrames',
+        `a whole frame count from 1 to ${MOTION_AUTHORING_LIMITS.maxDurationFrames}`
       )
     };
   }
-  const idle = defaultIdleMotion(parts);
-  return idle
-    ? { ok: true, motions: idle }
-    : {
-        ok: false,
-        issue: issue(
-          'invalid_state',
-          'A static idle requires one compiled root part.',
-          'modeling',
-          'one compiled root part',
-          'document'
-        )
-      };
-};
-
-type BuildChannelsResult =
-  | {
-      ok: true;
-      channels: readonly TransformChannel[];
-    }
-  | {
-      ok: false;
-      issue: MotionAuthoringIssue;
+  if (
+    current &&
+    input.durationFrames === undefined &&
+    current.fps !== MOTION_AUTHORING_FPS
+  ) {
+    return {
+      ok: false,
+      issue: motionAuthoringIssue(
+        'invalid_state',
+        `Clip "${current.id}" uses ${current.fps} FPS instead of the canonical 20 FPS grid.`,
+        `animations.${current.id}.fps`,
+        'an explicit durationFrames to retime this clip at 20 FPS',
+        'document'
+      )
     };
-
-const buildMotionChannels = (
-  parts: ReadonlyMap<string, CompiledPartState>,
-  payload: CommandPayloadMap['animation.motion.upsert'],
-  motions: readonly AnimationPartMotionInput[],
-  durationSeconds: number,
-  frameCount: number,
-  loops: boolean
-): BuildChannelsResult => {
-  const channels: TransformChannel[] = [];
-  for (const [motionIndex, motion] of motions.entries()) {
-    const part = parts.get(motion.partId);
-    if (!part) {
-      return {
-        ok: false,
-        issue: issue(
-          'invalid_payload',
-          `Part "${motion.partId}" does not exist in the compiled rig.`,
-          `payload.motions[${motionIndex}].partId`,
-          'an existing compiled part ID'
-        )
-      };
-    }
-    const built = buildMotionChannel(
-      payload.clipId,
-      durationSeconds,
-      frameCount,
-      loops,
-      part,
-      motion,
-      motionIndex
-    );
-    if (!built.ok) return built;
-    channels.push(built.channel);
   }
+
+  const role = input.role ?? existingMotionRole(current!);
+  const inferredFrames = current
+    ? current.durationSeconds * MOTION_AUTHORING_FPS
+    : Number.NaN;
+  const durationFrames =
+    input.durationFrames ?? inferredFrames;
+  if (
+    !Number.isSafeInteger(durationFrames) ||
+    durationFrames < 1 ||
+    durationFrames > MOTION_AUTHORING_LIMITS.maxDurationFrames
+  ) {
+    return {
+      ok: false,
+      issue: motionAuthoringIssue(
+        current && input.durationFrames === undefined
+          ? 'invalid_state'
+          : 'invalid_payload',
+        current && input.durationFrames === undefined
+          ? `Clip "${current.id}" is not aligned to the canonical 20 FPS frame grid.`
+          : 'Animation duration must use the canonical frame grid.',
+        current && input.durationFrames === undefined
+          ? `animations.${current.id}.durationSeconds`
+          : 'payload.durationFrames',
+        current && input.durationFrames === undefined
+          ? 'an explicit durationFrames to retime this clip'
+          : `a whole frame count from 1 to ${MOTION_AUTHORING_LIMITS.maxDurationFrames}`,
+        current && input.durationFrames === undefined
+          ? 'document'
+          : undefined
+      )
+    };
+  }
+
+  const roleSpecified = input.role !== undefined;
+  const durationSpecified = input.durationFrames !== undefined;
   return {
     ok: true,
-    channels: channels.sort((left, right) =>
-      compareStableText(left.id, right.id)
-    )
+    value: {
+      payload: {
+        ...input,
+        role,
+        durationFrames
+      },
+      name:
+        current && !roleSpecified
+          ? current.name
+          : animationName(document, input.clipId, role),
+      durationSeconds:
+        current && !durationSpecified
+          ? current.durationSeconds
+          : durationFrames / MOTION_AUTHORING_FPS,
+      fps:
+        current && !durationSpecified
+          ? current.fps
+          : MOTION_AUTHORING_FPS,
+      loop:
+        current && !roleSpecified
+          ? current.loop
+          : role === 'once'
+            ? 'once'
+            : 'loop',
+      roleSpecified,
+      durationSpecified
+    }
   };
 };
 
-const conflictingNameIssue = (
-  document: ProjectDocument,
-  clipId: string,
-  name: string
-): MotionAuthoringIssue | null => {
-  const conflict = Object.values(document.animations).find(
-    (clip) => clip.id !== clipId && clip.name === name
-  );
-  return conflict
-    ? issue(
-        'invalid_state',
-        `Animation name "${name}" is already owned by clip ` +
-          `"${conflict.id}".`,
-        'payload.clipId',
-        `reuse clip ID "${conflict.id}"`
-      )
-    : null;
-};
-
 const identityIssue = (
-  payload: CommandPayloadMap['animation.motion.upsert']
+  payload: ResolvedAnimationMotionInput
 ): MotionAuthoringIssue | null => {
   if (
     payload.role === 'idle' &&
     payload.clipId !== 'idle'
   ) {
-    return issue(
+    return motionAuthoringIssue(
       'invalid_payload',
       'The canonical idle role requires clip ID "idle".',
       'payload.clipId',
@@ -412,7 +221,7 @@ const identityIssue = (
       payload.clipId.endsWith('.idle')
     )
   ) {
-    return issue(
+    return motionAuthoringIssue(
       'invalid_payload',
       `Clip ID "${payload.clipId}" is reserved for the idle role.`,
       'payload.clipId',
@@ -422,184 +231,591 @@ const identityIssue = (
   return null;
 };
 
-const motionBudgetIssue = (
-  payload: CommandPayloadMap['animation.motion.upsert']
+const payloadPolicyIssue = (
+  payload: ResolvedAnimationMotionInput
 ): MotionAuthoringIssue | null => {
-  const keyCount = countMotionKeys(payload.motions);
-  return keyCount > MOTION_AUTHORING_LIMITS.maxKeysPerOperation
-    ? issue(
-        'invalid_payload',
-        `Animation motion contains ${keyCount} keys, exceeding the ` +
-          `${MOTION_AUTHORING_LIMITS.maxKeysPerOperation}-key operation budget.`,
-        'payload.motions',
-        `at most ${MOTION_AUTHORING_LIMITS.maxKeysPerOperation} total keys`
+  if (
+    !Number.isSafeInteger(payload.durationFrames) ||
+    payload.durationFrames < 1 ||
+    payload.durationFrames >
+      MOTION_AUTHORING_LIMITS.maxDurationFrames
+  ) {
+    return motionAuthoringIssue(
+      'invalid_payload',
+      'Animation duration must use the canonical frame grid.',
+      'payload.durationFrames',
+      `a whole frame count from 1 to ${MOTION_AUTHORING_LIMITS.maxDurationFrames}`
+    );
+  }
+  if (payload.static && payload.role !== 'idle') {
+    return motionAuthoringIssue(
+      'invalid_payload',
+      'Only the canonical idle clip may be explicitly static.',
+      'payload.static',
+      'omit static, or use role "idle"'
+    );
+  }
+  if (
+    payload.static &&
+    (
+      (payload.poses?.length ?? 0) > 0 ||
+      (payload.spins?.length ?? 0) > 0
+    )
+  ) {
+    return motionAuthoringIssue(
+      'invalid_payload',
+      'A static idle cannot also author poses or spins.',
+      'payload.static',
+      'static: true without poses or spins'
+    );
+  }
+  if (
+    payload.role === 'idle' &&
+    (payload.spins?.length ?? 0) > 0
+  ) {
+    return motionAuthoringIssue(
+      'invalid_payload',
+      'The canonical idle must close numerically and cannot contain continuous spins.',
+      'payload.spins',
+      'pose motion for idle, or a separate loop clip for spins'
+    );
+  }
+  const duplicateRemoval = (payload.removePartIds ?? [])
+    .find((id, index, ids) => ids.indexOf(id) !== index);
+  if (duplicateRemoval) {
+    return motionAuthoringIssue(
+      'invalid_payload',
+      `Part "${duplicateRemoval}" is removed more than once.`,
+      'payload.removePartIds',
+      'unique part IDs'
+    );
+  }
+  return null;
+};
+
+const conflictingNameIssue = (
+  document: ProjectDocument,
+  clipId: string,
+  name: string
+): MotionAuthoringIssue | null => {
+  const conflict = Object.values(document.animations).find(
+    (clip) => clip.id !== clipId && clip.name === name
+  );
+  return conflict
+    ? motionAuthoringIssue(
+        'invalid_state',
+        `Animation name "${name}" is already owned by clip ` +
+          `"${conflict.id}".`,
+        'payload.clipId',
+        `reuse clip ID "${conflict.id}"`
       )
     : null;
 };
 
-const advancedClipField = (
-  clip: AnimationClip
-):
-  | 'startDelay'
-  | 'loopDelay'
-  | 'animationTimeUpdate'
-  | 'blendWeight'
-  | 'overridePreviousAnimation'
-  | null =>
-  clip.startDelay !== undefined
-    ? 'startDelay'
-    : clip.loopDelay !== undefined
-      ? 'loopDelay'
-      : clip.animationTimeUpdate !== undefined
-        ? 'animationTimeUpdate'
-        : clip.blendWeight !== undefined
-          ? 'blendWeight'
-          : clip.overridePreviousAnimation !== undefined
-            ? 'overridePreviousAnimation'
-            : null;
+const scaledFrameTime = (
+  timeSeconds: number,
+  scale: number,
+  durationSeconds: number
+): number => {
+  const durationFrames = Math.round(
+    durationSeconds * MOTION_AUTHORING_FPS
+  );
+  const frame = Math.min(
+    durationFrames,
+    Math.max(
+      0,
+      Math.round(
+        timeSeconds * scale * MOTION_AUTHORING_FPS
+      )
+    )
+  );
+  return frame === durationFrames
+    ? durationSeconds
+    : frame / MOTION_AUTHORING_FPS;
+};
 
-const advancedReplacementIssue = (
-  clip: AnimationClip | undefined
-): MotionAuthoringIssue | null => {
-  if (!clip) return null;
-  const clipPath = `animations.${clip.id}`;
-  if (Object.keys(clip.triggers).length > 0) {
-    return issue(
-      'invalid_state',
-      `Clip "${clip.id}" has trigger tracks that complete motion ` +
-        'replacement must not discard implicitly.',
-      `${clipPath}.triggers`,
-      'delete then recreate the clip in the same atomic batch',
-      'document'
-    );
+const scaledFramePosition = (
+  timeSeconds: number,
+  scale: number,
+  durationSeconds: number
+): number =>
+  Math.min(
+    durationSeconds * MOTION_AUTHORING_FPS,
+    Math.max(
+      0,
+      timeSeconds * scale * MOTION_AUTHORING_FPS
+    )
+  );
+
+const isCanonicalFramePosition = (
+  frame: number
+): boolean =>
+  Math.abs(frame - Math.round(frame)) <= 0.000001;
+
+const scaleChannelTime = (
+  channel: TransformChannel,
+  scale: number,
+  durationSeconds: number,
+  canonicalize: boolean
+): TransformChannel =>
+  scale === 1 && !canonicalize
+    ? channel
+    : {
+        ...channel,
+        keys: channel.keys.map((key) => ({
+          ...key,
+          timeSeconds: scaledFrameTime(
+            key.timeSeconds,
+            scale,
+            durationSeconds
+          )
+        }))
+      };
+
+const scaleTriggerTime = (
+  trigger: AnimationTriggerTrack,
+  scale: number,
+  durationSeconds: number,
+  canonicalize: boolean
+): AnimationTriggerTrack => {
+  if (scale === 1 && !canonicalize) return trigger;
+  switch (trigger.type) {
+    case 'sound':
+      return {
+        ...trigger,
+        keys: trigger.keys.map((key) => ({
+          ...key,
+          timeSeconds: scaledFrameTime(
+            key.timeSeconds,
+            scale,
+            durationSeconds
+          )
+        }))
+      };
+    case 'particle':
+      return {
+        ...trigger,
+        keys: trigger.keys.map((key) => ({
+          ...key,
+          timeSeconds: scaledFrameTime(
+            key.timeSeconds,
+            scale,
+            durationSeconds
+          )
+        }))
+      };
+    case 'timeline':
+      return {
+        ...trigger,
+        keys: trigger.keys.map((key) => ({
+          ...key,
+          timeSeconds: scaledFrameTime(
+            key.timeSeconds,
+            scale,
+            durationSeconds
+          )
+        }))
+      };
   }
-  const field = advancedClipField(clip);
-  if (field) {
-    return issue(
-      'invalid_state',
-      `Clip "${clip.id}" has advanced field "${field}" that complete ` +
-        'motion replacement must not discard implicitly.',
-      `${clipPath}.${field}`,
-      'delete then recreate the clip in the same atomic batch',
-      'document'
-    );
-  }
-  for (const [channelId, channel] of Object.entries(
-    clip.channels
-  )) {
-    const channelPath = `${clipPath}.channels.${channelId}`;
-    if (
-      channel.property !== 'rotation' ||
-      channel.rotationSpace !== undefined
-    ) {
-      return issue(
-        'invalid_state',
-        `Clip "${clip.id}" has an advanced transform channel that ` +
-          'complete motion replacement must not discard implicitly.',
-        channelPath,
-        'delete then recreate the clip in the same atomic batch',
-        'document'
-      );
-    }
-    const advancedKeyIndex = channel.keys.findIndex(
-      (key) =>
-        key.interpolation !== 'linear' ||
-        key.preValue !== undefined ||
-        key.postValue !== undefined ||
-        key.easing !== undefined ||
-        key.value.some((component) =>
-          typeof component !== 'number'
+};
+
+const patchedChannels = (
+  current: AnimationClip | undefined,
+  authored: readonly TransformChannel[],
+  removePartIds: readonly string[],
+  durationSeconds: number,
+  canonicalizeTiming: boolean
+): Readonly<Record<string, TransformChannel>> => {
+  const authoredTargets = new Set(
+    authored.map((channel) => channel.targetNodeId)
+  );
+  const removedTargets = new Set(
+    removePartIds.map(compiledPartBoneId)
+  );
+  const scale =
+    current && current.durationSeconds > 0
+      ? durationSeconds / current.durationSeconds
+      : 1;
+  const preserved = Object.values(
+    current?.channels ?? {}
+  ).filter(
+    (channel) =>
+      !(
+        channel.property === 'rotation' &&
+        (
+          authoredTargets.has(channel.targetNodeId) ||
+          removedTargets.has(channel.targetNodeId)
         )
+      )
+  ).map((channel) =>
+    scaleChannelTime(
+      channel,
+      scale,
+      durationSeconds,
+      canonicalizeTiming
+    )
+  );
+  return Object.fromEntries(
+    [...preserved, ...authored]
+      .sort((left, right) =>
+        compareStableText(left.id, right.id)
+      )
+      .map((channel) => [channel.id, channel])
+  );
+};
+
+const patchedTriggers = (
+  current: AnimationClip | undefined,
+  durationSeconds: number,
+  canonicalizeTiming: boolean
+): AnimationClip['triggers'] => {
+  if (!current) return {};
+  const scale =
+    current.durationSeconds > 0
+      ? durationSeconds / current.durationSeconds
+      : 1;
+  return Object.fromEntries(
+    Object.values(current.triggers)
+      .map((trigger) =>
+        scaleTriggerTime(
+          trigger,
+          scale,
+          durationSeconds,
+          canonicalizeTiming
+        )
+      )
+      .sort((left, right) =>
+        compareStableText(left.id, right.id)
+      )
+      .map((trigger) => [trigger.id, trigger])
+  );
+};
+
+const preservedTimingIssue = (
+  request: ResolvedMotionRequest,
+  current: AnimationClip | undefined,
+  authored: readonly TransformChannel[]
+): MotionAuthoringIssue | null => {
+  if (!current || !request.durationSpecified) return null;
+  const authoredTargets = new Set(
+    authored.map((channel) => channel.targetNodeId)
+  );
+  const removedTargets = new Set(
+    (request.payload.removePartIds ?? []).map(
+      compiledPartBoneId
+    )
+  );
+  const scale = request.durationSeconds /
+    current.durationSeconds;
+  for (const channel of Object.values(current.channels)) {
+    if (
+      channel.property === 'rotation' &&
+      (
+        authoredTargets.has(channel.targetNodeId) ||
+        removedTargets.has(channel.targetNodeId)
+      )
+    ) {
+      continue;
+    }
+    const occupiedFrames = new Set<number>();
+    for (const [keyIndex, key] of channel.keys.entries()) {
+      const framePosition = scaledFramePosition(
+        key.timeSeconds,
+        scale,
+        request.durationSeconds
+      );
+      if (!isCanonicalFramePosition(framePosition)) {
+        return motionAuthoringIssue(
+          'invalid_state',
+          `Retiming clip "${current.id}" would place a preserved key ` +
+            `from channel "${channel.id}" between canonical 20 FPS frames.`,
+          `animations.${current.id}.channels.${channel.id}.keys[${keyIndex}].timeSeconds`,
+          'delete and recreate this clip, or reauthor every preserved off-grid track before changing durationFrames',
+          'document'
+        );
+      }
+      const frame = Math.round(framePosition);
+      if (occupiedFrames.has(frame)) {
+        return motionAuthoringIssue(
+          'invalid_state',
+          `Retiming clip "${current.id}" would collapse multiple keys ` +
+            `from channel "${channel.id}" onto frame ${frame}.`,
+          `animations.${current.id}.channels.${channel.id}.keys`,
+          'reauthor or remove this track before changing durationFrames',
+          'document'
+        );
+      }
+      occupiedFrames.add(frame);
+    }
+  }
+  for (const trigger of Object.values(current.triggers)) {
+    for (const [keyIndex, key] of trigger.keys.entries()) {
+      const framePosition = scaledFramePosition(
+        key.timeSeconds,
+        scale,
+        request.durationSeconds
+      );
+      if (!isCanonicalFramePosition(framePosition)) {
+        return motionAuthoringIssue(
+          'invalid_state',
+          `Retiming clip "${current.id}" would place a preserved ` +
+            `trigger key from "${trigger.id}" between canonical 20 FPS frames.`,
+          `animations.${current.id}.triggers.${trigger.id}.keys[${keyIndex}].timeSeconds`,
+          'delete and recreate this clip before changing durationFrames',
+          'document'
+        );
+      }
+    }
+  }
+  return null;
+};
+
+const valueSignature = (
+  value: TransformChannel['keys'][number]['value']
+): string =>
+  JSON.stringify(value);
+
+const channelMoves = (
+  channel: TransformChannel
+): boolean => {
+  if (channel.keys.length < 2) return false;
+  const opening = valueSignature(channel.keys[0].value);
+  return channel.keys.some(
+    (key) => valueSignature(key.value) !== opening
+  );
+};
+
+const clipMoves = (
+  channels: AnimationClip['channels']
+): boolean =>
+  Object.values(channels).some(channelMoves);
+
+const loopClosureIssue = (
+  request: ResolvedMotionRequest,
+  current: AnimationClip | undefined,
+  clip: AnimationClip
+): MotionAuthoringIssue | null => {
+  if (clip.loop !== 'loop') return null;
+  const unclosed = Object.values(clip.channels).find(
+    (channel) => !transformChannelClosesLoop(
+      channel,
+      clip.durationSeconds
+    )
+  );
+  return unclosed
+    ? motionAuthoringIssue(
+        'invalid_payload',
+        `Resulting loop clip "${clip.id}" preserves an open ` +
+          `${unclosed.property} track for ` +
+          `"${unclosed.targetNodeId}".`,
+        current &&
+          current.loop !== 'loop' &&
+          request.roleSpecified
+          ? 'payload.role'
+          : 'payload.poses',
+        'a closed transform track at the requested duration, or role "once"'
+      )
+    : null;
+};
+
+const canonicalIdleIssue = (
+  clip: AnimationClip
+): MotionAuthoringIssue | null => {
+  if (clip.id !== CANONICAL_IDLE_CLIP_ID) return null;
+  return idleClipNumericallyCloses(clip)
+    ? null
+    : motionAuthoringIssue(
+        'invalid_payload',
+        'The resulting canonical idle must be a numerically closed loop on every transform channel.',
+        'payload.poses',
+        'exactly matching numeric opening and closing transforms, or static: true'
+      );
+};
+
+const movementIssue = (
+  payload: ResolvedAnimationMotionInput,
+  channels: AnimationClip['channels']
+): MotionAuthoringIssue | null => {
+  const moves = clipMoves(channels);
+  if (payload.static && moves) {
+    return motionAuthoringIssue(
+      'invalid_state',
+      'The resulting idle still contains moving tracks.',
+      'payload.removePartIds',
+      'remove every moving part track, or omit static',
+      'document'
     );
-    if (advancedKeyIndex >= 0) {
-      return issue(
-        'invalid_state',
-        `Clip "${clip.id}" has an advanced transform key that complete ` +
-          'motion replacement must not discard implicitly.',
-        `${channelPath}.keys[${advancedKeyIndex}]`,
-        'delete then recreate the clip in the same atomic batch',
-        'document'
+  }
+  if (!payload.static && !moves) {
+    return motionAuthoringIssue(
+      'invalid_payload',
+      `${payload.role} motion must contain at least two distinct poses.`,
+      'payload.poses',
+      payload.role === 'idle'
+        ? 'actual idle movement, or static: true'
+        : 'actual pose movement or a spin'
+    );
+  }
+  return null;
+};
+
+const removalIssue = (
+  current: AnimationClip | undefined,
+  payload: AnimationMotionUpsertInput
+): MotionAuthoringIssue | null => {
+  const channels = Object.values(current?.channels ?? {});
+  for (const [
+    index,
+    partId
+  ] of (payload.removePartIds ?? []).entries()) {
+    const targetNodeId = compiledPartBoneId(partId);
+    const exists = channels.some(
+      (channel) =>
+        channel.property === 'rotation' &&
+        channel.targetNodeId === targetNodeId
+    );
+    if (!exists) {
+      return motionAuthoringIssue(
+        'invalid_payload',
+        `Clip "${payload.clipId}" has no rotation track for part "${partId}".`,
+        `payload.removePartIds[${index}]`,
+        'a part ID with an existing rotation track in this clip'
       );
     }
   }
   return null;
 };
 
+const buildClip = (
+  request: ResolvedMotionRequest,
+  current: AnimationClip | undefined,
+  authored: readonly TransformChannel[]
+): AnimationClip => {
+  const { payload } = request;
+  return {
+    ...(current ?? {}),
+    id: payload.clipId,
+    name: request.name,
+    durationSeconds: request.durationSeconds,
+    fps: request.fps,
+    loop: request.loop,
+    channels: patchedChannels(
+      current,
+      authored,
+      payload.removePartIds ?? [],
+      request.durationSeconds,
+      request.durationSpecified
+    ),
+    triggers: patchedTriggers(
+      current,
+      request.durationSeconds,
+      request.durationSpecified
+    )
+  };
+};
+
 export const compileAnimationMotion = (
   document: ProjectDocument,
-  payload: CommandPayloadMap['animation.motion.upsert']
+  input: AnimationMotionUpsertInput
 ): CompileAnimationMotionResult => {
+  const current = document.animations[input.clipId];
+  const resolved = resolveMotionRequest(
+    document,
+    input,
+    current
+  );
+  if (!resolved.ok) return resolved;
+  const request = resolved.value;
+  const { payload } = request;
   const contractIssue =
     identityIssue(payload) ??
-    motionBudgetIssue(payload) ??
-    advancedReplacementIssue(
-      document.animations[payload.clipId]
-    );
+    payloadPolicyIssue(payload);
   if (contractIssue) {
     return { ok: false, issue: contractIssue };
   }
-  const compiled = readCompiledParts(document);
-  if (!compiled.ok) {
+  const invalidRemoval = removalIssue(current, payload);
+  if (invalidRemoval) {
+    return { ok: false, issue: invalidRemoval };
+  }
+  const hasAuthoredTracks =
+    payload.static === true ||
+    (payload.poses?.length ?? 0) > 0 ||
+    (payload.spins?.length ?? 0) > 0;
+  const hasRemoval =
+    (payload.removePartIds?.length ?? 0) > 0;
+  const durationChanges =
+    current !== undefined &&
+    request.durationSpecified &&
+    (
+      current.durationSeconds !== request.durationSeconds ||
+      current.fps !== request.fps
+    );
+  const roleChanges =
+    current !== undefined &&
+    request.roleSpecified &&
+    (
+      current.loop !== request.loop ||
+      current.name !== request.name
+    );
+  if (
+    current !== undefined &&
+    !hasAuthoredTracks &&
+    !hasRemoval &&
+    !durationChanges &&
+    !roleChanges
+  ) {
     return {
       ok: false,
-      issue: issue(
-        'invalid_state',
-        compiled.issues[0]?.message ??
-          'The compiled part rig is unavailable.',
-        compiled.issues[0]?.path ?? 'modeling',
-        'a valid compiled part rig',
-        'document'
+      issue: motionAuthoringIssue(
+        'invalid_payload',
+        'Motion patch does not change any track, role, or timing.',
+        'payload',
+        'poses, spins, removePartIds, static: true, a changed role, or changed durationFrames'
       )
     };
   }
 
-  const resolved = resolveMotions(compiled.parts, payload);
-  if (!resolved.ok) return resolved;
-  const durationSeconds = payload.durationSeconds ?? 1;
-  const frameCount = Math.max(
-    1,
-    Math.round(durationSeconds * MOTION_AUTHORING_FPS)
+  const compiled = compileMotionTracks(document, payload);
+  if (!compiled.ok) return compiled;
+  const invalidPreservedTiming = preservedTimingIssue(
+    request,
+    current,
+    compiled.value.channels
   );
-  const loops =
-    payload.role === 'idle' ||
-    payload.role === 'loop';
-  const built = buildMotionChannels(
-    compiled.parts,
-    payload,
-    resolved.motions,
-    durationSeconds,
-    frameCount,
-    loops
-  );
-  if (!built.ok) return built;
-
-  const name = animationName(
-    document,
-    payload.clipId,
-    payload.role
-  );
+  if (invalidPreservedTiming) {
+    return { ok: false, issue: invalidPreservedTiming };
+  }
   const nameIssue = conflictingNameIssue(
     document,
     payload.clipId,
-    name
+    request.name
   );
   if (nameIssue) return { ok: false, issue: nameIssue };
 
-  const current = document.animations[payload.clipId];
-  const clip: AnimationClip = {
-    id: payload.clipId,
-    name,
-    durationSeconds,
-    fps: MOTION_AUTHORING_FPS,
-    loop: loops ? 'loop' : 'once',
-    channels: Object.fromEntries(
-      built.channels.map((channel) => [
-        channel.id,
-        channel
-      ])
-    ),
-    triggers: {}
-  };
+  const clip = buildClip(
+    request,
+    current,
+    compiled.value.channels
+  );
+  const invalidLoop = loopClosureIssue(
+    request,
+    current,
+    clip
+  );
+  if (invalidLoop) {
+    return { ok: false, issue: invalidLoop };
+  }
+  const finalIdleIssue = canonicalIdleIssue(clip);
+  if (finalIdleIssue) {
+    return { ok: false, issue: finalIdleIssue };
+  }
+  const finalMovementIssue = movementIssue(
+    payload,
+    clip.channels
+  );
+  if (finalMovementIssue) {
+    return { ok: false, issue: finalMovementIssue };
+  }
   const nextChannelIds = new Set(
     Object.keys(clip.channels)
   );
@@ -608,12 +824,9 @@ export const compileAnimationMotion = (
     clip,
     current,
     removedTrackIds: current
-      ? [
-          ...Object.keys(current.channels).filter(
-            (id) => !nextChannelIds.has(id)
-          ),
-          ...Object.keys(current.triggers)
-        ]
+      ? Object.keys(current.channels).filter(
+          (id) => !nextChannelIds.has(id)
+        )
       : []
   };
 };
@@ -623,5 +836,7 @@ export const compileCanonicalStaticIdle = (
 ): CompileAnimationMotionResult =>
   compileAnimationMotion(document, {
     clipId: 'idle',
-    role: 'idle'
+    role: 'idle',
+    durationFrames: MOTION_AUTHORING_FPS,
+    static: true
   });

@@ -18,7 +18,9 @@ const receipt = (
   clipId: null,
   observedTimeSeconds: 0,
   completedCycles: 0,
-  frameNonce
+  frameNonce,
+  verdict: 'accepted',
+  issues: []
 });
 
 let reviews: readonly VisualReviewReceipt[] = [];
@@ -49,6 +51,16 @@ assert.equal(
     'local-0002'
   ).length,
   0
+);
+
+reviews = recordVisualReview(reviews, {
+  ...receipt('local-0001', 'side', 5),
+  verdict: 'rejected',
+  issues: ['connection']
+});
+assert.equal(
+  reviews.find((review) => review.camera === 'side')?.verdict,
+  'rejected'
 );
 
 reviews = recordVisualReview(

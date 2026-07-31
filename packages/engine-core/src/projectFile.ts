@@ -1,7 +1,4 @@
-import {
-  isSurfacePixelDensity,
-  type ProjectDocument
-} from './model';
+import type { ProjectDocument } from './model';
 import {
   deriveGeneratedTextures
 } from './textures/textureRecipe';
@@ -24,28 +21,6 @@ const isRecord = (
 
 const validatedShape = <T>(value: unknown): T => value as T;
 
-const normalizeProjectSettings = (
-  value: Readonly<Record<string, unknown>>
-): Readonly<Record<string, unknown>> => {
-  const settings = value.settings;
-  if (!isRecord(settings)) return value;
-  const density = settings.surfacePixelDensity === undefined
-    ? (
-        isSurfacePixelDensity(settings.uvPixelsPerUnit)
-          ? settings.uvPixelsPerUnit
-          : 1
-      )
-    : settings.surfacePixelDensity;
-  return {
-    ...value,
-    settings: {
-      textureResolution: settings.textureResolution,
-      surfacePixelDensity: density,
-      coordinateSystem: settings.coordinateSystem
-    }
-  };
-};
-
 export const parseProjectDocument = (
   value: unknown
 ): ProjectDocument => {
@@ -53,9 +28,7 @@ export const parseProjectDocument = (
     throw new ProjectFileError('Project file must contain a JSON object.');
   }
 
-  const document = validatedShape<ProjectDocument>(
-    normalizeProjectSettings(value)
-  );
+  const document = validatedShape<ProjectDocument>(value);
   let report;
   try {
     report = validateProjectDocument(document);

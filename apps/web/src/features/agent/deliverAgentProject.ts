@@ -60,7 +60,7 @@ export const deliverAgentProject = async ({
         code: 'invalid_state',
         path: 'review',
         expected:
-          'complete all revision-bound visual reviews with present'
+          'explicitly accept every revision-bound visual review'
       }
     };
   }

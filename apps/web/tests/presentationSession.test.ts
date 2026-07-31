@@ -56,6 +56,8 @@ const frameResult = observePresentationFrame(
 assert.equal(frameResult.session, null);
 assert.equal(frameResult.result?.ok, true);
 if (frameResult.result?.ok) {
+  assert.equal(frameResult.result.data.review, 'next');
+  assert.equal(frameResult.result.data.verdict, 'pending');
   assert.equal(frameResult.result.data.completedCycles, 0);
 }
 

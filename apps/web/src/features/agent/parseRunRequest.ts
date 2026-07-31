@@ -3,9 +3,15 @@ import {
   type ProjectCommandOperation
 } from '@ashfox/engine-core';
 
+import {
+  AGENT_REQUEST_ID_EXPECTED,
+  isAgentRequestId
+} from './agentRequestId';
+
 interface ParseSuccess {
   ok: true;
   request: {
+    requestId: string;
     operations: readonly ProjectCommandOperation[];
   };
 }
@@ -21,7 +27,7 @@ interface ParseFailure {
 
 export type ParseRunRequestResult = ParseSuccess | ParseFailure;
 
-const REQUEST_KEYS = new Set(['operations']);
+const REQUEST_KEYS = new Set(['requestId', 'operations']);
 const OPERATION_KEYS = new Set(['name', 'payload']);
 
 const isRecord = (
@@ -63,7 +69,17 @@ export const parseRunRequest = (
       error: {
         code: 'invalid_batch',
         path: requestUnknownKey,
-        expected: 'operations'
+        expected: 'requestId or operations'
+      }
+    };
+  }
+  if (!isAgentRequestId(value.requestId)) {
+    return {
+      ok: false,
+      error: {
+        code: 'invalid_batch',
+        path: 'requestId',
+        expected: AGENT_REQUEST_ID_EXPECTED
       }
     };
   }
@@ -116,6 +132,7 @@ export const parseRunRequest = (
   return {
     ok: true,
     request: {
+      requestId: value.requestId,
       operations: operationsShape(value.operations)
     }
   };

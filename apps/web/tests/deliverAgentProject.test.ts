@@ -31,17 +31,14 @@ document.intent = {
   subject: 'Crate',
   forward: 'north',
   grounding: 'free',
-  requiredFeatures: ['Confirm the crate silhouette.'],
-  requiredPartIds: [],
-  requiredMaterialIds: [],
-  requiredClipIds: []
+  features: ['Confirm the crate silhouette.']
 };
 const idle = document.animations['clip-idle'];
 const idleChannel = idle.channels['channel-root-rotation'];
 document.animations = {
-  ...document.animations,
-  'clip-idle': {
+  idle: {
     ...idle,
+    id: 'idle',
     channels: {
       ...idle.channels,
       'channel-root-rotation': {
@@ -67,7 +64,9 @@ const reviews: readonly VisualReviewReceipt[] =
     clipId: review.clipId,
     observedTimeSeconds: 0,
     completedCycles: review.mode === 'cycle' ? 1 : 0,
-    frameNonce: index + 1
+    frameNonce: index + 1,
+    verdict: 'accepted',
+    issues: []
   }));
 const artifact: ArtifactFile = {
   kind: 'target',

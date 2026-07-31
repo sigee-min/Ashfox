@@ -57,6 +57,7 @@ import {
 
 interface UseAgentCommandPortInput {
   document: ProjectDocument;
+  projectGeneration: number;
   assets: ProjectAssets;
   activity: readonly CommandReceipt[];
   commandOutcomes: readonly CommandOutcome[];
@@ -66,6 +67,9 @@ interface UseAgentCommandPortInput {
   onFocusEntity: (nodeId: string) => void;
   onPresent: (
     request: ViewPresentationRequest
+  ) => Promise<PresentResult>;
+  onReview: (
+    request: Exclude<PresentRequest, { review: 'next' }>
   ) => Promise<PresentResult>;
   onDeliver: (lease: OperationLeaseToken) => Promise<
     FileOperationRunResult<ArtifactFile>
@@ -100,6 +104,7 @@ const waitForPresentation = (): Promise<void> =>
 
 export const useAgentCommandPort = ({
   document,
+  projectGeneration,
   assets,
   activity,
   commandOutcomes,
@@ -108,6 +113,7 @@ export const useAgentCommandPort = ({
   dispatch,
   onFocusEntity,
   onPresent,
+  onReview,
   onDeliver,
   getVisualReviews,
   operationLease
@@ -117,12 +123,15 @@ export const useAgentCommandPort = ({
   const mountedRef = useRef(true);
   const pendingRef = useRef<PendingCommand | null>(null);
   const documentRef = useLatestValue(document);
+  const projectGenerationRef =
+    useLatestValue(projectGeneration);
   const activityRef = useLatestValue(activity);
   const assetsRef = useLatestValue(assets);
   const selectedNodeIdRef = useLatestValue(selectedNodeId);
   const reportRef = useLatestValue(report);
   const onFocusEntityRef = useLatestValue(onFocusEntity);
   const onPresentRef = useLatestValue(onPresent);
+  const onReviewRef = useLatestValue(onReview);
   const onDeliverRef = useLatestValue(onDeliver);
   const getVisualReviewsRef = useLatestValue(getVisualReviews);
 
@@ -158,25 +167,61 @@ export const useAgentCommandPort = ({
             getVisualReviewsRef.current(
               documentRef.current.id,
               documentRef.current.revision
-            )
+            ),
+            operationLease.currentOwner()
           ),
         currentProjectId: () => documentRef.current.id,
+        currentProjectSession: () =>
+          `${projectGenerationRef.current}:${documentRef.current.id}`,
         currentRevision: () => documentRef.current.revision,
         submit,
         operationLease,
-        present: (_request: PresentRequest) => {
+        present: (request: PresentRequest) => {
+          if (request.review !== 'next') {
+            return onReviewRef.current(request);
+          }
           const current = documentRef.current;
           const readiness = evaluateProductionReadiness(
             current,
             reportRef.current
           );
+          if (!readiness.mechanicallyReady) {
+            return Promise.resolve({
+              ok: false,
+              revision: current.revision,
+              error: {
+                code: 'invalid_state',
+                path:
+                  readiness.firstBlockingFinding?.path ?? '$',
+                expected:
+                  readiness.firstBlockingFinding?.fix ??
+                  'mechanically ready project before visual review'
+              }
+            });
+          }
+          const visualReviews = getVisualReviewsRef.current(
+            current.id,
+            current.revision
+          );
+          const rejected = visualReviews.find(
+            (receipt) => receipt.verdict === 'rejected'
+          );
+          if (rejected) {
+            return Promise.resolve({
+              ok: false,
+              revision: current.revision,
+              error: {
+                code: 'invalid_state',
+                path: 'review',
+                expected:
+                  `revise rejected visual issues: ${rejected.issues.join(', ')}`
+              }
+            });
+          }
           const review = nextVisualReview(
             current,
             readiness,
-            getVisualReviewsRef.current(
-              current.id,
-              current.revision
-            )
+            visualReviews
           );
           if (!review) {
             return Promise.resolve({

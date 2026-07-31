@@ -13,8 +13,35 @@ import {
 import {
   ensureGeneratedTexture
 } from '../../textures/generatedMaterial';
+import { compareStableText } from '../../stableOrder';
 import { defineCommand } from '../definition';
 import { modelPartsMaterialSchema } from './modelPartSchemas';
+
+const canonicalColor = (color: string): string =>
+  color.toUpperCase();
+
+const materialForColor = (
+  materials: readonly { id: string; baseColor: string }[],
+  color: string
+): { id: string; baseColor: string } | undefined =>
+  materials
+    .filter(
+      (material) =>
+        canonicalColor(material.baseColor) === canonicalColor(color)
+    )
+    .sort((left, right) => compareStableText(left.id, right.id))[0];
+
+const deriveMaterialId = (
+  materials: readonly { id: string }[],
+  color: string
+): string => {
+  const used = new Set(materials.map((material) => material.id));
+  const base = `material.${color.slice(1).toLowerCase()}`;
+  if (!used.has(base)) return base;
+  let suffix = 2;
+  while (used.has(`${base}.${suffix}`)) suffix += 1;
+  return `${base}.${suffix}`;
+};
 
 export const setModelPartMaterialCommand = defineCommand({
   name: 'model.parts.material',
@@ -24,16 +51,27 @@ export const setModelPartMaterialCommand = defineCommand({
   inputSchema: modelPartsMaterialSchema,
   apply: (document, payload) => {
     if (
-      !isPartId(payload.materialId) ||
-      !isPartBaseColor(payload.baseColor)
+      (
+        payload.materialId !== undefined &&
+        !isPartId(payload.materialId)
+      ) ||
+      (
+        payload.baseColor !== undefined &&
+        !isPartBaseColor(payload.baseColor)
+      )
     ) {
       return {
         ok: false,
         error: {
           code: 'invalid_payload',
-          message: 'Material requires a stable ID and #RRGGBB base color.',
-          path: 'payload.materialId',
-          expected: 'lowercase ID and #RRGGBB base color'
+          message:
+            'Material ID must be stable lowercase text and color must be #RRGGBB.',
+          path:
+            payload.materialId !== undefined &&
+            !isPartId(payload.materialId)
+              ? 'payload.materialId'
+              : 'payload.baseColor',
+          expected: 'lowercase ID or #RRGGBB base color'
         }
       };
     }
@@ -57,64 +95,102 @@ export const setModelPartMaterialCommand = defineCommand({
       };
     }
     const selected = new Set(payload.partIds);
-    const missingId = payload.partIds.find(
+    const missingIndex = payload.partIds.findIndex(
       (partId) =>
         !current.recipe?.parts.some(
           (part) => part.partId === partId
         )
     );
-    if (missingId) {
+    if (missingIndex >= 0) {
+      const missingId = payload.partIds[missingIndex];
       return {
         ok: false,
         error: {
           code: 'invalid_state',
           message: `Compiled part "${missingId}" does not exist.`,
-          path: 'payload.partIds',
+          path: `payload.partIds[${missingIndex}]`,
           expected: 'existing canonical part IDs'
         }
       };
     }
-    const existingMaterial = current.recipe.materials.find(
-      (material) => material.id === payload.materialId
-    );
-    const unselectedUser = current.recipe.parts.find(
-      (part) =>
-        !selected.has(part.partId) &&
-        part.materialId === payload.materialId
-    );
+    const requestedMaterial =
+      payload.materialId === undefined
+        ? undefined
+        : current.recipe.materials.find(
+            (material) => material.id === payload.materialId
+          );
     if (
-      existingMaterial &&
-      unselectedUser &&
-      existingMaterial.baseColor.toLowerCase() !==
-        payload.baseColor.toLowerCase()
+      payload.materialId !== undefined &&
+      payload.baseColor === undefined &&
+      requestedMaterial === undefined
     ) {
       return {
         ok: false,
         error: {
-          code: 'invalid_state',
+          code: 'invalid_payload',
           message:
-            `Material "${payload.materialId}" is still used by unselected parts.`,
-          path: 'payload.baseColor',
-          expected: existingMaterial.baseColor
+            `Material "${payload.materialId}" does not exist, so its color cannot be reused.`,
+          path: 'payload.materialId',
+          expected: 'an existing material ID or a baseColor'
         }
       };
     }
+
+    const requestedColor =
+      payload.baseColor === undefined
+        ? requestedMaterial?.baseColor
+        : canonicalColor(payload.baseColor);
+    if (requestedColor === undefined) {
+      return {
+        ok: false,
+        error: {
+          code: 'invalid_payload',
+          message: 'A material color could not be resolved.',
+          path: 'payload.baseColor',
+          expected: '#RRGGBB'
+        }
+      };
+    }
+    const changesRequestedMaterial =
+      requestedMaterial !== undefined &&
+      canonicalColor(requestedMaterial.baseColor) !== requestedColor;
+    const hasUnselectedRequestedUser =
+      requestedMaterial !== undefined &&
+      current.recipe.parts.some(
+        (part) =>
+          !selected.has(part.partId) &&
+          part.materialId === requestedMaterial.id
+      );
+    const mustFork =
+      changesRequestedMaterial && hasUnselectedRequestedUser;
+    const matchingMaterial = materialForColor(
+      current.recipe.materials,
+      requestedColor
+    );
+    const resolvedMaterialId =
+      payload.materialId === undefined
+        ? matchingMaterial?.id ??
+          deriveMaterialId(current.recipe.materials, requestedColor)
+        : mustFork
+          ? matchingMaterial?.id ??
+            deriveMaterialId(current.recipe.materials, requestedColor)
+          : payload.materialId;
 
     const nextParts = current.recipe.parts.map((part) =>
       selected.has(part.partId)
         ? {
             ...part,
-            materialId: payload.materialId
+            materialId: resolvedMaterialId
           }
         : part
     );
     const nextMaterials = [
       ...current.recipe.materials.filter(
-        (material) => material.id !== payload.materialId
+        (material) => material.id !== resolvedMaterialId
       ),
       {
-        id: payload.materialId,
-        baseColor: payload.baseColor
+        id: resolvedMaterialId,
+        baseColor: requestedColor
       }
     ];
     const normalized = normalizePartRecipe(
@@ -166,7 +242,7 @@ export const setModelPartMaterialCommand = defineCommand({
       value: {
         document: projected,
         summary:
-          `Set material ${payload.materialId} on ` +
+          `Set material ${resolvedMaterialId} on ` +
           `${payload.partIds.length} part` +
           `${payload.partIds.length === 1 ? '' : 's'}`,
         effects: {

@@ -1,6 +1,6 @@
 import type { SurfacePixelDensity } from '../model';
 import type {
-  FeaturePartSpec,
+  GeometryPartSpec,
   LatticeVec2,
   LatticeVec3,
   PartSpec,
@@ -105,50 +105,7 @@ const platePrimitive = (
   };
 };
 
-const featurePlane = (
-  spec: FeaturePartSpec
-): RasterPlatePrimitive => {
-  const halfU = Math.floor(spec.size[0] / 2);
-  const halfV = Math.floor(spec.size[1] / 2);
-  const rectangle = (
-    normalAxis: Axis,
-    normalStart: number,
-    u: number,
-    v: number
-  ): RasterPlatePrimitive => ({
-    kind: 'plate',
-    normalAxis,
-    normalStart,
-    thickness: spec.relief,
-    shape: {
-      kind: 'rectangle',
-      min: {
-        u: spec.anchor[u] - halfU,
-        v: spec.anchor[v] - halfV
-      },
-      max: {
-        u: spec.anchor[u] - halfU + spec.size[0],
-        v: spec.anchor[v] - halfV + spec.size[1]
-      }
-    }
-  });
-  switch (spec.face) {
-    case 'north':
-      return rectangle('z', spec.anchor[2] - spec.relief, 0, 1);
-    case 'south':
-      return rectangle('z', spec.anchor[2], 0, 1);
-    case 'east':
-      return rectangle('x', spec.anchor[0], 1, 2);
-    case 'west':
-      return rectangle('x', spec.anchor[0] - spec.relief, 1, 2);
-    case 'up':
-      return rectangle('y', spec.anchor[1], 0, 2);
-    case 'down':
-      return rectangle('y', spec.anchor[1] - spec.relief, 0, 2);
-  }
-};
-
-const primitiveForPart = (spec: PartSpec): RasterPrimitive => {
+const primitiveForPart = (spec: GeometryPartSpec): RasterPrimitive => {
   switch (spec.kind) {
     case 'mass':
       return {
@@ -191,8 +148,6 @@ const primitiveForPart = (spec: PartSpec): RasterPrimitive => {
         innerRadius: spec.innerRadius
       };
     }
-    case 'feature':
-      return featurePlane(spec);
   }
 };
 
@@ -224,7 +179,7 @@ export const partTranslation = (spec: PartSpec): LatticePoint => {
 
 export const rasterizePart = (
   density: SurfacePixelDensity,
-  spec: PartSpec
+  spec: GeometryPartSpec
 ): OccupancyGrid =>
   translatedGrid(
     rasterizePrimitive(density, primitiveForPart(spec)),

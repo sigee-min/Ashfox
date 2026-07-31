@@ -11,10 +11,11 @@ GeckoLib 5, glTF, and GLB exporters can consume.
 
 The design deliberately trades unrestricted geometry for predictable output:
 
-- the agent owns parts, proportions, parent relationships, optional joint
-  intent, material IDs, and base colors;
+- the agent owns parts, proportions, material colors, and articulated
+  relationships;
 - the compiler owns attachments, occupancy, cuboid subdivision, pivots,
-  stable node IDs, and structural projection;
+  unambiguous fixed-parent inference, stable node IDs, and structural
+  projection;
 - the generated-surface derivation owns UVs, raster pixels, and atlas
   resolution;
 - `ProjectDocument.modeling` is the persisted semantic authority for
@@ -90,25 +91,38 @@ The mutation surface is:
 - `model.parts.material`
 - `model.parts.delete`
 
-The persisted normalized part has:
+Agent input never contains attachment coordinates or pivots. A multi-part
+creation declares one root. A fixed child may omit its parent only when one
+touching parent is geometrically unambiguous; features and articulated parts
+declare their parent. The persisted normalized part has:
 
 - stable `partId`;
 - `parentPartId`, or `null` for the one root;
 - stable `materialId`;
 - `fixed`, `hinge`, or `ball` joint;
 - an engine-derived child attachment with `parentAnchor` and `partAnchor`;
-- one primitive.
+- one authoring kind.
 
-The five primitives are:
+The four geometry primitives are:
 
 1. `mass`: superellipsoid-like volume;
 2. `segment`: tapered polyline sweep with at most eight points;
 3. `plate`: extruded triangle, trapezoid, or rectangle;
-4. `radial`: axis-aligned disk or ring;
-5. `feature`: small face-oriented relief.
+4. `radial`: axis-aligned disk or ring.
+
+`feature` is the single zero-depth surface kind for a face-oriented eye
+marking. It participates in the semantic recipe but never becomes geometry.
 
 Subject categories are not part of the schema. The kernel constrains geometry;
 it does not encode creature, vehicle, bird, or humanoid archetypes.
+
+An upsert of an existing same-kind part is a patch: omitted fields retain their
+canonical values. A kind change is a new complete primitive definition.
+Segment radii may use one broadcast triple, and rectangular plates may use
+`size`; normalization stores only the full canonical form. Material edits may
+name an existing material, provide a base color for deterministic reuse or
+creation, or provide both. Recoloring only some users of a shared material
+forks it instead of changing unselected parts.
 
 ## Why the exact-edit recipe must persist
 
@@ -302,9 +316,13 @@ The accepted cells are extruded by integer depth.
 
 ### Feature
 
-A feature is converted to a positive-thickness rectangular plate oriented to
-one of the six canonical faces. Density 2 or 4 permits half- or quarter-unit
-focal details without adding a separate mesh authority.
+A feature owns no volume, bone, or cube. It declares one `eye` motif on an
+exposed rectangle of its geometric parent's canonical surface. The compiler
+requires every covered cell to belong to that parent and remain externally
+visible, rejects overlapping features, then projects the marking across the
+parent's generated UV regions. The texture composer derives the outline, iris,
+pupil, and highlight from one material color. Atlas packing and export bake the
+result without introducing another geometry or raster authority.
 
 ## Attachment and rig
 
@@ -315,11 +333,11 @@ the integer translation
 T = parentAnchor - partAnchor.
 ```
 
-For every child, the compiler searches within two cells for the nearest valid
+For every geometric child, the compiler searches within two cells for the nearest valid
 shared child-parent face, derives the canonical anchor, and uses that anchor
 divided by `d` as the bone pivot. Validation requires:
 
-- the child and parent occupied sets to share at least one complete cell face;
+- the geometric child and parent occupied sets to share at least one complete cell face;
 - the pivot lattice point to lie on the closure of both occupied sets;
 - the part graph to have exactly one root and no missing parent or cycle.
 
@@ -334,16 +352,25 @@ animation-channel targets when primitive subdivision changes.
 
 The rig contract is deliberately small:
 
-- the root is `fixed`, but may receive rotation, position, or scale channels
-  for whole-asset motion;
+- the root is `fixed`, but may receive rotation for whole-asset motion;
 - a fixed child accepts no transform channel;
 - a hinge child accepts rotation only, with numeric zero on the two undeclared
   axes;
 - a ball child accepts rotation only.
 
-Rig and attachment validation runs against the final batch result. A batch can
-therefore create a joint and its animation, or delete both, in either operation
-order without exposing an invalid intermediate state.
+The agent animation command requires clip role and duration in 20 FPS frames
+for a new clip, then lets an existing clip patch omit both to preserve its
+whole-clip timing and role. Ordered part rotations, continuous hinge spins, and
+explicit track removals are the only motion inputs. Every referenced pose part
+is seeded in the first pose. The engine derives seconds, channels, keys,
+interpolation, shortest rotation paths, and final loop closure. Existing clips
+preserve omitted tracks, and no counterpart motion is inferred. A static idle
+is explicit; every other clip must contain actual motion.
+
+Rig and attachment validation runs against the final batch result. Authoring
+operations still read the accepted state in sequence, so a batch creates model
+parts before animations that target them. The atomic commit exposes only the
+fully validated final result.
 
 ## Tolerant seam ownership
 
@@ -583,13 +610,18 @@ and one receipt. A successful modeling batch creates one Undo snapshot;
 Therefore a rejected part, texture, animation, or target state cannot partially
 commit.
 
-The Web adapter accepts only an operation list and derives the active project,
-revision, and unique canonical batch identity at submission time. The fallback
-transport binds completed results to its request ID, so an identical replay
-returns the same result and conflicting reuse is rejected. Every terminal
-result clears the working state. These transport properties do not create a
-second mutation path: the adapter validates and forwards to the same command
-reducer.
+The page API accepts a stable request ID and an operation list, then derives
+the active project and revision at submission time. The DOM transport uses its
+envelope request ID for the same purpose. An identical replay returns the same
+terminal result for the lifetime of the page port, and conflicting ID reuse is
+rejected. Every terminal result releases the working state. These transport
+properties do not create a second mutation path: the adapter validates and
+forwards to the same command reducer.
+
+Rendering a required view produces only a pending observation. The agent must
+accept or reject the returned frame nonce. Accepted review receipts are bound
+to the active revision; any later mutation makes them inapplicable. Export
+accepts no format payload and derives its artifact from the active target.
 
 ## Complexity and budgets
 
@@ -605,8 +637,7 @@ Let `N` be occupied cells and `C` emitted cuboids.
 
 The contract limits one upsert operation to 64 parts, eight points per
 segment, 131,072 estimated cells per part, and 524,288 estimated cells per
-upsert. A batch accepts at most one part upsert. The canonical document is
-independently limited to 1,024 parts and
+upsert. The canonical document is independently limited to 1,024 parts and
 2,097,152 occupied cells, so a multi-operation command batch cannot evade the
 document budget. These are performance bounds, not quality scores.
 

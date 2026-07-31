@@ -1,5 +1,6 @@
 import {
   composeTextureRaster,
+  paintEyeMotifPixel,
   paintDirectionalSurfacePixel,
   paintSurfacePixel,
   stableTextureSeed,
@@ -33,6 +34,33 @@ const fillPixel = (
 
 type SurfaceColorAt = (x: number, y: number) => RgbColor;
 
+const markedSurfacePixel = (
+  region: TextureCompositionRegion,
+  base: RgbColor,
+  x: number,
+  y: number
+): RgbColor => {
+  for (const marking of region.markings ?? []) {
+    if (
+      x < marking.x ||
+      y < marking.y ||
+      x >= marking.x + marking.width ||
+      y >= marking.y + marking.height
+    ) {
+      continue;
+    }
+    const motifPixel = paintEyeMotifPixel(
+      rgbColor(marking.color),
+      marking.motifX + x - marking.x,
+      marking.motifY + y - marking.y,
+      marking.motifWidth,
+      marking.motifHeight
+    );
+    if (motifPixel) return motifPixel;
+  }
+  return base;
+};
+
 export const generatedSurfacePixel = (
   region: TextureCompositionRegion,
   x: number,
@@ -40,26 +68,36 @@ export const generatedSurfacePixel = (
 ): RgbColor => {
   const pattern = region.pattern;
   if (!pattern) {
-    return paintSurfacePixel(
-      rgbColor(region.color),
+    return markedSurfacePixel(
+      region,
+      paintSurfacePixel(
+        rgbColor(region.color),
+        x,
+        y,
+        region.width,
+        region.height,
+        stableTextureSeed(
+          `${region.nodeId}:${region.face}`,
+          0x41534846
+        )
+      ),
       x,
-      y,
-      region.width,
-      region.height,
-      stableTextureSeed(
-        `${region.nodeId}:${region.face}`,
-        0x41534846
-      )
+      y
     );
   }
-  return paintDirectionalSurfacePixel(
-    rgbColor(region.color),
-    region.face,
-    pattern.origin[0] + x - pattern.bounds.x,
-    pattern.origin[1] + y - pattern.bounds.y,
-    pattern.bounds.width,
-    pattern.bounds.height,
-    stableTextureSeed(pattern.seedKey, 0x41534846)
+  return markedSurfacePixel(
+    region,
+    paintDirectionalSurfacePixel(
+      rgbColor(region.color),
+      region.face,
+      pattern.origin[0] + x - pattern.bounds.x,
+      pattern.origin[1] + y - pattern.bounds.y,
+      pattern.bounds.width,
+      pattern.bounds.height,
+      stableTextureSeed(pattern.seedKey, 0x41534846)
+    ),
+    x,
+    y
   );
 };
 

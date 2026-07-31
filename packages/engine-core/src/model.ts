@@ -120,26 +120,12 @@ export type ProjectGrounding =
   | 'airborne'
   | 'free';
 
-export interface ProjectIntentSymmetryPair {
-  axis: 'x' | 'y' | 'z';
-  /** Reflection plane in lattice coordinates; integers and halves are valid. */
-  plane: number;
-  /** Canonical first endpoint; pair direction has no semantic meaning. */
-  leftPartId: string;
-  /** Canonical second endpoint; pair direction has no semantic meaning. */
-  rightPartId: string;
-}
-
 export interface ProjectIntent {
   subject: string;
   forward: ProjectForwardDirection;
   grounding: ProjectGrounding;
   /** Human/agent review criteria. Their meaning is not machine-validated. */
-  requiredFeatures: readonly string[];
-  requiredPartIds: readonly string[];
-  requiredMaterialIds: readonly string[];
-  requiredClipIds: readonly string[];
-  symmetryPairs?: readonly ProjectIntentSymmetryPair[];
+  features: readonly string[];
 }
 
 export interface Transform {
@@ -149,15 +135,22 @@ export interface Transform {
   pivot: Vec3;
 }
 
-export const GENERATED_PART_PRIMITIVES = [
+export const MODEL_PART_KINDS = [
   'mass',
   'segment',
   'plate',
   'radial',
   'feature'
 ] as const;
-export type GeneratedPartPrimitive =
-  (typeof GENERATED_PART_PRIMITIVES)[number];
+export const MODEL_GEOMETRY_PRIMITIVES = [
+  'mass',
+  'segment',
+  'plate',
+  'radial'
+] as const;
+export type ModelPartKind = (typeof MODEL_PART_KINDS)[number];
+export type ModelGeometryPrimitive =
+  (typeof MODEL_GEOMETRY_PRIMITIVES)[number];
 
 export type GeneratedPartJoint =
   | { kind: 'fixed' }
@@ -174,6 +167,7 @@ export type ModelPartFace =
   | 'up'
   | 'down';
 export type ModelPartProfile = 'soft' | 'balanced' | 'hard';
+export type ModelFeatureMotif = 'eye';
 
 export interface ModelPartAttachment {
   parentAnchor: ModelPartLatticeVec3;
@@ -219,12 +213,15 @@ export interface ModelRadialPartSpec extends ModelPartSpecBase {
   depth: number;
 }
 
-export interface ModelFeaturePartSpec extends ModelPartSpecBase {
+export interface ModelFeaturePartSpec
+  extends Omit<ModelPartSpecBase, 'joint' | 'attachment'> {
   kind: 'feature';
+  joint: { kind: 'fixed' };
+  attachment: null;
+  motif: ModelFeatureMotif;
   face: ModelPartFace;
   anchor: ModelPartLatticeVec3;
   size: ModelPartLatticeVec2;
-  relief: number;
 }
 
 export type ModelPartSpec =
@@ -251,7 +248,7 @@ export interface GeneratedNodeProvenance {
   partId: string;
   parentPartId: string | null;
   materialId: string;
-  primitive: GeneratedPartPrimitive;
+  primitive: ModelGeometryPrimitive;
   joint: GeneratedPartJoint;
 }
 

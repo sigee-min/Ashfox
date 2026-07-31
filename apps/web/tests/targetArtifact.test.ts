@@ -44,12 +44,9 @@ const authorProject = async (): Promise<ProjectDocument> => {
           subject: 'Export fixture',
           forward: 'north',
           grounding: 'free',
-          requiredFeatures: [
+          features: [
             'Fixture geometry remains visible in the exported target.'
-          ],
-          requiredPartIds: [],
-          requiredMaterialIds: [],
-          requiredClipIds: ['animation-export-idle']
+          ]
         }
       },
       {
@@ -79,7 +76,7 @@ const authorProject = async (): Promise<ProjectDocument> => {
       {
         name: 'animation.clip.upsert',
         payload: {
-          id: 'animation-export-idle',
+          id: 'idle',
           name: 'animation.export_fixture.idle',
           durationSeconds: 1,
           fps: 20,
@@ -89,7 +86,7 @@ const authorProject = async (): Promise<ProjectDocument> => {
       {
         name: 'animation.channels.upsert',
         payload: {
-          clipId: 'animation-export-idle',
+          clipId: 'idle',
           channels: [{
             id: 'channel-export-idle',
             targetNodeId: 'bone-root',
@@ -143,7 +140,11 @@ const projectFor = (
     operations: [{
       name: 'project.target.set',
       payload: {
-        target,
+        target
+      }
+    }, {
+      name: 'project.resource.set',
+      payload: {
         namespace: 'ashfox',
         modelPath: `artifact_${target}`
       }

@@ -1,5 +1,6 @@
 import type {
-  PresentSuccess
+  PresentSuccess,
+  VisualReviewIssue
 } from './types';
 
 export interface VisualReviewReceipt {
@@ -11,6 +12,8 @@ export interface VisualReviewReceipt {
   observedTimeSeconds: number;
   completedCycles: number;
   frameNonce: number;
+  verdict: 'accepted' | 'rejected';
+  issues: readonly VisualReviewIssue[];
 }
 
 const receiptKey = (
@@ -25,16 +28,21 @@ const receiptKey = (
 export const visualReviewReceiptFrom = (
   projectId: string,
   result: PresentSuccess
-): VisualReviewReceipt => ({
-  projectId,
-  revision: result.revision,
-  mode: result.data.mode,
-  camera: result.data.camera,
-  clipId: result.data.clipId,
-  observedTimeSeconds: result.data.observedTimeSeconds,
-  completedCycles: result.data.completedCycles,
-  frameNonce: result.data.frameNonce
-});
+): VisualReviewReceipt | null =>
+  result.data.verdict === 'pending'
+    ? null
+    : {
+        projectId,
+        revision: result.revision,
+        mode: result.data.mode,
+        camera: result.data.camera,
+        clipId: result.data.clipId,
+        observedTimeSeconds: result.data.observedTimeSeconds,
+        completedCycles: result.data.completedCycles,
+        frameNonce: result.data.frameNonce,
+        verdict: result.data.verdict,
+        issues: result.data.issues
+      };
 
 export const recordVisualReview = (
   receipts: readonly VisualReviewReceipt[],
@@ -61,3 +69,11 @@ export const visualReviewsForRevision = (
       receipt.projectId === projectId &&
       receipt.revision === revision
   );
+
+export const rejectedVisualReviewsForRevision = (
+  receipts: readonly VisualReviewReceipt[],
+  projectId: string,
+  revision: string
+): readonly VisualReviewReceipt[] =>
+  visualReviewsForRevision(receipts, projectId, revision)
+    .filter((receipt) => receipt.verdict === 'rejected');

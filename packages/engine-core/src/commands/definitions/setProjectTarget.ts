@@ -3,19 +3,17 @@ import type {
   ProjectDocument,
   ProjectFormatProfile
 } from '../../model';
-import {
-  ensureRequiredAnimationFallback,
-  withoutImplicitRestPose
-} from '../../animation/implicitRestPose';
 import { canonicalJsonString } from '../../canonicalJson';
 import { resourceToken } from '../../resourceToken';
 import {
   createMinecraftTextureBinding
 } from '../../textures/createTextureAsset';
-import { defineCommand } from '../definition';
+import {
+  defineCommand,
+  type CommandApplicationResult
+} from '../definition';
 import type {
-  ExportPreset,
-  ProjectTargetInput
+  ExportPreset
 } from '../types';
 
 const MINECRAFT_ANIMATION_NAME = /^animation\.[a-z0-9_.-]+$/;
@@ -28,15 +26,6 @@ const inputSchema = {
   properties: {
     target: {
       enum: ['gltf', 'glb', 'bedrock', 'geckolib5']
-    },
-    namespace: {
-      type: 'string',
-      minLength: 1,
-      pattern: MINECRAFT_NAMESPACE.source
-    },
-    modelPath: {
-      type: 'string',
-      minLength: 1
     }
   },
   required: ['target'],
@@ -61,18 +50,17 @@ const currentModelPath = (
 
 const targetInput = (
   document: ProjectDocument,
-  payload: ProjectTargetInput
+  target: ExportPreset
 ): {
   namespace: string;
   modelPath: string;
 } => ({
   namespace:
-    payload.namespace?.trim() ?? currentNamespace(document),
+    currentNamespace(document),
   modelPath:
-    payload.modelPath?.trim() ??
     (
-      payload.target === 'bedrock' ||
-      payload.target === 'geckolib5'
+      target === 'bedrock' ||
+      target === 'geckolib5'
         ? currentModelPath(document)
           .split('/')
           .map((segment) => resourceToken(segment, 'asset'))
@@ -175,15 +163,12 @@ const animationsFor = (
   target: ExportPreset,
   modelPath: string
 ): ProjectDocument['animations'] => {
-  const sourceAnimations = target === 'geckolib5'
-    ? document.animations
-    : withoutImplicitRestPose(document.animations);
   if (target !== 'bedrock' && target !== 'geckolib5') {
-    return sourceAnimations;
+    return document.animations;
   }
   const usedNames = new Set<string>();
   return Object.fromEntries(
-    Object.entries(sourceAnimations).map(([id, clip]) => {
+    Object.entries(document.animations).map(([id, clip]) => {
       const name = actorAnimationName(clip, modelPath, usedNames);
       usedNames.add(name);
       return [id, name === clip.name ? clip : { ...clip, name }];
@@ -226,25 +211,22 @@ const texturesFor = (
   );
 };
 
-export const setProjectTargetCommand = defineCommand({
-  name: 'project.target.set',
-  label: 'Set export target',
-  purpose: 'Select one canonical target preset and its resource location.',
-  inputSchema,
-  apply: (document, payload) => {
-    const {
-      namespace,
-      modelPath
-    } = targetInput(document, payload);
+export const configureProjectTarget = (
+  document: ProjectDocument,
+  target: ExportPreset,
+  namespace: string,
+  modelPath: string,
+  summary = `Set ${target} export target`
+): CommandApplicationResult => {
     const invalidNamespace =
       (
-        payload.target === 'bedrock' ||
-        payload.target === 'geckolib5'
+        target === 'bedrock' ||
+        target === 'geckolib5'
       ) &&
       !MINECRAFT_NAMESPACE.test(namespace);
     if (
       invalidNamespace ||
-      invalidModelPath(payload.target, modelPath)
+      invalidModelPath(target, modelPath)
     ) {
       const path = invalidNamespace ? 'namespace' : 'modelPath';
       return {
@@ -265,27 +247,25 @@ export const setProjectTargetCommand = defineCommand({
     }
     const animations = animationsFor(
       document,
-      payload.target,
+      target,
       modelPath
     );
     const targetCandidate: ProjectDocument = {
       ...document,
       formatProfile: profileFor(
-        payload.target,
+        target,
         namespace,
         modelPath
       ),
       animations,
       textures: texturesFor(
         document,
-        payload.target,
+        target,
         namespace,
         modelPath
       )
     };
-    const candidate = ensureRequiredAnimationFallback(
-      targetCandidate
-    ).document;
+    const candidate = targetCandidate;
     const createdAnimationIds = Object.keys(
       candidate.animations
     ).filter(
@@ -303,7 +283,7 @@ export const setProjectTargetCommand = defineCommand({
       ok: true,
       value: {
         document: changed ? candidate : document,
-        summary: `Set ${payload.target} export target`,
+        summary,
         effects: {
           createdEntityIds:
             changed ? createdAnimationIds : [],
@@ -322,5 +302,39 @@ export const setProjectTargetCommand = defineCommand({
         }
       }
     };
+};
+
+export const exportPresetForDocument = (
+  document: ProjectDocument
+): ExportPreset | null => {
+  switch (document.formatProfile.id) {
+    case 'gltf.2':
+      return document.formatProfile.container;
+    case 'minecraft.bedrock':
+      return 'bedrock';
+    case 'minecraft.java.geckolib5':
+      return 'geckolib5';
+    case 'ashfox.generic':
+    case 'minecraft.java_block':
+      return null;
+  }
+};
+
+export const setProjectTargetCommand = defineCommand({
+  name: 'project.target.set',
+  label: 'Set export target',
+  purpose: 'Select one canonical target preset.',
+  inputSchema,
+  apply: (document, payload) => {
+    const { namespace, modelPath } = targetInput(
+      document,
+      payload.target
+    );
+    return configureProjectTarget(
+      document,
+      payload.target,
+      namespace,
+      modelPath
+    );
   }
 });

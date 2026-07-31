@@ -53,10 +53,10 @@ receipts whenever a result needs closer review. Normal modeling commands apply
 without individual approval; correct a visible problem with a short follow-up
 request.
 
-## Save before you leave
+## Deliver the finished asset
 
-Ask the agent to save a self-contained `.ashfox` file and verify its final
-location. Give that file to the agent later to continue with its models,
-textures, rig, animation, and activity history intact.
+Ask the agent to finish every required viewport review and deliver the current
+target. It verifies the artifact name, format, byte length, and content hash
+before transferring the prepared file.
 
 Next: [Create and refine assets](authoring-and-review.md).

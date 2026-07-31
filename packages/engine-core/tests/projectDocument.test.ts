@@ -5,6 +5,7 @@ import {
   assertProjectDocument,
   parseProjectDocument,
   ProjectFileError,
+  ProjectInvariantError,
   type ProjectDocument
 } from '../src';
 import { createJavaProject } from './helpers';
@@ -19,13 +20,12 @@ assert.equal(
   parseProjectDocument(JSON.parse(JSON.stringify(project))).id,
   project.id
 );
-const legacySettings = JSON.parse(JSON.stringify(project));
-delete legacySettings.settings.surfacePixelDensity;
-legacySettings.settings.uvPixelsPerUnit = 4;
-const normalized = parseProjectDocument(legacySettings);
-assert.equal(normalized.settings.surfacePixelDensity, 4);
-assert.equal('uvPixelsPerUnit' in normalized.settings, false);
-
+const missingDensity = JSON.parse(JSON.stringify(project));
+delete missingDensity.settings.surfacePixelDensity;
+assert.throws(
+  () => parseProjectDocument(missingDensity),
+  ProjectInvariantError
+);
 const staleGenerated = JSON.parse(JSON.stringify(project));
 staleGenerated.textures['texture-base'].atlasMode = 'generate';
 staleGenerated.textures['texture-base'].raster = {

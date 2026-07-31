@@ -735,7 +735,11 @@ const missingDelete = executeCommandBatch(
 );
 assert.equal(missingDelete.ok, false);
 if (!missingDelete.ok) {
-  assert.equal(missingDelete.error.code, 'no_change');
+  assert.equal(missingDelete.error.code, 'invalid_state');
+  assert.equal(
+    missingDelete.error.path,
+    'operations[0].payload.partIds[0]'
+  );
 }
 assert.equal(JSON.stringify(recolored), missingDeleteSnapshot);
 
@@ -754,21 +758,18 @@ const mixedDelete = executeCommandBatch(
   },
   { source: 'agent' }
 );
-assert.equal(mixedDelete.ok, true);
+assert.equal(mixedDelete.ok, false);
 if (!mixedDelete.ok) {
-  throw new Error(mixedDelete.error.message);
+  assert.equal(mixedDelete.error.code, 'invalid_state');
+  assert.equal(
+    mixedDelete.error.path,
+    'operations[0].payload.partIds[0]'
+  );
 }
-const mixedParts = readCompiledParts(mixedDelete.document);
-assert.equal(mixedParts.ok, true);
-if (!mixedParts.ok) {
-  throw new Error('Mixed idempotent deletion is invalid.');
-}
-assert.deepEqual([...mixedParts.parts.keys()], ['body']);
-assert.ok(
-  mixedDelete.effects.removedEntityIds.includes('bone:head')
-);
-assert.ok(
-  !mixedDelete.effects.removedEntityIds.includes('missing-part')
+assert.equal(
+  JSON.stringify(recolored),
+  missingDeleteSnapshot,
+  'mixed exact-ID deletion must fail atomically'
 );
 
 const emptyDeleteBase = createEmptyProject();
@@ -789,7 +790,11 @@ const emptyDelete = executeCommandBatch(
 );
 assert.equal(emptyDelete.ok, false);
 if (!emptyDelete.ok) {
-  assert.equal(emptyDelete.error.code, 'no_change');
+  assert.equal(emptyDelete.error.code, 'invalid_state');
+  assert.equal(
+    emptyDelete.error.path,
+    'operations[0].payload.partIds[0]'
+  );
 }
 
 const deleted = execute(

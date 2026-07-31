@@ -5,7 +5,6 @@ import type {
   EntityId,
   KeyframeInterpolation,
   ProjectDocument,
-  ProjectIntentSymmetryPair,
   ProjectForwardDirection,
   ProjectGrounding,
   ProjectId,
@@ -48,19 +47,13 @@ export interface ProjectDocumentCreateInput {
 
 export interface ProjectTargetInput {
   target: ExportPreset;
-  namespace?: string;
-  modelPath?: string;
 }
 
 export interface ProjectIntentInput {
   subject: string;
   forward?: ProjectForwardDirection;
   grounding?: ProjectGrounding;
-  requiredFeatures?: readonly string[];
-  requiredPartIds?: readonly string[];
-  requiredMaterialIds?: readonly string[];
-  requiredClipIds?: readonly string[];
-  symmetryPairs?: readonly ProjectIntentSymmetryPair[];
+  features?: readonly string[];
 }
 
 export interface BoneCreateInput {
@@ -165,14 +158,14 @@ export type AnimationRotationDegrees =
   | number
   | readonly [number, number, number];
 
-export interface AnimationMotionKeyInput {
-  phase: number;
-  rotationDegrees: AnimationRotationDegrees;
+export interface AnimationPoseInput {
+  rotations: Readonly<Record<string, AnimationRotationDegrees>>;
 }
 
-export interface AnimationPartMotionInput {
+export interface AnimationSpinInput {
   partId: string;
-  keys: readonly AnimationMotionKeyInput[];
+  turns: number;
+  direction?: 'positive' | 'negative';
 }
 
 export interface CommandPayloadMap {
@@ -181,6 +174,10 @@ export interface CommandPayloadMap {
     name: string;
   };
   'project.target.set': ProjectTargetInput;
+  'project.resource.set': {
+    namespace: string;
+    modelPath: string;
+  };
   'project.intent.set': ProjectIntentInput;
   'model.parts.upsert': {
     parts: readonly PartAuthoringSpec[];
@@ -194,12 +191,12 @@ export interface CommandPayloadMap {
   };
   'model.parts.transform': {
     rootPartId: string;
-    translation: readonly [number, number, number];
+    by: readonly [number, number, number];
   };
   'model.parts.material': {
     partIds: readonly string[];
-    materialId: string;
-    baseColor: string;
+    materialId?: string;
+    baseColor?: string;
   };
   'model.parts.delete': {
     partIds: readonly string[];
@@ -278,9 +275,12 @@ export interface CommandPayloadMap {
   };
   'animation.motion.upsert': {
     clipId: string;
-    role: AnimationMotionRole;
-    durationSeconds?: number;
-    motions?: readonly AnimationPartMotionInput[];
+    role?: AnimationMotionRole;
+    durationFrames?: number;
+    static?: boolean;
+    poses?: readonly AnimationPoseInput[];
+    spins?: readonly AnimationSpinInput[];
+    removePartIds?: readonly string[];
   };
   'animation.channels.upsert': {
     clipId: string;

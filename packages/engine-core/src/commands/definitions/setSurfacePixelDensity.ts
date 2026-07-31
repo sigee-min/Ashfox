@@ -10,7 +10,9 @@ const inputSchema = {
   type: 'object',
   properties: {
     density: {
-      enum: [1, 2, 4]
+      enum: [1, 2, 4],
+      description:
+        'Choose before creating model parts. The lattice density is immutable while parts exist.'
     }
   },
   required: ['density'],
@@ -21,7 +23,7 @@ export const setSurfacePixelDensityCommand = defineCommand({
   name: 'textures.density.set',
   label: 'Set surface pixel density',
   purpose:
-    'Set 1×, 2×, or 4× square-pixel density; derived surfaces update automatically.',
+    'Choose the project 1×, 2×, or 4× square-pixel lattice before model parts exist.',
   inputSchema,
   apply: (document, payload) => {
     const densityChanged =

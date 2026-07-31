@@ -1,11 +1,16 @@
 import type { SurfacePixelDensity } from '../model';
+import { compareStableText } from '../stableOrder';
 import { isSixConnected } from './connectivity';
 import {
   comparePoints,
   createOccupancyGrid,
   parseCellKey
 } from './lattice';
-import type { PartSpec } from './partContract';
+import {
+  isGeometryPartSpec,
+  type GeometryPartSpec,
+  type PartSpec
+} from './partContract';
 import {
   canonicalPartOrder,
   PART_OCCUPANCY_POLICY
@@ -36,6 +41,21 @@ export interface PartAttachmentDerivationSuccess {
 export type PartAttachmentDerivationResult =
   | PartAttachmentDerivationFailure
   | PartAttachmentDerivationSuccess;
+
+export interface PartParentInferenceFailure {
+  ok: false;
+  partId: string;
+  message: string;
+}
+
+export interface PartParentInferenceSuccess {
+  ok: true;
+  parts: readonly PartSpec[];
+}
+
+export type PartParentInferenceResult =
+  | PartParentInferenceFailure
+  | PartParentInferenceSuccess;
 
 interface AttachmentCandidate {
   offset: LatticePoint;
@@ -130,8 +150,8 @@ const compareCandidates = (
   comparePoints(left.anchor, right.anchor);
 
 const attachmentCandidate = (
-  part: PartSpec,
-  parent: PartSpec,
+  part: GeometryPartSpec,
+  parent: GeometryPartSpec,
   authored: OccupancyGrid,
   parentOccupancy: OccupancyGrid,
   offset: LatticePoint
@@ -157,10 +177,179 @@ const attachmentCandidate = (
   };
 };
 
+const bestAttachmentCandidate = (
+  part: GeometryPartSpec,
+  parent: GeometryPartSpec,
+  authored: OccupancyGrid,
+  parentOccupancy: OccupancyGrid
+): AttachmentCandidate | null => {
+  const intersectsParent = [...authored.cells].some(
+    (key) => parentOccupancy.cells.has(key)
+  );
+  const candidateOffsets = intersectsParent
+    ? [ZERO_OFFSET]
+    : AUTOMATIC_SNAP_OFFSETS;
+  return candidateOffsets
+    .map((offset) =>
+      attachmentCandidate(
+        part,
+        parent,
+        authored,
+        parentOccupancy,
+        offset
+      )
+    )
+    .filter(
+      (entry): entry is AttachmentCandidate => entry !== null
+    )
+    .sort(compareCandidates)[0] ?? null;
+};
+
+const isKnownDescendant = (
+  candidateId: string,
+  partId: string,
+  partsById: ReadonlyMap<string, PartSpec>
+): boolean => {
+  const visited = new Set<string>();
+  let current = partsById.get(candidateId);
+  while (current) {
+    const parentPartId = current.parentPartId;
+    if (parentPartId === null) return false;
+    if (parentPartId === partId) return true;
+    if (visited.has(parentPartId)) return false;
+    visited.add(parentPartId);
+    current = partsById.get(parentPartId);
+  }
+  return false;
+};
+
+/**
+ * Resolves omitted parents only from unambiguous geometric contact.
+ * It never guesses articulated joints, feature ownership, or a root in a
+ * multi-root authoring batch.
+ */
+export const inferFixedPartParents = (
+  parts: readonly PartSpec[],
+  omittedParentPartIds: ReadonlySet<string>,
+  density: SurfacePixelDensity
+): PartParentInferenceResult => {
+  if (omittedParentPartIds.size === 0) {
+    return { ok: true, parts };
+  }
+  const partsById = new Map(
+    parts.map((part) => [part.partId, part])
+  );
+  const occupancyById = new Map(
+    parts.filter(isGeometryPartSpec).map((part) => [
+      part.partId,
+      rasterizePart(density, part)
+    ])
+  );
+  const explicitRoots = parts.filter(
+    (part) =>
+      part.parentPartId === null &&
+      !omittedParentPartIds.has(part.partId)
+  );
+  const omitted = parts
+    .filter(
+      (part): part is GeometryPartSpec =>
+        omittedParentPartIds.has(part.partId) &&
+        isGeometryPartSpec(part)
+    )
+    .sort((left, right) =>
+      compareStableText(left.partId, right.partId)
+    );
+  const implicitRootId =
+    explicitRoots.length === 0 && omitted.length === 1
+      ? omitted[0].partId
+      : null;
+
+  if (explicitRoots.length === 0 && implicitRootId === null) {
+    return {
+      ok: false,
+      partId: omitted[0]?.partId ?? '',
+      message:
+        'A multi-part model requires one explicit root with parentPartId: null before omitted fixed parents can be inferred.'
+    };
+  }
+
+  const inferredParents = new Map<string, string>();
+  for (const part of omitted) {
+    if (part.partId === implicitRootId) continue;
+    const authored = occupancyById.get(part.partId);
+    if (!authored) {
+      return {
+        ok: false,
+        partId: part.partId,
+        message:
+          `Part "${part.partId}" cannot be rasterized for parent inference.`
+      };
+    }
+    const candidates = parts
+      .filter(isGeometryPartSpec)
+      .filter(
+        (candidate) => {
+          const parentOccupancy = occupancyById.get(candidate.partId);
+          return (
+            candidate.partId !== part.partId &&
+            !isKnownDescendant(
+              candidate.partId,
+              part.partId,
+              partsById
+            ) &&
+            parentOccupancy !== undefined &&
+            bestAttachmentCandidate(
+              part,
+              candidate,
+              authored,
+              parentOccupancy
+            ) !== null
+          );
+        }
+      )
+      .map((candidate) => candidate.partId)
+      .sort(compareStableText);
+    if (candidates.length !== 1) {
+      return {
+        ok: false,
+        partId: part.partId,
+        message:
+          candidates.length === 0
+            ? `Part "${part.partId}" has no unique contact parent. Provide parentPartId explicitly.`
+            : `Part "${part.partId}" touches multiple possible parents (${candidates.join(', ')}). Provide parentPartId explicitly.`
+      };
+    }
+    inferredParents.set(part.partId, candidates[0]);
+  }
+
+  const inferred = parts.map((part): PartSpec => {
+    const parentPartId = inferredParents.get(part.partId);
+    return parentPartId === undefined
+      ? part
+      : {
+          ...part,
+          parentPartId,
+          joint: { kind: 'fixed' },
+          attachment: null
+        };
+  });
+  if (!canonicalPartOrder(inferred)) {
+    const first = [...inferredParents.keys()]
+      .sort(compareStableText)[0] ?? '';
+    return {
+      ok: false,
+      partId: first,
+      message:
+        'Geometric parent inference would create a cyclic hierarchy. Provide parentPartId explicitly.'
+    };
+  }
+  return { ok: true, parts: inferred };
+};
+
 const withDerivedAttachment = (
-  part: PartSpec,
+  part: GeometryPartSpec,
   candidate: AttachmentCandidate
-): PartSpec => {
+): GeometryPartSpec => {
   const previous = partTranslation(part);
   const translation = {
     x: previous.x + candidate.offset.x,
@@ -206,6 +395,25 @@ export const derivePartAttachments = (
   const resolvedById = new Map<string, PartSpec>();
   const occupancyById = new Map<string, OccupancyGrid>();
   for (const part of ordered) {
+    if (!isGeometryPartSpec(part)) {
+      const parent = part.parentPartId === null
+        ? undefined
+        : resolvedById.get(part.parentPartId);
+      if (!parent || !isGeometryPartSpec(parent)) {
+        return {
+          ok: false,
+          path: `parts.${part.partId}.parentPartId`,
+          message:
+            `Surface feature "${part.partId}" requires a geometric parent.`
+        };
+      }
+      resolvedById.set(part.partId, {
+        ...part,
+        joint: { kind: 'fixed' },
+        attachment: null
+      });
+      continue;
+    }
     if (part.parentPartId === null) {
       resolvedById.set(part.partId, part);
       occupancyById.set(
@@ -218,7 +426,7 @@ export const derivePartAttachments = (
     const parentOccupancy = occupancyById.get(
       part.parentPartId
     );
-    if (!parent || !parentOccupancy) {
+    if (!parent || !isGeometryPartSpec(parent) || !parentOccupancy) {
       return {
         ok: false,
         path: `parts.${part.partId}.parentPartId`,
@@ -230,23 +438,12 @@ export const derivePartAttachments = (
     const intersectsParent = [...authored.cells].some(
       (key) => parentOccupancy.cells.has(key)
     );
-    const candidateOffsets = intersectsParent
-      ? [ZERO_OFFSET]
-      : AUTOMATIC_SNAP_OFFSETS;
-    const candidate = candidateOffsets
-      .map((offset) =>
-        attachmentCandidate(
-          part,
-          parent,
-          authored,
-          parentOccupancy,
-          offset
-        )
-      )
-      .filter(
-        (entry): entry is AttachmentCandidate => entry !== null
-      )
-      .sort(compareCandidates)[0];
+    const candidate = bestAttachmentCandidate(
+      part,
+      parent,
+      authored,
+      parentOccupancy
+    );
     if (!candidate) {
       return {
         ok: false,

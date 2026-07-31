@@ -23,7 +23,9 @@ import {
   type VisualReviewReceipt
 } from '../../agent/presentationReview';
 import type {
+  PresentRequest,
   PresentResult,
+  PresentSuccess,
   ViewPresentationRequest
 } from '../../agent/types';
 import type {
@@ -61,6 +63,9 @@ interface PendingPresentation {
 interface AgentPresentationController {
   presentationNonce: number;
   present: (request: ViewPresentationRequest) => Promise<PresentResult>;
+  review: (
+    request: Exclude<PresentRequest, { review: 'next' }>
+  ) => Promise<PresentResult>;
   onPresented: (frame: ViewportPresentationFrame) => void;
   getVisualReviews: (
     projectId: string,
@@ -78,6 +83,8 @@ export const useAgentPresentation = ({
   const pendingRef = useRef<PendingPresentation | null>(null);
   const nextNonceRef = useRef(0);
   const receiptsRef = useRef<readonly VisualReviewReceipt[]>([]);
+  const observationsRef =
+    useRef<ReadonlyMap<number, PresentSuccess>>(new Map());
   const currentDocumentRef = useRef({
     id: document.id,
     revision: document.revision
@@ -106,11 +113,10 @@ export const useAgentPresentation = ({
     pendingRef.current = null;
     window.clearTimeout(pending.timeout);
     setPresentationNonce(0);
-    if (result.ok) {
-      receiptsRef.current = recordVisualReview(
-        receiptsRef.current,
-        visualReviewReceiptFrom(pending.session.projectId, result)
-      );
+    if (result.ok && result.data.verdict === 'pending') {
+      observationsRef.current = new Map([
+        [result.data.frameNonce, result]
+      ]);
     }
     pending.resolve(result);
   }, []);
@@ -180,6 +186,7 @@ export const useAgentPresentation = ({
 
     const nonce = nextNonceRef.current + 1;
     nextNonceRef.current = nonce;
+    observationsRef.current = new Map();
     prepareView({
       clipId: clip?.id ?? null,
       camera: request.camera
@@ -239,18 +246,78 @@ export const useAgentPresentation = ({
     setPlaying
   ]);
 
+  const review = useCallback((
+    request: Exclude<PresentRequest, { review: 'next' }>
+  ): Promise<PresentResult> => {
+    const observation =
+      observationsRef.current.get(request.frameNonce);
+    if (!observation) {
+      return Promise.resolve({
+        ok: false,
+        revision: document.revision,
+        error: {
+          code: 'not_found',
+          path: 'frameNonce',
+          expected:
+            'the most recently observed pending review frame'
+        }
+      });
+    }
+    if (observation.revision !== document.revision) {
+      observationsRef.current = new Map();
+      return Promise.resolve({
+        ok: false,
+        revision: document.revision,
+        error: {
+          code: 'stale_revision',
+          path: 'revision',
+          expected: observation.revision
+        }
+      });
+    }
+    observationsRef.current = new Map();
+    const reviewed: PresentSuccess = {
+      ...observation,
+      data: {
+        ...observation.data,
+        review: request.review,
+        verdict:
+          request.review === 'accept'
+            ? 'accepted'
+            : 'rejected',
+        issues:
+          request.review === 'reject'
+            ? request.issues
+            : []
+      }
+    };
+    const receipt = visualReviewReceiptFrom(
+      document.id,
+      reviewed
+    );
+    if (receipt) {
+      receiptsRef.current = recordVisualReview(
+        receiptsRef.current,
+        receipt
+      );
+    }
+    return Promise.resolve(reviewed);
+  }, [document.id, document.revision]);
+
   useEffect(() => {
     const pending = pendingRef.current;
+    if (!pending) {
+      observationsRef.current = new Map();
+      return;
+    }
     if (
-      !pending ||
-      (
-        pending.session.projectId === document.id &&
-        pending.session.sourceRevision === document.revision
-      )
+      pending.session.projectId === document.id &&
+      pending.session.sourceRevision === document.revision
     ) {
       return;
     }
     setPlaying(false);
+    observationsRef.current = new Map();
     finish(
       pending,
       stalePresentationResult(
@@ -261,6 +328,7 @@ export const useAgentPresentation = ({
   }, [document.id, document.revision, finish, setPlaying]);
 
   useEffect(() => () => {
+    observationsRef.current = new Map();
     const pending = pendingRef.current;
     if (!pending) return;
     pendingRef.current = null;
@@ -286,6 +354,7 @@ export const useAgentPresentation = ({
   return {
     presentationNonce,
     present,
+    review,
     onPresented,
     getVisualReviews
   };

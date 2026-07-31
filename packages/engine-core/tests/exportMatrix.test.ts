@@ -62,12 +62,9 @@ const authorProject = (target: ExportPreset): ProjectDocument => {
         subject: `Export ${target}`,
         forward: 'north',
         grounding: 'free',
-        requiredFeatures: [
+        features: [
           'The exported plate remains visibly rectangular.'
-        ],
-        requiredPartIds: ['body'],
-        requiredMaterialIds: ['stone'],
-        requiredClipIds: ['animation-export-idle']
+        ]
       }
     },
     {
@@ -83,7 +80,7 @@ const authorProject = (target: ExportPreset): ProjectDocument => {
     {
       name: 'animation.clip.upsert',
       payload: {
-        id: 'animation-export-idle',
+        id: 'idle',
         name: 'animation.export.idle',
         durationSeconds: 1,
         fps: 20,
@@ -93,7 +90,7 @@ const authorProject = (target: ExportPreset): ProjectDocument => {
     {
       name: 'animation.channels.upsert',
       payload: {
-        clipId: 'animation-export-idle',
+        clipId: 'idle',
         channels: [{
           id: 'channel-export-idle',
           targetNodeId: 'bone:body',

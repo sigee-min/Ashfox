@@ -1,8 +1,8 @@
-# Save, Open, Export, and Capture
+# Export a Finished Asset
 
-Tell the agent what artifact you need. It operates the workbench, waits for the
-matching file operation to finish, activates the prepared artifact, and reports
-the verified result.
+Tell the agent which target will consume the asset. It builds against that
+target, completes the required visual reviews, and delivers the prepared
+artifact.
 
 ## Create a project with the right settings
 
@@ -10,40 +10,15 @@ Include the project settings in the first request:
 
 - **Name** — the human-readable project name;
 - **Format** — GeckoLib 5, Bedrock, GLB, or glTF;
-- **Namespace** — required for Minecraft formats;
-- **Model path** — the export-safe asset name and path.
+- **Surface detail** — 1×, 2×, or 4×.
 
 ```text
-Create a GeckoLib 5 project named Ember Stag.
-Use namespace wildwood and model path creatures/ember_stag.
+Create a GeckoLib 5 project named Ember Stag at 2× surface detail.
 ```
 
 Choose surface detail before modeling. ashfox grows the generated atlas as
-needed while keeping one square texel per selected lattice unit, then validates
-target-specific settings before export.
-
-## Save the editable project
-
-```text
-Save the current editable project as an .ashfox file.
-Deliver it to artifacts/ and verify the final filename and size.
-```
-
-The `.ashfox` file contains the exact semantic part recipe, generated scene,
-animation, and required texture data. Reopening it preserves precise part-level
-editing rather than reconstructing intent from exported cuboids. Keep it when
-future editing is expected.
-
-## Continue from an existing project
-
-```text
-Load my .ashfox project, inspect its current revision and target, and summarize
-the model before making any changes.
-```
-
-The agent starts the open operation. Browser security may ask you to select the
-local file; the agent resumes after the selection and confirms the loaded
-project revision.
+needed while keeping one square texel per selected lattice unit. Export-safe
+resource identifiers are derived from the project and validated automatically.
 
 ## Export a finished asset
 
@@ -59,31 +34,14 @@ files. GLB can contain geometry, animation, and textures in one binary.
 See [Choose an export format](choose-a-format.md) for the exact result of each
 option.
 
-## Capture a GIF
-
-Ask for either the build process or a selected animation:
-
-```text
-Capture the build process at 10fps with the full asset framed clearly.
-Deliver the GIF to artifacts/ and verify the result.
-```
-
-```text
-Capture the selected idle animation at 10fps in Studio lighting.
-Deliver the GIF to artifacts/ and verify the result.
-```
-
-Capture uses the requested camera and environment and does not modify the
-project.
-
 ## Verify delivery
 
-The agent should report an artifact only after the workbench marks the same
-operation as succeeded and the file exists at the final location.
+The agent reports an artifact only after the workbench validates the current
+revision and returns its target, filename, byte length, and SHA-256 content
+hash. It then transfers that exact prepared artifact and verifies the final
+location.
 
 Expected extensions:
 
-- editable source: `.ashfox`;
 - multi-file target: `.zip`;
-- embedded 3D asset: `.glb`;
-- capture: `.gif`.
+- embedded 3D asset: `.glb`.

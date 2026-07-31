@@ -1350,18 +1350,6 @@ const validateMinecraftActorProfile = (
       add
     );
   }
-  if (
-    profile.id === 'minecraft.java.geckolib5' &&
-    Object.keys(document.animations).length === 0
-  ) {
-    add({
-      code: 'format.unsupported_data',
-      severity: 'error',
-      message: 'GeckoLib 5 bundles require at least one named animation clip.',
-      path: 'animations',
-      fix: 'Add an animation clip, including a rest pose clip when the asset is static.'
-    });
-  }
   const textureCount = Object.keys(document.textures).length;
   if (textureCount === 0) {
     add({

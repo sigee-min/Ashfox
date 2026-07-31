@@ -25,6 +25,9 @@ import type {
   RunResult
 } from './types';
 import { agentCommandProtocol } from './agentCommandProtocol';
+import {
+  isAgentRequestId
+} from './agentRequestId';
 import { compactCommandReceipt } from './compactReceipt';
 
 export type AgentCommandPortStatus = 'connected' | 'working';
@@ -32,6 +35,7 @@ export type AgentCommandPortStatus = 'connected' | 'working';
 export interface AgentCommandPortDependencies {
   inspect: (request?: InspectRequest) => InspectResult;
   currentProjectId: () => string;
+  currentProjectSession?: () => string;
   currentRevision: () => string;
   submit: (batch: CommandBatch) => Promise<CommandOutcome>;
   present?: (request: PresentRequest) => Promise<PresentResult>;
@@ -48,6 +52,7 @@ interface ActiveBatch {
 interface CompletedRequest {
   signature: string;
   result: RunResult;
+  projectSessions: ReadonlySet<string>;
 }
 
 interface AgentCommandInput {
@@ -55,6 +60,9 @@ interface AgentCommandInput {
   method: 'inspect' | 'run' | 'present' | 'deliver';
   payload?: unknown;
 }
+
+const AGENT_COMMAND_INPUT_KEYS =
+  new Set(['requestId', 'method', 'payload']);
 
 const isRecord = (
   value: unknown
@@ -66,8 +74,10 @@ const parseAgentCommandInput = (
 ): AgentCommandInput | null => {
   if (
     !isRecord(value) ||
-    typeof value.requestId !== 'string' ||
-    value.requestId.trim().length === 0 ||
+    !isAgentRequestId(value.requestId) ||
+    Object.keys(value).some(
+      (key) => !AGENT_COMMAND_INPUT_KEYS.has(key)
+    ) ||
     (
       value.method !== 'inspect' &&
       value.method !== 'run' &&
@@ -160,11 +170,11 @@ const resultFromOutcome = (outcome: CommandOutcome): RunResult => {
 
 export class AgentCommandPort implements AgentCommandPortApi {
   private activeBatch: ActiveBatch | null = null;
+  private activePresentation: Promise<PresentResult> | null = null;
   private activeDelivery: Promise<DeliverResult> | null = null;
   private readonly completedRequests =
     new Map<string, CompletedRequest>();
   private readonly operationLease: OperationLease;
-  private batchSerial = 0;
 
   constructor(private readonly dependencies: AgentCommandPortDependencies) {
     this.operationLease =
@@ -369,19 +379,41 @@ export class AgentCommandPort implements AgentCommandPortApi {
         }
       });
     }
-    try {
-      return await this.dependencies.present(parsed.request);
-    } catch {
+    if (
+      this.activeBatch ||
+      this.activeDelivery ||
+      this.activePresentation
+    ) {
       return {
         ok: false,
         revision,
         error: {
-          code: 'invalid_request',
+          code: 'invalid_state',
           path: '$',
-          expected: 'valid presentation request'
+          expected: 'no other active agent operation'
         }
       };
     }
+    const lease =
+      this.operationLease.tryAcquire('agent.present');
+    if (!lease) {
+      return {
+        ok: false,
+        revision,
+        error: {
+          code: 'invalid_state',
+          path: '$',
+          expected:
+            `available operation lease; active owner is ${this.operationLease.currentOwner() ?? 'unknown'}`
+        }
+      };
+    }
+    const result = this.executePresentation(
+      parsed.request,
+      lease
+    );
+    this.activePresentation = result;
+    return result;
   }
 
   deliver(): Promise<DeliverResult> {
@@ -398,7 +430,7 @@ export class AgentCommandPort implements AgentCommandPortApi {
       });
     }
     if (this.activeDelivery) return this.activeDelivery;
-    if (this.activeBatch) {
+    if (this.activeBatch || this.activePresentation) {
       return Promise.resolve({
         ok: false,
         revision,
@@ -434,12 +466,23 @@ export class AgentCommandPort implements AgentCommandPortApi {
     input: unknown,
     requestId: string
   ): Promise<RunResult> {
-    return this.runRequest(input, requestId);
+    if (!isRecord(input) || 'requestId' in input) {
+      return Promise.resolve(
+        invalidBatch(
+          this.dependencies.currentRevision(),
+          '$',
+          'DOM run payload with operations only'
+        )
+      );
+    }
+    return this.runRequest({
+      requestId,
+      ...input
+    });
   }
 
   private runRequest(
-    input: unknown,
-    requestId?: string
+    input: unknown
   ): Promise<RunResult> {
     const revision = this.dependencies.currentRevision();
     let parsed: ReturnType<typeof parseRunRequest>;
@@ -461,25 +504,44 @@ export class AgentCommandPort implements AgentCommandPortApi {
       });
     }
 
-    const signature = requestSignature(parsed.request);
+    let request: AgentRunRequest;
+    try {
+      request = structuredClone(parsed.request);
+    } catch {
+      return Promise.resolve(
+        invalidBatch(revision, '$', 'plain JSON run request data')
+      );
+    }
+    const signature = requestSignature(request);
     if (signature === null) {
       return Promise.resolve(
         invalidBatch(revision, '$', 'JSON-serializable run request')
       );
     }
-    const completed =
-      requestId === undefined
-        ? undefined
-        : this.completedRequests.get(requestId);
+    const requestId = request.requestId;
+    const currentProjectId =
+      this.dependencies.currentProjectId();
+    const currentProjectSession =
+      this.dependencies.currentProjectSession?.() ??
+      currentProjectId;
+    const completed = this.completedRequests.get(requestId);
     if (completed) {
       return Promise.resolve(
-        completed.signature === signature
-          ? completed.result
-          : invalidBatch(
+        completed.signature !== signature
+          ? invalidBatch(
               revision,
               'requestId',
               'a request ID that has not been used for different content'
             )
+          : !completed.projectSessions.has(
+              currentProjectSession
+            )
+            ? invalidBatch(
+                revision,
+                'requestId',
+                'a request ID from the active project session'
+              )
+            : completed.result
       );
     }
 
@@ -498,11 +560,19 @@ export class AgentCommandPort implements AgentCommandPortApi {
         terminalFailure(revision, 'Project delivery is still running.')
       );
     }
+    if (this.activePresentation) {
+      return Promise.resolve(
+        terminalFailure(
+          revision,
+          'A visual review is still running.'
+        )
+      );
+    }
     const batch: CommandBatch = {
-      batchId: this.nextBatchId(requestId),
-      baseProjectId: this.dependencies.currentProjectId(),
+      batchId: `agent-request:${requestId}`,
+      baseProjectId: currentProjectId,
       baseRevision: revision,
-      operations: parsed.request.operations
+      operations: request.operations
     };
     const lease =
       this.operationLease.tryAcquire('agent.run');
@@ -515,12 +585,15 @@ export class AgentCommandPort implements AgentCommandPortApi {
       );
     }
     const result = this.execute(batch, lease).then((outcome) => {
-      if (requestId !== undefined) {
-        this.completedRequests.set(requestId, {
-          signature,
-          result: outcome
-        });
-      }
+      this.completedRequests.set(requestId, {
+        signature,
+        result: outcome,
+        projectSessions: new Set([
+          currentProjectSession,
+          this.dependencies.currentProjectSession?.() ??
+            this.dependencies.currentProjectId()
+        ])
+      });
       return outcome;
     });
     this.activeBatch = {
@@ -528,14 +601,6 @@ export class AgentCommandPort implements AgentCommandPortApi {
       result
     };
     return result;
-  }
-
-  private nextBatchId(requestId?: string): string {
-    if (requestId !== undefined) {
-      return `agent-request:${requestId}`;
-    }
-    this.batchSerial += 1;
-    return `agent-run:${this.batchSerial.toString(36)}`;
   }
 
   private async execute(
@@ -584,6 +649,32 @@ export class AgentCommandPort implements AgentCommandPortApi {
       };
     } finally {
       this.activeDelivery = null;
+      lease.release();
+      this.updateStatus('connected');
+    }
+  }
+
+  private async executePresentation(
+    request: PresentRequest,
+    lease: OperationLeaseToken
+  ): Promise<PresentResult> {
+    this.updateStatus('working');
+    try {
+      return await Promise.resolve().then(
+        () => this.dependencies.present!(request)
+      );
+    } catch {
+      return {
+        ok: false,
+        revision: this.dependencies.currentRevision(),
+        error: {
+          code: 'invalid_request',
+          path: '$',
+          expected: 'valid presentation request'
+        }
+      };
+    } finally {
+      this.activePresentation = null;
       lease.release();
       this.updateStatus('connected');
     }

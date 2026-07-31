@@ -1,7 +1,7 @@
 # ashfox Docs
 
 ashfox turns a model request into an editable low-poly asset you can watch,
-correct, save, and export in the browser. There is nothing to install and no
+correct, review, and export in the browser. There is nothing to install and no
 account to create.
 
 Blockbench is optional. The quickest path uses only ashfox and an AI agent with
@@ -25,7 +25,6 @@ Undo to review complete changes.
 - articulated low-poly creatures, vehicles, props, and blocks;
 - pixel textures with consistent UV scale;
 - bones, pivots, and reusable animation clips;
-- build-process and animation GIFs at 10fps;
 - GeckoLib 5, Bedrock, GLB, and glTF exports.
 
 ## Choose a guide
@@ -36,8 +35,8 @@ Undo to review complete changes.
   review details, and correct the result.
 - [Explore example assets](guides/examples.md) — ask the agent to inspect the
   tractor, rocket, and kirin projects.
-- [Save, open, export, and capture](guides/save-and-export.md) — keep the
-  editable project and download finished files.
+- [Export a finished asset](guides/save-and-export.md) — validate and deliver
+  the configured target.
 - [Choose an export format](guides/choose-a-format.md) — decide between
   GeckoLib 5, Bedrock, GLB, and glTF.
 - [Troubleshooting](guides/troubleshooting.md) — solve common browser, texture,
@@ -46,5 +45,5 @@ Undo to review complete changes.
 ## Your files stay local
 
 ashfox stores the working project in your browser. It does not require a
-database or upload your project to an ashfox server. A file leaves the browser
-only when you choose to save, export, or download a capture.
+database or upload your project to an ashfox server. The finished target leaves
+the browser only when the agent delivers it.

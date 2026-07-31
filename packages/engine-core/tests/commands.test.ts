@@ -21,6 +21,7 @@ assert.deepEqual(commandNames, [
   'project.create',
   'project.rename',
   'project.target.set',
+  'project.resource.set',
   'project.intent.set',
   'model.parts.upsert',
   'model.parts.mirror',
@@ -372,7 +373,11 @@ assert.ok(
 const scalable = execute(recolored, 'batch-scale-target', [{
   name: 'project.target.set',
   payload: {
-    target: 'glb',
+    target: 'glb'
+  }
+}, {
+  name: 'project.resource.set',
+  payload: {
     namespace: 'ashfox',
     modelPath: 'command_contract'
   }
@@ -569,7 +574,12 @@ const renamed = execute(animated, 'batch-project', [
   {
     name: 'project.target.set',
     payload: {
-      target: 'bedrock',
+      target: 'bedrock'
+    }
+  },
+  {
+    name: 'project.resource.set',
+    payload: {
       namespace: 'ashfox',
       modelPath: 'command_contract'
     }

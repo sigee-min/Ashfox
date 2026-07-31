@@ -26,6 +26,9 @@ import { setModelPartMaterialCommand } from './definitions/setModelPartMaterial'
 import { setNodeVisibilityCommand } from './definitions/setNodeVisibility';
 import { setNodePivotCommand } from './definitions/setNodePivot';
 import { setProjectIntentCommand } from './definitions/setProjectIntent';
+import {
+  setProjectResourceCommand
+} from './definitions/setProjectResource';
 import { setProjectTargetCommand } from './definitions/setProjectTarget';
 import {
   setSurfacePixelDensityCommand
@@ -57,6 +60,10 @@ const registrations: Readonly<Record<CommandName, CommandRegistration>> = {
   'project.create': registration(createProjectCommand, true),
   'project.rename': registration(renameProjectCommand, true),
   'project.target.set': registration(setProjectTargetCommand, true),
+  'project.resource.set': registration(
+    setProjectResourceCommand,
+    false
+  ),
   'project.intent.set': registration(setProjectIntentCommand, true),
   'model.parts.upsert': registration(upsertModelPartsCommand, true),
   'model.parts.mirror': registration(mirrorModelPartsCommand, true),

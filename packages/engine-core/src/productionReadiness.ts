@@ -1,8 +1,6 @@
 import {
   CUBE_FACE_DIRECTIONS,
-  type AnimationClip,
-  type ProjectDocument,
-  type TransformChannel
+  type ProjectDocument
 } from './model';
 import {
   effectivelyVisibleSceneNodeIds
@@ -19,8 +17,15 @@ import {
 import {
   analyzeProjectAnimationCapabilities
 } from './animation/capability';
+import {
+  CANONICAL_IDLE_CLIP_ID,
+  idleClipNumericallyCloses
+} from './animation/idleContract';
+import {
+  loopClipTransformChannelsClose
+} from './animation/loopClosure';
 
-const EPSILON = 0.000001;
+export { CANONICAL_IDLE_CLIP_ID } from './animation/idleContract';
 
 export type ProductionReadinessCode =
   | 'production.geometry_missing'
@@ -28,19 +33,14 @@ export type ProductionReadinessCode =
   | 'production.idle_missing'
   | 'production.idle_channels_missing'
   | 'production.idle_loop_invalid'
+  | 'production.animation_loop_invalid'
   | 'production.animation_preview_unfaithful'
   | 'production.animation_export_unsupported'
   | 'production.intent_missing'
   | 'production.intent_invalid'
-  | 'production.intent_required_part_missing'
-  | 'production.intent_required_material_missing'
-  | 'production.intent_required_clip_missing'
-  | 'production.intent_required_clip_channels_missing'
   | 'production.intent_grounding_mismatch'
   | 'production.intent_grounding_unstable'
   | 'production.intent_grounding_unverifiable'
-  | 'production.intent_symmetry_part_missing'
-  | 'production.intent_symmetry_mismatch'
   | 'production.intent_evaluation_unavailable';
 
 export interface ProductionReadinessFinding {
@@ -51,8 +51,6 @@ export interface ProductionReadinessFinding {
   entityIds?: readonly string[];
   assetIds?: readonly string[];
   clipIds?: readonly string[];
-  partIds?: readonly string[];
-  materialIds?: readonly string[];
   idsTruncated?: boolean;
   fix: string;
 }
@@ -70,21 +68,11 @@ export interface ProductionReadinessCounts {
   previewableAnimationClips: number;
   exportableAnimationClips: number;
   intentPresent: boolean;
-  requiredFeatures: number;
-  requiredParts: number;
-  missingParts: number;
-  requiredMaterials: number;
-  missingMaterials: number;
-  requiredClips: number;
-  missingClips: number;
-  emptyRequiredClips: number;
+  features: number;
   unverifiableGeometry: number;
   groundSupportCells: number;
   projectedFootprintCells: number;
   uniformCenterOfMassSupported: boolean | null;
-  symmetryPairs: number;
-  symmetryMismatches: number;
-  symmetryUnevaluated: number;
 }
 
 export interface ProductionReadinessReport {
@@ -107,46 +95,6 @@ export const isProductionIdleClipName = (name: string): boolean => {
   );
 };
 
-const isFiniteNumericVec3 = (
-  value: unknown
-): value is readonly [number, number, number] =>
-  Array.isArray(value) &&
-  value.length === 3 &&
-  value.every(
-    (component) =>
-      typeof component === 'number' && Number.isFinite(component)
-  );
-
-const valuesClose = (
-  first: readonly number[],
-  last: readonly number[]
-): boolean =>
-  first.every(
-    (component, index) =>
-      Math.abs(component - (last[index] ?? Number.NaN)) <= EPSILON
-  );
-
-const clipHasNumericallyClosedChannels = (
-  clip: AnimationClip,
-  channels: readonly TransformChannel[]
-): boolean => {
-  if (clip.loop !== 'loop') return false;
-  if (channels.length === 0) return false;
-  return channels.every((channel) => {
-    if (channel.keys.length < 2) return false;
-    const first = channel.keys[0];
-    const last = channel.keys.at(-1);
-    if (!last) return false;
-    return (
-      Math.abs(first.timeSeconds) <= EPSILON &&
-      Math.abs(last.timeSeconds - clip.durationSeconds) <= EPSILON &&
-      isFiniteNumericVec3(first.value) &&
-      isFiniteNumericVec3(last.value) &&
-      valuesClose(first.value, last.value)
-    );
-  });
-};
-
 const structuralBlockers = (
   report: ValidationReport
 ): readonly InvariantFinding[] =>
@@ -163,24 +111,12 @@ const productionIntentCode = (
       return 'production.intent_missing';
     case 'intent_invalid':
       return 'production.intent_invalid';
-    case 'required_part_missing':
-      return 'production.intent_required_part_missing';
-    case 'required_material_missing':
-      return 'production.intent_required_material_missing';
-    case 'required_clip_missing':
-      return 'production.intent_required_clip_missing';
-    case 'required_clip_channels_missing':
-      return 'production.intent_required_clip_channels_missing';
     case 'grounding_mismatch':
       return 'production.intent_grounding_mismatch';
     case 'grounding_unstable':
       return 'production.intent_grounding_unstable';
     case 'grounding_unverifiable':
       return 'production.intent_grounding_unverifiable';
-    case 'symmetry_part_missing':
-      return 'production.intent_symmetry_part_missing';
-    case 'symmetry_mismatch':
-      return 'production.intent_symmetry_mismatch';
     case 'evaluation_unavailable':
       return 'production.intent_evaluation_unavailable';
   }
@@ -230,7 +166,7 @@ export const evaluateProductionReadiness = (
       message: 'The project has no effectively visible renderable geometry.',
       path: 'scene.nodes',
       fix:
-        'Create visible cube or mesh geometry with at least one enabled face.'
+        'Create one canonical root part with model.parts.upsert.'
     });
   } else if (
     visibleFaceTextureIds.length === 0 ||
@@ -245,13 +181,22 @@ export const evaluateProductionReadiness = (
       path: 'scene.nodes',
       entityIds: visibleGeometryIds,
       fix:
-        'Assign an existing texture asset to every enabled face on visible geometry.'
+        'Reproject canonical parts with model.parts.upsert or assign their base material with model.parts.material.'
     });
   }
 
-  const idleClips = Object.values(document.animations).filter((clip) =>
-    isProductionIdleClipName(clip.name)
-  );
+  const canonicalIdle =
+    document.animations[CANONICAL_IDLE_CLIP_ID];
+  const idleClips = canonicalIdle ? [canonicalIdle] : [];
+  const allNonCanonicalIdleIds = Object.values(document.animations)
+    .filter(
+      (clip) =>
+        clip.id !== CANONICAL_IDLE_CLIP_ID &&
+        isProductionIdleClipName(clip.name)
+    )
+    .map((clip) => clip.id)
+    .sort();
+  const nonCanonicalIdleIds = allNonCanonicalIdleIds.slice(0, 20);
   const idleChannelsByClip = new Map(
     idleClips.map((clip) => [
       clip.id,
@@ -269,10 +214,20 @@ export const evaluateProductionReadiness = (
     findings.push({
       code: 'production.idle_missing',
       severity: 'error',
-      message: 'No clip has the explicit Idle animation name.',
+      message: 'No canonical animation clip has ID "idle".',
       path: 'animations',
+      ...(nonCanonicalIdleIds.length > 0
+        ? {
+            clipIds: nonCanonicalIdleIds,
+            idsTruncated:
+              allNonCanonicalIdleIds.length >
+              nonCanonicalIdleIds.length
+          }
+        : {}),
       fix:
-        'Create a clip named Idle or animation.<asset>.idle with a closed transform loop.'
+        nonCanonicalIdleIds.length > 0
+          ? 'Delete the non-canonical Idle-named clips, then create animation.motion.upsert {clipId:"idle",role:"idle",durationFrames:20,static:true} in the same atomic batch.'
+          : 'Create animation.motion.upsert {clipId:"idle",role:"idle",durationFrames:20,static:true}, or author a moving idle with closed poses.'
     });
   }
   for (const clip of idleClips) {
@@ -288,16 +243,11 @@ export const evaluateProductionReadiness = (
         path: `animations.${clip.id}.channels`,
         clipIds: [clip.id],
         fix:
-          'Add at least one transform channel with numeric keys at time 0 and the clip duration.'
+          'Patch this clip with animation.motion.upsert using static:true or ordered poses.'
       });
       continue;
     }
-    if (
-      !clipHasNumericallyClosedChannels(
-        clip,
-        visibleChannels
-      )
-    ) {
+    if (!idleClipNumericallyCloses(clip)) {
       findings.push({
         code: 'production.idle_loop_invalid',
         severity: 'error',
@@ -307,9 +257,30 @@ export const evaluateProductionReadiness = (
         path: `animations.${clip.id}`,
         clipIds: [clip.id],
         fix:
-          'Use loop mode, at least two numeric keys per channel, and matching start/end values.'
+          'Patch this clip with animation.motion.upsert so ashfox derives its 20 FPS loop closure.'
       });
     }
+  }
+
+  for (const clip of Object.values(document.animations)) {
+    if (
+      clip.id === CANONICAL_IDLE_CLIP_ID ||
+      clip.loop !== 'loop' ||
+      loopClipTransformChannelsClose(clip)
+    ) {
+      continue;
+    }
+    findings.push({
+      code: 'production.animation_loop_invalid',
+      severity: 'error',
+      message:
+        `Every transform channel in loop clip "${clip.name}" must ` +
+        'start at time 0 and close at the clip duration.',
+      path: `animations.${clip.id}`,
+      clipIds: [clip.id],
+      fix:
+        'Delete this clip with animation.clip.delete, then recreate it with animation.motion.upsert.'
+    });
   }
 
   const animationCapability =
@@ -332,7 +303,7 @@ export const evaluateProductionReadiness = (
         path: `animations.${clip.id}`,
         clipIds: [clip.id],
         fix:
-          'Bake the clip to numeric bone-space transform keys without easing, split values, non-neutral timing or blend controls, or event tracks.'
+          'Delete this clip, then recreate it with animation.motion.upsert poses or hinge spins.'
       });
     }
     if (!clipCapability.exportable) {
@@ -350,7 +321,7 @@ export const evaluateProductionReadiness = (
         path: `animations.${clip.id}`,
         clipIds: [clip.id],
         fix:
-          'Remove or bake the unsupported animation semantics, or choose a target that preserves them.'
+          'Delete and recreate this clip with animation.motion.upsert, or choose another target with project.target.set.'
       });
     }
   }
@@ -362,9 +333,6 @@ export const evaluateProductionReadiness = (
       severity: 'error' as const,
       message: issue.message,
       path: issue.path,
-      partIds: issue.partIds,
-      materialIds: issue.materialIds,
-      clipIds: issue.clipIds,
       entityIds: issue.entityIds,
       idsTruncated: issue.idsTruncated,
       fix: issue.fix

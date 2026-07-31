@@ -1,6 +1,5 @@
 import type { ProjectDocument } from '../model';
 import {
-  countMotionKeys,
   MOTION_AUTHORING_LIMITS
 } from '../animation/motionContract';
 import {
@@ -98,19 +97,6 @@ const validateBatch = (
       expected: `1-${MAX_BATCH_OPERATIONS} operations`
     });
   }
-  if (
-    batch.operations.filter(
-      (operation) => operation.name === 'model.parts.upsert'
-    ).length > 1
-  ) {
-    return failure(document, {
-      code: 'invalid_batch',
-      message: 'A batch may contain at most one model part upsert.',
-      path: 'operations',
-      expected: 'zero or one model.parts.upsert operation'
-    });
-  }
-  let motionKeyCount = 0;
   for (let index = 0; index < batch.operations.length; index += 1) {
     const operation = batch.operations[index];
     const definition = getCommandDefinition(operation.name);
@@ -139,40 +125,6 @@ const validateBatch = (
         path: `operations[${index}].payload${issue.path.slice(1)}`,
         expected: issue.expected
       });
-    }
-    if (operation.name === 'animation.motion.upsert') {
-      const operationKeyCount = countMotionKeys(
-        operation.payload.motions
-      );
-      if (
-        operationKeyCount >
-        MOTION_AUTHORING_LIMITS.maxKeysPerOperation
-      ) {
-        return failure(document, {
-          code: 'invalid_payload',
-          message:
-            `Animation motion contains ${operationKeyCount} keys, ` +
-            `exceeding the ${MOTION_AUTHORING_LIMITS.maxKeysPerOperation}-key operation budget.`,
-          path: `operations[${index}].payload.motions`,
-          expected:
-            `at most ${MOTION_AUTHORING_LIMITS.maxKeysPerOperation} total keys`
-        });
-      }
-      motionKeyCount += operationKeyCount;
-      if (
-        motionKeyCount >
-        MOTION_AUTHORING_LIMITS.maxKeysPerBatch
-      ) {
-        return failure(document, {
-          code: 'invalid_batch',
-          message:
-            `Animation motions contain ${motionKeyCount} keys, ` +
-            `exceeding the ${MOTION_AUTHORING_LIMITS.maxKeysPerBatch}-key batch budget.`,
-          path: 'operations',
-          expected:
-            `at most ${MOTION_AUTHORING_LIMITS.maxKeysPerBatch} animation motion keys`
-        });
-      }
     }
   }
   return null;
@@ -342,6 +294,32 @@ const applyOperation = (
   });
 };
 
+const changedMotionKeyCount = (
+  before: ProjectDocument,
+  after: ProjectDocument,
+  operation: CommandBatch['operations'][number]
+): number => {
+  if (operation.name !== 'animation.motion.upsert') {
+    return 0;
+  }
+  const beforeChannels =
+    before.animations[operation.payload.clipId]?.channels ??
+    {};
+  const afterChannels =
+    after.animations[operation.payload.clipId]?.channels ??
+    {};
+  return Object.entries(afterChannels).reduce(
+    (count, [id, channel]) =>
+      count +
+      (
+        beforeChannels[id] === channel
+          ? 0
+          : channel.keys.length
+      ),
+    0
+  );
+};
+
 const executeCommandBatchUnchecked = (
   document: ProjectDocument,
   batch: CommandBatch,
@@ -353,10 +331,31 @@ const executeCommandBatchUnchecked = (
 
   let workingDocument = document;
   let effects = emptyEffects();
+  let motionKeyCount = 0;
   const summaries: string[] = [];
   for (let index = 0; index < batch.operations.length; index += 1) {
+    const beforeOperation = workingDocument;
     const applied = applyOperation(workingDocument, batch, index);
     if ('ok' in applied) return applied;
+    motionKeyCount += changedMotionKeyCount(
+      beforeOperation,
+      applied.document,
+      batch.operations[index]
+    );
+    if (
+      motionKeyCount >
+      MOTION_AUTHORING_LIMITS.maxKeysPerBatch
+    ) {
+      return failure(document, {
+        code: 'invalid_batch',
+        message:
+          `Animation operations compile to ${motionKeyCount} changed keys, ` +
+          `exceeding the ${MOTION_AUTHORING_LIMITS.maxKeysPerBatch}-key batch budget.`,
+        path: 'operations',
+        expected:
+          `at most ${MOTION_AUTHORING_LIMITS.maxKeysPerBatch} changed animation keys`
+      });
+    }
     workingDocument = applied.document;
     effects = mergeEffects(effects, applied.effects);
     summaries.push(applied.summary);

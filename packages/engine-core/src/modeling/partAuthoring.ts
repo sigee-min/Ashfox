@@ -1,4 +1,5 @@
 import type {
+  LatticeVec2,
   LatticeVec3,
   PartAuthoringSpec,
   PartSpec
@@ -52,8 +53,7 @@ export const projectSpacePartAuthoringSpec = (
       };
     case 'feature':
       return {
-        ...authoring,
-        anchor: addVec3(authoring.anchor, translation)
+        ...authoring
       };
   }
 };
@@ -63,50 +63,94 @@ const hasOwn = (
   key: PropertyKey
 ): boolean => Object.prototype.hasOwnProperty.call(value, key);
 
-export const preserveExistingPartAuthoringDefaults = (
+export interface PartAuthoringCompletionIssue {
+  path: string;
+  message: string;
+}
+
+export type PartAuthoringCompletionResult =
+  | {
+      ok: true;
+      value: PartAuthoringSpec;
+    }
+  | {
+      ok: false;
+      issue: PartAuthoringCompletionIssue;
+    };
+
+const isLatticeVec3 = (
+  value: unknown
+): value is LatticeVec3 =>
+  Array.isArray(value) &&
+  value.length === 3 &&
+  value.every((entry) => typeof entry === 'number');
+
+const rectangleOutline = (
+  size: LatticeVec2
+): readonly LatticeVec2[] => [
+  [0, 0],
+  [size[0], 0],
+  [size[0], size[1]],
+  [0, size[1]]
+];
+
+/**
+ * Completes one public authoring patch into the full project-space shape
+ * consumed by the canonical PartSpec normalizer.
+ */
+export const completePartAuthoringSpec = (
   input: PartAuthoringSpec,
   existing: PartSpec | undefined
-): PartAuthoringSpec => {
-  if (!existing) return input;
-  const preserved = {
-    ...input,
-    ...(!hasOwn(input, 'parentPartId')
-      ? { parentPartId: existing.parentPartId }
-      : {}),
-    ...(!hasOwn(input, 'joint')
-      ? { joint: existing.joint }
-      : {})
-  } as PartAuthoringSpec;
+): PartAuthoringCompletionResult => {
+  const completed = (
+    existing?.kind === input.kind
+      ? {
+          ...projectSpacePartAuthoringSpec(existing),
+          ...input
+        }
+      : { ...input }
+  ) as PartAuthoringSpec;
 
-  if (
-    (preserved.kind === 'mass' || preserved.kind === 'segment') &&
-    !hasOwn(input, 'profile') &&
-    (existing.kind === 'mass' || existing.kind === 'segment')
-  ) {
+  if (completed.kind === 'segment' && isLatticeVec3(completed.radii)) {
     return {
-      ...preserved,
-      profile: existing.profile
+      ok: true,
+      value: {
+        ...completed,
+        radii: completed.points?.map(() => completed.radii as LatticeVec3)
+      }
     };
   }
-  if (
-    preserved.kind === 'radial' &&
-    !hasOwn(input, 'innerRadius') &&
-    existing.kind === 'radial'
-  ) {
-    return {
-      ...preserved,
-      innerRadius: existing.innerRadius
-    };
+
+  if (completed.kind === 'plate') {
+    if (hasOwn(input, 'size') && hasOwn(input, 'outline')) {
+      return {
+        ok: false,
+        issue: {
+          path: 'size',
+          message:
+            'Use either size for a rectangle or outline for a custom plate, not both.'
+        }
+      };
+    }
+    if (hasOwn(input, 'size') && completed.size !== undefined) {
+      const {
+        size,
+        ...withoutSize
+      } = completed;
+      return {
+        ok: true,
+        value: {
+          ...withoutSize,
+          outline: rectangleOutline(size)
+        }
+      };
+    }
+    const {
+      size: _size,
+      ...withoutSize
+    } = completed;
+    return { ok: true, value: withoutSize };
   }
-  if (
-    preserved.kind === 'feature' &&
-    !hasOwn(input, 'relief') &&
-    existing.kind === 'feature'
-  ) {
-    return {
-      ...preserved,
-      relief: existing.relief
-    };
-  }
-  return preserved;
+
+  return { ok: true, value: completed };
 };

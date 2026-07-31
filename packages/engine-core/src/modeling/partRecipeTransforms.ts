@@ -11,6 +11,9 @@ import {
   type LatticeVec3,
   type PartSpec
 } from './partContract';
+import {
+  surfaceFeatureAxes
+} from './surfaceFeature';
 import { cellKey, parseCellKey } from './lattice';
 import { normalizePartRecipe } from './partRecipe';
 import type {
@@ -201,27 +204,12 @@ const oppositeFace = (face: ModelPartFace): ModelPartFace => {
   }
 };
 
-const featureAxes = (
-  face: ModelPartFace
-): {
-  normal: Axis;
-  u: Axis;
-  v: Axis;
-} => {
-  if (face === 'north' || face === 'south') {
-    return { normal: 'z', u: 'x', v: 'y' };
-  }
-  if (face === 'east' || face === 'west') {
-    return { normal: 'x', u: 'y', v: 'z' };
-  }
-  return { normal: 'y', u: 'x', v: 'z' };
-};
-
 const reflectedFeature = (
   part: Extract<PartSpec, { kind: 'feature' }>,
-  axis: Axis
-): PartSpec => {
-  const axes = featureAxes(part.face);
+  axis: Axis,
+  plane: number
+): Extract<PartSpec, { kind: 'feature' }> => {
+  const axes = surfaceFeatureAxes(part.face);
   const index = AXIS_INDEX[axis];
   if (axis === axes.normal) {
     return {
@@ -230,7 +218,7 @@ const reflectedFeature = (
       anchor: vec3WithCoordinate(
         part.anchor,
         axis,
-        -part.anchor[index]
+        plane * 2 - part.anchor[index]
       )
     };
   }
@@ -240,7 +228,8 @@ const reflectedFeature = (
     anchor: vec3WithCoordinate(
       part.anchor,
       axis,
-      -part.anchor[index] + 2 * Math.floor(size / 2) - size
+      plane * 2 - part.anchor[index] +
+        2 * Math.floor(size / 2) - size
     )
   };
 };
@@ -291,7 +280,7 @@ const reflectedPrimitive = (
       };
     }
     case 'feature':
-      return reflectedFeature(part, axis);
+      return part;
   }
 };
 
@@ -443,6 +432,9 @@ export const translatePartRecipeSubtree = (
   const selected = new Set(subtreeIds);
   const parts = recipe.parts.map((part): PartSpec => {
     if (!selected.has(part.partId)) return part;
+    if (part.kind === 'feature') {
+      return translatePrimitive(part, input.translation);
+    }
     if (part.parentPartId === null) {
       return translatePrimitive(part, input.translation);
     }
@@ -549,11 +541,21 @@ export const mirrorPartRecipeSubtree = (
     .filter((part) => subtree.has(part.partId))
     .map((part): PartSpec => {
       const targetPartId = mappings.get(part.partId)!;
-      const reflected = reflectedPrimitive(part, input.axis);
+      const reflected = part.kind === 'feature'
+        ? reflectedFeature(part, input.axis, input.plane)
+        : reflectedPrimitive(part, input.axis);
       const parentPartId =
         part.parentPartId !== null && subtree.has(part.parentPartId)
           ? mappings.get(part.parentPartId)!
           : part.parentPartId;
+      if (reflected.kind === 'feature') {
+        return {
+          ...reflected,
+          partId: targetPartId,
+          parentPartId,
+          attachment: null
+        };
+      }
       return {
         ...reflected,
         partId: targetPartId,

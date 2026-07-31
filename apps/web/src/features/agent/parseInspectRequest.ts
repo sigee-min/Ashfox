@@ -2,6 +2,9 @@ import type {
   InspectFailure,
   InspectRequest
 } from './types';
+import {
+  CLIP_INSPECT_MAX_LIMIT
+} from './inspectClip';
 
 interface ParseInspectRequestSuccess {
   ok: true;
@@ -96,6 +99,61 @@ const pagedRequest = (
   };
 };
 
+const clipRequest = (
+  value: Readonly<Record<string, unknown>>
+): ParseInspectRequestResult => {
+  const unknown = rejectUnknownProperties(
+    value,
+    ['kind', 'id', 'trackId', 'cursor', 'limit']
+  );
+  if (unknown) return unknown;
+  if (typeof value.id !== 'string') {
+    return failure('id', 'clip ID');
+  }
+  if (
+    value.trackId !== undefined &&
+    typeof value.trackId !== 'string'
+  ) {
+    return failure('trackId', 'transform track ID');
+  }
+  if (
+    value.cursor !== undefined &&
+    typeof value.cursor !== 'string'
+  ) {
+    return failure('cursor', 'clip page cursor');
+  }
+  if (
+    value.limit !== undefined &&
+    (
+      typeof value.limit !== 'number' ||
+      !Number.isInteger(value.limit) ||
+      value.limit < 1 ||
+      value.limit > CLIP_INSPECT_MAX_LIMIT
+    )
+  ) {
+    return failure(
+      'limit',
+      `integer from 1 through ${CLIP_INSPECT_MAX_LIMIT}`
+    );
+  }
+  return {
+    ok: true,
+    request: {
+      kind: 'clip',
+      id: value.id,
+      ...(value.trackId === undefined
+        ? {}
+        : { trackId: value.trackId }),
+      ...(value.cursor === undefined
+        ? {}
+        : { cursor: value.cursor }),
+      ...(value.limit === undefined
+        ? {}
+        : { limit: value.limit })
+    }
+  };
+};
+
 export const parseInspectRequest = (
   value: unknown
 ): ParseInspectRequestResult => {
@@ -123,8 +181,7 @@ export const parseInspectRequest = (
     }
     case 'parts':
     case 'entity':
-    case 'texture':
-    case 'clip': {
+    case 'texture': {
       const unknown = rejectUnknownProperties(
         value,
         ['kind', 'ids']
@@ -140,6 +197,8 @@ export const parseInspectRequest = (
           }
         : failure('ids', 'string ID array');
     }
+    case 'clip':
+      return clipRequest(value);
     case 'catalog':
     case 'activity':
       return pagedRequest(value, value.kind);

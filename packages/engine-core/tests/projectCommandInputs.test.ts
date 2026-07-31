@@ -56,6 +56,11 @@ assert.equal(
   created.document.formatProfile.id,
   'minecraft.java.geckolib5'
 );
+assert.deepEqual(
+  created.document.animations,
+  {},
+  'creating a Gecko project must not inject a placeholder animation'
+);
 if (
   created.document.formatProfile.id !==
   'minecraft.java.geckolib5'
@@ -97,10 +102,7 @@ assert.deepEqual(intent.document.intent, {
   subject: 'Golden utility truck',
   forward: 'north',
   grounding: 'free',
-  requiredFeatures: [],
-  requiredPartIds: [],
-  requiredMaterialIds: [],
-  requiredClipIds: []
+  features: []
 });
 
 const explicitIntent = execute(
@@ -111,7 +113,7 @@ const explicitIntent = execute(
     payload: {
       subject: 'Golden utility truck',
       grounding: 'grounded',
-      requiredPartIds: ['body']
+      features: ['Connected body']
     }
   }]
 );
@@ -133,11 +135,11 @@ assert.equal(renamedIntent.ok, true);
 if (!renamedIntent.ok) {
   throw new Error(renamedIntent.error.message);
 }
-assert.equal(renamedIntent.document.intent?.grounding, 'grounded');
+assert.equal(renamedIntent.document.intent?.grounding, 'free');
 assert.deepEqual(
-  renamedIntent.document.intent?.requiredPartIds,
-  ['body'],
-  'omitted advanced requirements must preserve an existing contract'
+  renamedIntent.document.intent?.features,
+  [],
+  'setting a new subject must replace the complete planning contract'
 );
 
 const target = execute(
@@ -161,20 +163,20 @@ assert.equal(target.document.formatProfile.modelPath, 'golden_truck');
 
 const invalidTarget = execute(
   intent.document,
-  'invalid-target-path',
+  'invalid-target-input',
   [{
     name: 'project.target.set',
     payload: {
       target: 'bedrock',
-      modelPath: '../unsafe.json'
+      unexpected: true
     }
-  }]
+  } as unknown as CommandBatch['operations'][number]]
 );
 assert.equal(invalidTarget.ok, false);
 if (!invalidTarget.ok) {
   assert.equal(invalidTarget.error.code, 'invalid_payload');
   assert.equal(
     invalidTarget.error.path,
-    'operations[0].payload.modelPath'
+    'operations[0].payload.unexpected'
   );
 }

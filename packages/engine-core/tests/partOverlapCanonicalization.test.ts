@@ -223,7 +223,7 @@ const translateJoin = (
         name: 'model.parts.transform',
         payload: {
           rootPartId: 'join',
-          translation: [-1, 0, 0]
+          by: [-1, 0, 0]
         }
       }]
     },

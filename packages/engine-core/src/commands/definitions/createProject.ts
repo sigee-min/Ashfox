@@ -6,7 +6,9 @@ import type {
   ProjectCreateInput,
   ProjectDocumentCreateInput
 } from '../types';
-import { setProjectTargetCommand } from './setProjectTarget';
+import {
+  configureProjectTarget
+} from './setProjectTarget';
 
 const inputSchema = {
   type: 'object',
@@ -25,16 +27,6 @@ const inputSchema = {
   required: ['name'],
   additionalProperties: false
 } as const;
-
-const applyDefinition = (
-  document: ProjectDocument,
-  definition: typeof setProjectTargetCommand,
-  payload: unknown
-): ProjectDocument => {
-  const result = definition.apply(document, payload);
-  if (!result.ok) throw new Error(result.error.message);
-  return result.value.document;
-};
 
 const normalizeProjectInput = (
   input: ProjectDocumentCreateInput
@@ -67,15 +59,16 @@ export const createProjectFromInput = (
           surfacePixelDensity: normalized.density
         }
       };
-  return applyDefinition(
+  const configured = configureProjectTarget(
     document,
-    setProjectTargetCommand,
-    {
-      target: normalized.target,
-      namespace: normalized.namespace,
-      modelPath: normalized.modelPath
-    }
+    normalized.target,
+    normalized.namespace,
+    normalized.modelPath
   );
+  if (!configured.ok) {
+    throw new Error(configured.error.message);
+  }
+  return configured.value.document;
 };
 
 const stableProjectSuffix = (value: string): string => {

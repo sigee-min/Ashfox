@@ -154,7 +154,7 @@ ashfox, connect to the page, inspect the project, edit safely, and ask what you
 want to create.
 
 The workbench keeps its editable project in the browser. Files leave it only
-when you choose to save, export, or download a capture.
+when the agent delivers the validated target artifact.
 
 ## See the web workbench build an asset
 

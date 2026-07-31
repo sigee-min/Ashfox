@@ -1,7 +1,7 @@
 # Troubleshooting
 
-Describe the visible symptom to the agent and keep the latest `.ashfox` project
-available until the issue is resolved.
+Describe the visible symptom to the agent and ask it to inspect the active
+project revision before changing anything.
 
 ## The agent cannot start ashfox
 
@@ -18,11 +18,6 @@ An agent without browser control cannot use the automated workbench workflow.
 - Ask it to inspect the project and continue from that revision.
 - Include a concrete subject and target format.
 - Keep the request focused on one asset.
-
-## A file selection was cancelled
-
-Tell the agent to begin the open operation again. Cancellation leaves the
-current project unchanged and must return the file state to idle.
 
 ## A texture is missing or stretched
 
@@ -47,8 +42,8 @@ The eyes disappear in the three-quarter view.
 Move them slightly higher and outward without changing the head silhouette.
 ```
 
-Increasing contrast or moving a detail is usually more effective than adding
-more geometry.
+Move or resize the eye's single surface feature, or change its iris material.
+Do not add socket, pupil, or highlight cubes.
 
 ## An animation does not play correctly
 
@@ -62,10 +57,9 @@ Ask the agent to read the blocking validation finding and inspect the relevant
 entity or target setting. Typical fixes include:
 
 - removing geometry the target cannot represent;
-- assigning missing textures;
-- giving Minecraft bones and clips unique names;
-- replacing unsupported interpolation or Minecraft-only events;
-- setting a valid namespace and model path.
+- restoring the affected part's generated material;
+- rewriting unsupported motion through the current animation command;
+- removing target-specific events that the selected format cannot represent.
 
 Warnings can be reviewed, but blocking findings must be fixed.
 
@@ -75,17 +69,11 @@ Ask the agent to report the last completed boundary: artifact preparation,
 download activation, workspace transfer, or file verification. It must retry
 from the incomplete boundary and report only a file that exists.
 
-Confirm the expected extension: `.ashfox`, `.zip`, `.glb`, or `.gif`.
-
-## A GIF was not saved
-
-Ask the agent to inspect the capture operation ID and terminal state. A
-cancelled or failed capture can be started again; a succeeded capture must use
-the matching prepared artifact.
+Confirm the expected extension: `.zip` or `.glb`.
 
 ## Recover work
 
-Give the newest `.ashfox` file to the agent and ask it to inspect the loaded
-revision before editing. If the problem remains reproducible, report it on
+Ask the agent to inspect the active browser-local revision and continue from its
+first blocker. If the problem remains reproducible, report it on
 [GitHub](https://github.com/sigee-min/ashfox/issues) with the browser name,
 target format, and shortest reproduction steps.

@@ -12,6 +12,7 @@ import {
   effectiveGeneratedFaceEnabled,
   generatedSurfaceFaceKey,
   type CompiledSurfaceAuthority,
+  type GeneratedSurfaceMarking,
   type GeneratedSurfacePattern
 } from './generatedSurfaceAuthority';
 import {
@@ -22,6 +23,7 @@ import {
 } from './uvAtlas';
 
 export type {
+  GeneratedSurfaceMarking,
   GeneratedSurfacePattern
 } from './generatedSurfaceAuthority';
 
@@ -57,6 +59,7 @@ interface FaceTarget {
   direction: CubeFaceDirection;
   textureId: string;
   pattern?: GeneratedSurfacePattern;
+  markings?: readonly GeneratedSurfaceMarking[];
 }
 
 interface AtlasPlan {
@@ -74,6 +77,7 @@ export interface TextureCompositionRegion {
   height: number;
   color: string;
   pattern?: GeneratedSurfacePattern;
+  markings?: readonly GeneratedSurfaceMarking[];
 }
 
 export interface TextureComposition {
@@ -237,6 +241,9 @@ const collectRects = (
       const pattern = authority.faces.get(
         generatedSurfaceFaceKey(node.id, direction)
       )?.pattern;
+      const markings = authority.faces.get(
+        generatedSurfaceFaceKey(node.id, direction)
+      )?.markings;
       rects.push({
         key: `${node.id}:${direction}`,
         width: size.width,
@@ -245,7 +252,8 @@ const collectRects = (
           nodeId: node.id,
           direction,
           textureId: texture.id,
-          ...(pattern ? { pattern } : {})
+          ...(pattern ? { pattern } : {}),
+          ...(markings?.length ? { markings } : {})
         }
       });
       byTexture.set(texture.id, rects);
@@ -472,6 +480,9 @@ export const composeTextureRaster = (
         const pattern = authority.faces.get(
           generatedSurfaceFaceKey(node.id, face)
         )?.pattern;
+        const markings = authority.faces.get(
+          generatedSurfaceFaceKey(node.id, face)
+        )?.markings;
         regions.push({
           nodeId: node.id,
           face,
@@ -480,7 +491,8 @@ export const composeTextureRaster = (
           width: uv[2] - uv[0],
           height: uv[3] - uv[1],
           color: node.baseColor,
-          ...(pattern ? { pattern } : {})
+          ...(pattern ? { pattern } : {}),
+          ...(markings?.length ? { markings } : {})
         });
       }
     }

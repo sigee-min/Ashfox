@@ -52,6 +52,18 @@ export const mirrorModelPartsCommand = defineCommand({
     'Mirror one canonical part subtree and reproject tolerant joins into deterministic single-owner geometry.',
   inputSchema: modelPartsMirrorSchema,
   apply: (document, payload) => {
+    if (!Number.isSafeInteger(payload.plane * 2)) {
+      return {
+        ok: false,
+        error: {
+          code: 'invalid_payload',
+          message:
+            'Mirror plane must lie on the whole- or half-lattice grid.',
+          path: 'payload.plane',
+          expected: 'a multiple of 0.5'
+        }
+      };
+    }
     const current = readPartRecipe(document);
     if (!current.ok || current.recipe === null) {
       return {
@@ -135,7 +147,11 @@ export const mirrorModelPartsCommand = defineCommand({
       projected.document,
       payload.axis,
       payload.plane,
-      partIdMap
+      partIdMap.filter((mapping) =>
+        current.recipe?.parts.find(
+          (part) => part.partId === mapping.sourcePartId
+        )?.kind !== 'feature'
+      )
     );
     if (inexactPair) {
       return {

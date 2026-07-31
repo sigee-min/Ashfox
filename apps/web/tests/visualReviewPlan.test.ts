@@ -42,11 +42,13 @@ const receipt = (
   clipId: review.clipId,
   observedTimeSeconds: 0,
   completedCycles,
-  frameNonce: 1
+  frameNonce: 1,
+  verdict: 'accepted',
+  issues: []
 });
 
 const readiness = evaluateProductionReadiness(document);
-assert.equal(
+assert.deepEqual(
   visualReviewKey(
     nextVisualReview(document, readiness, [])!
   ),
@@ -82,4 +84,18 @@ assert.deepEqual(
     required.map((review) => receipt(review))
   ),
   []
+);
+
+assert.deepEqual(
+  remainingVisualReviews(
+    document,
+    readiness,
+    [{
+      ...receipt(required[0]),
+      verdict: 'rejected',
+      issues: ['silhouette']
+    }]
+  )[0],
+  required[0],
+  'a rendered but rejected view must remain incomplete'
 );

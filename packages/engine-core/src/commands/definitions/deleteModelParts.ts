@@ -2,9 +2,6 @@ import {
   readCompiledParts
 } from '../../modeling/partInvariants';
 import {
-  ensureRequiredAnimationFallback
-} from '../../animation/implicitRestPose';
-import {
   normalizePartRecipe,
   readPartRecipe,
   withPartRecipe
@@ -69,29 +66,36 @@ export const deleteModelPartsCommand = defineCommand({
         }
       };
     }
-    const selectedPartIds = new Set(
-      payload.partIds.filter((partId) =>
-        compiled.parts.has(partId)
-      )
+    const knownPartIds = new Set(
+      recipeResult.recipe?.parts.map((part) => part.partId) ?? []
     );
-    if (
-      recipeResult.recipe === null ||
-      selectedPartIds.size === 0
-    ) {
+    const missingIndex = payload.partIds.findIndex(
+      (partId) => !knownPartIds.has(partId)
+    );
+    if (missingIndex >= 0) {
       return {
-        ok: true,
-        value: {
-          document,
-          summary: 'Delete 0 model parts',
-          effects: {
-            createdEntityIds: [],
-            changedEntityIds: [],
-            removedEntityIds: [],
-            invalidated: []
-          }
+        ok: false,
+        error: {
+          code: 'invalid_state',
+          message:
+            `Canonical part "${payload.partIds[missingIndex]}" does not exist.`,
+          path: `payload.partIds[${missingIndex}]`,
+          expected: 'an existing canonical part ID'
         }
       };
     }
+    if (recipeResult.recipe === null) {
+      return {
+        ok: false,
+        error: {
+          code: 'invalid_state',
+          message: 'Canonical modeling recipe does not exist.',
+          path: 'modeling',
+          pathScope: 'document'
+        }
+      };
+    }
+    const selectedPartIds = new Set(payload.partIds);
     const removedPartIds = descendantPartIds(
       selectedPartIds,
       new Map(
@@ -105,6 +109,7 @@ export const deleteModelPartsCommand = defineCommand({
       document,
       [...removedPartIds]
         .sort()
+        .filter((partId) => compiled.parts.has(partId))
         .map(compiledPartBoneId)
     );
     const retainedParts = recipeResult.recipe.parts.filter(
@@ -150,25 +155,16 @@ export const deleteModelPartsCommand = defineCommand({
     const projectedDocument = projected?.ok
       ? projected.document
       : withPartRecipe(removal.document, null);
-    const fallback = ensureRequiredAnimationFallback(
-      projectedDocument
-    );
-    const fallbackClipId = fallback.createdClipId;
-    const restoredClip =
-      fallbackClipId !== null &&
-      document.animations[fallbackClipId] !== undefined;
     const removedEntityIds = [
       ...new Set([
         ...removal.removedEntityIds,
         ...(projected?.ok ? projected.removedIds : [])
       ])
-    ].filter(
-      (id) => id !== fallbackClipId
-    );
+    ];
     return {
       ok: true,
       value: {
-        document: fallback.document,
+        document: projectedDocument,
         summary:
           `Delete ${removedPartIds.size} model part` +
           `${removedPartIds.size === 1 ? '' : 's'}`,
@@ -181,18 +177,11 @@ export const deleteModelPartsCommand = defineCommand({
                   : []),
                 ...projected.createdIds
               ]
-              : []),
-            ...(fallbackClipId !== null && !restoredClip
-              ? [fallbackClipId]
               : [])
           ],
           changedEntityIds: [
             ...removal.changedEntityIds,
             ...(projected?.ok ? projected.changedIds : []),
-            ...(restoredClip && fallbackClipId
-              ? [fallbackClipId]
-              : []),
-            ...fallback.createdChannelIds,
             document.id
           ],
           removedEntityIds,

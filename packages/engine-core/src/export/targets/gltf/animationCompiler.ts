@@ -86,7 +86,7 @@ const compileValues = (
 const roundedTime = (value: number): number =>
   Math.round(value * 1_000_000) / 1_000_000;
 
-const bakeCatmullRom = (
+const bakeCanonicalFrames = (
   channel: TransformChannel,
   clip: AnimationClip,
   sampleAt: (timeSeconds: number) => NumericAnimationVec3
@@ -164,8 +164,14 @@ const sampleChannel = (
     }
     return sampled;
   };
-  if (interpolation === 'catmullrom') {
-    return bakeCatmullRom(channel, clip, sampleAt);
+  if (
+    interpolation === 'catmullrom' ||
+    (
+      channel.property === 'rotation' &&
+      interpolation === 'linear'
+    )
+  ) {
+    return bakeCanonicalFrames(channel, clip, sampleAt);
   }
   const lastKey = channel.keys[channel.keys.length - 1];
   const times = [

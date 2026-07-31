@@ -213,9 +213,10 @@ const rootFeature = normalizePartSpec({
   kind: 'feature',
   partId: 'eye',
   materialId: 'material.eye',
+  motif: 'eye',
   face: 'north',
   anchor: [0, 0, 0],
-  size: [2, 2]
+  size: [4, 3]
 });
 assert.equal(rootFeature.ok, false);
 if (!rootFeature.ok) {

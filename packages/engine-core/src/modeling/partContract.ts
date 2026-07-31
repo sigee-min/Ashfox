@@ -1,8 +1,9 @@
 import {
-  GENERATED_PART_PRIMITIVES,
+  MODEL_PART_KINDS,
   type GeneratedPartJoint,
-  type GeneratedPartPrimitive,
+  type ModelPartKind,
   type ModelFeaturePartSpec,
+  type ModelFeatureMotif,
   type ModelMassPartSpec,
   type ModelPartAttachment,
   type ModelPartFace,
@@ -17,15 +18,16 @@ import {
 } from '../model';
 import type { Axis } from './types';
 
-export const PART_PRIMITIVES = GENERATED_PART_PRIMITIVES;
+export const PART_KINDS = MODEL_PART_KINDS;
 
-export type PartPrimitive = GeneratedPartPrimitive;
+export type PartKind = ModelPartKind;
 export type LatticeCoordinate = number;
 export type LatticeVec2 = ModelPartLatticeVec2;
 export type LatticeVec3 = ModelPartLatticeVec3;
 export type PartAxis = Axis;
 export type PartFace = ModelPartFace;
 export type PartProfile = ModelPartProfile;
+export type FeatureMotif = ModelFeatureMotif;
 
 export const PART_CONTRACT_LIMITS = Object.freeze({
   maxIdLength: 64,
@@ -35,7 +37,6 @@ export const PART_CONTRACT_LIMITS = Object.freeze({
   maxAbsoluteCoordinate: 16_384,
   maxAxisSpan: 256,
   maxExtent: 128,
-  maxRelief: 16,
   maxOccupancyCellsPerPart: 131_072,
   maxOccupancyCellsPerBatch: 524_288,
   maxOccupancyCellsPerDocument: 2_097_152
@@ -57,36 +58,69 @@ export type RadialPartSpec = ModelRadialPartSpec;
 export type FeaturePartSpec = ModelFeaturePartSpec;
 export type PartSpec = ModelPartSpec;
 export type PartMaterialDefinition = ModelPartMaterial;
-type AuthoringPart<TPart extends PartSpec> =
-  TPart extends PartSpec
-    ? Omit<
-        TPart,
-        | 'parentPartId'
-        | 'joint'
-        | 'attachment'
-        | (
-          TPart extends MassPartSpec | SegmentPartSpec
-            ? 'profile'
-            : TPart extends RadialPartSpec
-              ? 'innerRadius'
-              : TPart extends FeaturePartSpec
-                ? 'relief'
-                : never
-        )
-      > & {
-        parentPartId?: string | null;
-        joint?: PartJoint;
-      } & (
-        TPart extends MassPartSpec | SegmentPartSpec
-          ? { profile?: PartProfile }
-          : TPart extends RadialPartSpec
-            ? { innerRadius?: number }
-            : TPart extends FeaturePartSpec
-              ? { relief?: number }
-              : object
-      )
-    : never;
-export type PartAuthoringSpec = AuthoringPart<PartSpec>;
+
+interface PartAuthoringBase {
+  partId: string;
+  parentPartId?: string | null;
+  materialId?: string;
+  joint?: PartJoint;
+}
+
+export interface MassPartAuthoringSpec extends PartAuthoringBase {
+  kind: 'mass';
+  center?: LatticeVec3;
+  radii?: LatticeVec3;
+  profile?: PartProfile;
+}
+
+export interface SegmentPartAuthoringSpec extends PartAuthoringBase {
+  kind: 'segment';
+  points?: readonly LatticeVec3[];
+  radii?: LatticeVec3 | readonly LatticeVec3[];
+  profile?: PartProfile;
+}
+
+export interface PlatePartAuthoringSpec extends PartAuthoringBase {
+  kind: 'plate';
+  plane?: PlatePartSpec['plane'];
+  origin?: LatticeVec3;
+  outline?: readonly LatticeVec2[];
+  size?: LatticeVec2;
+  thickness?: number;
+}
+
+export interface RadialPartAuthoringSpec extends PartAuthoringBase {
+  kind: 'radial';
+  axis?: PartAxis;
+  center?: LatticeVec3;
+  outerRadius?: number;
+  innerRadius?: number;
+  depth?: number;
+}
+
+export interface FeaturePartAuthoringSpec
+  extends Omit<PartAuthoringBase, 'parentPartId' | 'joint'> {
+  kind: 'feature';
+  parentPartId?: string | null;
+  joint?: FixedPartJoint;
+  motif?: FeatureMotif;
+  face?: PartFace;
+  anchor?: LatticeVec3;
+  size?: LatticeVec2;
+}
+
+export type PartAuthoringSpec =
+  | MassPartAuthoringSpec
+  | SegmentPartAuthoringSpec
+  | PlatePartAuthoringSpec
+  | RadialPartAuthoringSpec
+  | FeaturePartAuthoringSpec;
+
+export type GeometryPartSpec = Exclude<PartSpec, { kind: 'feature' }>;
+
+export const isGeometryPartSpec = (
+  part: PartSpec
+): part is GeometryPartSpec => part.kind !== 'feature';
 
 export type PartContractIssueCode =
   | 'type'
@@ -127,6 +161,7 @@ const BASE_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const AXES = ['x', 'y', 'z'] as const;
 const FACES = ['north', 'south', 'east', 'west', 'up', 'down'] as const;
 const PROFILES = ['soft', 'balanced', 'hard'] as const;
+const FEATURE_MOTIFS = ['eye'] as const;
 const PLANES = ['xy', 'xz', 'yz'] as const;
 const COMMON_KEYS = [
   'kind',
@@ -146,12 +181,12 @@ export const isPartId = (value: unknown): value is string =>
 export const isPartBaseColor = (value: unknown): value is string =>
   typeof value === 'string' && BASE_COLOR_PATTERN.test(value);
 
-const PRIMITIVE_KEYS: Readonly<Record<PartPrimitive, readonly string[]>> = {
+const PART_KIND_KEYS: Readonly<Record<PartKind, readonly string[]>> = {
   mass: ['center', 'radii', 'profile'],
   segment: ['points', 'radii', 'profile'],
   plate: ['plane', 'origin', 'outline', 'thickness'],
   radial: ['axis', 'center', 'outerRadius', 'innerRadius', 'depth'],
-  feature: ['face', 'anchor', 'size', 'relief']
+  feature: ['motif', 'face', 'anchor', 'size']
 };
 
 const isRecord = (value: unknown): value is UnknownRecord =>
@@ -914,19 +949,15 @@ const parseFeature = (
   path: string,
   issues: PartContractIssue[]
 ): { value: FeaturePartSpec | null; estimatedCells: number } => {
+  const motif = parseEnum(
+    input.motif,
+    FEATURE_MOTIFS,
+    `${path}.motif`,
+    issues
+  );
   const face = parseEnum(input.face, FACES, `${path}.face`, issues);
   const anchor = parseVec3(input.anchor, `${path}.anchor`, issues);
   const size = parseVec2(input.size, `${path}.size`, issues, parseExtent);
-  const relief =
-    input.relief === undefined
-      ? 1
-      : parseInteger(
-          input.relief,
-          `${path}.relief`,
-          issues,
-          1,
-          PART_CONTRACT_LIMITS.maxRelief
-        );
   if (common.parentPartId === null) {
     addIssue(
       issues,
@@ -935,19 +966,58 @@ const parseFeature = (
       'A surface feature requires a parent part.'
     );
   }
-  if (face === null || anchor === null || size === null || relief === null) {
+  if (common.joint.kind !== 'fixed') {
+    addIssue(
+      issues,
+      `${path}.joint`,
+      'relationship',
+      'A surface feature is fixed to its parent surface.'
+    );
+  }
+  if (common.attachment !== null) {
+    addIssue(
+      issues,
+      `${path}.attachment`,
+      'relationship',
+      'A surface feature has no geometry attachment.'
+    );
+  }
+  if (
+    size !== null &&
+    (size[0] < 4 || size[1] < 3)
+  ) {
+    addIssue(
+      issues,
+      `${path}.size`,
+      'range',
+      'An eye motif requires at least 4 × 3 surface pixels.'
+    );
+  }
+  if (
+    motif === null ||
+    face === null ||
+    anchor === null ||
+    size === null ||
+    common.joint.kind !== 'fixed' ||
+    common.attachment !== null
+  ) {
     return { value: null, estimatedCells: 0 };
   }
   return {
     value:
       common.parentPartId === null
         ? null
-        : { ...common, kind: 'feature', face, anchor, size, relief },
-    estimatedCells: checkedProduct([
-      size[0],
-      size[1],
-      relief
-    ])
+        : {
+            ...common,
+            joint: { kind: 'fixed' },
+            attachment: null,
+            kind: 'feature',
+            motif,
+            face,
+            anchor,
+            size
+          },
+    estimatedCells: 0
   };
 };
 
@@ -980,11 +1050,11 @@ const parsePart = (
     addIssue(issues, path, 'type', 'Expected a PartSpec object.');
     return { value: null, estimatedCells: 0 };
   }
-  const kind = parseEnum(input.kind, PART_PRIMITIVES, `${path}.kind`, issues);
+  const kind = parseEnum(input.kind, PART_KINDS, `${path}.kind`, issues);
   if (kind === null) return { value: null, estimatedCells: 0 };
   rejectUnknownKeys(
     input,
-    [...COMMON_KEYS, ...PRIMITIVE_KEYS[kind]],
+    [...COMMON_KEYS, ...PART_KIND_KEYS[kind]],
     path,
     issues
   );

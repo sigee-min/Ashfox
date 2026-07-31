@@ -61,6 +61,7 @@ const completedVisualReviewKeys = (
       document.id,
       document.revision
     ).flatMap((receipt) => {
+      if (receipt.verdict !== 'accepted') return [];
       if (
         receipt.mode === 'cycle' &&
         receipt.completedCycles < 1

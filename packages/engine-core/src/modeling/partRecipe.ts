@@ -119,7 +119,8 @@ const validateCompleteHierarchy = (
   parts: readonly PartSpec[]
 ): readonly PartRecipeIssue[] => {
   const issues: PartRecipeIssue[] = [];
-  const partIds = new Set(parts.map((part) => part.partId));
+  const partsById = new Map(parts.map((part) => [part.partId, part]));
+  const partIds = new Set(partsById.keys());
   const roots = parts.filter((part) => part.parentPartId === null);
   if (roots.length !== 1) {
     issues.push({
@@ -138,10 +139,39 @@ const validateCompleteHierarchy = (
           `Parent part "${part.parentPartId}" does not exist in the canonical recipe.`
       });
     }
-    if (
-      part.parentPartId !== null &&
-      part.attachment === null
-    ) {
+    const parent = part.parentPartId === null
+      ? undefined
+      : partsById.get(part.parentPartId);
+    if (part.kind === 'feature') {
+      if (
+        part.parentPartId === null ||
+        parent?.kind === 'feature'
+      ) {
+        issues.push({
+          path: `modeling.parts[${index}].parentPartId`,
+          message:
+            'A surface feature requires a geometric parent.'
+        });
+      }
+      if (
+        part.joint.kind !== 'fixed' ||
+        part.attachment !== null
+      ) {
+        issues.push({
+          path: `modeling.parts[${index}]`,
+          message:
+            'A surface feature is a fixed zero-depth marking without a geometry attachment.'
+        });
+      }
+      return;
+    }
+    if (parent?.kind === 'feature') {
+      issues.push({
+        path: `modeling.parts[${index}].parentPartId`,
+        message: 'Geometry cannot be parented to a surface feature.'
+      });
+    }
+    if (part.parentPartId !== null && part.attachment === null) {
       issues.push({
         path: `modeling.parts[${index}].attachment`,
         message:

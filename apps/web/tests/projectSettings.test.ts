@@ -51,7 +51,7 @@ assert.deepEqual(
     exportTarget: null
   }),
   [],
-  'leaving a legacy target untouched must not invent a migration'
+  'an unavailable target editor must leave the target unchanged'
 );
 
 assert.deepEqual(
@@ -80,7 +80,11 @@ assert.deepEqual(
   [{
     name: 'project.target.set',
     payload: {
-      target: 'bedrock',
+      target: 'bedrock'
+    }
+  }, {
+    name: 'project.resource.set',
+    payload: {
       namespace: 'ashfox',
       modelPath: 'copper_truck'
     }

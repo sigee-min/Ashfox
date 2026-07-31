@@ -11,6 +11,20 @@ import {
   createGltfProject
 } from './helpers';
 
+const withCanonicalIdle = (
+  project: ReturnType<typeof createGltfProject>
+) => {
+  const document = structuredClone(project);
+  const legacyIdle = document.animations['clip-idle'];
+  document.animations = {
+    idle: {
+      ...legacyIdle,
+      id: 'idle'
+    }
+  };
+  return document;
+};
+
 const emptyGlb = createProjectFromInput(
   {
     id: 'readiness-empty-glb',
@@ -39,34 +53,47 @@ assert.deepEqual(
   ]
 );
 
-const geckoPlaceholder = createProjectFromInput(
+const emptyGecko = createProjectFromInput(
   {
-    id: 'readiness-placeholder-gecko',
-    name: 'Placeholder Gecko',
+    id: 'readiness-empty-gecko',
+    name: 'Empty Gecko',
     target: 'geckolib5',
     namespace: 'ashfox',
-    modelPath: 'placeholder_gecko',
+    modelPath: 'empty_gecko',
     createdAt: '2026-07-31T00:00:00.000Z'
   },
   'readiness-1'
 );
 const authoredGecko = createGeckoLib5Project();
-geckoPlaceholder.scene = authoredGecko.scene;
-geckoPlaceholder.textures = authoredGecko.textures;
-const placeholderReadiness =
-  evaluateProductionReadiness(geckoPlaceholder);
-assert.equal(
-  Object.values(geckoPlaceholder.animations)[0]?.name,
-  'animation.placeholder_gecko.rest_pose'
-);
-assert.equal(placeholderReadiness.counts.idleClips, 0);
+emptyGecko.scene = authoredGecko.scene;
+emptyGecko.textures = authoredGecko.textures;
+const emptyGeckoReadiness =
+  evaluateProductionReadiness(emptyGecko);
+assert.deepEqual(emptyGecko.animations, {});
+assert.equal(validateProjectDocument(emptyGecko).valid, true);
+assert.equal(emptyGeckoReadiness.counts.idleClips, 0);
 assert.ok(
-  placeholderReadiness.findings.some(
+  emptyGeckoReadiness.findings.some(
     (finding) => finding.code === 'production.idle_missing'
-  )
+  ),
+  'canonical idle readiness is the only animation-presence completion authority'
 );
 
-const badLoop = createGltfProject('glb', 'embedded');
+const nonCanonicalNamedIdle = createGltfProject('glb', 'embedded');
+const nonCanonicalNamedReadiness = evaluateProductionReadiness(
+  nonCanonicalNamedIdle
+);
+assert.ok(
+  nonCanonicalNamedReadiness.findings.some(
+    (finding) =>
+      finding.code === 'production.idle_missing' &&
+      finding.clipIds?.includes('clip-idle') &&
+      finding.fix.includes('same atomic batch')
+  ),
+  'an Idle-like name must not replace the canonical clip ID'
+);
+
+const badLoop = withCanonicalIdle(nonCanonicalNamedIdle);
 const badLoopReadiness = evaluateProductionReadiness(badLoop);
 assert.equal(badLoopReadiness.structurallyValid, true);
 assert.equal(badLoopReadiness.mechanicallyReady, false);
@@ -82,12 +109,9 @@ ready.intent = {
   subject: 'Crate',
   forward: 'north',
   grounding: 'free',
-  requiredFeatures: ['Human confirms the crate reads correctly.'],
-  requiredPartIds: [],
-  requiredMaterialIds: [],
-  requiredClipIds: []
+  features: ['Human confirms the crate reads correctly.']
 };
-const readyClip = ready.animations['clip-idle'];
+const readyClip = ready.animations.idle;
 const readyChannel = readyClip.channels['channel-root-rotation'];
 const readyKeys = [...readyChannel.keys];
 readyKeys[readyKeys.length - 1] = {
@@ -96,7 +120,7 @@ readyKeys[readyKeys.length - 1] = {
 };
 ready.animations = {
   ...ready.animations,
-  'clip-idle': {
+  idle: {
     ...readyClip,
     channels: {
       ...readyClip.channels,
@@ -110,6 +134,123 @@ ready.animations = {
 const readyReadiness = evaluateProductionReadiness(ready);
 assert.equal(readyReadiness.mechanicallyReady, true);
 assert.deepEqual(readyReadiness.findings, []);
+
+const withImportedWalk = structuredClone(ready);
+const importedWalkChannel = structuredClone(
+  withImportedWalk.animations.idle.channels[
+    'channel-root-rotation'
+  ]
+);
+importedWalkChannel.id = 'channel-walk-root-rotation';
+importedWalkChannel.keys = importedWalkChannel.keys.map(
+  (key, index) => ({
+    ...key,
+    id: `key-walk-root-rotation-${index}`
+  })
+);
+withImportedWalk.animations.walk = {
+  ...withImportedWalk.animations.idle,
+  id: 'walk',
+  name: 'animation.crate.walk',
+  channels: {
+    [importedWalkChannel.id]: importedWalkChannel
+  }
+};
+
+const openImportedLoop = structuredClone(withImportedWalk);
+const openWalkChannel =
+  openImportedLoop.animations.walk.channels[
+    'channel-walk-root-rotation'
+  ];
+openImportedLoop.animations.walk.channels = {
+  [openWalkChannel.id]: {
+    ...openWalkChannel,
+    keys: openWalkChannel.keys.map((key, index) =>
+      index === openWalkChannel.keys.length - 1
+        ? { ...key, value: [0, 15, 0] }
+        : key
+    )
+  }
+};
+assert.ok(
+  evaluateProductionReadiness(openImportedLoop).findings.some(
+    (finding) =>
+      finding.code === 'production.animation_loop_invalid' &&
+      finding.clipIds?.includes('walk')
+  ),
+  'an imported open non-idle loop must block delivery'
+);
+
+const windingImportedLoop = structuredClone(withImportedWalk);
+const windingWalkChannel =
+  windingImportedLoop.animations.walk.channels[
+    'channel-walk-root-rotation'
+  ];
+windingImportedLoop.animations.walk.channels = {
+  [windingWalkChannel.id]: {
+    ...windingWalkChannel,
+    keys: windingWalkChannel.keys.map((key, index) =>
+      index === windingWalkChannel.keys.length - 1
+        ? { ...key, value: [0, 360, 0] }
+        : key
+    )
+  }
+};
+assert.ok(
+  !evaluateProductionReadiness(windingImportedLoop).findings.some(
+    (finding) =>
+      finding.code === 'production.animation_loop_invalid'
+  ),
+  'a full-turn rotation is a valid non-idle loop closure'
+);
+
+const earlyImportedLoop = structuredClone(withImportedWalk);
+const earlyWalkChannel = earlyImportedLoop.animations.walk.channels[
+  'channel-walk-root-rotation'
+];
+earlyImportedLoop.animations.walk.channels = {
+  [earlyWalkChannel.id]: {
+    ...earlyWalkChannel,
+    keys: earlyWalkChannel.keys.map((key, index) =>
+      index === earlyWalkChannel.keys.length - 1
+        ? {
+            ...key,
+            timeSeconds:
+              earlyImportedLoop.animations.walk.durationSeconds - 0.05
+          }
+        : key
+    )
+  }
+};
+assert.ok(
+  evaluateProductionReadiness(earlyImportedLoop).findings.some(
+    (finding) =>
+      finding.code === 'production.animation_loop_invalid'
+  ),
+  'a loop track must close at the declared clip duration'
+);
+
+const windingIdle = structuredClone(ready);
+const windingChannel = windingIdle.animations.idle.channels[
+  'channel-root-rotation'
+];
+windingIdle.animations.idle.channels = {
+  ...windingIdle.animations.idle.channels,
+  [windingChannel.id]: {
+    ...windingChannel,
+    keys: windingChannel.keys.map((key, index) =>
+      index === windingChannel.keys.length - 1
+        ? { ...key, value: [0, 360, 0] }
+        : key
+    )
+  }
+};
+assert.ok(
+  evaluateProductionReadiness(windingIdle).findings.some(
+    (finding) => finding.code === 'production.idle_loop_invalid'
+  ),
+  'canonical Idle must close numerically rather than modulo full turns'
+);
 
 const hiddenAncestor = structuredClone(ready);
 hiddenAncestor.scene.nodes['bone-root'].visible = false;
@@ -138,19 +279,16 @@ assert.ok(
 );
 
 const unfaithfulPreview = structuredClone(
-  createGeckoLib5Project()
+  withCanonicalIdle(createGeckoLib5Project())
 );
 unfaithfulPreview.intent = {
   subject: 'Crate',
   forward: 'north',
   grounding: 'free',
-  requiredFeatures: ['Human confirms the crate reads correctly.'],
-  requiredPartIds: [],
-  requiredMaterialIds: [],
-  requiredClipIds: []
+  features: ['Human confirms the crate reads correctly.']
 };
 const unfaithfulClip =
-  unfaithfulPreview.animations['clip-idle'];
+  unfaithfulPreview.animations.idle;
 const unfaithfulChannel =
   unfaithfulClip.channels['channel-root-rotation'];
 const unfaithfulKeys = [...unfaithfulChannel.keys];
@@ -160,7 +298,7 @@ unfaithfulKeys[unfaithfulKeys.length - 1] = {
 };
 unfaithfulPreview.animations = {
   ...unfaithfulPreview.animations,
-  'clip-idle': {
+  idle: {
     ...unfaithfulClip,
     channels: {
       ...unfaithfulClip.channels,

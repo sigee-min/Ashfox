@@ -17,6 +17,7 @@ import {
 } from '../src/modeling/partContract';
 import { cellKey, parseCellKey } from '../src/modeling/lattice';
 import { rasterizePart } from '../src/modeling/partPrimitiveAdapter';
+import { surfaceFeaturePixels } from '../src/modeling/surfaceFeature';
 import { normalizePartRecipe } from '../src/modeling/partRecipe';
 import {
   deriveMirrorPartIdMap,
@@ -121,14 +122,11 @@ const primitiveFixture: readonly PartSpec[] = [
     parentPartId: 'source.radial',
     materialId: 'teal',
     joint: { kind: 'fixed' },
-    attachment: {
-      parentAnchor: [5, -6, 8],
-      partAnchor: [-2, 3, 1]
-    },
+    attachment: null,
+    motif: 'eye',
     face: 'east',
     anchor: [3, -1, 4],
-    size: [3, 5],
-    relief: 2
+    size: [4, 5]
   }
 ];
 
@@ -167,7 +165,11 @@ const reflectedVector = (
   return reflected;
 };
 
-for (const axis of ['x', 'y', 'z'] as const) {
+const reflectionCases = ([7, 7.5] as const).flatMap(
+  (plane) =>
+    (['x', 'y', 'z'] as const).map((axis) => ({ axis, plane }))
+);
+for (const { axis, plane } of reflectionCases) {
   const mappings = sourcePartIds.map((sourcePartId) => ({
     sourcePartId,
     targetPartId: sourcePartId.replace('source.', `mirror${axis}.`)
@@ -175,7 +177,7 @@ for (const axis of ['x', 'y', 'z'] as const) {
   const mirrored = mirrorPartRecipeSubtree(primitiveRecipe, {
     rootPartId: 'source.mass',
     axis,
-    plane: 7,
+    plane,
     partIdMap: [...mappings].reverse()
   });
   assert.equal(mirrored.ok, true);
@@ -192,10 +194,37 @@ for (const axis of ['x', 'y', 'z'] as const) {
     );
     assert.ok(source);
     assert.ok(target);
+    if (source.kind === 'feature' && target.kind === 'feature') {
+      assert.deepEqual(
+        surfaceFeaturePixels(target)
+          .map((pixel) => cellKey(pixel.boundaryCell))
+          .sort(),
+        surfaceFeaturePixels(source)
+          .map((pixel) =>
+            cellKey(
+              reflectLatticeCell(pixel.boundaryCell, axis, plane)
+            )
+          )
+          .sort(),
+        `feature pixels must reflect exactly on ${axis}=${plane}`
+      );
+      assert.equal(target.materialId, source.materialId);
+      assert.deepEqual(target.joint, source.joint);
+      assert.equal(target.attachment, null);
+      assert.equal(
+        target.face,
+        axis === 'x' ? 'west' : 'east',
+        'feature face must flip only across its normal axis'
+      );
+      continue;
+    }
+    if (source.kind === 'feature' || target.kind === 'feature') {
+      throw new Error('Primitive kind changed during reflection.');
+    }
     assert.deepEqual(
       [...rasterizePart(1, target).cells].sort(),
-      reflectedCellKeys(source, axis, 7),
-      `${source.kind} occupancy must reflect exactly on ${axis}`
+      reflectedCellKeys(source, axis, plane),
+      `${source.kind} occupancy must reflect exactly on ${axis}=${plane}`
     );
     assert.equal(target.materialId, source.materialId);
     assert.deepEqual(target.joint, source.joint);
@@ -207,7 +236,7 @@ for (const axis of ['x', 'y', 'z'] as const) {
             parentAnchor: reflectedVector(
               source.attachment.parentAnchor,
               axis,
-              7
+              plane
             ),
             partAnchor: reflectedVector(
               source.attachment.partAnchor,
@@ -243,13 +272,6 @@ for (const axis of ['x', 'y', 'z'] as const) {
         );
       }
     }
-    if (target.kind === 'feature') {
-      assert.equal(
-        target.face,
-        axis === 'x' ? 'west' : 'east',
-        'feature face must flip only across its normal axis'
-      );
-    }
   }
 
   const restoreMappings = mappings.map((mapping) => ({
@@ -262,7 +284,7 @@ for (const axis of ['x', 'y', 'z'] as const) {
   const restored = mirrorPartRecipeSubtree(mirrored.recipe, {
     rootPartId: `mirror${axis}.mass`,
     axis,
-    plane: 7,
+    plane,
     partIdMap: restoreMappings
   });
   assert.equal(restored.ok, true);
@@ -299,7 +321,7 @@ for (const axis of ['x', 'y', 'z'] as const) {
               restoredPart.parentPartId
       },
       source,
-      `reflecting ${source.kind} twice must be an involution on ${axis}`
+      `reflecting ${source.kind} twice must be an involution on ${axis}=${plane}`
     );
   }
 }
@@ -423,6 +445,33 @@ const oneSided = execute(createProject('project-mirror-parts'), 'upsert-left', [
   }
 }]);
 const oneSidedSnapshot = JSON.stringify(oneSided);
+const quarterPlaneMirror = executeCommandBatch(
+  oneSided,
+  {
+    batchId: 'mirror-quarter-plane',
+    baseProjectId: oneSided.id,
+    baseRevision: oneSided.revision,
+    operations: [{
+      name: 'model.parts.mirror',
+      payload: {
+        rootPartId: 'arm.left',
+        axis: 'x',
+        plane: 0.25
+      }
+    }]
+  },
+  { source: 'agent' }
+);
+assert.equal(quarterPlaneMirror.ok, false);
+if (!quarterPlaneMirror.ok) {
+  assert.equal(quarterPlaneMirror.error.code, 'invalid_payload');
+  assert.equal(
+    quarterPlaneMirror.error.path,
+    'operations[0].payload.plane'
+  );
+}
+assert.equal(JSON.stringify(oneSided), oneSidedSnapshot);
+
 const collidingMirror = executeCommandBatch(
   oneSided,
   {
@@ -465,6 +514,14 @@ assert.deepEqual(defaultMirrorMap, [{
   sourcePartId: 'hand.left',
   targetPartId: 'arm.left.mirror-x-p0.hand.left'
 }]);
+assert.equal(
+  deriveMirrorPartIdMap(oneSided.modeling!, {
+    rootPartId: 'arm.left',
+    axis: 'x',
+    plane: 0.5
+  })[0]?.targetPartId,
+  'arm.left.mirror-x-p0.5'
+);
 
 const bilateral = execute(oneSided, 'mirror-right', [{
   name: 'model.parts.mirror',
@@ -743,7 +800,7 @@ const movedChain = execute(fullChain, 'transform-chain-70', [{
   name: 'model.parts.transform',
   payload: {
     rootPartId: 'chain.0',
-    translation: [0, 10, 0]
+    by: [0, 10, 0]
   }
 }]);
 const movedCompiled = readCompiledParts(movedChain);
@@ -780,7 +837,7 @@ const detachedTransform = executeCommandBatch(
       name: 'model.parts.transform',
       payload: {
         rootPartId: 'chain.1',
-        translation: [0, 10, 0]
+        by: [0, 10, 0]
       }
     }]
   },
@@ -790,7 +847,7 @@ assert.equal(detachedTransform.ok, false);
 if (!detachedTransform.ok) {
   assert.equal(
     detachedTransform.error.path,
-    'operations[0].payload.translation'
+    'operations[0].payload.by'
   );
 }
 assert.equal(
@@ -798,3 +855,29 @@ assert.equal(
   fullChainSnapshot,
   'failed subtree projection must expose no intermediate document state'
 );
+
+const unexpectedTransformInput = executeCommandBatch(
+  fullChain,
+  {
+    batchId: 'transform-unexpected-input',
+    baseProjectId: fullChain.id,
+    baseRevision: fullChain.revision,
+    operations: [{
+      name: 'model.parts.transform',
+      payload: {
+        rootPartId: 'chain.0',
+        by: [0, 1, 0],
+        unexpected: true
+      }
+    }] as unknown as CommandBatch['operations']
+  },
+  { source: 'agent' }
+);
+assert.equal(unexpectedTransformInput.ok, false);
+if (!unexpectedTransformInput.ok) {
+  assert.equal(unexpectedTransformInput.error.code, 'invalid_payload');
+  assert.equal(
+    unexpectedTransformInput.error.path,
+    'operations[0].payload.unexpected'
+  );
+}

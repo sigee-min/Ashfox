@@ -213,13 +213,10 @@ const clone = <T>(value: T): T => structuredClone(value);
   const project = clone(createGeckoLib5Project()) as ProjectDocument;
   (project as { animations: Record<string, never> }).animations = {};
   const report = validateProjectDocument(project);
-  assert.equal(report.valid, false);
-  assert.ok(
-    report.findings.some(
-      (finding) =>
-        finding.code === 'format.unsupported_data' &&
-        finding.path === 'animations'
-    )
+  assert.equal(
+    report.valid,
+    true,
+    'an incomplete Gecko project may have no clips; canonical idle is a production-readiness requirement'
   );
 }
 

@@ -63,9 +63,14 @@ assert.equal(manifest.pageApi.presentMethod, 'present');
 assert.equal(manifest.pageApi.deliverMethod, 'deliver');
 assert.match(manifest.pageApi.present.call, /window\.ashfox\.present/);
 assert.match(manifest.pageApi.present.call, /review:"next"/);
+assert.match(manifest.pageApi.present.accept, /review:"accept"/);
+assert.match(manifest.pageApi.present.accept, /frameNonce/);
+assert.match(manifest.pageApi.present.reject, /review:"reject"/);
+assert.match(manifest.pageApi.present.reject, /issues/);
 assert.match(manifest.pageApi.deliver.call, /window\.ashfox\.deliver/);
 assert.match(manifest.pageApi.inspect.command, /kind:"command"/);
 assert.match(manifest.pageApi.run.call, /await window\.ashfox\.run/);
+assert.match(manifest.pageApi.run.call, /requestId/);
 assert.doesNotMatch(manifest.pageApi.run.call, /baseRevision|batchId/);
 assert.match(manifest.setup.manifest, /such as curl/);
 assert.match(manifest.setup.manifest, /Do not navigate/);
@@ -73,15 +78,20 @@ assert.match(manifest.setup.ready, /What would you like to create/);
 
 assert.match(manifest.authoring.project, /name,target\?,density\?/);
 assert.match(manifest.authoring.coordinates, /1\/d model unit/);
-assert.match(manifest.authoring.hierarchy, /derives snap/);
+assert.match(manifest.authoring.hierarchy, /derives .*snap/);
 assert.match(manifest.authoring.hierarchy, /UVs/);
 assert.match(manifest.authoring.materials, /square surface pixels/);
+assert.match(manifest.authoring.hierarchy, /parentPartId:null/);
+assert.match(manifest.authoring.mutations, /rootPartId,by/);
 assert.deepEqual(
   Object.keys(manifest.authoring.parts),
   ['mass', 'segment', 'plate', 'radial', 'feature']
 );
 assert.match(manifest.animation.command, /animation\.motion\.upsert/);
-assert.match(manifest.animation.idle, /static hold/);
+assert.match(manifest.animation.idle, /static:true/);
+assert.match(manifest.animation.poses, /rotations/);
+assert.match(manifest.animation.spins, /continuous hinge/);
+assert.match(manifest.animation.patch, /removePartIds/);
 assert.match(manifest.quality.required, /never a quality target/);
 assert.match(manifest.quality.fidelity, /generic humanoid/);
 assert.match(manifest.quality.review, /identity or appeal/);
@@ -133,6 +143,52 @@ for (const rawCommand of [
   assert.ok(!agentCommandNames.includes(rawCommand));
 }
 
+const modelUpsertDefinition = agentDefinitions.find(
+  (definition) => definition.name === 'model.parts.upsert'
+);
+assert.ok(modelUpsertDefinition);
+const partVariants = (
+  modelUpsertDefinition.inputSchema as {
+    properties: {
+      parts: {
+        items: {
+          anyOf: readonly {
+            description: string;
+            properties: {
+              kind: { enum: readonly string[] };
+            };
+          }[];
+        };
+      };
+    };
+  }
+).properties.parts.items.anyOf;
+for (const [index, kind] of [
+  'mass',
+  'segment',
+  'plate',
+  'radial',
+  'feature'
+].entries()) {
+  assert.equal(partVariants[index].properties.kind.enum[0], kind);
+  assert.match(
+    partVariants[index].description,
+    new RegExp(`^${kind[0].toUpperCase()}${kind.slice(1)}\\.`)
+  );
+}
+const materialDefinition = agentDefinitions.find(
+  (definition) => definition.name === 'model.parts.material'
+);
+assert.ok(materialDefinition);
+assert.deepEqual(
+  (
+    materialDefinition.inputSchema as {
+      atLeastOne: readonly string[];
+    }
+  ).atLeastOne,
+  ['materialId', 'baseColor']
+);
+
 const artifactMarkup = 'data-ashfox-action="artifact.download"';
 assertSelectorIsRendered(
   'artifact.downloadSelector',
@@ -144,8 +200,16 @@ assert.equal(
 );
 assert.equal(productSource.split(artifactMarkup).length - 1, 1);
 assert.equal(
-  agentCommandProtocol.inputAttribute,
-  manifest.domBridge.input.attribute
+  manifest.domBridge.input.selector,
+  `[${agentCommandProtocol.inputAttribute}]`
+);
+assert.equal(manifest.domBridge.input.property, 'value');
+assert.match(manifest.domBridge.input.write, /element\.value/);
+assert.match(manifest.domBridge.input.write, /bubbling input event/);
+assert.equal(
+  Object.hasOwn(manifest.domBridge.input, 'attribute'),
+  false,
+  'the bridge request must not be documented as attribute input'
 );
 assert.equal(
   agentCommandProtocol.resultAttribute,
@@ -243,19 +307,44 @@ if (result.ok) {
       idleChannels: number;
     };
     workflow: {
-      recommendedCommands: readonly string[];
+      nextActions: readonly (
+        | {
+            kind: 'operation';
+            operation: { name: string };
+          }
+        | {
+            kind: 'command';
+            name: string;
+          }
+        | {
+            kind: 'present';
+          }
+        | {
+            kind: 'deliver';
+          }
+      )[];
     };
   };
   assert.equal(data.protocol.workbench, manifest.workbench);
   assert.equal(data.protocol.manifest, manifest.href);
-  assert.ok(data.workflow.recommendedCommands.length <= 3);
-  assert.ok(
-    data.workflow.recommendedCommands.every((command) =>
-      agentDefinitions.some(
-        (definition) => definition.name === command
-      )
-    )
-  );
+  assert.ok(data.workflow.nextActions.length <= 3);
+  for (const action of data.workflow.nextActions) {
+    if (action.kind === 'command') {
+      assert.ok(
+        agentDefinitions.some(
+          (definition) => definition.name === action.name
+        )
+      );
+    }
+    if (action.kind === 'operation') {
+      assert.ok(
+        agentDefinitions.some(
+          (definition) =>
+            definition.name === action.operation.name
+        )
+      );
+    }
+  }
   assert.equal(
     data.project.surfacePixelDensity,
     document.settings.surfacePixelDensity
@@ -279,8 +368,8 @@ if (result.ok) {
     clips: 1,
     channels: 1,
     triggers: 0,
-    idleClips: 1,
-    idleChannels: 1
+    idleClips: 0,
+    idleChannels: 0
   });
 }
 
@@ -413,6 +502,17 @@ if (exactInspect.ok) {
     0
   );
 }
+const missingPartInspect = inspectProject(
+  authoredModel.document,
+  null,
+  validateProjectDocument(authoredModel.document),
+  { kind: 'parts', ids: ['missing.part'] }
+);
+assert.equal(missingPartInspect.ok, false);
+if (!missingPartInspect.ok) {
+  assert.equal(missingPartInspect.error.code, 'not_found');
+  assert.equal(missingPartInspect.error.path, 'ids[0]');
+}
 
 const hiddenRootProject = structuredClone(document);
 hiddenRootProject.scene.nodes['bone-root'].visible = false;
@@ -452,7 +552,8 @@ const readiness = inspectProject(
 assert.equal(readiness.ok, true);
 if (readiness.ok) {
   const data = readiness.data as {
-    valid: boolean;
+    target: string;
+    structurallyValid: boolean;
     mechanicallyReady: boolean;
     semanticReviewRequired: boolean;
     counts: {
@@ -463,7 +564,8 @@ if (readiness.ok) {
       code: string;
     };
   };
-  assert.equal(data.valid, true);
+  assert.equal(data.target, 'geckolib5');
+  assert.equal(data.structurallyValid, true);
   assert.equal(data.mechanicallyReady, false);
   assert.equal(data.semanticReviewRequired, true);
   assert.equal(data.counts.warnings, 1);
@@ -537,16 +639,60 @@ const boundedClip = inspectProject(
   largeClipDocument,
   null,
   validateProjectDocument(document),
-  { kind: 'clip', ids: ['clip-idle'] }
+  {
+    kind: 'clip',
+    id: 'clip-idle',
+    trackId: 'channel-root-rotation',
+    limit: 20
+  }
 );
 assert.equal(boundedClip.ok, true);
 if (boundedClip.ok) {
-  assert.equal(boundedClip.truncated, true);
+  const data = boundedClip.data as {
+    clip: {
+      id: string;
+      canonical20Fps: boolean;
+    };
+    page: {
+      kind: string;
+      items: readonly { keyId: string }[];
+      total: number;
+      nextCursor: string | null;
+    };
+  };
+  assert.equal(data.clip.id, 'clip-idle');
+  assert.equal(data.clip.canonical20Fps, false);
+  assert.equal(data.page.kind, 'keys');
   assert.equal(
-    (boundedClip.data as readonly { channelCount: number }[])[0]
-      ?.channelCount,
-    1
+    data.page.items.length,
+    20
   );
+  assert.equal(data.page.total, 800);
+  assert.ok(data.page.nextCursor);
+  const nextKeyPage = inspectProject(
+    largeClipDocument,
+    null,
+    validateProjectDocument(document),
+    {
+      kind: 'clip',
+      id: 'clip-idle',
+      trackId: 'channel-root-rotation',
+      limit: 20,
+      cursor: data.page.nextCursor ?? undefined
+    }
+  );
+  assert.equal(nextKeyPage.ok, true);
+  if (nextKeyPage.ok) {
+    const nextData = nextKeyPage.data as {
+      page: {
+        items: readonly { keyId: string }[];
+      };
+    };
+    assert.notEqual(
+      nextData.page.items[0]?.keyId,
+      data.page.items[0]?.keyId
+    );
+  }
 }
 
 const activity = [0, 1].map((index): CommandReceipt => ({

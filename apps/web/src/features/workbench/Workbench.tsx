@@ -303,6 +303,7 @@ export function Workbench() {
   const {
     presentationNonce,
     present: presentAgentView,
+    review: reviewAgentView,
     onPresented,
     getVisualReviews
   } = useAgentPresentation({
@@ -314,6 +315,7 @@ export function Workbench() {
 
   const agentStatus = useAgentCommandPort({
     document,
+    projectGeneration: storage.generation,
     assets,
     activity: history.activity,
     commandOutcomes: history.commandOutcomes,
@@ -322,6 +324,7 @@ export function Workbench() {
     dispatch: dispatchProject,
     onFocusEntity: selectNode,
     onPresent: presentAgentView,
+    onReview: reviewAgentView,
     onDeliver: projectFiles.exportTarget,
     getVisualReviews,
     operationLease

@@ -94,8 +94,7 @@ const commonProperties = {
 } as const;
 
 const commonRequired = [
-  'partId',
-  'materialId'
+  'partId'
 ] as const;
 
 const profileSchema = {
@@ -112,6 +111,8 @@ export const modelPartSpecSchema = {
   anyOf: [
     {
       type: 'object',
+      description:
+        'Mass. New: materialId, center, and radii. Existing same-kind patch: only changed fields.',
       properties: {
         ...commonProperties,
         kind: { enum: ['mass'] },
@@ -121,14 +122,14 @@ export const modelPartSpecSchema = {
       },
       required: [
         ...commonRequired,
-        'kind',
-        'center',
-        'radii'
+        'kind'
       ],
       additionalProperties: false
     },
     {
       type: 'object',
+      description:
+        'Segment. New: materialId, points, and radii. Existing same-kind patch: only changed fields.',
       properties: {
         ...commonProperties,
         kind: { enum: ['segment'] },
@@ -139,23 +140,30 @@ export const modelPartSpecSchema = {
           maxItems: PART_CONTRACT_LIMITS.maxSegmentPoints
         },
         radii: {
-          type: 'array',
-          items: extentVec3Schema,
-          minItems: 2,
-          maxItems: PART_CONTRACT_LIMITS.maxSegmentPoints
+          anyOf: [
+            extentVec3Schema,
+            {
+              type: 'array',
+              items: extentVec3Schema,
+              minItems: 2,
+              maxItems: PART_CONTRACT_LIMITS.maxSegmentPoints
+            }
+          ],
+          description:
+            'One radius triple broadcasts to every point; an array assigns one triple per point.'
         },
         profile: profileSchema
       },
       required: [
         ...commonRequired,
-        'kind',
-        'points',
-        'radii'
+        'kind'
       ],
       additionalProperties: false
     },
     {
       type: 'object',
+      description:
+        'Plate. New: materialId, plane, origin, thickness, and exactly one of size or outline. Existing same-kind patch: only changed fields.',
       properties: {
         ...commonProperties,
         kind: { enum: ['plate'] },
@@ -167,20 +175,23 @@ export const modelPartSpecSchema = {
           minItems: 3,
           maxItems: 4
         },
+        size: {
+          ...extentVec2Schema,
+          description:
+            'Rectangle width and height. Use this instead of outline.'
+        },
         thickness: extentSchema
       },
       required: [
         ...commonRequired,
-        'kind',
-        'plane',
-        'origin',
-        'outline',
-        'thickness'
+        'kind'
       ],
       additionalProperties: false
     },
     {
       type: 'object',
+      description:
+        'Radial. New: materialId, axis, center, outerRadius, and depth. Existing same-kind patch: only changed fields.',
       properties: {
         ...commonProperties,
         kind: { enum: ['radial'] },
@@ -197,37 +208,46 @@ export const modelPartSpecSchema = {
       },
       required: [
         ...commonRequired,
-        'kind',
-        'axis',
-        'center',
-        'outerRadius',
-        'depth'
+        'kind'
       ],
       additionalProperties: false
     },
     {
       type: 'object',
+      description:
+        'Feature. A zero-depth surface marking. New: parentPartId, materialId, motif, face, anchor, and size. Existing same-kind patch: only changed fields. It paints the generated surface and never creates a protruding cube.',
       properties: {
         ...commonProperties,
+        joint: {
+          type: 'object',
+          properties: {
+            kind: { enum: ['fixed'] }
+          },
+          required: ['kind'],
+          additionalProperties: false
+        },
         kind: { enum: ['feature'] },
+        motif: {
+          enum: ['eye'],
+          description:
+            'Bounded deterministic surface motif. Eye derives its outline, iris, pupil, and highlight from materialId.'
+        },
         face: {
           enum: ['north', 'south', 'east', 'west', 'up', 'down']
         },
         anchor: vec3Schema,
-        size: extentVec2Schema,
-        relief: {
-          type: 'number',
-          integer: true,
-          minimum: 1,
-          maximum: PART_CONTRACT_LIMITS.maxRelief
+        size: {
+          type: 'array',
+          items: extentSchema,
+          minItems: 2,
+          maxItems: 2,
+          description:
+            'Face-local pixel width and height. Eye requires at least [4,3].'
         }
       },
       required: [
         ...commonRequired,
-        'kind',
-        'face',
-        'anchor',
-        'size'
+        'kind'
       ],
       additionalProperties: false
     }
@@ -237,7 +257,7 @@ export const modelPartSpecSchema = {
 export const modelPartsUpsertSchema = {
   type: 'object',
   description:
-    'Author semantic parts in project-space lattice coordinates. Omitted defaultable fields preserve their existing values during replacement and default only for new parts. For every child, ashfox derives a fixed joint by default, the nearest shared-face anchor and pivot, and a deterministic snap of at most two lattice cells. Shallow intersections remain intentional input and receive one canonical owner.',
+    'Create semantic parts or patch existing same-kind parts in project-space lattice coordinates. Every omitted field on an existing part is preserved. New fixed parts may omit parentPartId only when exactly one geometric parent is unambiguous; articulated joints and surface features require an explicit parent. ashfox derives anchors, pivots, and a deterministic snap of at most two lattice cells.',
   properties: {
     parts: {
       type: 'array',
@@ -268,6 +288,8 @@ export const modelPartsUpsertSchema = {
 
 export const modelPartsMaterialSchema = {
   type: 'object',
+  description:
+    'Assign an existing material, derive one from a base color, or provide both. Recoloring only part of a shared material forks it automatically.',
   properties: {
     partIds: {
       type: 'array',
@@ -279,7 +301,8 @@ export const modelPartsMaterialSchema = {
     materialId: idSchema,
     baseColor: colorSchema
   },
-  required: ['partIds', 'materialId', 'baseColor'],
+  required: ['partIds'],
+  atLeastOne: ['materialId', 'baseColor'],
   additionalProperties: false
 } as const satisfies CommandInputSchema;
 
@@ -310,9 +333,12 @@ export const modelPartsMirrorSchema = {
     },
     axis: axisSchema,
     plane: {
-      ...integerSchema,
+      type: 'number',
+      minimum: -PART_CONTRACT_LIMITS.maxAbsoluteCoordinate,
+      maximum: PART_CONTRACT_LIMITS.maxAbsoluteCoordinate,
+      multipleOf: 0.5,
       description:
-        'Asset-space lattice coordinate of the reflection plane on the selected axis.'
+        'Asset-space reflection plane on the whole- or half-lattice grid.'
     },
     targetRootPartId: {
       ...idSchema,
@@ -334,12 +360,12 @@ export const modelPartsTransformSchema = {
       description:
         'Existing part to translate together with every canonical descendant.'
     },
-    translation: {
+    by: {
       ...vec3Schema,
       description:
         'Integer [x,y,z] asset-space lattice translation applied atomically.'
     }
   },
-  required: ['rootPartId', 'translation'],
+  required: ['rootPartId', 'by'],
   additionalProperties: false
 } as const satisfies CommandInputSchema;
