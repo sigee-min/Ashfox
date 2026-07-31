@@ -2,7 +2,7 @@ import {
   isMinecraftExportTarget,
   PROJECT_EXPORT_TARGETS,
   type VisibleExportPreset
-} from '../presentation/projectExportTarget';
+} from '../../../application/projectExportTarget';
 
 interface ProjectTargetFieldsProps {
   target: VisibleExportPreset;

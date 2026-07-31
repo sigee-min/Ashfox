@@ -23,6 +23,9 @@ import {
 } from './textures/textureRecipe';
 import { findFullyOccludedCubes } from './sceneOcclusion';
 import {
+  isSceneNodeEffectivelyVisible
+} from './sceneVisibility';
+import {
   readCompiledParts,
   validateCompiledPartEnvironment,
   type PartInvariantCode
@@ -31,6 +34,10 @@ import { validateCompiledPartRig } from './modeling/partRigInvariants';
 import {
   validatePartRecipeProjection
 } from './modeling/partProjection';
+import { readProjectIntent } from './project/projectIntent';
+import {
+  analyzeProjectAnimationCapabilities
+} from './animation/capability';
 
 export type InvariantSeverity = 'error' | 'warning' | 'info';
 
@@ -39,6 +46,7 @@ export type InvariantCode =
   | 'document.required_value'
   | 'document.invalid_timestamp'
   | 'document.invalid_setting'
+  | 'document.invalid_intent'
   | 'identity.key_mismatch'
   | 'identity.duplicate'
   | 'scene.root_duplicate'
@@ -1086,18 +1094,11 @@ const validateJavaProfile = (
     });
   }
 
-  if (Object.keys(document.animations).length > 0) {
-    add({
-      code: 'format.unsupported_data',
-      severity: 'error',
-      message: 'Java block/item models cannot contain ashfox animation clips.',
-      path: 'animations',
-      fix: 'Export a static project revision or choose an animation-capable target.'
-    });
-  }
-
   for (const [nodeId, node] of Object.entries(document.scene.nodes)) {
     const path = `scene.nodes.${nodeId}`;
+    if (!isSceneNodeEffectivelyVisible(document, nodeId)) {
+      continue;
+    }
     if (node.kind === 'mesh' || node.kind === 'locator') {
       add({
         code: 'format.unsupported_data',
@@ -1202,9 +1203,6 @@ const validateJavaProfile = (
     }
   }
 };
-
-const minecraftTimestampKey = (timeSeconds: number): string =>
-  String(Number(timeSeconds.toFixed(4)));
 
 const validateMinecraftActorProfile = (
   document: ProjectDocument,
@@ -1381,18 +1379,8 @@ const validateMinecraftActorProfile = (
   const locatorNames = new Map<string, string>();
   for (const [nodeId, node] of Object.entries(document.scene.nodes)) {
     const path = `scene.nodes.${nodeId}`;
-    if (
-      node.visible &&
-      node.parentId !== null &&
-      document.scene.nodes[node.parentId]?.visible === false
-    ) {
-      add({
-        code: 'format.unsupported_data',
-        severity: 'error',
-        message: `${targetName} cannot export a visible node below a hidden parent bone.`,
-        path: `${path}.visible`,
-        entityIds: [nodeId, node.parentId]
-      });
+    if (!isSceneNodeEffectivelyVisible(document, nodeId)) {
+      continue;
     }
     if (node.kind === 'mesh') {
       add({
@@ -1495,7 +1483,7 @@ const validateMinecraftActorProfile = (
       const face = node.faces[direction];
       return face.enabled && face.textureId !== null;
     });
-    if (textureCount > 0 && node.visible && !hasTexturedFace) {
+    if (textureCount > 0 && !hasTexturedFace) {
       add({
         code: 'format.texture_missing',
         severity: 'warning',
@@ -1604,20 +1592,20 @@ const validateMinecraftActorProfile = (
     for (const [channelId, channel] of Object.entries(clip.channels)) {
       const channelPath = `${clipPath}.channels.${channelId}`;
       const target = document.scene.nodes[channel.targetNodeId];
+      if (
+        target &&
+        !isSceneNodeEffectivelyVisible(
+          document,
+          channel.targetNodeId
+        )
+      ) {
+        continue;
+      }
       if (target && target.kind !== 'bone') {
         add({
           code: 'format.unsupported_data',
           severity: 'error',
           message: `${targetName} transform channels may only target bones.`,
-          path: `${channelPath}.targetNodeId`,
-          entityIds: [channel.targetNodeId],
-          clipIds: [clipId]
-        });
-      } else if (target?.kind === 'bone' && !target.visible) {
-        add({
-          code: 'format.unsupported_data',
-          severity: 'error',
-          message: `${targetName} animation channels cannot target a hidden bone.`,
           path: `${channelPath}.targetNodeId`,
           entityIds: [channel.targetNodeId],
           clipIds: [clipId]
@@ -1636,77 +1624,9 @@ const validateMinecraftActorProfile = (
       }
       targetProperties.set(targetProperty, channelId);
 
-      const timestampKeys = new Set<string>();
-      channel.keys.forEach((keyframe, index) => {
-        if (!isFiniteNumber(keyframe.timeSeconds)) return;
-        const timestamp = minecraftTimestampKey(keyframe.timeSeconds);
-        if (timestampKeys.has(timestamp)) {
-          add({
-            code: 'animation.key_order',
-            severity: 'error',
-            message: `${targetName} key times collide after four-decimal timestamp normalization.`,
-            path: `${channelPath}.keys[${index}].timeSeconds`,
-            clipIds: [clipId]
-          });
-        }
-        timestampKeys.add(timestamp);
-        if (
-          profile.id === 'minecraft.bedrock' &&
-          (keyframe.interpolation === 'step' || keyframe.easing)
-        ) {
-          add({
-            code: 'format.unsupported_data',
-            severity: 'error',
-            message: 'Bedrock actor animation 1.8.0 supports linear or catmullrom keyframes, not GeckoLib easing or STEP.',
-            path: `${channelPath}.keys[${index}]`,
-            clipIds: [clipId]
-          });
-        }
-      });
-    }
-
-    const triggerTimestampKeys = new Map<string, Set<string>>();
-    for (const [triggerId, trigger] of Object.entries(clip.triggers)) {
-      const keys =
-        triggerTimestampKeys.get(trigger.type) ?? new Set<string>();
-      trigger.keys.forEach((keyframe, index) => {
-        if (!isFiniteNumber(keyframe.timeSeconds)) return;
-        const timestamp = minecraftTimestampKey(keyframe.timeSeconds);
-        if (keys.has(timestamp)) {
-          add({
-            code: 'animation.key_order',
-            severity: 'error',
-            message: `${targetName} ${trigger.type} effects require unique timestamps across tracks.`,
-            path: `${clipPath}.triggers.${triggerId}.keys[${index}].timeSeconds`,
-            clipIds: [clipId]
-          });
-        }
-        keys.add(timestamp);
-        if (
-          profile.id === 'minecraft.java.geckolib5' &&
-          (trigger.type === 'timeline' ||
-            trigger.type === 'sound' ||
-            trigger.type === 'particle') &&
-          Array.isArray(keyframe.value)
-        ) {
-          add({
-            code: 'format.unsupported_data',
-            severity: 'error',
-            message: `GeckoLib 5 ${trigger.type} values must be a single entry per timestamp.`,
-            path: `${clipPath}.triggers.${triggerId}.keys[${index}].value`,
-            clipIds: [clipId]
-          });
-        }
-      });
-      triggerTimestampKeys.set(trigger.type, keys);
     }
   }
 };
-
-const animationScalarIsMolang = (value: AnimationScalar): boolean =>
-  typeof value === 'object' &&
-  value !== null &&
-  value.kind === 'molang';
 
 const validateGltfProfile = (
   document: ProjectDocument,
@@ -1820,6 +1740,9 @@ const validateGltfProfile = (
 
   for (const [nodeId, node] of Object.entries(document.scene.nodes)) {
     const nodePath = `scene.nodes.${nodeId}`;
+    if (!isSceneNodeEffectivelyVisible(document, nodeId)) {
+      continue;
+    }
     if (node.kind === 'cube') {
       if (node.mirror) {
         add({
@@ -1892,43 +1815,17 @@ const validateGltfProfile = (
 
   for (const [clipId, clip] of Object.entries(document.animations)) {
     const clipPath = `animations.${clipId}`;
-    if (Object.keys(clip.channels).length === 0) {
-      add({
-        code: 'format.unsupported_data',
-        severity: 'error',
-        message: 'glTF animations require at least one transform channel.',
-        path: `${clipPath}.channels`,
-        clipIds: [clipId]
-      });
-    }
-    if (
-      clip.startDelay ||
-      clip.loopDelay ||
-      clip.animationTimeUpdate ||
-      clip.blendWeight !== undefined ||
-      clip.overridePreviousAnimation !== undefined
-    ) {
-      add({
-        code: 'format.unsupported_data',
-        severity: 'error',
-        message: 'glTF core cannot preserve Minecraft animation timing expressions, blend weight, or override semantics.',
-        path: clipPath,
-        clipIds: [clipId]
-      });
-    }
-    if (Object.keys(clip.triggers).length > 0) {
-      add({
-        code: 'format.unsupported_data',
-        severity: 'error',
-        message: 'Core glTF 2.0 has no sound, particle, or timeline trigger contract.',
-        path: `${clipPath}.triggers`,
-        clipIds: [clipId],
-        fix: 'Remove effect tracks or export the Minecraft actor animation target.'
-      });
-    }
     const targetProperties = new Map<string, string>();
     for (const [channelId, channel] of Object.entries(clip.channels)) {
       const channelPath = `${clipPath}.channels.${channelId}`;
+      if (
+        !isSceneNodeEffectivelyVisible(
+          document,
+          channel.targetNodeId
+        )
+      ) {
+        continue;
+      }
       const targetProperty = `${channel.targetNodeId}:${channel.property}`;
       if (targetProperties.has(targetProperty)) {
         add({
@@ -1940,59 +1837,27 @@ const validateGltfProfile = (
         });
       }
       targetProperties.set(targetProperty, channelId);
-      if (channel.rotationSpace === 'entity') {
-        add({
-          code: 'format.unsupported_data',
-          severity: 'error',
-          message: 'glTF channels use node-local transforms and cannot encode Minecraft entity-relative rotation.',
-          path: `${channelPath}.rotationSpace`,
-          clipIds: [clipId]
-        });
-      }
+    }
+  }
+};
 
-      const interpolation = channel.keys[0]?.interpolation;
-      for (const [keyIndex, keyframe] of channel.keys.entries()) {
-        const keyPath = `${channelPath}.keys[${keyIndex}]`;
-        if (
-          interpolation !== undefined &&
-          keyframe.interpolation !== interpolation
-        ) {
-          add({
-            code: 'format.unsupported_data',
-            severity: 'error',
-            message: 'A glTF channel must use one consistent interpolation mode.',
-            path: `${keyPath}.interpolation`,
-            clipIds: [clipId]
-          });
-        }
-        if (
-          keyframe.preValue ||
-          keyframe.postValue ||
-          keyframe.easing
-        ) {
-          add({
-            code: 'format.unsupported_data',
-            severity: 'error',
-            message: 'glTF core export does not preserve Minecraft keyframe envelopes or easing.',
-            path: keyPath,
-            clipIds: [clipId]
-          });
-        }
-        if (
-          keyframe.value.some(animationScalarIsMolang) ||
-          keyframe.preValue?.some(animationScalarIsMolang) ||
-          keyframe.postValue?.some(animationScalarIsMolang) ||
-          keyframe.easing?.arguments?.some(animationScalarIsMolang)
-        ) {
-          add({
-            code: 'format.unsupported_data',
-            severity: 'error',
-            message: 'glTF animation values must be numeric; Molang is Minecraft-specific.',
-            path: `${keyPath}.value`,
-            clipIds: [clipId]
-          });
-        }
-      }
+const validateAnimationExportCapabilities = (
+  document: ProjectDocument,
+  add: (finding: InvariantFinding) => void
+): void => {
+  const report = analyzeProjectAnimationCapabilities(document);
+  for (const clip of report.clips) {
+    for (const issue of clip.exportIssues) {
+      add({
+        code:
+          issue.code === 'timestamp_collision'
+            ? 'animation.key_order'
+            : 'format.unsupported_data',
+        severity: 'error',
+        message: issue.message,
+        path: issue.path,
+        clipIds: [issue.clipId]
+      });
     }
   }
 };
@@ -2079,6 +1944,23 @@ export const validateProjectDocument = (
         severity: 'error',
         message: `${path} must be an ISO-compatible timestamp.`,
         path
+      });
+    }
+  }
+
+  const intentResult = readProjectIntent(document);
+  if (!intentResult.ok) {
+    for (const issue of intentResult.issues) {
+      add({
+        code: 'document.invalid_intent',
+        severity: 'error',
+        message: issue.message,
+        path:
+          issue.path === 'intent'
+            ? issue.path
+            : `intent.${issue.path}`,
+        fix:
+          'Set a normalized intent through project.intent.set.'
       });
     }
   }
@@ -2296,7 +2178,9 @@ export const validateProjectDocument = (
             ? 'Animate stable part bones within their declared joint constraints.'
             : issue.code === 'projection'
               ? 'Regenerate the model through its canonical part recipe.'
-              : 'Move or remove overlapping foreign geometry.'
+              : issue.code === 'overlap'
+                ? 'Move or remove foreign geometry that intersects the canonical generated model.'
+                : 'Correct the canonical part environment through the registered modeling commands.'
       });
     }
   }
@@ -2450,6 +2334,7 @@ export const validateProjectDocument = (
     validateJavaProfile(document, add);
     validateMinecraftActorProfile(document, add);
     validateGltfProfile(document, add);
+    validateAnimationExportCapabilities(document, add);
   }
 
   const sortedFindings = findings.sort((left, right) => {

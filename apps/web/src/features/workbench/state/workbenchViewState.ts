@@ -6,7 +6,7 @@ import type {
 } from '../viewport/viewportTypes';
 import type {
   ViewportEnvironmentId
-} from '../viewport/viewportEnvironment';
+} from '../../../rendering/viewportEnvironment';
 
 export type WorkbenchOverlay = 'scene' | 'inspector' | null;
 export type BottomWorkspaceMode = 'animation' | 'activity';

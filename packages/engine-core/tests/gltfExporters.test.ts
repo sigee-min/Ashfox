@@ -6,10 +6,17 @@ import {
   BlobResolutionError,
   ExportMaterializationRequiredError,
   buildGltf,
-  exportGltf,
-  exportProjectResolved,
+  sampleComposedNumericTransformChannel,
+  type CompiledGltf,
+  type TransformChannel,
   validateProjectDocument
 } from '../src';
+import {
+  compileProjectBundleResolved
+} from '../src/export/exportProject';
+import {
+  exportGltf
+} from '../src/export/targets/gltf/exporter';
 import { createGltfProject } from './helpers';
 
 const validationPng = Uint8Array.from(
@@ -37,6 +44,79 @@ const assertValidatorReport = (report: {
   const messages = JSON.stringify(report.issues.messages, null, 2);
   assert.equal(report.issues.numErrors, 0, messages);
   assert.equal(report.issues.numWarnings, 0, messages);
+};
+
+const accessorComponentCount = (
+  type: 'SCALAR' | 'VEC2' | 'VEC3' | 'VEC4'
+): number => {
+  switch (type) {
+    case 'SCALAR':
+      return 1;
+    case 'VEC2':
+      return 2;
+    case 'VEC3':
+      return 3;
+    case 'VEC4':
+      return 4;
+  }
+};
+
+const readFloatAccessor = (
+  compiled: CompiledGltf,
+  accessorIndex: number
+): number[] => {
+  const accessor = compiled.document.accessors?.[accessorIndex];
+  if (!accessor) throw new Error('Expected glTF accessor.');
+  assert.equal(accessor.componentType, 5126);
+  const bufferView =
+    compiled.document.bufferViews?.[accessor.bufferView];
+  if (!bufferView) throw new Error('Expected glTF buffer view.');
+  const componentCount = accessorComponentCount(accessor.type);
+  const offset =
+    bufferView.byteOffset + (accessor.byteOffset ?? 0);
+  const view = new DataView(
+    compiled.binary.buffer,
+    compiled.binary.byteOffset,
+    compiled.binary.byteLength
+  );
+  return Array.from(
+    { length: accessor.count * componentCount },
+    (_, index) => view.getFloat32(offset + index * 4, true)
+  );
+};
+
+const quaternionFromEuler = (
+  rotation: readonly [number, number, number]
+): readonly [number, number, number, number] => {
+  const x = rotation[0] * Math.PI / 360;
+  const y = rotation[1] * Math.PI / 360;
+  const z = rotation[2] * Math.PI / 360;
+  const sx = Math.sin(x);
+  const cx = Math.cos(x);
+  const sy = Math.sin(y);
+  const cy = Math.cos(y);
+  const sz = Math.sin(z);
+  const cz = Math.cos(z);
+  return [
+    sx * cy * cz + cx * sy * sz,
+    cx * sy * cz - sx * cy * sz,
+    cx * cy * sz + sx * sy * cz,
+    cx * cy * cz - sx * sy * sz
+  ];
+};
+
+const assertArrayClose = (
+  actual: readonly number[],
+  expected: readonly number[],
+  message: string
+): void => {
+  assert.equal(actual.length, expected.length, message);
+  expected.forEach((value, index) => {
+    assert.ok(
+      Math.abs((actual[index] ?? Number.NaN) - value) < 0.000001,
+      `${message}: component ${index}`
+    );
+  });
 };
 
 {
@@ -121,7 +201,7 @@ const assertValidatorReport = (report: {
   registerAsyncTest(
     (async () => {
       let resolutionCount = 0;
-      const bundle = await exportProjectResolved(project, {
+      const bundle = await compileProjectBundleResolved(project, {
         resolveBlob: async (source) => {
           resolutionCount += 1;
           assert.equal(source.key, 'project-crate/ashfox_crate.png');
@@ -209,7 +289,7 @@ const assertValidatorReport = (report: {
 {
   const project = createGltfProject('glb', 'embedded');
   registerAsyncTest(
-    exportProjectResolved(project, {
+    compileProjectBundleResolved(project, {
       resolveBlob: async () => null
     }).then(
       () => {
@@ -229,7 +309,7 @@ const assertValidatorReport = (report: {
   project.textures['texture-base'].source.byteLength =
     validationPng.byteLength;
   registerAsyncTest(
-    exportProjectResolved(project, {
+    compileProjectBundleResolved(project, {
       resolveBlob: async () => ({
         bytes: validationPng,
         contentType: 'image/jpeg'
@@ -249,7 +329,7 @@ const assertValidatorReport = (report: {
 {
   const project = createGltfProject('glb', 'embedded');
   registerAsyncTest(
-    exportProjectResolved(project, {
+    compileProjectBundleResolved(project, {
       resolveBlob: async () => ({
         bytes: validationPng,
         contentType: 'image/png'
@@ -328,6 +408,69 @@ const assertValidatorReport = (report: {
 
 {
   const project = structuredClone(createGltfProject('gltf'));
+  const root = project.scene.nodes['bone-root'];
+  const cube = project.scene.nodes['cube-body'];
+  const locator = project.scene.nodes['locator-effect'];
+  if (
+    root.kind !== 'bone' ||
+    cube.kind !== 'cube' ||
+    locator.kind !== 'locator'
+  ) {
+    throw new Error('visibility fixture nodes missing');
+  }
+  project.scene = {
+    ...project.scene,
+    nodes: {
+      ...project.scene.nodes,
+      'bone-hidden': {
+        ...root,
+        id: 'bone-hidden',
+        name: 'hidden',
+        parentId: 'bone-root',
+        visible: false
+      },
+      'cube-body': {
+        ...cube,
+        parentId: 'bone-hidden',
+        visible: true
+      },
+      'locator-effect': {
+        ...locator,
+        parentId: 'bone-hidden',
+        visible: true
+      }
+    }
+  };
+  const clip = project.animations['clip-idle'];
+  const channel = clip.channels['channel-root-rotation'];
+  project.animations = {
+    ...project.animations,
+    'clip-idle': {
+      ...clip,
+      channels: {
+        'channel-root-rotation': {
+          ...channel,
+          targetNodeId: 'bone-hidden'
+        }
+      }
+    }
+  };
+
+  const compiled = buildGltf(project);
+  assert.deepEqual(
+    compiled.document.nodes.map(
+      (node) => node.extras?.ashfoxId
+    ),
+    ['bone-root']
+  );
+  assert.equal(compiled.document.nodes[0].children, undefined);
+  assert.equal(compiled.document.meshes, undefined);
+  assert.equal(compiled.document.animations, undefined);
+  assert.deepEqual(compiled.document.scenes[0].nodes, [0]);
+}
+
+{
+  const project = structuredClone(createGltfProject('gltf'));
   const channel = project.animations['clip-idle']
     .channels['channel-root-rotation'];
   (channel.keys[0] as { timeSeconds: number }).timeSeconds = 0.5;
@@ -353,6 +496,82 @@ const assertValidatorReport = (report: {
       : compiled.document.accessors?.[sampler.input];
   assert.equal(inputAccessor?.count, 3);
   assert.deepEqual(inputAccessor?.max, [2]);
+}
+
+{
+  const project = structuredClone(createGltfProject('gltf'));
+  const root = project.scene.nodes['bone-root'];
+  root.transform = {
+    position: [4, 8, 12],
+    rotation: [10, 20, 30],
+    scale: [2, 3, 4],
+    pivot: [0, 0, 0]
+  };
+  const animationValues = {
+    position: [1, 2, 3],
+    rotation: [4, 5, 6],
+    scale: [1.5, 0.5, 2]
+  } as const;
+  const createChannel = (
+    property: TransformChannel['property']
+  ): TransformChannel => ({
+    id: `channel-root-${property}`,
+    targetNodeId: 'bone-root',
+    property,
+    keys: [0, 1].map((timeSeconds) => ({
+      id: `key-${property}-${timeSeconds}`,
+      timeSeconds,
+      value: animationValues[property],
+      interpolation: 'linear'
+    }))
+  });
+  const channels = {
+    'channel-root-position': createChannel('position'),
+    'channel-root-rotation': createChannel('rotation'),
+    'channel-root-scale': createChannel('scale')
+  };
+  project.animations['clip-idle'].channels = channels;
+
+  const compiled = buildGltf(project);
+  const animation = compiled.document.animations?.[0];
+  if (!animation) throw new Error('Expected glTF animation.');
+  const outputFor = (
+    path: 'translation' | 'rotation' | 'scale'
+  ): number[] => {
+    const channel = animation.channels.find(
+      (entry) => entry.target.path === path
+    );
+    if (!channel) throw new Error(`Expected ${path} channel.`);
+    return readFloatAccessor(
+      compiled,
+      animation.samplers[channel.sampler].output
+    );
+  };
+
+  assertArrayClose(
+    outputFor('translation').slice(0, 3),
+    [5 / 16, 10 / 16, 15 / 16],
+    'glTF translation must add a scaled delta to non-identity rest translation'
+  );
+  assertArrayClose(
+    outputFor('scale').slice(0, 3),
+    [3, 1.5, 8],
+    'glTF scale must multiply non-identity rest scale'
+  );
+  const composedRotation =
+    sampleComposedNumericTransformChannel(
+      channels['channel-root-rotation'],
+      0,
+      { restValue: [10, 20, 30] }
+    );
+  if (!composedRotation) {
+    throw new Error('Expected numeric composed rotation.');
+  }
+  assertArrayClose(
+    outputFor('rotation').slice(0, 4),
+    quaternionFromEuler(composedRotation),
+    'glTF and live preview must use the same non-identity rest rotation composition'
+  );
 }
 
 {

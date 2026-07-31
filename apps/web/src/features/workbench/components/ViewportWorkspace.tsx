@@ -15,10 +15,11 @@ import {
 import type {
   CameraCommand,
   ViewportOptions,
+  ViewportPresentationFrame,
   ViewportStats
 } from '../viewport/viewportTypes';
-import type { ViewportEnvironmentId } from '../viewport/viewportEnvironment';
-import type { ProjectAssets } from '../../files/projectAssets';
+import type { ViewportEnvironmentId } from '../../../rendering/viewportEnvironment';
+import type { ProjectAssets } from '../../../application/projectAssets';
 import type {
   WorkbenchOverlay
 } from '../state/workbenchViewState';
@@ -40,6 +41,7 @@ interface ViewportWorkspaceProps {
   activeClipId: string | null;
   playhead: number;
   playing: boolean;
+  presentationNonce: number;
   activeOverlay: WorkbenchOverlay;
   onEnvironmentChange: (environment: ViewportEnvironmentId) => void;
   onOverlayChange: (overlay: WorkbenchOverlay) => void;
@@ -51,6 +53,7 @@ interface ViewportWorkspaceProps {
   ) => void;
   onCommitTransform: (nodeId: string, transform: Transform) => void;
   onStats: (stats: ViewportStats) => void;
+  onPresented: (frame: ViewportPresentationFrame) => void;
 }
 
 export function ViewportWorkspace({
@@ -67,6 +70,7 @@ export function ViewportWorkspace({
   activeClipId,
   playhead,
   playing,
+  presentationNonce,
   activeOverlay,
   onEnvironmentChange,
   onOverlayChange,
@@ -74,7 +78,8 @@ export function ViewportWorkspace({
   onToggleVisibility,
   onTransformProperty,
   onCommitTransform,
-  onStats
+  onStats,
+  onPresented
 }: ViewportWorkspaceProps) {
   const selectedNode = selectedNodeId
     ? document.scene.nodes[selectedNodeId]
@@ -101,9 +106,11 @@ export function ViewportWorkspace({
           activeClipId={activeClipId}
           playhead={playhead}
           playing={playing}
+          presentationNonce={presentationNonce}
           onSelectNode={onSelectNode}
           onCommitTransform={onCommitTransform}
           onStats={onStats}
+          onPresented={onPresented}
         />
         <div className="viewport-top-left">
           <button

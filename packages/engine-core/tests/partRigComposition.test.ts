@@ -84,6 +84,7 @@ const execute = (
     document,
     {
       batchId,
+      baseProjectId: document.id,
       baseRevision: document.revision,
       operations
     },

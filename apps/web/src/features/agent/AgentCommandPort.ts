@@ -1,10 +1,11 @@
-import type {
-  CommandBatch
+import {
+  canonicalJsonString,
+  type CommandBatch
 } from '@ashfox/engine-core';
 
 import type {
   CommandOutcome
-} from '../workbench/state/commandOutcome';
+} from '../../application/commandOutcome';
 import { parseCommandBatch } from './parseCommandBatch';
 import { parseInspectRequest } from './parseInspectRequest';
 import { parsePresentRequest } from './parsePresentRequest';
@@ -17,19 +18,21 @@ import type {
   RunResult
 } from './types';
 import { agentCommandProtocol } from './agentCommandProtocol';
+import { compactCommandReceipt } from './compactReceipt';
 
 export type AgentCommandPortStatus = 'connected' | 'working';
 
 export interface AgentCommandPortDependencies {
   inspect: (request?: InspectRequest) => InspectResult;
+  currentProjectId: () => string;
   currentRevision: () => string;
   submit: (batch: CommandBatch) => Promise<CommandOutcome>;
-  present?: (request: PresentRequest) => PresentResult;
+  present?: (request: PresentRequest) => Promise<PresentResult>;
   onStatusChange?: (status: AgentCommandPortStatus) => void;
 }
 
 interface ActiveBatch {
-  batchId: string;
+  key: string;
   signature: string;
   result: Promise<RunResult>;
 }
@@ -83,12 +86,14 @@ const parseSerializedAgentCommandInput = (
 
 const batchSignature = (batch: CommandBatch): string | null => {
   try {
-    const value = JSON.stringify(batch);
-    return typeof value === 'string' ? value : null;
+    return canonicalJsonString(batch);
   } catch {
     return null;
   }
 };
+
+const batchScopeKey = (batch: CommandBatch): string =>
+  JSON.stringify([batch.baseProjectId, batch.batchId]);
 
 const invalidBatch = (
   revision: string,
@@ -117,6 +122,20 @@ const terminalFailure = (
   }
 });
 
+const projectMismatch = (
+  revision: string,
+  expectedProjectId: string
+): RunResult => ({
+  ok: false,
+  revision,
+  error: {
+    code: 'project_mismatch',
+    message: 'Batch project does not match the active project.',
+    path: 'baseProjectId',
+    expected: expectedProjectId
+  }
+});
+
 const isAbortError = (error: unknown): boolean =>
   typeof error === 'object' &&
   error !== null &&
@@ -128,13 +147,19 @@ const resultFromOutcome = (outcome: CommandOutcome): RunResult => {
     return {
       ok: false,
       revision: outcome.revision,
-      error: outcome.error
+      error: outcome.error,
+      ...(outcome.findings
+        ? { findings: outcome.findings }
+        : {}),
+      ...(outcome.findingsTruncated !== undefined
+        ? { findingsTruncated: outcome.findingsTruncated }
+        : {})
     };
   }
   return {
     ok: true,
     revision: outcome.receipt.revision,
-    receipt: outcome.receipt
+    receipt: compactCommandReceipt(outcome.receipt)
   };
 };
 
@@ -149,6 +174,8 @@ export class AgentCommandPort implements AgentCommandPortApi {
     const resultElement = host.document.createElement('meta');
     resultElement.setAttribute(agentCommandProtocol.resultAttribute, '');
     host.document.head.append(resultElement);
+    let connected = true;
+    let responseQueue = Promise.resolve();
     let input: HTMLInputElement;
     const createInput = (): HTMLInputElement => {
       const next = host.document.createElement('input');
@@ -173,21 +200,18 @@ export class AgentCommandPort implements AgentCommandPortApi {
       return next;
     };
     function respond(requestId: string | null, commandResult: unknown): void {
-      const previous = input;
-      input = createInput();
-      previous.removeEventListener('input', receive);
-      previous.remove();
+      if (!connected) return;
       resultElement.setAttribute(
         agentCommandProtocol.resultAttribute,
         JSON.stringify({ requestId, result: commandResult })
       );
     }
-    function receive(): void {
-      const request = parseSerializedAgentCommandInput(input.value);
-      input.value = '';
-      input.blur();
+    async function executeRequest(
+      serialized: string
+    ): Promise<readonly [string | null, unknown]> {
+      const request = parseSerializedAgentCommandInput(serialized);
       if (!request) {
-        respond(null, {
+        return [null, {
           ok: false,
           revision: port.dependencies.currentRevision(),
           error: {
@@ -195,30 +219,58 @@ export class AgentCommandPort implements AgentCommandPortApi {
             path: '$',
             expected: 'agent command request'
           }
-        });
-        return;
+        }];
       }
       if (request.method === 'inspect') {
-        respond(
+        return [
           request.requestId,
           port.inspect(request.payload as InspectRequest | undefined)
-        );
-        return;
+        ];
       }
       if (request.method === 'present') {
-        respond(
+        return [
           request.requestId,
-          port.present(request.payload as PresentRequest)
-        );
-        return;
+          await port.present(request.payload as PresentRequest)
+        ];
       }
-      void port.run(request.payload as CommandBatch)
-        .then((result) => respond(request.requestId, result));
+      return [
+        request.requestId,
+        await port.run(request.payload as CommandBatch)
+      ];
+    }
+    function receive(this: HTMLInputElement): void {
+      const source = this;
+      const serialized = source.value;
+      source.value = '';
+      source.blur();
+      source.removeEventListener('input', receive);
+      source.remove();
+      if (connected && source === input) input = createInput();
+
+      responseQueue = responseQueue
+        .then(async () => {
+          if (!connected) return;
+          const [requestId, result] =
+            await executeRequest(serialized);
+          if (connected) respond(requestId, result);
+        })
+        .catch(() => {
+          if (!connected) return;
+          respond(null, {
+            ok: false,
+            revision: port.dependencies.currentRevision(),
+            error: {
+              code: 'invalid_state',
+              message: 'Agent command could not be completed.'
+            }
+          });
+        });
     }
 
     host.ashfox = this;
     input = createInput();
     return () => {
+      connected = false;
       input.removeEventListener('input', receive);
       input.remove();
       resultElement.remove();
@@ -263,7 +315,7 @@ export class AgentCommandPort implements AgentCommandPortApi {
     }
   }
 
-  present(input: PresentRequest): PresentResult {
+  async present(input: PresentRequest): Promise<PresentResult> {
     const revision = this.dependencies.currentRevision();
     let parsed: ReturnType<typeof parsePresentRequest>;
     try {
@@ -279,14 +331,14 @@ export class AgentCommandPort implements AgentCommandPortApi {
       };
     }
     if (!parsed.ok) {
-      return {
+      return Promise.resolve({
         ok: false,
         revision,
         error: parsed.error
-      };
+      });
     }
     if (!this.dependencies.present) {
-      return {
+      return Promise.resolve({
         ok: false,
         revision,
         error: {
@@ -294,10 +346,10 @@ export class AgentCommandPort implements AgentCommandPortApi {
           path: '$',
           expected: 'connected presentation adapter'
         }
-      };
+      });
     }
     try {
-      return this.dependencies.present(parsed.request);
+      return await this.dependencies.present(parsed.request);
     } catch {
       return {
         ok: false,
@@ -338,9 +390,22 @@ export class AgentCommandPort implements AgentCommandPortApi {
         invalidBatch(revision, '$', 'JSON-serializable command batch')
       );
     }
+    const key = batchScopeKey(parsed.batch);
+    const currentProjectId = this.dependencies.currentProjectId();
 
-    const completed = this.completedBatches.get(parsed.batch.batchId);
+    const completed = this.completedBatches.get(key);
     if (completed) {
+      const isProjectCreationReplay =
+        completed.result.ok &&
+        completed.result.receipt.projectId === currentProjectId;
+      if (
+        parsed.batch.baseProjectId !== currentProjectId &&
+        !isProjectCreationReplay
+      ) {
+        return Promise.resolve(
+          projectMismatch(revision, currentProjectId)
+        );
+      }
       return Promise.resolve(
         completed.signature === signature
           ? completed.result
@@ -354,7 +419,7 @@ export class AgentCommandPort implements AgentCommandPortApi {
 
     if (this.activeBatch) {
       if (
-        this.activeBatch.batchId === parsed.batch.batchId &&
+        this.activeBatch.key === key &&
         this.activeBatch.signature === signature
       ) {
         return this.activeBatch.result;
@@ -363,10 +428,13 @@ export class AgentCommandPort implements AgentCommandPortApi {
         terminalFailure(revision, 'Another command batch is already running.')
       );
     }
+    if (parsed.batch.baseProjectId !== currentProjectId) {
+      return Promise.resolve(projectMismatch(revision, currentProjectId));
+    }
 
-    const result = this.execute(parsed.batch, signature);
+    const result = this.execute(parsed.batch, key, signature);
     this.activeBatch = {
-      batchId: parsed.batch.batchId,
+      key,
       signature,
       result
     };
@@ -375,6 +443,7 @@ export class AgentCommandPort implements AgentCommandPortApi {
 
   private async execute(
     batch: CommandBatch,
+    key: string,
     signature: string
   ): Promise<RunResult> {
     this.updateStatus('working');
@@ -392,16 +461,16 @@ export class AgentCommandPort implements AgentCommandPortApi {
       this.activeBatch = null;
       this.updateStatus('connected');
     }
-    this.remember(batch.batchId, signature, result);
+    this.remember(key, signature, result);
     return result;
   }
 
   private remember(
-    batchId: string,
+    key: string,
     signature: string,
     result: RunResult
   ): void {
-    this.completedBatches.set(batchId, { signature, result });
+    this.completedBatches.set(key, { signature, result });
   }
 
   private updateStatus(status: AgentCommandPortStatus): void {

@@ -481,6 +481,42 @@ const checkedProduct = (values: readonly number[]): number => {
   return product;
 };
 
+const positiveOddSquaresAtMost = (limit: number): number => {
+  if (limit < 1) return 0;
+  let count = Math.floor((Math.sqrt(limit) + 1) / 2);
+  while (count > 0 && (2 * count - 1) ** 2 > limit) {
+    count -= 1;
+  }
+  while ((2 * count + 1) ** 2 <= limit) {
+    count += 1;
+  }
+  return count;
+};
+
+const radialPlaneCellCount = (
+  outerRadius: number,
+  innerRadius: number
+): number => {
+  const outerSquared = (outerRadius * 2) ** 2;
+  const innerSquared = (innerRadius * 2) ** 2;
+  let cells = 0;
+  for (
+    let u = -outerRadius;
+    u < outerRadius;
+    u += 1
+  ) {
+    const doubledU = u * 2 + 1;
+    const outerVCount =
+      positiveOddSquaresAtMost(outerSquared - doubledU ** 2) * 2;
+    const excludedInnerVCount =
+      positiveOddSquaresAtMost(
+        innerSquared - doubledU ** 2 - 1
+      ) * 2;
+    cells += outerVCount - excludedInnerVCount;
+  }
+  return cells;
+};
+
 const parseMass = (
   input: UnknownRecord,
   common: ParsedCommon,
@@ -589,6 +625,7 @@ const parseSegment = (
       'length',
       'Each segment point requires one radius triple.'
     );
+    return { value: null, estimatedCells: 0 };
   }
   for (let index = 1; index < points.length; index += 1) {
     if (equalVec3(points[index - 1], points[index])) {
@@ -601,16 +638,19 @@ const parseSegment = (
     }
   }
 
-  const maximumRadius = radii.reduce(
-    (maximum, radius) =>
-      Math.max(maximum, radius[0], radius[1], radius[2]),
-    0
-  );
   const minimum = [0, 1, 2].map((axis) =>
-    Math.min(...points.map((point) => point[axis])) - maximumRadius
+    Math.min(
+      ...points.map(
+        (point, index) => point[axis] - radii[index][axis]
+      )
+    )
   );
   const maximum = [0, 1, 2].map((axis) =>
-    Math.max(...points.map((point) => point[axis])) + maximumRadius
+    Math.max(
+      ...points.map(
+        (point, index) => point[axis] + radii[index][axis]
+      )
+    )
   );
   const spans = minimum.map((entry, axis) =>
     axisSpan(entry, maximum[axis])
@@ -620,10 +660,7 @@ const parseSegment = (
   );
 
   return {
-    value:
-      radii.length === points.length
-        ? { ...common, kind: 'segment', points, radii, profile }
-        : null,
+    value: { ...common, kind: 'segment', points, radii, profile },
     estimatedCells: checkedProduct(spans)
   };
 };
@@ -844,8 +881,7 @@ const parseRadial = (
           }
         : null,
     estimatedCells: checkedProduct([
-      outerRadius * 2,
-      outerRadius * 2,
+      radialPlaneCellCount(outerRadius, innerRadius),
       depth
     ])
   };

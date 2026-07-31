@@ -10,6 +10,7 @@ import { compiledPartBoneId } from '../../modeling/provenance';
 import { defineCommand } from '../definition';
 import { modelPartsDeleteSchema } from './modelPartSchemas';
 import { removeSceneNodes } from './removeSceneNodes';
+import { reprojectPartRecipe } from './reprojectPartRecipe';
 
 const descendantPartIds = (
   parentIds: ReadonlySet<string>,
@@ -123,10 +124,26 @@ export const deleteModelPartsCommand = defineCommand({
       }
       nextRecipe = normalized.recipe;
     }
-    const nextDocument = withPartRecipe(
-      removal.document,
-      nextRecipe
-    );
+    const projected = nextRecipe === null
+      ? null
+      : reprojectPartRecipe(removal.document, nextRecipe);
+    if (projected && !projected.ok) {
+      return {
+        ok: false,
+        error: {
+          code: 'invalid_state',
+          message: projected.failure.message,
+          path: projected.failure.path,
+          pathScope:
+            projected.failure.pathScope === 'document'
+              ? 'document'
+              : 'operation'
+        }
+      };
+    }
+    const nextDocument = projected?.ok
+      ? projected.document
+      : withPartRecipe(removal.document, null);
     return {
       ok: true,
       value: {
@@ -135,12 +152,25 @@ export const deleteModelPartsCommand = defineCommand({
           `Delete ${removedPartIds.size} model part` +
           `${removedPartIds.size === 1 ? '' : 's'}`,
         effects: {
-          createdEntityIds: [],
+          createdEntityIds: projected?.ok
+            ? [
+                ...(projected.createdTextureId
+                  ? [projected.createdTextureId]
+                  : []),
+                ...projected.createdIds
+              ]
+            : [],
           changedEntityIds: [
             ...removal.changedEntityIds,
+            ...(projected?.ok ? projected.changedIds : []),
             document.id
           ],
-          removedEntityIds: removal.removedEntityIds,
+          removedEntityIds: [
+            ...new Set([
+              ...removal.removedEntityIds,
+              ...(projected?.ok ? projected.removedIds : [])
+            ])
+          ],
           invalidated: [
             'scene',
             'textures',

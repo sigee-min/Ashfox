@@ -4,9 +4,9 @@ import type {
   ProjectDocument,
   Transform
 } from '@ashfox/engine-core';
-import type { ProjectAssets } from '../../files/projectAssets';
-import type { CameraMode } from './cameraPresets';
-import type { ViewportEnvironmentId } from './viewportEnvironment';
+import type { ProjectAssets } from '../../../application/projectAssets';
+import type { CameraMode } from '../../../rendering/cameraPresets';
+import type { ViewportEnvironmentId } from '../../../rendering/viewportEnvironment';
 
 export interface ViewportOptions {
   showGrid: boolean;
@@ -24,6 +24,20 @@ export interface ViewportStats {
   triangles: number;
 }
 
+export interface ViewportPresentationFrame {
+  presentationNonce: number;
+  frameNonce: number;
+  projectId: string;
+  revision: string;
+  camera: CameraMode;
+  cameraMatrix: readonly number[];
+  clipId: string | null;
+  playing: boolean;
+  timeSeconds: number;
+  projectionStatus: 'pending' | 'ready' | 'failed';
+  projectionError: string | null;
+}
+
 export interface ViewportProps {
   document: ProjectDocument;
   assets: ProjectAssets;
@@ -36,7 +50,9 @@ export interface ViewportProps {
   activeClipId: string | null;
   playhead: number;
   playing: boolean;
+  presentationNonce: number;
   onSelectNode: (nodeId: string | null) => void;
   onCommitTransform: (nodeId: string, transform: Transform) => void;
   onStats: (stats: ViewportStats) => void;
+  onPresented: (frame: ViewportPresentationFrame) => void;
 }

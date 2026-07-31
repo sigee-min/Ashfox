@@ -1,6 +1,10 @@
 import type { JsonPrimitive } from '../model';
 
-export type CommandInputSchema =
+interface CommandInputSchemaMetadata {
+  description?: string;
+}
+
+export type CommandInputSchema = (
   | {
       type: 'string';
       minLength?: number;
@@ -34,7 +38,8 @@ export type CommandInputSchema =
     }
   | {
       anyOf: readonly CommandInputSchema[];
-    };
+    }
+) & CommandInputSchemaMetadata;
 
 export interface SchemaIssue {
   path: string;

@@ -4,7 +4,7 @@ import { createWorkbenchProject } from '../src/features/workbench/sampleProject'
 import {
   projectExportTargetFor,
   projectUsesExportTarget
-} from '../src/features/workbench/presentation/projectExportTarget';
+} from '../src/application/projectExportTarget';
 
 const geckoProject = createWorkbenchProject();
 const geckoTarget = projectExportTargetFor(geckoProject);

@@ -11,7 +11,6 @@ import { compareStableText } from '../stableOrder';
 import {
   cellKey,
   createOccupancyGrid,
-  parseCellKey,
   worldToLattice
 } from './lattice';
 import { isSixConnected } from './connectivity';
@@ -24,6 +23,10 @@ import {
   worldBoundsOverlap,
   worldCubeBounds
 } from './worldCubeBounds';
+import {
+  attachmentContactMetrics,
+  orthographicContributionMetrics
+} from './partQualityMetrics';
 import type {
   LatticeBounds,
   LatticePoint,
@@ -288,7 +291,7 @@ const readPart = (
           code: 'overlap',
           path: `scene.nodes.${cube.id}.bounds`,
           message:
-            'Compiled cuboids within one part must not overlap.',
+            'Canonical emitted cuboids within one part must have single-cell ownership.',
           entityIds: [boneId, cube.id]
         });
         break;
@@ -404,111 +407,17 @@ const validateMaterials = (
   }
 };
 
-const shareFaceAtAnchor = (
-  left: OccupancyGrid,
-  right: OccupancyGrid,
-  anchor: LatticePoint
-): boolean => {
-  const offsets: readonly LatticePoint[] = [
-    { x: -1, y: 0, z: 0 },
-    { x: 1, y: 0, z: 0 },
-    { x: 0, y: -1, z: 0 },
-    { x: 0, y: 1, z: 0 },
-    { x: 0, y: 0, z: -1 },
-    { x: 0, y: 0, z: 1 }
-  ];
-  for (const key of left.cells) {
-    const cell = parseCellKey(key);
-    for (const offset of offsets) {
-      if (
-        !right.cells.has(
-          cellKey({
-            x: cell.x + offset.x,
-            y: cell.y + offset.y,
-            z: cell.z + offset.z
-          })
-        )
-      ) {
-        continue;
-      }
-      const axis =
-        offset.x !== 0 ? 'x' : offset.y !== 0 ? 'y' : 'z';
-      const plane = offset[axis] > 0
-        ? cell[axis] + 1
-        : cell[axis];
-      const otherAxes = ['x', 'y', 'z'].filter(
-        (candidate) => candidate !== axis
-      ) as readonly ('x' | 'y' | 'z')[];
-      if (
-        anchor[axis] === plane &&
-        otherAxes.every(
-          (otherAxis) =>
-            anchor[otherAxis] >= cell[otherAxis] &&
-            anchor[otherAxis] <= cell[otherAxis] + 1
-        )
-      ) {
-        return true;
-      }
-    }
-  }
-  return false;
-};
-
-const projectedKey = (
-  cell: LatticePoint,
-  axis: 'x' | 'y' | 'z'
-): string =>
-  axis === 'x'
-    ? `${cell.y},${cell.z}`
-    : axis === 'y'
-      ? `${cell.x},${cell.z}`
-      : `${cell.x},${cell.y}`;
-
-const visiblePartIds = (
-  parts: ReadonlyMap<string, CompiledPartState>
-): ReadonlySet<string> => {
-  const cells = [...parts.values()].flatMap((part) =>
-    [...part.occupancy.cells].map((key) => ({
-      partId: part.partId,
-      cell: parseCellKey(key)
-    }))
-  );
-  const visible = new Set<string>();
-  for (const axis of ['x', 'y', 'z'] as const) {
-    for (const direction of [-1, 1] as const) {
-      const front = new Map<string, {
-        coordinate: number;
-        partId: string;
-      }>();
-      for (const entry of cells) {
-        const key = projectedKey(entry.cell, axis);
-        const coordinate = entry.cell[axis] * direction;
-        const current = front.get(key);
-        if (
-          !current ||
-          coordinate > current.coordinate ||
-          (
-            coordinate === current.coordinate &&
-            entry.partId < current.partId
-          )
-        ) {
-          front.set(key, {
-            coordinate,
-            partId: entry.partId
-          });
-        }
-      }
-      for (const entry of front.values()) visible.add(entry.partId);
-    }
-  }
-  return visible;
-};
-
 const validateOccupancy = (
   parts: ReadonlyMap<string, CompiledPartState>,
   issues: PartInvariantIssue[]
 ): void => {
   const owners = new Map<string, string>();
+  const contactByPart = new Map(
+    attachmentContactMetrics(parts).map((metric) => [
+      metric.partId,
+      metric
+    ])
+  );
   for (const part of [...parts.values()].sort((left, right) =>
     compareStableText(left.partId, right.partId)
   )) {
@@ -527,7 +436,7 @@ const validateOccupancy = (
           code: 'overlap',
           path: `scene.parts.${part.partId}`,
           message:
-            `Compiled parts "${owner}" and "${part.partId}" overlap.`,
+            `Canonical emitted parts "${owner}" and "${part.partId}" share an owned cell.`,
           entityIds: [
             compiledPartBoneId(owner),
             compiledPartBoneId(part.partId)
@@ -539,23 +448,10 @@ const validateOccupancy = (
     }
     if (part.parentPartId) {
       const parent = parts.get(part.parentPartId);
-      const pivot: LatticePoint = {
-        x: worldToLattice(
-          part.bone.transform.pivot[0],
-          part.occupancy.density
-        ),
-        y: worldToLattice(
-          part.bone.transform.pivot[1],
-          part.occupancy.density
-        ),
-        z: worldToLattice(
-          part.bone.transform.pivot[2],
-          part.occupancy.density
-        )
-      };
+      const contact = contactByPart.get(part.partId);
       if (
         parent &&
-        !shareFaceAtAnchor(parent.occupancy, part.occupancy, pivot)
+        (!contact || contact.anchorFaceCount === 0)
       ) {
         issues.push({
           code: 'attachment',
@@ -567,7 +463,11 @@ const validateOccupancy = (
       }
     }
   }
-  const visible = visiblePartIds(parts);
+  const visible = new Set(
+    orthographicContributionMetrics(parts)
+      .filter((metric) => metric.visibleCellCount > 0)
+      .map((metric) => metric.partId)
+  );
   for (const part of parts.values()) {
     if (!visible.has(part.partId)) {
       issues.push({

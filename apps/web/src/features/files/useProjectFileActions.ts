@@ -22,10 +22,13 @@ import {
   createArtifactPreparationOperations,
   type ArtifactPreparationRequest
 } from './artifactPreparation';
-import type { ArtifactFile } from './artifactFile';
+import {
+  isArtifactCurrent,
+  type ArtifactFile
+} from './artifactFile';
 import type { FileOperationState } from './fileOperationState';
 import type { ProjectArchiveFile } from './projectArchive';
-import type { ProjectAssets } from './projectAssets';
+import type { ProjectAssets } from '../../application/projectAssets';
 import { useFileOperation } from './useFileOperation';
 import { createAnimatedGif } from '../capture/createAnimatedGif';
 import { createBuildGif } from '../capture/createBuildGif';
@@ -36,16 +39,16 @@ import {
 import type { GifCaptureRequest } from '../capture/gifCaptureRequest';
 import type {
   ProjectExportTarget
-} from '../workbench/presentation/projectExportTarget';
+} from '../../application/projectExportTarget';
 import type {
   CommandOutcome
-} from '../workbench/state/commandOutcome';
+} from '../../application/commandOutcome';
 import type {
   HistoryAction
-} from '../workbench/state/historyReducer';
+} from '../../application/historyReducer';
 import {
   LOCAL_COMMAND_ACTOR_ID
-} from '../workbench/state/localCommandActor';
+} from '../../application/localCommandActor';
 
 interface UseProjectFileActionsInput {
   document: ProjectDocument;
@@ -170,6 +173,7 @@ export const useProjectFileActions = ({
       }
       const batch: CommandBatch = {
         batchId: crypto.randomUUID(),
+        baseProjectId: document.id,
         baseRevision: document.revision,
         operations
       };
@@ -323,17 +327,20 @@ export const useProjectFileActions = ({
     [assets, document, run]
   );
 
+  const artifactFile =
+    operation.phase === 'succeeded' &&
+    operation.result !== null &&
+    isArtifactCurrent(document, operation.result)
+      ? operation.result
+      : null;
+
   return {
     operation,
-    artifactFile:
-      operation.phase === 'succeeded'
-        ? operation.result
-        : null,
+    artifactFile,
     captureFile:
-      operation.phase === 'succeeded' &&
       operation.kind === 'capture' &&
-      isGifCaptureFile(operation.result)
-        ? operation.result
+      isGifCaptureFile(artifactFile)
+        ? artifactFile
         : null,
     open,
     drop,

@@ -16,7 +16,7 @@ import {
 } from './generatedSurfaceAuthority';
 import {
   cubeFaceDimensions,
-  packUvAtlas,
+  packUvAtlasWithGutter,
   type UvAtlasPlacement,
   type UvAtlasRect
 } from './uvAtlas';
@@ -26,7 +26,6 @@ export type {
 } from './generatedSurfaceAuthority';
 
 const BASE_PIXELS_PER_BLOCK = 16;
-const BASE_ATLAS_PADDING = 2;
 export const GENERATED_ATLAS_MIN_RESOLUTION = 16;
 export const GENERATED_ATLAS_MAX_RESOLUTION = 4096;
 
@@ -107,8 +106,9 @@ const pixelsPerBlock = (document: ProjectDocument): number =>
 const texelsPerModelUnit = (document: ProjectDocument): number =>
   pixelsPerBlock(document) / modelUnitsPerBlock(document);
 
-const atlasPadding = (document: ProjectDocument): number =>
-  BASE_ATLAS_PADDING * document.settings.surfacePixelDensity;
+const generatedTextureGutter = (
+  document: ProjectDocument
+): number => document.settings.surfacePixelDensity;
 
 const effectiveFaceDimensions = (
   node: CubeNode,
@@ -261,11 +261,11 @@ const tryResolution = (
 ): Map<string, UvAtlasPlacement<FaceTarget>[]> | null => {
   const placements = new Map<string, UvAtlasPlacement<FaceTarget>[]>();
   for (const [textureId, rects] of rectsByTexture) {
-    const packed = packUvAtlas(
+    const packed = packUvAtlasWithGutter(
       rects,
       resolution,
       resolution,
-      atlasPadding(document)
+      generatedTextureGutter(document)
     );
     if (!packed) return null;
     placements.set(textureId, packed);
@@ -489,7 +489,7 @@ export const composeTextureRaster = (
     background: baseColor(texture),
     generated,
     gutter: generated
-      ? document.settings.surfacePixelDensity
+      ? generatedTextureGutter(document)
       : 0,
     regions,
     canvasDetails: texture.raster?.canvasDetails ?? []

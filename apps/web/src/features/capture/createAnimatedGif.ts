@@ -1,9 +1,15 @@
-import type { ProjectDocument } from '@ashfox/engine-core';
+import {
+  analyzeAnimationPreview,
+  type ProjectDocument
+} from '@ashfox/engine-core';
 
-import { safeArtifactName } from '../files/artifactFile';
-import type { ProjectAssets } from '../files/projectAssets';
-import type { CameraMode } from '../workbench/viewport/cameraPresets';
-import type { ViewportEnvironmentId } from '../workbench/viewport/viewportEnvironment';
+import {
+  createArtifactBinding,
+  safeArtifactName
+} from '../files/artifactFile';
+import type { ProjectAssets } from '../../application/projectAssets';
+import type { CameraMode } from '../../rendering/cameraPresets';
+import type { ViewportEnvironmentId } from '../../rendering/viewportEnvironment';
 import type { GifCaptureContext } from './gifCaptureContext';
 import type { GifCaptureFile } from './gifCaptureFile';
 import { renderAnimatedGif } from './renderAnimatedGif';
@@ -27,6 +33,17 @@ export const createAnimatedGif = async (
 ): Promise<GifCaptureFile> => {
   const clip = document.animations[options.clipId];
   if (!clip) throw new Error('Choose an animation clip before capture.');
+  const previewIssues = analyzeAnimationPreview(clip);
+  if (previewIssues.length > 0) {
+    const issueCodes = [
+      ...new Set(previewIssues.map((issue) => issue.code))
+    ];
+    throw new Error(
+      `Animation GIF capture cannot faithfully render "${clip.name}": ` +
+      `${issueCodes.join(', ')}. Bake the clip to supported numeric ` +
+      'bone-space transform keys before capture.'
+    );
+  }
   const capture = await renderAnimatedGif({
     document,
     assets,
@@ -36,6 +53,7 @@ export const createAnimatedGif = async (
   });
   return {
     ...capture,
+    ...await createArtifactBinding(document, capture.bytes),
     kind: 'animation',
     name:
       `${safeArtifactName(document.name)}-` +

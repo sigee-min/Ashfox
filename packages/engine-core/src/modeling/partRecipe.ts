@@ -2,6 +2,7 @@ import type {
   ConstrainedModelRecipe,
   ProjectDocument
 } from '../model';
+import { canonicalJsonString } from '../canonicalJson';
 import { compareStableText } from '../stableOrder';
 import {
   isPartBaseColor,
@@ -43,22 +44,6 @@ const isRecord = (
   typeof value === 'object' &&
   value !== null &&
   !Array.isArray(value);
-
-const canonicalJson = (value: unknown): string => {
-  if (Array.isArray(value)) {
-    return `[${value.map(canonicalJson).join(',')}]`;
-  }
-  if (isRecord(value)) {
-    return `{${Object.keys(value)
-      .sort(compareStableText)
-      .map(
-        (key) =>
-          `${JSON.stringify(key)}:${canonicalJson(value[key])}`
-      )
-      .join(',')}}`;
-  }
-  return JSON.stringify(value);
-};
 
 const normalizeMaterials = (
   input: unknown,
@@ -229,7 +214,10 @@ export const readPartRecipe = (
     value.materials
   );
   if (!normalized.ok) return normalized;
-  if (canonicalJson(value) !== canonicalJson(normalized.recipe)) {
+  if (
+    canonicalJsonString(value) !==
+    canonicalJsonString(normalized.recipe)
+  ) {
     return {
       ok: false,
       issues: [{
@@ -253,7 +241,8 @@ export const withPartRecipe = (
   }
   if (
     document.modeling !== undefined &&
-    canonicalJson(document.modeling) === canonicalJson(recipe)
+    canonicalJsonString(document.modeling) ===
+    canonicalJsonString(recipe)
   ) {
     return document;
   }

@@ -6,7 +6,7 @@ import {
   compareProjectRevisions,
   isValidLocalProjectRecord,
   type LocalProjectRecord
-} from './localProjectRecord';
+} from '../../../application/localProjectRecord';
 
 const DATABASE_NAME = 'ashfox';
 const DATABASE_VERSION = 1;

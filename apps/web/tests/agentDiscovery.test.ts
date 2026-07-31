@@ -7,6 +7,7 @@ import {
   executeCommandBatch,
   listAgentCommandDefinitions,
   validateProjectDocument,
+  type CommandReceipt,
   type PartSpec
 } from '@ashfox/engine-core';
 
@@ -17,6 +18,7 @@ import {
 import { agentCommandProtocol } from '../src/features/agent/agentCommandProtocol';
 import { agentManifest as manifest } from '../src/features/agent/agentManifest';
 import { inspectProject } from '../src/features/agent/inspect';
+import { schemaHash } from '../src/features/agent/schemaHash';
 
 const webRoot = path.resolve(__dirname, '..');
 const html = fs.readFileSync(path.join(webRoot, 'index.html'), 'utf8');
@@ -87,7 +89,7 @@ assert.deepEqual(
   Object.keys(manifest.modeling.primitives),
   ['mass', 'segment', 'plate', 'radial', 'feature']
 );
-assert.equal(manifest.modeling.enforcedInvariants.length, 10);
+assert.equal(manifest.modeling.enforcedInvariants.length, 12);
 assert.ok(
   manifest.modeling.enforcedInvariants.some((entry) =>
     entry.includes('6-connected')
@@ -95,7 +97,17 @@ assert.ok(
 );
 assert.ok(
   manifest.modeling.enforcedInvariants.some((entry) =>
-    entry.includes('non-overlapping cuboid')
+    entry.includes('single-owned cells without overlap')
+  )
+);
+assert.ok(
+  manifest.modeling.enforcedInvariants.some((entry) =>
+    entry.includes('at most two surface cells')
+  )
+);
+assert.ok(
+  manifest.modeling.enforcedInvariants.some((entry) =>
+    entry.includes('static support')
   )
 );
 assert.match(manifest.texture.authority, /derives external-face UVs/);
@@ -106,17 +118,26 @@ assert.match(manifest.completion.semanticBoundary, /not subject identity/);
 assert.match(manifest.completion.review, /generic humanoid substitution/);
 
 const agentDefinitions = listAgentCommandDefinitions();
+assert.equal(
+  schemaHash({ properties: { b: 2, a: 1 } }),
+  schemaHash({ properties: { a: 1, b: 2 } })
+);
 assert.deepEqual(
   manifest.commands.map((command) => ({
     name: command.name,
     purpose: command.purpose,
-    inputSchema: command.inputSchema
+    schemaHash: command.schemaHash
   })),
   agentDefinitions.map((definition) => ({
     name: definition.name,
     purpose: definition.purpose,
-    inputSchema: definition.inputSchema
+    schemaHash: schemaHash(definition.inputSchema)
   }))
+);
+assert.ok(
+  manifest.commands.every(
+    (command) => !Object.hasOwn(command, 'inputSchema')
+  )
 );
 const agentCommandNames = manifest.commands.map((command) => command.name);
 for (const command of [
@@ -311,6 +332,21 @@ const modelCommand = inspectProject(
   { kind: 'command', name: 'model.parts.upsert' }
 );
 assert.equal(modelCommand.ok, true);
+if (modelCommand.ok) {
+  const data = modelCommand.data as {
+    schemaHash: string;
+    inputSchema: unknown;
+  };
+  assert.equal(
+    data.schemaHash,
+    schemaHash(
+      agentDefinitions.find(
+        (definition) => definition.name === 'model.parts.upsert'
+      )?.inputSchema
+    )
+  );
+  assert.ok(data.inputSchema);
+}
 const rawCommand = inspectProject(
   document,
   null,
@@ -346,6 +382,7 @@ const authoredModel = executeCommandBatch(
   emptyModel,
   {
     batchId: 'inspect-recipe-author',
+    baseProjectId: emptyModel.id,
     baseRevision: emptyModel.revision,
     operations: [{
       name: 'model.parts.upsert',
@@ -379,6 +416,12 @@ if (exactInspect.ok) {
         id: string;
         baseColor: string;
       };
+      canonicalization: {
+        authoredCellCount: number;
+        canonicalCellCount: number;
+        trimmedCellCount: number;
+        maximumTrimDepthCells: number;
+      };
     }[];
   };
   assert.deepEqual(inspected.parts[0]?.spec, exactPart);
@@ -386,6 +429,18 @@ if (exactInspect.ok) {
     id: 'copper',
     baseColor: '#A65C35'
   });
+  assert.equal(
+    inspected.parts[0]?.canonicalization.authoredCellCount,
+    inspected.parts[0]?.canonicalization.canonicalCellCount
+  );
+  assert.equal(
+    inspected.parts[0]?.canonicalization.trimmedCellCount,
+    0
+  );
+  assert.equal(
+    inspected.parts[0]?.canonicalization.maximumTrimDepthCells,
+    0
+  );
 }
 
 const hiddenRootProject = structuredClone(document);
@@ -427,7 +482,8 @@ assert.equal(readiness.ok, true);
 if (readiness.ok) {
   const data = readiness.data as {
     valid: boolean;
-    productionReady: boolean;
+    mechanicallyReady: boolean;
+    semanticReviewRequired: boolean;
     counts: {
       warnings: number;
       textures: number;
@@ -437,11 +493,150 @@ if (readiness.ok) {
     };
   };
   assert.equal(data.valid, true);
-  assert.equal(data.productionReady, false);
+  assert.equal(data.mechanicallyReady, false);
+  assert.equal(data.semanticReviewRequired, true);
   assert.equal(data.counts.warnings, 1);
   assert.equal(data.counts.textures, 0);
   assert.equal(
     data.firstReadinessFinding.code,
-    'format.texture_missing'
+    'production.texture_coverage_incomplete'
+  );
+}
+
+const catalogPageOne = inspectProject(
+  document,
+  null,
+  validateProjectDocument(document),
+  { kind: 'catalog', limit: 1 }
+);
+assert.equal(catalogPageOne.ok, true);
+if (catalogPageOne.ok) {
+  const data = catalogPageOne.data as {
+    items: readonly { kind: string; id: string }[];
+    nextCursor: string | null;
+    total: number;
+  };
+  assert.equal(data.items.length, 1);
+  assert.equal(data.total, 2);
+  assert.ok(data.nextCursor);
+  const catalogPageTwo = inspectProject(
+    document,
+    null,
+    validateProjectDocument(document),
+    {
+      kind: 'catalog',
+      limit: 1,
+      cursor: data.nextCursor ?? undefined
+    }
+  );
+  assert.equal(catalogPageTwo.ok, true);
+  if (catalogPageTwo.ok) {
+    const secondData = catalogPageTwo.data as {
+      items: readonly { id: string }[];
+    };
+    assert.notEqual(
+      secondData.items[0]?.id,
+      data.items[0]?.id
+    );
+  }
+}
+
+const largeClipDocument = structuredClone(document);
+const largeClip = largeClipDocument.animations['clip-idle'];
+const largeChannel = largeClip.channels['channel-root-rotation'];
+largeClipDocument.animations = {
+  ...largeClipDocument.animations,
+  'clip-idle': {
+    ...largeClip,
+    channels: {
+      ...largeClip.channels,
+      'channel-root-rotation': {
+        ...largeChannel,
+        keys: Array.from({ length: 800 }, (_, index) => ({
+          id: `large-key-${index}`,
+          timeSeconds: index / 799,
+          value: [0, index % 2, 0] as const,
+          interpolation: 'linear' as const
+        }))
+      }
+    }
+  }
+};
+const boundedClip = inspectProject(
+  largeClipDocument,
+  null,
+  validateProjectDocument(document),
+  { kind: 'clip', ids: ['clip-idle'] }
+);
+assert.equal(boundedClip.ok, true);
+if (boundedClip.ok) {
+  assert.equal(boundedClip.truncated, true);
+  assert.equal(
+    (boundedClip.data as readonly { channelCount: number }[])[0]
+      ?.channelCount,
+    1
+  );
+}
+
+const activity = [0, 1].map((index): CommandReceipt => ({
+  schemaVersion: 1,
+  commandId: `activity-${index}`,
+  projectId: document.id,
+  actorId: 'agent-discovery-test',
+  source: 'agent',
+  summary: `Activity ${index}`,
+  beforeRevision: `revision-${index}`,
+  revision: `revision-${index + 1}`,
+  completedAt: `2026-07-31T00:00:0${index}.000Z`,
+  durationMs: index,
+  effects: {
+    createdEntityIds: [],
+    changedEntityIds: [],
+    removedEntityIds: [],
+    invalidated: ['validation']
+  },
+  findings: []
+}));
+const activityPage = inspectProject(
+  document,
+  null,
+  validateProjectDocument(document),
+  { kind: 'activity', limit: 1 },
+  activity
+);
+assert.equal(activityPage.ok, true);
+if (activityPage.ok) {
+  const data = activityPage.data as {
+    items: readonly { commandId: string }[];
+    nextCursor: string | null;
+  };
+  assert.equal(data.items[0]?.commandId, 'activity-0');
+  assert.ok(data.nextCursor);
+}
+
+const largeFinding = inspectProject(
+  document,
+  null,
+  {
+    valid: false,
+    findings: [{
+      code: 'scene.root_missing',
+      severity: 'error',
+      message: 'Missing root.',
+      path: 'scene.roots',
+      entityIds: Array.from(
+        { length: 5_000 },
+        (_, index) => `entity-${index}`
+      )
+    }]
+  },
+  { kind: 'finding', path: 'scene.roots' }
+);
+assert.equal(largeFinding.ok, true);
+if (largeFinding.ok) {
+  assert.equal(largeFinding.truncated, true);
+  assert.equal(
+    (largeFinding.data as { entityCount: number }).entityCount,
+    5_000
   );
 }

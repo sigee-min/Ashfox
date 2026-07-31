@@ -118,6 +118,12 @@ const profileSchema = {
   enum: ['soft', 'balanced', 'hard']
 } as const;
 
+const axisSchema = {
+  enum: ['x', 'y', 'z'],
+  description:
+    'Lattice axis. Positive x is east, positive y is up, and positive z is south.'
+} as const;
+
 export const modelPartSpecSchema = {
   anyOf: [
     {
@@ -246,6 +252,8 @@ export const modelPartSpecSchema = {
 
 export const modelPartsUpsertSchema = {
   type: 'object',
+  description:
+    'Author complete semantic parts. Shallow joint intersections are accepted; ashfox assigns every generated cell to one deterministic owner without an overlap-tolerance parameter.',
   properties: {
     parts: {
       type: 'array',
@@ -301,5 +309,68 @@ export const modelPartsDeleteSchema = {
     }
   },
   required: ['partIds'],
+  additionalProperties: false
+} as const satisfies CommandInputSchema;
+
+export const modelPartsMirrorSchema = {
+  type: 'object',
+  description:
+    'Copy one non-root canonical part subtree by exact lattice reflection, then normalize shallow joins to single-owner geometry. Every source subtree part requires one explicit unused target ID.',
+  properties: {
+    rootPartId: {
+      ...idSchema,
+      description:
+        'Existing non-root part whose complete descendant subtree will be copied.'
+    },
+    axis: axisSchema,
+    plane: {
+      ...integerSchema,
+      description:
+        'Asset-space lattice coordinate of the reflection plane on the selected axis.'
+    },
+    partIdMap: {
+      type: 'array',
+      description:
+        'Exact one-to-one source and target ID mapping covering the complete selected subtree.',
+      items: {
+        type: 'object',
+        properties: {
+          sourcePartId: {
+            ...idSchema,
+            description: 'Existing part in the selected source subtree.'
+          },
+          targetPartId: {
+            ...idSchema,
+            description: 'Unused stable ID for the reflected copy.'
+          }
+        },
+        required: ['sourcePartId', 'targetPartId'],
+        additionalProperties: false
+      },
+      minItems: 1,
+      maxItems: PART_CONTRACT_LIMITS.maxPartsPerDocument
+    }
+  },
+  required: ['rootPartId', 'axis', 'plane', 'partIdMap'],
+  additionalProperties: false
+} as const satisfies CommandInputSchema;
+
+export const modelPartsTransformSchema = {
+  type: 'object',
+  description:
+    'Translate one canonical part subtree in asset lattice space, then normalize shallow joins to single-owner geometry. Descendants are resolved internally, so the operation is not limited to 64 parts.',
+  properties: {
+    rootPartId: {
+      ...idSchema,
+      description:
+        'Existing part to translate together with every canonical descendant.'
+    },
+    translation: {
+      ...vec3Schema,
+      description:
+        'Integer [x,y,z] asset-space lattice translation applied atomically.'
+    }
+  },
+  required: ['rootPartId', 'translation'],
   additionalProperties: false
 } as const satisfies CommandInputSchema;

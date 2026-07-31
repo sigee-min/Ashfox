@@ -2,7 +2,7 @@ import { loadLocalProject } from './indexedDbProjectRepository';
 import type {
   LocalProjectRecord,
   ProjectRevisionMessage
-} from './localProjectRecord';
+} from '../../../application/localProjectRecord';
 
 const CHANNEL_NAME = 'ashfox-project-revisions';
 

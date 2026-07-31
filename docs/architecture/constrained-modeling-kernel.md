@@ -327,7 +327,9 @@ the integer translation
 T = parentAnchor - partAnchor.
 ```
 
-The child bone pivot is `parentAnchor / d`. Validation requires:
+After seam ownership, the requested parent anchor is snapped to the nearest
+shared child-parent face within two cells. The child bone pivot is that
+canonical anchor divided by `d`. Validation requires:
 
 - the child and parent occupied sets to share at least one complete cell face;
 - the pivot lattice point to lie on the closure of both occupied sets;
@@ -355,6 +357,40 @@ Rig and attachment validation runs against the final batch result. A batch can
 therefore create a joint and its animation, or delete both, in either operation
 order without exposing an invalid intermediate state.
 
+## Tolerant seam ownership
+
+PartSpec volumes may intersect at a join. The compiler rasterizes the complete
+recipe, orders parts by hierarchy and stable part ID, then gives each lattice
+cell to the first ordered part that contains it. Parents therefore retain their
+joint sockets, and payload order cannot change the result.
+
+For raw occupancy `R_i` in canonical order, emitted occupancy is
+
+```text
+C_i = R_i \ union(R_j for j < i).
+```
+
+The recipe is rejected when a part penetrates more than two surface cells into
+earlier geometry, retains 20% or less of its authored cells, becomes
+disconnected, loses anchor contact, or stops contributing to the orthographic
+silhouette.
+
+### Ownership theorem
+
+Every raw cell has one earliest containing part. It follows directly that:
+
+```text
+C_i intersection C_j = empty for i != j
+union(C_i) = union(R_i)
+sum(|C_i|) = |union(R_i)|.
+```
+
+Canonical ownership therefore preserves the complete authored union while
+removing duplicate volume. The total hierarchy and ID order makes ownership
+deterministic and independent of payload order. The persisted recipe keeps the
+authored intersection so later edits remain semantic; rendering, UV generation,
+validation, and export consume only `C_i`.
+
 ## Cuboid decomposition
 
 Exact minimum 3D rectangle partition is not claimed. The kernel evaluates six
@@ -369,7 +405,8 @@ For one order:
 1. sort occupied cells lexicographically by that order;
 2. take the first remaining cell;
 3. expand its cuboid positively along the three ordered axes while every cell
-   in the new slab remains unclaimed and occupied;
+   in the new slab remains unclaimed and occupied and each rectangular face
+   has uniform neighboring occupancy in the complete canonical model;
 4. remove exactly those cuboid cells;
 5. continue until no cell remains.
 
@@ -410,11 +447,12 @@ intersection(cuboid_i, cuboid_j) = empty for i ≠ j.
 
 ### Determinism theorem
 
-Primitive occupancy is a pure function of normalized integer input. Each
-greedy candidate uses a total seed order and fixed positive expansions. The
-six-candidate set is fixed. The score tuple ends in a total lexical order.
+Canonical occupancy is a pure function of the complete normalized recipe.
+Each greedy candidate uses a total seed order, fixed positive expansions, and
+the same canonical environment. The six-candidate set is fixed. The score
+tuple ends in a total lexical order.
 
-Therefore one normalized PartSpec and density select exactly one decomposition.
+Therefore one normalized recipe and density select exactly one decomposition.
 
 The regression suite checks every non-empty occupancy of a `2×2×2` lattice
 (255 cases), plus structured primitives and deterministic larger samples.
@@ -439,41 +477,43 @@ texel. Density 1, 2, and 4 therefore produce model-space texel sides `1`,
 For every generated cube face, the surface authority:
 
 1. reconstructs its integer lattice bounds;
-2. disables the face only when every adjacent boundary cell is occupied;
+2. disables the face when its uniformly adjacent boundary cells are occupied;
 3. projects the two in-plane world-lattice coordinates into pattern space;
-4. groups coplanar faces by part, material, direction, and plane;
+4. groups touching coplanar faces by material, direction, and plane;
 5. derives directional tone and deterministic bounded variation from the
    shared surface coordinates;
 6. packs the resulting rectangles with density-scaled gutters into the
    smallest fitting power-of-two atlas from 16 through 4096.
 
-A cube face owns one rectangular UV. A fully internal face can be removed
-exactly. A partially covered rectangle remains enabled because representing
-only its exposed subset would require a mesh or face-fragment authority.
+A cube face owns one rectangular UV. Surface-conforming decomposition splits
+cuboids at every mixed-occlusion boundary, so every emitted rectangle is either
+fully external or fully internal. The enabled unit-face set is exactly the
+boundary of the canonical occupancy union, with no internal or duplicate face.
 
 ### Decomposition-independence theorem
 
 Let a visible surface texel have projected lattice coordinate `(u, v)` and
-surface key
+connected-surface key
 
 ```text
-k = (partId, materialId, direction, plane).
+k = (materialId, direction, plane, connectedComponentBounds).
 ```
 
 Its generated color is a pure function
 
 ```text
-color = F(baseColor, direction, u, v, surfaceBounds(k), hash(k)).
+color = F(baseColor, direction, u, v, connectedComponentBounds, hash(k)).
 ```
 
 Cuboid bounds and atlas placement are absent from `F`. Splitting one coplanar
 surface into different cuboids changes only which UV rectangle carries a
-texel; its `k`, `(u, v)`, shared bounds, and color are unchanged. Therefore
-coplanar generated surfaces within one part and material do not restart their
-pattern at decomposition seams.
+texel; its `k`, `(u, v)`, shared bounds, and color are unchanged. Semantic part
+IDs are also absent from `k`. Therefore touching coplanar generated surfaces
+with the same material do not restart their pattern at cuboid or part seams.
 
-This theorem does not claim continuity across different directions, materials,
-or parts. Those boundaries intentionally receive independent tone or seed.
+This theorem does not claim continuity across disconnected components,
+different directions, or different materials. Those boundaries intentionally
+receive independent tone or seed.
 
 ## Stable IDs
 
@@ -508,7 +548,7 @@ from canonical cube bounds and checks:
 - one connected 6-neighbor component per part;
 - one root and an acyclic parent graph;
 - parent contact and joint pivot contact;
-- no occupied cell owned by two parts;
+- one canonical owner for every emitted occupied cell;
 - one base color per material ID;
 - one visible contribution in at least one of the six orthographic
   projections;
@@ -518,14 +558,12 @@ from canonical cube bounds and checks:
 - joint-specific animation channels;
 - document-level part and occupied-cell budgets.
 
-A fully contained generated cube necessarily overlaps occupied lattice cells
-and is therefore an error. Eligible visible, identity-transform sibling cubes
-using generated opaque textures receive a separate generic occlusion warning.
-
-Compiled-part overlap is exact in lattice-cell space. Overlap with foreign
-transformed cubes uses world-space axis-aligned bounding boxes. That check is
-conservative: passing proves separated bounds, while a rotated but visually
-separate foreign cube can still be rejected when its bounding box intersects.
+Authored joins use the canonical ownership and retention policy. Duplicate
+cells in the emitted scene are projection drift and remain an error. Overlap
+with foreign transformed cubes has no semantic ownership relation, so it uses
+strict world-space axis-aligned bounding boxes. That check is conservative:
+passing proves separated bounds, while a rotated but visually separate foreign
+cube can still be rejected when its bounding box intersects.
 
 ### What validation proves
 
@@ -568,12 +606,12 @@ reducer.
 Let `N` be occupied cells and `C` emitted cuboids.
 
 - connectivity is `O(N)` time and space;
-- overlap ownership is `O(N)` time and space;
+- seam ownership and trim-depth traversal are `O(N)` time and space;
 - six-view silhouette evaluation is `O(N)` time;
 - exact decomposition verification is `O(N)` time and space;
-- greedy decomposition evaluates six fixed candidates. Its conservative
-  worst case depends on repeated slab checks, while command budgets bound
-  practical work.
+- surface-conforming greedy decomposition evaluates six fixed candidates. Its
+  conservative worst case depends on repeated slab and boundary-face checks,
+  while command budgets bound practical work.
 
 The contract limits one upsert operation to 64 parts, eight points per
 segment, 131,072 estimated cells per part, and 524,288 estimated cells per
@@ -588,8 +626,8 @@ A new primitive is acceptable only when it:
 
 1. normalizes to bounded integer input;
 2. produces one deterministic occupancy set;
-3. passes the existing connectivity, attachment, overlap, silhouette, and
-   decomposition invariants;
+3. passes canonical seam ownership, connectivity, attachment, silhouette, and
+   surface-conforming decomposition invariants;
 4. requires no new persisted geometry authority;
 5. requires no target-specific exporter branch.
 

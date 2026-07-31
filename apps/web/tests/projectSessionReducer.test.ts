@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {
   LOCAL_PROJECT_SCHEMA_VERSION,
   type LocalProjectRecord
-} from '../src/features/workbench/persistence/localProjectRecord';
+} from '../src/application/localProjectRecord';
 import { createWorkbenchProject } from '../src/features/workbench/sampleProject';
-import { createHistoryState } from '../src/features/workbench/state/historyReducer';
+import { createHistoryState } from '../src/application/historyReducer';
 import {
   createProjectSessionState,
   projectSessionReducer
@@ -96,6 +96,7 @@ const created = projectSessionReducer(hydrated, {
   type: 'execute',
   batch: {
     batchId: 'batch-create-clean-project',
+    baseProjectId: hydrated.history.present.id,
     baseRevision: hydrated.history.present.revision,
     operations: [{
       name: 'project.create',
@@ -114,7 +115,7 @@ const created = projectSessionReducer(hydrated, {
   committedAt: '2026-07-29T01:00:01.000Z'
 });
 assert.equal(created.history.present.id, 'project-clean');
-assert.equal(created.history.present.revision, 'local-0001');
+assert.equal(created.history.present.revision, 'local-0002');
 assert.deepEqual(created.history.past, []);
 assert.deepEqual(created.history.future, []);
 assert.equal(created.history.activity.length, 1);

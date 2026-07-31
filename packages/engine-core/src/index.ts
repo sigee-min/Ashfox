@@ -1,11 +1,22 @@
 export * from './model';
+export * from './canonicalJson';
 export * from './projectFile';
+export * from './sceneVisibility';
 export * from './project/createProjectDocument';
+export * from './project/projectIntent';
+export * from './project/projectIntentEvaluation';
 export * from './commands';
 export * from './validation';
+export * from './productionReadiness';
+export * from './animation/capability';
+export * from './animation/numericChannel';
 export * from './modeling/partContract';
 export * from './modeling/partInvariants';
+export * from './modeling/partOccupancyCanonicalization';
+export * from './modeling/partQualityMetrics';
 export * from './modeling/partRecipe';
+export * from './modeling/partRecipeTransforms';
+export * from './modeling/staticSupportMetric';
 export * from './textures/uvAtlas';
 export * from './textures/deterministicPixel';
 export * from './textures/pixelSurfacePattern';
@@ -22,12 +33,34 @@ export {
   type TextureCompositionRegion
 } from './textures/textureRecipe';
 export * from './export/types';
-export * from './export/exportProject';
+export {
+  ProductionExportError,
+  exportProductionProject,
+  exportProductionProjectResolved
+} from './export/exportProject';
 export * from './export/shared/minecraftAnimation';
 export * from './export/shared/minecraftGeometry';
-export * from './export/targets/javaBlock/exporter';
-export * from './export/targets/bedrock/exporter';
-export * from './export/targets/geckolib5/exporter';
+export {
+  buildMinecraftJavaModel,
+  type MinecraftJavaAxisRotation,
+  type MinecraftJavaElement,
+  type MinecraftJavaEulerRotation,
+  type MinecraftJavaFace,
+  type MinecraftJavaModel
+} from './export/targets/javaBlock/exporter';
+export {
+  buildMinecraftBedrockAnimations,
+  buildMinecraftBedrockGeometry
+} from './export/targets/bedrock/exporter';
+export {
+  buildGeckoLib5Animations,
+  buildGeckoLib5Geometry
+} from './export/targets/geckolib5/exporter';
 export * from './export/targets/gltf/types';
-export * from './export/targets/gltf/exporter';
+export {
+  buildGltf,
+  type CompiledGltf,
+  type GltfBuildOptions,
+  type GltfResolvedExportOptions
+} from './export/targets/gltf/exporter';
 export * from './export/targets/gltf/glb';

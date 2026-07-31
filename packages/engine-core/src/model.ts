@@ -109,6 +109,39 @@ export interface ProjectSettings {
   };
 }
 
+export type ProjectForwardDirection =
+  | 'north'
+  | 'south'
+  | 'east'
+  | 'west';
+
+export type ProjectGrounding =
+  | 'grounded'
+  | 'airborne'
+  | 'free';
+
+export interface ProjectIntentSymmetryPair {
+  axis: 'x' | 'y' | 'z';
+  /** Reflection plane in lattice coordinates; integers and halves are valid. */
+  plane: number;
+  /** Canonical first endpoint; pair direction has no semantic meaning. */
+  leftPartId: string;
+  /** Canonical second endpoint; pair direction has no semantic meaning. */
+  rightPartId: string;
+}
+
+export interface ProjectIntent {
+  subject: string;
+  forward: ProjectForwardDirection;
+  grounding: ProjectGrounding;
+  /** Human/agent review criteria. Their meaning is not machine-validated. */
+  requiredFeatures: readonly string[];
+  requiredPartIds: readonly string[];
+  requiredMaterialIds: readonly string[];
+  requiredClipIds: readonly string[];
+  symmetryPairs?: readonly ProjectIntentSymmetryPair[];
+}
+
 export interface Transform {
   position: Vec3;
   rotation: Vec3;
@@ -458,6 +491,7 @@ export interface ProjectDocument {
   revision: Revision;
   formatProfile: ProjectFormatProfile;
   settings: ProjectSettings;
+  intent?: ProjectIntent;
   modeling?: ConstrainedModelRecipe;
   scene: SceneGraph;
   textures: Readonly<Record<AssetId, TextureAsset>>;

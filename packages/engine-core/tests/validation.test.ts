@@ -331,7 +331,7 @@ const clone = <T>(value: T): T => structuredClone(value);
     report.findings.some(
       (finding) =>
         finding.code === 'format.unsupported_data' &&
-        finding.path === 'animations.clip-idle.triggers'
+        finding.path.startsWith('animations.clip-idle.triggers.')
     )
   );
 }

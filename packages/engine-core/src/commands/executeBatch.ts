@@ -56,6 +56,25 @@ const validateBatch = (
       expected: 'non-empty string'
     });
   }
+  if (
+    typeof batch.baseProjectId !== 'string' ||
+    batch.baseProjectId.trim().length === 0
+  ) {
+    return failure(document, {
+      code: 'invalid_batch',
+      message: 'Base project ID is required.',
+      path: 'baseProjectId',
+      expected: 'non-empty string'
+    });
+  }
+  if (batch.baseProjectId !== document.id) {
+    return failure(document, {
+      code: 'project_mismatch',
+      message: 'Batch project does not match the active project.',
+      path: 'baseProjectId',
+      expected: document.id
+    });
+  }
   if (batch.baseRevision !== document.revision) {
     return failure(document, {
       code: 'revision_mismatch',

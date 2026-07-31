@@ -1,4 +1,8 @@
 import type { ProjectDocument } from '../model';
+import {
+  evaluateProductionReadiness,
+  type ProductionReadinessReport
+} from '../productionReadiness';
 import { validateProjectDocument } from '../validation';
 import { createJsonExportFile } from './json';
 import { exportMinecraftBedrock } from './targets/bedrock/exporter';
@@ -38,7 +42,30 @@ const exportGenericProject = (document: ProjectDocument): ExportBundle => {
   };
 };
 
-export const exportProject = (document: ProjectDocument): ExportBundle => {
+export class ProductionExportError extends Error {
+  readonly code = 'export.production_not_ready' as const;
+
+  constructor(readonly report: ProductionReadinessReport) {
+    const finding = report.firstBlockingFinding;
+    super(
+      finding
+        ? `Project is not production ready: ${finding.code} at ${finding.path}.`
+        : 'Project is not production ready.'
+    );
+    this.name = 'ProductionExportError';
+  }
+}
+
+const assertProductionReady = (document: ProjectDocument): void => {
+  const report = evaluateProductionReadiness(document);
+  if (!report.mechanicallyReady) {
+    throw new ProductionExportError(report);
+  }
+};
+
+export const compileProjectBundle = (
+  document: ProjectDocument
+): ExportBundle => {
   switch (document.formatProfile.id) {
     case 'ashfox.generic':
       return exportGenericProject(document);
@@ -59,12 +86,27 @@ export const exportProject = (document: ProjectDocument): ExportBundle => {
   }
 };
 
-export const exportProjectResolved = async (
+export const compileProjectBundleResolved = async (
   document: ProjectDocument,
   options: GltfResolvedExportOptions
 ): Promise<ExportBundle> => {
   if (document.formatProfile.id === 'gltf.2') {
     return exportGltfResolved(document, options);
   }
-  return exportProject(document);
+  return compileProjectBundle(document);
+};
+
+export const exportProductionProject = (
+  document: ProjectDocument
+): ExportBundle => {
+  assertProductionReady(document);
+  return compileProjectBundle(document);
+};
+
+export const exportProductionProjectResolved = async (
+  document: ProjectDocument,
+  options: GltfResolvedExportOptions
+): Promise<ExportBundle> => {
+  assertProductionReady(document);
+  return compileProjectBundleResolved(document, options);
 };

@@ -6,7 +6,7 @@ import {
 import {
   projectUsesExportTarget,
   type ProjectExportTarget
-} from '../workbench/presentation/projectExportTarget';
+} from '../../application/projectExportTarget';
 
 export type ArtifactPreparationRequest =
   | { kind: 'save' }

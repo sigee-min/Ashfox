@@ -5,15 +5,15 @@ import {
   type TransformControlsMode
 } from 'three/addons/controls/TransformControls.js';
 
-import type { ProjectSceneProjection } from './sceneTypes';
+import type { ProjectSceneProjection } from '../../../rendering/sceneTypes';
 import type { CameraCommand } from './viewportTypes';
-import { applyCameraPreset } from './cameraPresets';
+import { applyCameraPreset } from '../../../rendering/cameraPresets';
 import {
   addViewportLighting,
   createViewportEnvironment,
   type ViewportEnvironment,
   type ViewportEnvironmentId
-} from './viewportEnvironment';
+} from '../../../rendering/viewportEnvironment';
 
 export interface ViewportRuntime {
   renderer: THREE.WebGLRenderer;

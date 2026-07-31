@@ -6,8 +6,8 @@ import {
   type PointerEvent as ReactPointerEvent
 } from 'react';
 import { useLatestValue } from '../../hooks/useLatestValue';
-import { applyAnimationPose } from './viewport/animationPose';
-import { projectToThreeScene } from './viewport/projectSceneProjection';
+import { applyAnimationPose } from '../../rendering/animationPose';
+import { projectToThreeScene } from '../../rendering/projectSceneProjection';
 import { useViewportRuntime } from './viewport/useViewportRuntime';
 import {
   applyCameraCommand,
@@ -28,9 +28,11 @@ export function Viewport({
   activeClipId,
   playhead,
   playing,
+  presentationNonce,
   onSelectNode,
   onCommitTransform,
-  onStats
+  onStats,
+  onPresented
 }: ViewportProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -39,13 +41,39 @@ export function Viewport({
   const onSelectNodeRef = useLatestValue(onSelectNode);
   const onCommitTransformRef = useLatestValue(onCommitTransform);
   const onStatsRef = useLatestValue(onStats);
+  const onPresentedRef = useLatestValue(onPresented);
+  const presentationStateRef = useLatestValue({
+    projectId: document.id,
+    revision: document.revision,
+    camera: cameraCommand.mode,
+    clipId: activeClipId,
+    playing,
+    timeSeconds: playhead
+  });
+  const pendingPresentationRef = useRef<number | null>(null);
+  const onFrameRef = useLatestValue((frameNonce: number): void => {
+    const pending = pendingPresentationRef.current;
+    if (pending === null) return;
+    const runtime = runtimeRef.current;
+    const readiness = runtime?.projection?.readiness;
+    onPresentedRef.current({
+      presentationNonce: pending,
+      frameNonce,
+      ...presentationStateRef.current,
+      cameraMatrix:
+        runtime?.camera.matrixWorld.elements.slice() ?? [],
+      projectionStatus: readiness?.status ?? 'pending',
+      projectionError: readiness?.error ?? null
+    });
+  });
 
   const runtimeRef = useViewportRuntime(hostRef, canvasRef, {
     document: documentRef,
     selectedNodeId: selectedNodeIdRef,
     onSelectNode: onSelectNodeRef,
     onCommitTransform: onCommitTransformRef,
-    onStats: onStatsRef
+    onStats: onStatsRef,
+    onFrame: onFrameRef
   });
 
   useEffect(() => {
@@ -130,6 +158,18 @@ export function Viewport({
     const runtime = runtimeRef.current;
     if (runtime) applyCameraCommand(runtime, cameraCommand);
   }, [cameraCommand, runtimeRef]);
+
+  useEffect(() => {
+    pendingPresentationRef.current =
+      presentationNonce > 0 ? presentationNonce : null;
+  }, [
+    activeClipId,
+    cameraCommand,
+    document.revision,
+    playhead,
+    playing,
+    presentationNonce
+  ]);
 
   const stopContextMenu = (event: ReactPointerEvent): void => {
     if (event.button === 2) event.preventDefault();

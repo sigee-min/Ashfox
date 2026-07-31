@@ -123,7 +123,11 @@ const projectArtifact: ArtifactFile = {
   kind: 'project',
   name: 'moonveil-kirin.ashfox',
   contentType: 'application/vnd.ashfox.project+zip',
-  bytes: new Uint8Array([1, 2, 3])
+  bytes: new Uint8Array([1, 2, 3]),
+  projectId: 'project-moonveil-kirin',
+  sourceRevision: 'local-0001',
+  target: 'glb',
+  contentHash: 'sha256:test-artifact'
 };
 const saveRunning = fileOperationReducer<ArtifactFile>(
   INITIAL_FILE_OPERATION,

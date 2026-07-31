@@ -11,7 +11,7 @@ import {
   PROJECT_EXPORT_TARGETS,
   projectExportTargetFor,
   type ProjectExportTarget,
-} from '../presentation/projectExportTarget';
+} from '../../../application/projectExportTarget';
 import { ProjectTargetFields } from './ProjectTargetFields';
 
 interface ExportMenuProps {

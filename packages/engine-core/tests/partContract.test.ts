@@ -310,3 +310,59 @@ if (!oversizedMass.ok) {
     true
   );
 }
+
+const anisotropicSegment = normalizePartSpec({
+  kind: 'segment',
+  partId: 'budget.segment',
+  materialId: 'material.gold',
+  points: [
+    [0, 0, 0],
+    [100, 0, 0]
+  ],
+  radii: [
+    [1, 32, 1],
+    [1, 32, 1]
+  ]
+});
+assert.equal(
+  anisotropicSegment.ok,
+  true,
+  'segment budget must use per-axis bounds instead of one global radius'
+);
+
+const thinRadialRing = normalizePartSpec({
+  kind: 'radial',
+  partId: 'budget.ring',
+  materialId: 'material.gold',
+  axis: 'y',
+  center: [0, 0, 0],
+  outerRadius: PART_CONTRACT_LIMITS.maxExtent,
+  innerRadius: PART_CONTRACT_LIMITS.maxExtent - 1,
+  depth: 3
+});
+assert.equal(
+  thinRadialRing.ok,
+  true,
+  'radial budget must count the bounded annulus instead of its square box'
+);
+
+const oversizedSolidRadial = normalizePartSpec({
+  kind: 'radial',
+  partId: 'budget.solid',
+  materialId: 'material.gold',
+  axis: 'y',
+  center: [0, 0, 0],
+  outerRadius: PART_CONTRACT_LIMITS.maxExtent,
+  innerRadius: 0,
+  depth: 3
+});
+assert.equal(oversizedSolidRadial.ok, false);
+if (!oversizedSolidRadial.ok) {
+  assert.equal(
+    oversizedSolidRadial.issues.some(
+      (issue) => issue.code === 'budget'
+    ),
+    true,
+    'exact radial counting must still reject a real occupancy overflow'
+  );
+}

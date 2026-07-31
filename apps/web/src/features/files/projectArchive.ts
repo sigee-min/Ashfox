@@ -7,7 +7,7 @@ import {
 import {
   type ProjectAsset,
   type ProjectAssets
-} from './projectAssets';
+} from '../../application/projectAssets';
 import {
   createStoredZip,
   readStoredZip,

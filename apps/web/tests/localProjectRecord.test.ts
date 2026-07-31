@@ -8,7 +8,7 @@ import {
   LOCAL_PROJECT_SCHEMA_VERSION,
   localProjectRevisionForSerial,
   projectRevisionSerial
-} from '../src/features/workbench/persistence/localProjectRecord';
+} from '../src/application/localProjectRecord';
 import { createWorkbenchProject } from '../src/features/workbench/sampleProject';
 
 assert.equal(isLocalProjectRevision('local-0012'), true);

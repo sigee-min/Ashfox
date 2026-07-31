@@ -19,6 +19,14 @@ interface ParseFailure {
 
 export type ParseCommandBatchResult = ParseSuccess | ParseFailure;
 
+const BATCH_KEYS = new Set([
+  'batchId',
+  'baseProjectId',
+  'baseRevision',
+  'operations'
+]);
+const OPERATION_KEYS = new Set(['name', 'payload']);
+
 const isRecord = (
   value: unknown
 ): value is Readonly<Record<string, unknown>> =>
@@ -26,6 +34,12 @@ const isRecord = (
 
 const commandBatchShape = (value: unknown): CommandBatch =>
   value as CommandBatch;
+
+const unknownKey = (
+  value: Readonly<Record<string, unknown>>,
+  allowed: ReadonlySet<string>
+): string | undefined =>
+  Object.keys(value).find((key) => !allowed.has(key));
 
 export const parseCommandBatch = (
   value: unknown
@@ -40,8 +54,24 @@ export const parseCommandBatch = (
       }
     };
   }
+  const batchUnknownKey = unknownKey(
+    value,
+    BATCH_KEYS
+  );
+  if (batchUnknownKey) {
+    return {
+      ok: false,
+      error: {
+        code: 'invalid_batch',
+        path: batchUnknownKey,
+        expected: 'registered command batch property'
+      }
+    };
+  }
   if (
     typeof value.batchId !== 'string' ||
+    typeof value.baseProjectId !== 'string' ||
+    value.baseProjectId.trim().length === 0 ||
     typeof value.baseRevision !== 'string' ||
     !Array.isArray(value.operations) ||
     value.operations.length === 0 ||
@@ -52,7 +82,8 @@ export const parseCommandBatch = (
       error: {
         code: 'invalid_batch',
         path: '$',
-        expected: 'batchId, baseRevision, and 1-64 operations'
+        expected:
+          'batchId, baseProjectId, baseRevision, and 1-64 operations'
       }
     };
   }
@@ -70,6 +101,20 @@ export const parseCommandBatch = (
           code: 'invalid_batch',
           path: `operations[${index}]`,
           expected: 'registered command operation'
+        }
+      };
+    }
+    const operationUnknownKey = unknownKey(
+      operation,
+      OPERATION_KEYS
+    );
+    if (operationUnknownKey) {
+      return {
+        ok: false,
+        error: {
+          code: 'invalid_batch',
+          path: `operations[${index}].${operationUnknownKey}`,
+          expected: 'name or payload'
         }
       };
     }

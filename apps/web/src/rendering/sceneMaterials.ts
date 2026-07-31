@@ -5,17 +5,18 @@ import type {
   TextureAsset
 } from '@ashfox/engine-core';
 
-import { renderTextureRaster } from '../../textures/renderTextureRaster';
+import { renderTextureRaster } from './renderTextureRaster';
 import type {
   ProjectAsset,
   ProjectAssets
-} from '../../files/projectAssets';
+} from '../application/projectAssets';
 
 export interface ProjectMaterialLibrary {
   resolve(
     textureId: string | null,
     lightEmission?: number
   ): THREE.Material;
+  ready: Promise<void>;
   dispose(): void;
 }
 
@@ -35,10 +36,21 @@ const previewColor = (texture: TextureAsset): string => {
   return typeof value === 'string' ? value : '#8e98a3';
 };
 
-const configureTextureMap = (
+export const configureTextureMap = (
   map: THREE.Texture,
   texture: TextureAsset
 ): THREE.Texture => {
+  if (texture.atlasMode === 'generate') {
+    map.magFilter = THREE.NearestFilter;
+    map.minFilter = THREE.NearestFilter;
+    map.generateMipmaps = false;
+    map.colorSpace =
+      texture.colorSpace === 'srgb'
+        ? THREE.SRGBColorSpace
+        : THREE.NoColorSpace;
+    map.needsUpdate = true;
+    return map;
+  }
   map.magFilter =
     texture.sampling === 'nearest'
       ? THREE.NearestFilter
@@ -68,7 +80,10 @@ const createRasterTextureMap = (
 const createStoredTextureMap = (
   texture: TextureAsset,
   asset: ProjectAsset
-): THREE.Texture => {
+): {
+  map: THREE.Texture;
+  ready: Promise<void>;
+} => {
   const copy = new Uint8Array(asset.bytes);
   const url = URL.createObjectURL(
     new Blob([copy.buffer], { type: asset.contentType })
@@ -78,14 +93,26 @@ const createStoredTextureMap = (
     URL.revokeObjectURL(url);
     delete map.userData.ashfoxObjectUrl;
   };
-  map = new THREE.TextureLoader().load(
-    url,
-    releaseUrl,
-    undefined,
-    releaseUrl
-  );
+  let resolveReady: (() => void) | null = null;
+  let rejectReady: ((error: Error) => void) | null = null;
+  const ready = new Promise<void>((resolve, reject) => {
+    resolveReady = resolve;
+    rejectReady = reject;
+  });
+  map = new THREE.TextureLoader().load(url, () => {
+    releaseUrl();
+    resolveReady?.();
+  }, undefined, () => {
+    releaseUrl();
+    rejectReady?.(
+      new Error(`Texture "${texture.name}" could not be decoded.`)
+    );
+  });
   map.userData.ashfoxObjectUrl = url;
-  return configureTextureMap(map, texture);
+  return {
+    map: configureTextureMap(map, texture),
+    ready
+  };
 };
 
 export const createProjectMaterials = (
@@ -93,16 +120,28 @@ export const createProjectMaterials = (
   assets: ProjectAssets,
   untexturedColor = '#808892'
 ): ProjectMaterialLibrary => {
+  const readiness: Promise<void>[] = [];
   const resources = new Map<
     string,
     { texture: TextureAsset; map: THREE.Texture | null }
   >();
   for (const texture of Object.values(document.textures)) {
-    const map = texture.raster
-      ? createRasterTextureMap(document, texture)
-      : assets[texture.id]
-        ? createStoredTextureMap(texture, assets[texture.id])
-        : null;
+    let map: THREE.Texture | null;
+    if (texture.raster) {
+      map = createRasterTextureMap(document, texture);
+    } else if (assets[texture.id]) {
+      const stored = createStoredTextureMap(
+        texture,
+        assets[texture.id]
+      );
+      map = stored.map;
+      readiness.push(stored.ready);
+    } else {
+      map = null;
+      readiness.push(Promise.reject(
+        new Error(`Texture "${texture.name}" has no local bytes.`)
+      ));
+    }
     resources.set(texture.id, { texture, map });
   }
   const materials = new Map<string, THREE.Material>();
@@ -160,6 +199,7 @@ export const createProjectMaterials = (
 
   return {
     resolve,
+    ready: Promise.all(readiness).then(() => undefined),
     dispose: () => {
       for (const material of materials.values()) material.dispose();
       fallback.dispose();

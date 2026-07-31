@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 
 import {
   executeCommandBatch,
-  exportProject,
-  exportProjectResolved,
+  exportProductionProject,
+  exportProductionProjectResolved,
+  ProductionExportError,
   validateProjectDocument,
   type ExportPreset,
   type PartSpec,
@@ -59,6 +60,20 @@ const authorProject = (target: ExportPreset): ProjectDocument => {
       }
     },
     {
+      name: 'project.intent.set',
+      payload: {
+        subject: `Export ${target}`,
+        forward: 'north',
+        grounding: 'free',
+        requiredFeatures: [
+          'The exported plate remains visibly rectangular.'
+        ],
+        requiredPartIds: ['body'],
+        requiredMaterialIds: ['stone'],
+        requiredClipIds: ['animation-export-idle']
+      }
+    },
+    {
       name: 'model.parts.upsert',
       payload: {
         parts: [part],
@@ -67,10 +82,41 @@ const authorProject = (target: ExportPreset): ProjectDocument => {
           baseColor: '#8E98A3'
         }]
       }
+    },
+    {
+      name: 'animation.clip.upsert',
+      payload: {
+        id: 'animation-export-idle',
+        name: 'animation.export.idle',
+        durationSeconds: 1,
+        fps: 20,
+        loop: 'loop'
+      }
+    },
+    {
+      name: 'animation.channels.upsert',
+      payload: {
+        clipId: 'animation-export-idle',
+        channels: [{
+          id: 'channel-export-idle',
+          targetNodeId: 'bone:body',
+          property: 'rotation',
+          keys: [{
+            id: 'key-export-start',
+            timeSeconds: 0,
+            value: [0, 0, 0]
+          }, {
+            id: 'key-export-end',
+            timeSeconds: 1,
+            value: [0, 0, 0]
+          }]
+        }]
+      }
     }
   ];
   const result = executeCommandBatch(base, {
     batchId: `batch-export-${target}`,
+    baseProjectId: base.id,
     baseRevision: base.revision,
     operations
   }, { source: 'system' });
@@ -87,8 +133,14 @@ const authorProject = (target: ExportPreset): ProjectDocument => {
   return result.document;
 };
 
+assert.throws(
+  () => exportProductionProject(createGltfProject('glb')),
+  ProductionExportError,
+  'the public exporter must reject a structurally valid draft'
+);
+
 {
-  const bundle = exportProject(authorProject('geckolib5'));
+  const bundle = exportProductionProject(authorProject('geckolib5'));
   assert.equal(bundle.target.id, 'minecraft.java.geckolib5');
   assert.deepEqual(
     bundle.files.map((file) => file.role),
@@ -100,18 +152,19 @@ const authorProject = (target: ExportPreset): ProjectDocument => {
 }
 
 {
-  const bundle = exportProject(authorProject('bedrock'));
+  const bundle = exportProductionProject(authorProject('bedrock'));
   assert.equal(bundle.target.id, 'minecraft.bedrock');
   assert.deepEqual(
     bundle.files.map((file) => file.role),
-    ['geometry', 'texture']
+    ['geometry', 'animation', 'texture']
   );
   assert.ok(bundle.entrypoints[0]?.endsWith('.geo.json'));
-  assert.ok(bundle.files[1]?.path.endsWith('.png'));
+  assert.ok(bundle.entrypoints[1]?.endsWith('.animation.json'));
+  assert.ok(bundle.files[2]?.path.endsWith('.png'));
 }
 
 {
-  const bundle = exportProject(authorProject('gltf'));
+  const bundle = exportProductionProject(authorProject('gltf'));
   assert.equal(bundle.target.id, 'gltf.2');
   assert.deepEqual(
     bundle.files.map((file) => file.role),
@@ -124,12 +177,15 @@ const authorProject = (target: ExportPreset): ProjectDocument => {
 
 registerAsyncTest(
   (async () => {
-    const bundle = await exportProjectResolved(authorProject('glb'), {
+    const bundle = await exportProductionProjectResolved(
+      authorProject('glb'),
+      {
       resolveBlob: async () => ({
         bytes: validationPng,
         contentType: 'image/png'
       })
-    });
+      }
+    );
     assert.equal(bundle.target.id, 'gltf.2');
     assert.equal(bundle.files.length, 1);
     const model = bundle.files[0];

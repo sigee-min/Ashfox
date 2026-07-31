@@ -3,17 +3,18 @@ import assert from 'node:assert/strict';
 import { createProjectFromInput } from '@ashfox/engine-core';
 
 import { createWorkbenchProject } from '../src/features/workbench/sampleProject';
-import { LOCAL_PROJECT_SCHEMA_VERSION } from '../src/features/workbench/persistence/localProjectRecord';
+import { LOCAL_PROJECT_SCHEMA_VERSION } from '../src/application/localProjectRecord';
 import {
   createHistoryState,
   historyReducer
-} from '../src/features/workbench/state/historyReducer';
+} from '../src/application/historyReducer';
 
 const initial = createHistoryState(createWorkbenchProject());
 const committed = historyReducer(initial, {
   type: 'execute',
   batch: {
     batchId: 'test-commit',
+    baseProjectId: initial.present.id,
     baseRevision: initial.present.revision,
     operations: [{
       name: 'project.rename',
@@ -50,6 +51,7 @@ const rejected = historyReducer(committed, {
   type: 'execute',
   batch: {
     batchId: 'test-stale',
+    baseProjectId: committed.present.id,
     baseRevision: initial.present.revision,
     operations: [{
       name: 'project.rename',
@@ -80,6 +82,7 @@ const invalidPayload = historyReducer(committed, {
   type: 'execute',
   batch: {
     batchId: 'test-invalid-payload',
+    baseProjectId: committed.present.id,
     baseRevision: committed.present.revision,
     operations: [{
       name: 'project.rename',
@@ -107,6 +110,7 @@ const rawAgentCommand = historyReducer(committed, {
   type: 'execute',
   batch: {
     batchId: 'test-agent-raw-command',
+    baseProjectId: committed.present.id,
     baseRevision: committed.present.revision,
     operations: [{
       name: 'scene.cubes.create',
@@ -137,6 +141,41 @@ if (rawAgentCommand.lastCommandOutcome?.status === 'rejected') {
   );
 }
 
+const invalidCandidateDocument = structuredClone(committed.present);
+invalidCandidateDocument.scene.roots = Array.from(
+  { length: 12 },
+  (_, index) => `missing-root-${index}`
+);
+const invalidCandidateState =
+  createHistoryState(invalidCandidateDocument);
+const invalidCandidate = historyReducer(invalidCandidateState, {
+  type: 'execute',
+  batch: {
+    batchId: 'test-candidate-findings',
+    baseProjectId: invalidCandidateDocument.id,
+    baseRevision: invalidCandidateDocument.revision,
+    operations: [{
+      name: 'project.rename',
+      payload: { name: 'Candidate with findings' }
+    }]
+  },
+  actorId: 'test',
+  source: 'agent',
+  committedAt: '2026-01-01T00:00:01.750Z'
+});
+assert.equal(invalidCandidate.lastCommandOutcome?.status, 'rejected');
+if (invalidCandidate.lastCommandOutcome?.status === 'rejected') {
+  assert.equal(invalidCandidate.lastCommandOutcome.findings?.length, 10);
+  assert.equal(
+    invalidCandidate.lastCommandOutcome.findingsTruncated,
+    true
+  );
+  assert.equal(
+    invalidCandidate.lastCommandOutcome.findings?.[0]?.severity,
+    'error'
+  );
+}
+
 const partDocument = createProjectFromInput(
   {
     id: 'project-part-history',
@@ -153,6 +192,7 @@ const partCommitted = historyReducer(partInitial, {
   type: 'execute',
   batch: {
     batchId: 'test-part-upsert',
+    baseProjectId: partDocument.id,
     baseRevision: partDocument.revision,
     operations: [{
       name: 'model.parts.upsert',

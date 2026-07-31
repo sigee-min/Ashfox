@@ -3,10 +3,13 @@ import type {
   ProjectDocument
 } from '@ashfox/engine-core';
 
-import { safeArtifactName } from '../files/artifactFile';
-import type { ProjectAssets } from '../files/projectAssets';
-import type { CameraMode } from '../workbench/viewport/cameraPresets';
-import type { ViewportEnvironmentId } from '../workbench/viewport/viewportEnvironment';
+import {
+  createArtifactBinding,
+  safeArtifactName
+} from '../files/artifactFile';
+import type { ProjectAssets } from '../../application/projectAssets';
+import type { CameraMode } from '../../rendering/cameraPresets';
+import type { ViewportEnvironmentId } from '../../rendering/viewportEnvironment';
 import {
   renderBuildGif,
   type BuildGifCaptureOptions
@@ -37,6 +40,7 @@ export const createBuildGif = async (
   const capture = await renderBuildGif(captureOptions);
   return {
     ...capture,
+    ...await createArtifactBinding(document, capture.bytes),
     kind: 'build',
     name: `${safeArtifactName(document.name)}-build-process.gif`,
     contentType: 'image/gif'

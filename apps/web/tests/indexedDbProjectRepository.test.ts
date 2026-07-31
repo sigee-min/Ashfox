@@ -6,7 +6,7 @@ import {
 import {
   createLocalProjectRecord,
   LOCAL_PROJECT_SCHEMA_VERSION
-} from '../src/features/workbench/persistence/localProjectRecord';
+} from '../src/application/localProjectRecord';
 import { createWorkbenchProject } from '../src/features/workbench/sampleProject';
 
 const document = createWorkbenchProject();

@@ -38,6 +38,60 @@ const isStringArray = (value: unknown): value is readonly string[] =>
   Array.isArray(value) &&
   value.every((item) => typeof item === 'string');
 
+const unknownProperty = (
+  value: Readonly<Record<string, unknown>>,
+  allowed: readonly string[]
+): string | null =>
+  Object.keys(value).find((key) => !allowed.includes(key)) ?? null;
+
+const rejectUnknownProperties = (
+  value: Readonly<Record<string, unknown>>,
+  allowed: readonly string[]
+): ParseInspectRequestFailure | null => {
+  const property = unknownProperty(value, allowed);
+  return property === null
+    ? null
+    : failure(property, 'no additional properties');
+};
+
+const pagedRequest = (
+  value: Readonly<Record<string, unknown>>,
+  kind: 'catalog' | 'activity'
+): ParseInspectRequestResult => {
+  const unknown = rejectUnknownProperties(
+    value,
+    ['kind', 'cursor', 'limit']
+  );
+  if (unknown) return unknown;
+  if (
+    value.cursor !== undefined &&
+    typeof value.cursor !== 'string'
+  ) {
+    return failure('cursor', 'page cursor string');
+  }
+  if (
+    value.limit !== undefined &&
+    (
+      typeof value.limit !== 'number' ||
+      !Number.isInteger(value.limit) ||
+      value.limit < 1 ||
+      value.limit > 100
+    )
+  ) {
+    return failure('limit', 'integer from 1 through 100');
+  }
+  return {
+    ok: true,
+    request: {
+      kind,
+      ...(value.cursor === undefined
+        ? {}
+        : { cursor: value.cursor }),
+      ...(value.limit === undefined ? {} : { limit: value.limit })
+    }
+  };
+};
+
 export const parseInspectRequest = (
   value: unknown
 ): ParseInspectRequestResult => {
@@ -47,7 +101,12 @@ export const parseInspectRequest = (
   }
 
   switch (value.kind) {
-    case 'command':
+    case 'command': {
+      const unknown = rejectUnknownProperties(
+        value,
+        ['kind', 'name']
+      );
+      if (unknown) return unknown;
       return typeof value.name === 'string'
         ? {
             ok: true,
@@ -57,10 +116,16 @@ export const parseInspectRequest = (
             }
           }
         : failure('name', 'command name');
+    }
     case 'parts':
     case 'entity':
     case 'texture':
-    case 'clip':
+    case 'clip': {
+      const unknown = rejectUnknownProperties(
+        value,
+        ['kind', 'ids']
+      );
+      if (unknown) return unknown;
       return isStringArray(value.ids)
         ? {
             ok: true,
@@ -70,15 +135,26 @@ export const parseInspectRequest = (
             }
           }
         : failure('ids', 'string ID array');
+    }
     case 'catalog':
-    case 'target':
+    case 'activity':
+      return pagedRequest(value, value.kind);
+    case 'target': {
+      const unknown = rejectUnknownProperties(value, ['kind']);
+      if (unknown) return unknown;
       return {
         ok: true,
         request: {
           kind: value.kind
         }
       };
-    case 'finding':
+    }
+    case 'finding': {
+      const unknown = rejectUnknownProperties(
+        value,
+        ['kind', 'path']
+      );
+      if (unknown) return unknown;
       return typeof value.path === 'string'
         ? {
             ok: true,
@@ -88,10 +164,11 @@ export const parseInspectRequest = (
             }
           }
         : failure('path', 'finding path');
+    }
     default:
       return failure(
         'kind',
-        'command, catalog, parts, entity, texture, clip, target, or finding'
+        'command, catalog, parts, entity, texture, clip, activity, target, or finding'
       );
   }
 };

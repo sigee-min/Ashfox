@@ -9,6 +9,9 @@ import {
   type Vec2,
   type Vec3
 } from '../../../model';
+import {
+  effectivelyVisibleSceneNodeIds
+} from '../../../sceneVisibility';
 import { GltfBinaryWriter } from './binaryWriter';
 import type { GltfMesh, GltfNode, GltfPrimitive } from './types';
 
@@ -406,9 +409,13 @@ export const compileGltfScene = (
   const restTranslationById = new Map<string, [number, number, number]>();
   const restRotationById = new Map<string, [number, number, number]>();
   const restScaleById = new Map<string, [number, number, number]>();
-  const orderedNodes = Object.values(document.scene.nodes).sort((left, right) =>
-    left.id.localeCompare(right.id)
-  );
+  const visibleNodeIds =
+    effectivelyVisibleSceneNodeIds(document);
+  const orderedNodes = Object.values(document.scene.nodes)
+    .filter((node) => visibleNodeIds.has(node.id))
+    .sort((left, right) =>
+      left.id.localeCompare(right.id)
+    );
 
   for (const node of orderedNodes) {
     const translation = restTranslation(document, node, options.unitScale);
@@ -436,10 +443,10 @@ export const compileGltfScene = (
         ...(node.tags ? { ashfoxTags: [...node.tags] } : {})
       }
     };
-    if (node.visible && node.kind === 'cube') {
+    if (node.kind === 'cube') {
       gltfNode.mesh = meshes.length;
       meshes.push(compileCubeMesh(document, node, options));
-    } else if (node.visible && node.kind === 'mesh') {
+    } else if (node.kind === 'mesh') {
       gltfNode.mesh = meshes.length;
       meshes.push(compileMesh(document, node, options));
     }

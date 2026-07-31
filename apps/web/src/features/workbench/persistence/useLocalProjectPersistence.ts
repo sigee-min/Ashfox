@@ -15,7 +15,7 @@ import {
   loadLocalProject,
   saveLocalProject
 } from './indexedDbProjectRepository';
-import type { LocalProjectRecord } from './localProjectRecord';
+import type { LocalProjectRecord } from '../../../application/localProjectRecord';
 import {
   areProjectDocumentsEqual,
   compareProjectRevisions,
@@ -23,7 +23,7 @@ import {
   isValidLocalProjectRecord,
   localProjectRevisionForSerial,
   projectRevisionSerial
-} from './localProjectRecord';
+} from '../../../application/localProjectRecord';
 import {
   publishLocalRevision,
   subscribeLocalProject
@@ -31,7 +31,7 @@ import {
 import {
   areProjectAssetsEqual,
   type ProjectAssets
-} from '../../files/projectAssets';
+} from '../../../application/projectAssets';
 import { useLatestValue } from '../../../hooks/useLatestValue';
 import {
   createPersistenceSessionState,

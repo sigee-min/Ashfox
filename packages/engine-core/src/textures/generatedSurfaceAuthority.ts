@@ -15,6 +15,9 @@ import type {
   LatticeBounds,
   LatticePoint
 } from '../modeling/types';
+import {
+  buildSurfacePatternComponents
+} from './surfacePatternComponents';
 
 export interface GeneratedSurfacePattern {
   seedKey: string;
@@ -47,7 +50,7 @@ export interface GeneratedSurfaceGrid {
 
 interface PatternDraft {
   faceKey: string;
-  seedKey: string;
+  groupKey: string;
   origin: readonly [number, number];
   width: number;
   height: number;
@@ -328,15 +331,14 @@ export const buildCompiledSurfaceAuthority = (
       if (!external) continue;
       const size = grid.faceSize(cube, direction);
       if (!size) continue;
-      const seedKey = [
-        generation.partId,
+      const groupKey = [
         generation.materialId,
         direction,
         facePlane(bounds, direction)
       ].join(':');
       drafts.push({
         faceKey: key,
-        seedKey,
+        groupKey,
         origin: patternOrigin(
           cube,
           direction,
@@ -348,41 +350,25 @@ export const buildCompiledSurfaceAuthority = (
     }
   }
 
-  const boundsBySeed = new Map<string, {
-    minX: number;
-    minY: number;
-    maxX: number;
-    maxY: number;
-  }>();
+  const components = buildSurfacePatternComponents(
+    drafts.map((draft) => ({
+      id: draft.faceKey,
+      groupKey: draft.groupKey,
+      x: draft.origin[0],
+      y: draft.origin[1],
+      width: draft.width,
+      height: draft.height
+    }))
+  );
   for (const draft of drafts) {
-    const current = boundsBySeed.get(draft.seedKey);
-    boundsBySeed.set(draft.seedKey, {
-      minX: Math.min(current?.minX ?? Infinity, draft.origin[0]),
-      minY: Math.min(current?.minY ?? Infinity, draft.origin[1]),
-      maxX: Math.max(
-        current?.maxX ?? -Infinity,
-        draft.origin[0] + draft.width
-      ),
-      maxY: Math.max(
-        current?.maxY ?? -Infinity,
-        draft.origin[1] + draft.height
-      )
-    });
-  }
-  for (const draft of drafts) {
-    const surfaceBounds = boundsBySeed.get(draft.seedKey);
-    if (!surfaceBounds) continue;
+    const component = components.get(draft.faceKey);
+    if (!component) continue;
     faces.set(draft.faceKey, {
       external: true,
       pattern: {
-        seedKey: draft.seedKey,
+        seedKey: component.seedKey,
         origin: draft.origin,
-        bounds: {
-          x: surfaceBounds.minX,
-          y: surfaceBounds.minY,
-          width: surfaceBounds.maxX - surfaceBounds.minX,
-          height: surfaceBounds.maxY - surfaceBounds.minY
-        }
+        bounds: component.bounds
       }
     });
   }

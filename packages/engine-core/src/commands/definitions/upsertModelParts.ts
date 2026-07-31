@@ -21,7 +21,7 @@ export const upsertModelPartsCommand = defineCommand({
   name: 'model.parts.upsert',
   label: 'Upsert model parts',
   purpose:
-    'Compile constrained semantic parts into deterministic bones, cuboids, UVs, and generated texture surfaces.',
+    'Compile tolerant semantic part assembly into deterministic single-owner bones, cuboids, UVs, and generated texture surfaces.',
   inputSchema: modelPartsUpsertSchema,
   apply: (document, payload) => {
     const normalized = normalizePartSpecs(payload.parts);
@@ -151,7 +151,7 @@ export const upsertModelPartsCommand = defineCommand({
               ? 'document'
               : 'operation',
           expected:
-            'connected, non-overlapping, visible lattice parts with valid parents and materials'
+            'connected, visible lattice parts whose shallow seam intersections preserve each part and its attachment'
         }
       };
     }

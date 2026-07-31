@@ -8,12 +8,20 @@ import {
   buildGeckoLib5Animations,
   buildGeckoLib5Geometry,
   buildMinecraftJavaModel,
-  exportProject,
-  exportMinecraftBedrock,
-  exportGeckoLib5,
-  exportMinecraftJavaBlock,
   type ProjectDocument
 } from '../src';
+import {
+  compileProjectBundle
+} from '../src/export/exportProject';
+import {
+  exportMinecraftBedrock
+} from '../src/export/targets/bedrock/exporter';
+import {
+  exportGeckoLib5
+} from '../src/export/targets/geckolib5/exporter';
+import {
+  exportMinecraftJavaBlock
+} from '../src/export/targets/javaBlock/exporter';
 import {
   createAnimatedBedrockProject,
   createBedrockProject,
@@ -64,7 +72,7 @@ const fixture = (name: string): string =>
       version: '1'
     }
   } as ProjectDocument;
-  const bundle = exportProject(project);
+  const bundle = compileProjectBundle(project);
   assert.deepEqual(bundle.entrypoints, ['project.json']);
   assert.equal(bundle.files[0]?.path, 'project.json');
 }
@@ -224,4 +232,120 @@ const fixture = (name: string): string =>
     bundle.files[2]?.path,
     'assets/ashfox/textures/block/ashfox_crate.png'
   );
+}
+
+{
+  const project = structuredClone(
+    createAnimatedBedrockProject()
+  );
+  const root = project.scene.nodes['bone-root'];
+  const cube = project.scene.nodes['cube-body'];
+  const locator = project.scene.nodes['locator-effect'];
+  if (
+    root.kind !== 'bone' ||
+    cube.kind !== 'cube' ||
+    locator.kind !== 'locator'
+  ) {
+    throw new Error('visibility fixture nodes missing');
+  }
+  project.scene = {
+    ...project.scene,
+    nodes: {
+      ...project.scene.nodes,
+      'bone-hidden': {
+        ...root,
+        id: 'bone-hidden',
+        name: 'hidden',
+        parentId: 'bone-root',
+        visible: false
+      },
+      'cube-body': {
+        ...cube,
+        parentId: 'bone-hidden',
+        visible: true
+      },
+      'locator-effect': {
+        ...locator,
+        parentId: 'bone-hidden',
+        visible: true
+      }
+    }
+  };
+  const channel =
+    project.animations['clip-idle']
+      .channels['channel-root-rotation'];
+  project.animations = {
+    ...project.animations,
+    'clip-idle': {
+      ...project.animations['clip-idle'],
+      channels: {
+        'channel-root-rotation': {
+          ...channel,
+          targetNodeId: 'bone-hidden'
+        }
+      }
+    }
+  };
+
+  const geometry = buildMinecraftBedrockGeometry(project);
+  assert.deepEqual(
+    geometry['minecraft:geometry'][0].bones.map(
+      (bone) => bone.name
+    ),
+    ['root']
+  );
+  assert.equal(
+    geometry['minecraft:geometry'][0].bones[0].cubes,
+    undefined
+  );
+  const animation = buildMinecraftBedrockAnimations(project)
+    .animations['animation.ashfox_crate.idle'];
+  assert.equal(animation.bones, undefined);
+  assert.equal(animation.particle_effects, undefined);
+  assert.deepEqual(animation.timeline?.['0.75'], 'variable.phase = 1.0;');
+}
+
+{
+  const project = structuredClone(createGeckoLib5Project());
+  const root = project.scene.nodes['bone-root'];
+  const cube = project.scene.nodes['cube-body'];
+  if (root.kind !== 'bone' || cube.kind !== 'cube') {
+    throw new Error('visibility fixture nodes missing');
+  }
+  project.scene = {
+    ...project.scene,
+    nodes: {
+      ...project.scene.nodes,
+      'bone-hidden': {
+        ...root,
+        id: 'bone-hidden',
+        name: 'hidden',
+        parentId: 'bone-root',
+        visible: false
+      },
+      'cube-body': {
+        ...cube,
+        parentId: 'bone-hidden',
+        visible: true
+      }
+    }
+  };
+  const geometry = buildGeckoLib5Geometry(project);
+  assert.deepEqual(
+    geometry['minecraft:geometry'][0].bones.map(
+      (bone) => bone.name
+    ),
+    ['root']
+  );
+  assert.equal(
+    geometry['minecraft:geometry'][0].bones[0].cubes,
+    undefined
+  );
+}
+
+{
+  const project = createJavaProject();
+  project.scene.nodes['bone-root'].visible = false;
+  const model = buildMinecraftJavaModel(project);
+  assert.deepEqual(model.elements, []);
 }

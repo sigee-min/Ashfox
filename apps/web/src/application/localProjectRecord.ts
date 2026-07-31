@@ -7,7 +7,7 @@ import {
   areProjectAssetsEqual,
   isProjectAssets,
   type ProjectAssets
-} from '../../files/projectAssets';
+} from './projectAssets';
 
 export const LOCAL_PROJECT_SCHEMA_VERSION = 3;
 

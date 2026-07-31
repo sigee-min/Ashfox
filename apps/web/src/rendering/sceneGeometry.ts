@@ -83,6 +83,39 @@ const applyCubeFaceUvs = (
   attribute.needsUpdate = true;
 };
 
+const retainEnabledCubeFaces = (
+  geometry: THREE.BoxGeometry,
+  node: Extract<SceneNode, { kind: 'cube' }>
+): readonly (typeof CUBE_MATERIAL_ORDER)[number][] => {
+  const sourceIndex = geometry.getIndex();
+  if (!sourceIndex) return [];
+  const sourceGroups = [...geometry.groups];
+  const enabledDirections = CUBE_MATERIAL_ORDER.filter(
+    (direction) => node.faces[direction].enabled
+  );
+  const indices: number[] = [];
+  geometry.clearGroups();
+  for (const [materialIndex, direction] of enabledDirections.entries()) {
+    const sourceMaterialIndex = CUBE_MATERIAL_ORDER.indexOf(direction);
+    const sourceGroup =
+      sourceGroups.find(
+        (group) => group.materialIndex === sourceMaterialIndex
+      ) ?? sourceGroups[sourceMaterialIndex];
+    if (!sourceGroup) continue;
+    const start = indices.length;
+    for (
+      let index = sourceGroup.start;
+      index < sourceGroup.start + sourceGroup.count;
+      index += 1
+    ) {
+      indices.push(sourceIndex.getX(index));
+    }
+    geometry.addGroup(start, sourceGroup.count, materialIndex);
+  }
+  geometry.setIndex(indices);
+  return enabledDirections;
+};
+
 const addCubeGeometry = (
   node: Extract<SceneNode, { kind: 'cube' }>,
   group: THREE.Group,
@@ -95,12 +128,13 @@ const addCubeGeometry = (
     size[2] + node.inflate * 2
   );
   applyCubeFaceUvs(geometry, node, context.textures);
+  const enabledDirections = retainEnabledCubeFaces(geometry, node);
   const center: [number, number, number] = [
     (node.bounds.from[0] + node.bounds.to[0]) / 2 - node.transform.pivot[0],
     (node.bounds.from[1] + node.bounds.to[1]) / 2 - node.transform.pivot[1],
     (node.bounds.from[2] + node.bounds.to[2]) / 2 - node.transform.pivot[2]
   ];
-  const materials = CUBE_MATERIAL_ORDER.map((direction) => {
+  const materials = enabledDirections.map((direction) => {
     const textureId = node.faces[direction].textureId;
     return context.materials.resolve(textureId, node.lightEmission);
   });

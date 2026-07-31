@@ -5,14 +5,14 @@ import type {
   ProjectDocument
 } from '@ashfox/engine-core';
 
-import type { ProjectAssets } from '../files/projectAssets';
-import { applyAnimationPose } from '../workbench/viewport/animationPose';
+import type { ProjectAssets } from '../../application/projectAssets';
+import { applyAnimationPose } from '../../rendering/animationPose';
 import {
   applyCameraPreset,
   type CameraMode
-} from '../workbench/viewport/cameraPresets';
-import type { ProjectSceneProjection } from '../workbench/viewport/sceneTypes';
-import type { ViewportEnvironmentId } from '../workbench/viewport/viewportEnvironment';
+} from '../../rendering/cameraPresets';
+import type { ProjectSceneProjection } from '../../rendering/sceneTypes';
+import type { ViewportEnvironmentId } from '../../rendering/viewportEnvironment';
 import {
   createBuildCapturePlan
 } from './buildCaptureTimeline';
@@ -25,9 +25,10 @@ import {
   disposeGifCaptureSurface,
   encodeGifSurfaceFrame,
   finishGifCaptureSurface,
-  waitForSceneTextures,
+  waitForProjectionTextures,
   type GifCaptureResult
 } from './gifCaptureSurface';
+import { resolveBuildReviewClip } from './buildReviewClip';
 import { createCaptureProjection } from './createCaptureProjection';
 
 export interface BuildGifCaptureOptions {
@@ -64,7 +65,7 @@ const applyReviewPose = (
   eventFrameIndex: number,
   holdFrames: number
 ): void => {
-  const clip = Object.values(document.animations)[0];
+  const clip = resolveBuildReviewClip(document);
   if (!clip) return;
   const denominator = Math.max(1, holdFrames - 1);
   const cycle =
@@ -112,8 +113,8 @@ export const renderBuildGif = async (
           }
         );
         surface.scene.add(activeProjection.root);
-        await waitForSceneTextures(
-          activeProjection.root,
+        await waitForProjectionTextures(
+          activeProjection,
           options.signal
         );
         activeEventIndex = frame.eventIndex;

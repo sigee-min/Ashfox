@@ -5,14 +5,17 @@ import {
   quantize
 } from 'gifenc';
 
-import type { CameraMode } from '../workbench/viewport/cameraPresets';
-import { applyCameraPreset } from '../workbench/viewport/cameraPresets';
+import type { CameraMode } from '../../rendering/cameraPresets';
+import { applyCameraPreset } from '../../rendering/cameraPresets';
+import type {
+  ProjectSceneProjection
+} from '../../rendering/sceneTypes';
 import {
   addViewportLighting,
   createViewportEnvironment,
   type ViewportEnvironment
-} from '../workbench/viewport/viewportEnvironment';
-import type { ViewportEnvironmentId } from '../workbench/viewport/viewportEnvironment';
+} from '../../rendering/viewportEnvironment';
+import type { ViewportEnvironmentId } from '../../rendering/viewportEnvironment';
 import {
   captureAbortError,
   throwIfCaptureAborted
@@ -164,52 +167,29 @@ export const disposeGifCaptureSurface = (
   surface.renderer.dispose();
 };
 
-const waitForImage = (
-  image: HTMLImageElement,
-  signal: AbortSignal
-): Promise<void> => {
-  if (image.complete) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const cleanup = (): void => {
-      image.removeEventListener('load', onLoad);
-      image.removeEventListener('error', onError);
-      signal.removeEventListener('abort', onAbort);
-    };
-    const onLoad = (): void => {
-      cleanup();
-      resolve();
-    };
-    const onError = (): void => {
-      cleanup();
-      resolve();
-    };
-    const onAbort = (): void => {
-      cleanup();
-      reject(captureAbortError());
-    };
-    image.addEventListener('load', onLoad, { once: true });
-    image.addEventListener('error', onError, { once: true });
-    signal.addEventListener('abort', onAbort, { once: true });
-  });
-};
-
-export const waitForSceneTextures = async (
-  root: THREE.Object3D,
+export const waitForProjectionTextures = async (
+  projection: ProjectSceneProjection,
   signal: AbortSignal
 ): Promise<void> => {
   throwIfCaptureAborted(signal);
-  const images = new Set<HTMLImageElement>();
-  root.traverse((object) => {
-    const mesh = object as THREE.Mesh;
-    const materials = Array.isArray(mesh.material)
-      ? mesh.material
-      : mesh.material
-        ? [mesh.material]
-        : [];
-    for (const material of materials) {
-      const map = (material as THREE.MeshStandardMaterial).map;
-      if (map?.image instanceof HTMLImageElement) images.add(map.image);
-    }
+  let abort: (() => void) | null = null;
+  const aborted = new Promise<never>((_resolve, reject) => {
+    abort = () => reject(captureAbortError());
+    signal.addEventListener('abort', abort, { once: true });
   });
-  await Promise.all([...images].map((image) => waitForImage(image, signal)));
+  try {
+    await Promise.race([projection.ready, aborted]);
+  } finally {
+    if (abort) signal.removeEventListener('abort', abort);
+  }
+  throwIfCaptureAborted(signal);
+  if (projection.readiness.status === 'failed') {
+    throw new Error(
+      projection.readiness.error ??
+      'A project texture could not be decoded.'
+    );
+  }
+  if (projection.readiness.status !== 'ready') {
+    throw new Error('Project textures did not reach a ready state.');
+  }
 };

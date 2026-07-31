@@ -1,6 +1,6 @@
 import {
-  exportProject,
-  exportProjectResolved,
+  exportProductionProject,
+  exportProductionProjectResolved,
   staleGeneratedTextureIds,
   type BlobRef,
   type ExportBundle,
@@ -10,7 +10,7 @@ import {
   type TextureAsset
 } from '@ashfox/engine-core';
 
-import { renderTextureRaster } from '../textures/renderTextureRaster';
+import { renderTextureRaster } from '../../rendering/renderTextureRaster';
 import {
   createProjectArchive,
   readProjectArchive,
@@ -19,9 +19,11 @@ import {
 import {
   type ProjectAsset,
   type ProjectAssets
-} from './projectAssets';
+} from '../../application/projectAssets';
 import { createStoredZip } from './zip';
 import {
+  artifactContentHash,
+  createArtifactBinding,
   safeArtifactName,
   type ArtifactFile
 } from './artifactFile';
@@ -63,6 +65,7 @@ export const createProjectArtifact = async (
       resolveTextureAsset(document, texture, assets)
   );
   return {
+    ...await createArtifactBinding(document, bytes),
     kind: 'project',
     name: `${safeArtifactName(document.name)}.ashfox`,
     bytes,
@@ -114,15 +117,41 @@ const resolveTextureAsset = async (
   texture: TextureAsset,
   assets: ProjectAssets
 ): Promise<ProjectAsset> => {
-  if (texture.raster) return generatedPng(document, texture);
-  const stored = assets[texture.id];
-  if (stored) {
-    return {
-      contentType: stored.contentType,
-      bytes: new Uint8Array(stored.bytes)
-    };
+  if (texture.atlasMode === 'generate' || texture.raster) {
+    return generatedPng(document, texture);
   }
-  return generatedPng(document, texture);
+  const stored = assets[texture.id];
+  if (!stored) {
+    throw new Error(
+      `Preserved texture "${texture.name}" is missing its imported bytes.`
+    );
+  }
+  if (stored.contentType !== texture.source.contentType) {
+    throw new Error(
+      `Preserved texture "${texture.name}" MIME type does not match its source metadata.`
+    );
+  }
+  const bytes = new Uint8Array(stored.bytes);
+  if (
+    bytes.byteLength === 0 ||
+    (
+      texture.source.byteLength !== undefined &&
+      texture.source.byteLength !== bytes.byteLength
+    )
+  ) {
+    throw new Error(
+      `Preserved texture "${texture.name}" byte length does not match its source metadata.`
+    );
+  }
+  if (await artifactContentHash(bytes) !== texture.source.contentHash) {
+    throw new Error(
+      `Preserved texture "${texture.name}" content hash does not match its source metadata.`
+    );
+  }
+  return {
+    contentType: stored.contentType,
+    bytes
+  };
 };
 
 const resolveTexture = async (
@@ -170,11 +199,11 @@ const createExportBundle = async (
     document
   );
   const bundle = exportDocument.formatProfile.id === 'gltf.2'
-    ? await exportProjectResolved(exportDocument, {
+    ? await exportProductionProjectResolved(exportDocument, {
         resolveBlob: (source) =>
           resolveTexture(exportDocument, assets, source)
       })
-    : exportProject(exportDocument);
+    : exportProductionProject(exportDocument);
   return {
     document: exportDocument,
     bundle
@@ -221,18 +250,22 @@ export const createTargetArtifact = async (
   const name = safeArtifactName(document.name);
   if (entries.length === 1) {
     const file = bundle.files[0];
+    const bytes = entries[0].bytes;
     return {
+      ...await createArtifactBinding(prepared.document, bytes),
       kind: 'target',
       name: `${name}.${extensionForBundle(bundle)}`,
-      bytes: entries[0].bytes,
+      bytes,
       contentType: file.contentType,
       sourceFileCount: 1
     };
   }
+  const bytes = createStoredZip(entries);
   return {
+    ...await createArtifactBinding(prepared.document, bytes),
     kind: 'target',
     name: `${name}-${safeArtifactName(bundle.target.id)}.zip`,
-    bytes: createStoredZip(entries),
+    bytes,
     contentType: 'application/zip',
     sourceFileCount: entries.length
   };

@@ -18,6 +18,7 @@ const createAuthoredProject = (): ProjectDocument => {
   );
   const created = executeCommandBatch(document, {
     batchId: 'artifact-preparation-fixture',
+    baseProjectId: document.id,
     baseRevision: document.revision,
     operations: [{
       name: 'scene.bones.create',
@@ -70,6 +71,7 @@ assert.deepEqual(
 
 const targetPrepared = executeCommandBatch(authored, {
   batchId: 'artifact-preparation-target',
+  baseProjectId: authored.id,
   baseRevision: authored.revision,
   operations: [{
     name: 'project.target.set',

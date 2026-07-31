@@ -25,6 +25,7 @@ const empty = createProjectFromInput(
 );
 const created = executeCommandBatch(empty, {
   batchId: 'capture-fixture-bone',
+  baseProjectId: empty.id,
   baseRevision: empty.revision,
   operations: [{
     name: 'scene.bones.create',

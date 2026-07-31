@@ -21,11 +21,16 @@ assert.deepEqual(commandNames, [
   'project.create',
   'project.rename',
   'project.target.set',
+  'project.intent.set',
   'model.parts.upsert',
+  'model.parts.mirror',
+  'model.parts.transform',
   'model.parts.material',
   'model.parts.delete',
   'scene.bones.create',
   'scene.locators.create',
+  'scene.locators.update',
+  'scene.locators.delete',
   'scene.nodes.transform',
   'scene.nodes.visibility',
   'scene.cubes.create',
@@ -55,10 +60,15 @@ assert.deepEqual(
     'project.create',
     'project.rename',
     'project.target.set',
+    'project.intent.set',
     'model.parts.upsert',
+    'model.parts.mirror',
+    'model.parts.transform',
     'model.parts.material',
     'model.parts.delete',
     'scene.locators.create',
+    'scene.locators.update',
+    'scene.locators.delete',
     'textures.density.set',
     'animation.clip.upsert',
     'animation.channels.upsert',
@@ -95,6 +105,7 @@ const execute = (
 ): ProjectDocument => {
   const result = executeCommandBatch(document, {
     batchId,
+    baseProjectId: document.id,
     baseRevision: document.revision,
     operations
   }, { source: 'system' });
@@ -114,6 +125,23 @@ assert.deepEqual(empty.settings.textureResolution, {
 });
 assert.equal(empty.settings.surfacePixelDensity, 1);
 assert.deepEqual(empty.textures, {});
+
+const wrongProject = executeCommandBatch(empty, {
+  batchId: 'batch-wrong-project',
+  baseProjectId: 'stale-project',
+  baseRevision: empty.revision,
+  operations: [{
+    name: 'project.rename',
+    payload: { name: 'Must not apply' }
+  }]
+}, { source: 'system' });
+assert.equal(wrongProject.ok, false);
+if (!wrongProject.ok) {
+  assert.equal(wrongProject.error.code, 'project_mismatch');
+  assert.equal(wrongProject.error.path, 'baseProjectId');
+  assert.equal(wrongProject.error.expected, empty.id);
+}
+assert.equal(empty.name, 'Command contract');
 
 const modeled = execute(empty, 'batch-model', [
   {
@@ -240,8 +268,29 @@ assert.equal(
   ).gutter,
   2
 );
+const detailedUvs = Object.values(detailed.scene.nodes)
+  .flatMap((node) =>
+    node.kind === 'cube'
+      ? Object.values(node.faces).flatMap((face) =>
+          face.textureId === 'texture-base' && face.uv
+            ? [face.uv]
+            : []
+        )
+      : []
+  );
+assert.equal(
+  Math.min(...detailedUvs.map((uv) => uv[0])),
+  2,
+  'packed UVs must use the same density-scaled gutter as raster extrusion'
+);
+assert.equal(
+  Math.min(...detailedUvs.map((uv) => uv[1])),
+  2,
+  'the first atlas row must reserve exactly one derived gutter'
+);
 const unchangedDensity = executeCommandBatch(detailed, {
   batchId: 'batch-density-unchanged',
+  baseProjectId: detailed.id,
   baseRevision: detailed.revision,
   operations: [{
     name: 'textures.density.set',
@@ -254,6 +303,7 @@ if (!unchangedDensity.ok) {
 }
 const invalidDensity = executeCommandBatch(detailed, {
   batchId: 'batch-density-invalid',
+  baseProjectId: detailed.id,
   baseRevision: detailed.revision,
   operations: [{
     name: 'textures.density.set',
@@ -336,6 +386,7 @@ const scalable = execute(recolored, 'batch-scale-target', [{
 }]);
 const scaled = executeCommandBatch(scalable, {
   batchId: 'batch-scale-derived-texture',
+  baseProjectId: scalable.id,
   baseRevision: scalable.revision,
   operations: [{
     name: 'scene.nodes.transform',
@@ -363,6 +414,7 @@ assert.equal(
 
 const invalidScale = executeCommandBatch(scalable, {
   batchId: 'batch-invalid-scale-grid',
+  baseProjectId: scalable.id,
   baseRevision: scalable.revision,
   operations: [{
     name: 'scene.nodes.transform',
@@ -383,6 +435,7 @@ assert.match(invalidScale.error.message, /square-pixel grid/);
 
 const halfUnitBatch = executeCommandBatch(recolored, {
   batchId: 'batch-half-unit-grid',
+  baseProjectId: recolored.id,
   baseRevision: recolored.revision,
   operations: [
     {
@@ -406,6 +459,7 @@ if (!halfUnitBatch.ok) {
 
 const invalidQuarterBatch = executeCommandBatch(recolored, {
   batchId: 'batch-invalid-quarter-grid',
+  baseProjectId: recolored.id,
   baseRevision: recolored.revision,
   operations: [
     {
@@ -532,8 +586,121 @@ assert.equal(renamed.name, 'Finished command contract');
 assert.equal(renamed.formatProfile.id, 'minecraft.bedrock');
 assert.equal(validateProjectDocument(renamed).valid, true);
 
+const locatorBase = createProjectFromInput(
+  {
+    id: 'project-locator-lifecycle',
+    name: 'Locator lifecycle',
+    target: 'glb',
+    namespace: 'ashfox',
+    modelPath: 'locator_lifecycle',
+    createdAt: '2026-07-31T00:00:00.000Z'
+  },
+  'locator-lifecycle-0001'
+);
+const withLocator = execute(locatorBase, 'batch-locator-create', [{
+  name: 'scene.locators.create',
+  payload: {
+    locators: [{
+      id: 'locator-muzzle',
+      name: 'Muzzle',
+      parentId: null
+    }]
+  }
+}]);
+const withLocatorBone = execute(
+  withLocator,
+  'batch-locator-bone',
+  [{
+    name: 'scene.bones.create',
+    payload: {
+      bones: [{
+        id: 'bone-locator-root',
+        name: 'locator_root',
+        parentId: null
+      }]
+    }
+  }]
+);
+const updatedLocatorProject = execute(
+  withLocatorBone,
+  'batch-locator-update',
+  [{
+    name: 'scene.locators.update',
+    payload: {
+      locators: [{
+        id: 'locator-muzzle',
+        name: 'Muzzle flash',
+        parentId: 'bone-locator-root',
+        transform: {
+          position: [1, 2, 3]
+        },
+        visible: false,
+        ignoreInheritedScale: true
+      }]
+    }
+  }]
+);
+const updatedLocator =
+  updatedLocatorProject.scene.nodes['locator-muzzle'];
+assert.equal(updatedLocator.kind, 'locator');
+if (updatedLocator.kind !== 'locator') {
+  throw new Error('Updated locator is missing.');
+}
+assert.equal(updatedLocator.name, 'Muzzle flash');
+assert.equal(updatedLocator.parentId, 'bone-locator-root');
+assert.deepEqual(updatedLocator.transform.position, [1, 2, 3]);
+assert.equal(updatedLocator.visible, false);
+assert.equal(updatedLocator.ignoreInheritedScale, true);
+assert.ok(
+  !updatedLocatorProject.scene.roots.includes('locator-muzzle')
+);
+
+const clearedLocatorProject = execute(
+  updatedLocatorProject,
+  'batch-locator-clear',
+  [{
+    name: 'scene.locators.update',
+    payload: {
+      locators: [{
+        id: 'locator-muzzle',
+        parentId: null,
+        visible: true,
+        ignoreInheritedScale: null
+      }]
+    }
+  }]
+);
+const clearedLocator =
+  clearedLocatorProject.scene.nodes['locator-muzzle'];
+assert.equal(clearedLocator.kind, 'locator');
+if (clearedLocator.kind !== 'locator') {
+  throw new Error('Cleared locator is missing.');
+}
+assert.equal(clearedLocator.ignoreInheritedScale, undefined);
+assert.equal(clearedLocator.visible, true);
+assert.ok(
+  clearedLocatorProject.scene.roots.includes('locator-muzzle')
+);
+
+const withoutLocator = execute(
+  clearedLocatorProject,
+  'batch-locator-delete',
+  [{
+    name: 'scene.locators.delete',
+    payload: {
+      locatorIds: ['locator-muzzle']
+    }
+  }]
+);
+assert.equal(
+  withoutLocator.scene.nodes['locator-muzzle'],
+  undefined
+);
+assert.ok(!withoutLocator.scene.roots.includes('locator-muzzle'));
+
 const invalidColor = executeCommandBatch(renamed, {
   batchId: 'batch-invalid-color',
+  baseProjectId: renamed.id,
   baseRevision: renamed.revision,
   operations: [{
     name: 'scene.cubes.material',
@@ -549,6 +716,7 @@ const missingSource = executeCommandBatch(
   renamed,
   {
     batchId: 'batch-missing-source',
+    baseProjectId: renamed.id,
     baseRevision: renamed.revision,
     operations: [{
       name: 'project.rename',

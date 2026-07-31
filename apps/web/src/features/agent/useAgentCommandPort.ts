@@ -9,16 +9,20 @@ import {
 
 import {
   type CommandBatch,
+  type CommandReceipt,
   type ProjectDocument,
   type ValidationReport
 } from '@ashfox/engine-core';
 
 import type {
   CommandOutcome
-} from '../workbench/state/commandOutcome';
+} from '../../application/commandOutcome';
 import type {
   HistoryAction
-} from '../workbench/state/historyReducer';
+} from '../../application/historyReducer';
+import type {
+  ProjectAssets
+} from '../../application/projectAssets';
 import { useLatestValue } from '../../hooks/useLatestValue';
 import {
   AgentCommandPort,
@@ -32,12 +36,14 @@ import type {
 
 interface UseAgentCommandPortInput {
   document: ProjectDocument;
+  assets: ProjectAssets;
+  activity: readonly CommandReceipt[];
   commandOutcomes: readonly CommandOutcome[];
   selectedNodeId: string | null;
   report: ValidationReport;
   dispatch: Dispatch<HistoryAction>;
   onFocusEntity: (nodeId: string) => void;
-  onPresent: (request: PresentRequest) => PresentResult;
+  onPresent: (request: PresentRequest) => Promise<PresentResult>;
 }
 
 interface PendingCommand {
@@ -63,6 +69,8 @@ const waitForPresentation = (): Promise<void> =>
 
 export const useAgentCommandPort = ({
   document,
+  assets,
+  activity,
   commandOutcomes,
   selectedNodeId,
   report,
@@ -75,6 +83,8 @@ export const useAgentCommandPort = ({
   const mountedRef = useRef(true);
   const pendingRef = useRef<PendingCommand | null>(null);
   const documentRef = useLatestValue(document);
+  const activityRef = useLatestValue(activity);
+  const assetsRef = useLatestValue(assets);
   const selectedNodeIdRef = useLatestValue(selectedNodeId);
   const reportRef = useLatestValue(report);
   const onFocusEntityRef = useLatestValue(onFocusEntity);
@@ -106,8 +116,11 @@ export const useAgentCommandPort = ({
             documentRef.current,
             selectedNodeIdRef.current,
             reportRef.current,
-            request
+            request,
+            activityRef.current,
+            assetsRef.current
           ),
+        currentProjectId: () => documentRef.current.id,
         currentRevision: () => documentRef.current.revision,
         submit,
         present: (request) => onPresentRef.current(request),

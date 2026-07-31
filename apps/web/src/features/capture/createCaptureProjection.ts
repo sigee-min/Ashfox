@@ -1,12 +1,12 @@
 import type { ProjectDocument } from '@ashfox/engine-core';
 
-import type { ProjectAssets } from '../files/projectAssets';
+import type { ProjectAssets } from '../../application/projectAssets';
 import {
   projectToThreeScene
-} from '../workbench/viewport/projectSceneProjection';
+} from '../../rendering/projectSceneProjection';
 import type {
   ProjectSceneProjection
-} from '../workbench/viewport/sceneTypes';
+} from '../../rendering/sceneTypes';
 
 export interface CaptureProjectionOptions {
   showTextures?: boolean;

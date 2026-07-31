@@ -1,7 +1,7 @@
 import {
   VIEWPORT_ENVIRONMENTS,
   type ViewportEnvironmentId
-} from '../viewport/viewportEnvironment';
+} from '../../../rendering/viewportEnvironment';
 import { Icon, type IconName } from '../Icon';
 
 const ENVIRONMENT_ICONS: Readonly<

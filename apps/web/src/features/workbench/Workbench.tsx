@@ -2,13 +2,18 @@
 
 import {
   useCallback,
+  useEffect,
   useMemo,
   useReducer,
+  useRef,
   useState
 } from 'react';
 import type { TransformControlsMode } from 'three/addons/controls/TransformControls.js';
 
-import { validateProjectDocument } from '@ashfox/engine-core';
+import {
+  analyzeAnimationPreview,
+  validateProjectDocument
+} from '@ashfox/engine-core';
 
 import {
   BottomWorkspace
@@ -26,13 +31,19 @@ import { useWorkbenchShortcuts } from './hooks/useWorkbenchShortcuts';
 import {
   createLocalProjectRecord,
   type LocalProjectRecord
-} from './persistence/localProjectRecord';
+} from '../../application/localProjectRecord';
 import { useLocalProjectPersistence } from './persistence/useLocalProjectPersistence';
 import { useProjectFileActions } from '../files/useProjectFileActions';
 import type { ProjectArchiveFile } from '../files/projectArchive';
 import {
   useAgentCommandPort
 } from '../agent/useAgentCommandPort';
+import {
+  advanceCycleObservation,
+  createCycleObservation,
+  cyclePresentationTimeoutMs,
+  type CycleObservation
+} from '../agent/cycleObservation';
 import type {
   PresentRequest,
   PresentResult
@@ -47,7 +58,7 @@ import {
 import {
   createHistoryState,
   type HistoryAction
-} from './state/historyReducer';
+} from '../../application/historyReducer';
 import {
   createProjectSessionState,
   projectSessionReducer
@@ -67,8 +78,11 @@ import {
 import type {
   CameraCommand,
   ViewportOptions,
+  ViewportPresentationFrame,
   ViewportStats
 } from './viewport/viewportTypes';
+
+const FRAME_PRESENTATION_TIMEOUT_MS = 5_000;
 
 export function Workbench() {
   const initialProject = useMemo(
@@ -124,6 +138,24 @@ export function Workbench() {
     calls: 0,
     triangles: 0
   });
+  const [presentationNonce, setPresentationNonce] = useState(0);
+  const nextPresentationNonceRef = useRef(0);
+  const currentDocumentRevisionRef = useRef(document.revision);
+  currentDocumentRevisionRef.current = document.revision;
+  const pendingPresentationRef = useRef<{
+    nonce: number;
+    timeout: number;
+    resolve: (result: PresentResult) => void;
+    projectId: string;
+    sourceRevision: string;
+    mode: PresentRequest['mode'];
+    camera: CameraCommand['mode'];
+    clipId: string | null;
+    timeSeconds: number;
+    cycle: CycleObservation | null;
+    phase: 'observing' | 'closing';
+    previewIssues: ReturnType<typeof analyzeAnimationPreview>;
+  } | null>(null);
   const dispatch = useCallback((action: HistoryAction): void => {
     dispatchProject(action);
   }, []);
@@ -282,11 +314,155 @@ export function Workbench() {
     },
     [setPlayhead]
   );
+  const onPresented = useCallback((
+    frame: ViewportPresentationFrame
+  ): void => {
+    const pending = pendingPresentationRef.current;
+    if (
+      !pending ||
+      pending.nonce !== frame.presentationNonce
+    ) {
+      return;
+    }
+    const finish = (result: PresentResult): void => {
+      pendingPresentationRef.current = null;
+      window.clearTimeout(pending.timeout);
+      setPresentationNonce(0);
+      pending.resolve(result);
+    };
+    if (
+      frame.projectId !== pending.projectId ||
+      frame.revision !== pending.sourceRevision
+    ) {
+      setPlaying(false);
+      finish({
+        ok: false,
+        revision: frame.revision,
+        error: {
+          code: 'stale_revision',
+          path: 'revision',
+          expected: pending.sourceRevision
+        }
+      });
+      return;
+    }
+    if (frame.projectionStatus === 'failed') {
+      setPlaying(false);
+      finish({
+        ok: false,
+        revision: frame.revision,
+        error: {
+          code: 'preview_unavailable',
+          path: 'textures',
+          expected:
+            frame.projectionError ??
+            'all viewport textures decoded successfully'
+        }
+      });
+      return;
+    }
+    if (frame.projectionStatus !== 'ready') return;
+    if (
+      frame.camera !== pending.camera ||
+      frame.clipId !== pending.clipId
+    ) {
+      return;
+    }
+    if (pending.mode === 'frame') {
+      if (
+        frame.playing ||
+        Math.abs(frame.timeSeconds - pending.timeSeconds) > 0.000001
+      ) {
+        return;
+      }
+      finish({
+        ok: true,
+        revision: frame.revision,
+        data: {
+          frameNonce: frame.frameNonce,
+          mode: pending.mode,
+          camera: frame.camera,
+          cameraMatrix: frame.cameraMatrix,
+          clipId: frame.clipId,
+          playing: frame.playing,
+          observedTimeSeconds: frame.timeSeconds,
+          completedCycles: 0,
+          previewIssues: pending.previewIssues
+        }
+      });
+      return;
+    }
+    if (pending.phase === 'closing') {
+      if (frame.playing) return;
+      if (frame.timeSeconds > 0.000001) {
+        setPlayhead(0);
+        return;
+      }
+      finish({
+        ok: true,
+        revision: frame.revision,
+        data: {
+          frameNonce: frame.frameNonce,
+          mode: pending.mode,
+          camera: frame.camera,
+          cameraMatrix: frame.cameraMatrix,
+          clipId: frame.clipId,
+          playing: frame.playing,
+          observedTimeSeconds: frame.timeSeconds,
+          completedCycles: 1,
+          previewIssues: pending.previewIssues
+        }
+      });
+      return;
+    }
+    if (!pending.cycle) return;
+    const advanced = advanceCycleObservation(
+      pending.cycle,
+      frame.timeSeconds
+    );
+    pending.cycle = advanced.observation;
+    if (!frame.playing) {
+      if (
+        frame.timeSeconds +
+          advanced.observation.toleranceSeconds <
+            advanced.observation.durationSeconds ||
+        !advanced.complete
+      ) {
+        return;
+      }
+      pending.phase = 'closing';
+      setPlayhead(0);
+      return;
+    }
+    if (!advanced.complete) return;
+    pending.phase = 'closing';
+    setPlaying(false);
+    setPlayhead(0);
+  }, [setPlayhead, setPlaying]);
+
+  useEffect(() => () => {
+    const pending = pendingPresentationRef.current;
+    if (!pending) return;
+    pendingPresentationRef.current = null;
+    window.clearTimeout(pending.timeout);
+    pending.resolve({
+      ok: false,
+      revision: currentDocumentRevisionRef.current,
+      error: {
+        code: 'invalid_state',
+        path: '$',
+        expected: 'mounted viewport'
+      }
+    });
+  }, []);
+
   const presentAgentView = useCallback(
-    (request: PresentRequest): PresentResult => {
-      const clip = document.animations[request.clipId];
-      if (!clip) {
-        return {
+    (request: PresentRequest): Promise<PresentResult> => {
+      const clip = request.clipId === null
+        ? null
+        : document.animations[request.clipId];
+      if (request.clipId !== null && !clip) {
+        return Promise.resolve({
           ok: false,
           revision: document.revision,
           error: {
@@ -294,32 +470,102 @@ export function Workbench() {
             path: 'clipId',
             expected: 'existing animation clip ID'
           }
-        };
+        });
       }
-      const timeSeconds = Math.min(
-        request.timeSeconds ?? 0,
-        clip.durationSeconds
-      );
-      dispatchView({ type: 'clip.select', clipId: clip.id });
+      const timeSeconds = clip
+        ? Math.min(request.timeSeconds, clip.durationSeconds)
+        : 0;
+      const previewIssues = clip
+        ? analyzeAnimationPreview(clip)
+        : [];
+      if (previewIssues.length > 0) {
+        return Promise.resolve({
+          ok: false,
+          revision: document.revision,
+          error: {
+            code: 'preview_unfaithful',
+            path: `animations.${clip?.id ?? ''}`,
+            expected: 'animation features supported by the live renderer'
+          }
+        });
+      }
+      const previous = pendingPresentationRef.current;
+      if (previous) {
+        pendingPresentationRef.current = null;
+        window.clearTimeout(previous.timeout);
+        previous.resolve({
+          ok: false,
+          revision: document.revision,
+          error: {
+            code: 'invalid_state',
+            path: '$',
+            expected: 'one presentation request at a time'
+          }
+        });
+      }
+      const nonce = nextPresentationNonceRef.current + 1;
+      nextPresentationNonceRef.current = nonce;
+      dispatchView({
+        type: 'clip.select',
+        clipId: clip?.id ?? null
+      });
       dispatchView({ type: 'bottom.set', mode: 'animation' });
       dispatchView({ type: 'overlay.set', overlay: null });
+      dispatchView({ type: 'camera.set', mode: request.camera });
       setPlayhead(timeSeconds);
-      setPlaying(request.playing);
-      return {
-        ok: true,
-        revision: document.revision,
-        data: {
-          clipId: clip.id,
-          playing: request.playing,
-          timeSeconds
-        }
-      };
+      setPlaying(request.mode === 'cycle');
+      setPresentationNonce(nonce);
+      return new Promise<PresentResult>((resolve) => {
+        const timeoutMs = request.mode === 'cycle' && clip
+          ? cyclePresentationTimeoutMs(clip.durationSeconds)
+          : FRAME_PRESENTATION_TIMEOUT_MS;
+        const timeout = window.setTimeout(() => {
+          const pending = pendingPresentationRef.current;
+          if (!pending || pending.nonce !== nonce) return;
+          pendingPresentationRef.current = null;
+          resolve({
+            ok: false,
+            revision: document.revision,
+            error: {
+              code: 'render_timeout',
+              path: '$',
+              expected:
+                request.mode === 'cycle'
+                  ? 'one observed animation cycle and closing frame'
+                  : 'a rendered viewport frame within 5 seconds'
+            }
+          });
+          setPlaying(false);
+          setPresentationNonce(0);
+        }, timeoutMs);
+        pendingPresentationRef.current = {
+          nonce,
+          timeout,
+          resolve,
+          projectId: document.id,
+          sourceRevision: document.revision,
+          mode: request.mode,
+          camera: request.camera,
+          clipId: clip?.id ?? null,
+          timeSeconds,
+          cycle: clip && request.mode === 'cycle'
+            ? createCycleObservation(
+                clip.durationSeconds,
+                clip.fps
+              )
+            : null,
+          phase: 'observing',
+          previewIssues
+        };
+      });
     },
     [document.animations, document.revision, setPlayhead, setPlaying]
   );
 
   const agentStatus = useAgentCommandPort({
     document,
+    assets,
+    activity: history.activity,
     commandOutcomes: history.commandOutcomes,
     selectedNodeId,
     report,
@@ -387,6 +633,7 @@ export function Workbench() {
         activeClipId={activeClipId}
         playhead={playhead}
         playing={playing}
+        presentationNonce={presentationNonce}
         activeOverlay={activeOverlay}
         onEnvironmentChange={setEnvironment}
         onOverlayChange={setActiveOverlay}
@@ -395,6 +642,7 @@ export function Workbench() {
         onTransformProperty={updateTransformProperty}
         onCommitTransform={commitNodeTransform}
         onStats={setViewportStats}
+        onPresented={onPresented}
       />
       <BottomWorkspace
         mode={bottomMode}

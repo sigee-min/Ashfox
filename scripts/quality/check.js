@@ -164,9 +164,53 @@ const assertTrackDependencies = () => {
   }
 };
 
+const importsFromRoot = (
+  filePath,
+  targetRoot
+) =>
+  readModuleSpecifiers(readText(filePath)).some((specifier) => {
+    if (!specifier.startsWith('.')) return false;
+    const targetPath = path.resolve(path.dirname(filePath), specifier);
+    return (
+      targetPath === targetRoot ||
+      targetPath.startsWith(`${targetRoot}${path.sep}`)
+    );
+  });
+
+const assertWebArchitectureBoundaries = () => {
+  const webSourceRoot = path.join(repoRoot, 'apps', 'web', 'src');
+  const featuresRoot = path.join(webSourceRoot, 'features');
+  const workbenchRoot = path.join(featuresRoot, 'workbench');
+  const sourceFile = (filePath) =>
+    filePath.endsWith('.ts') || filePath.endsWith('.tsx');
+
+  for (const layer of ['application', 'rendering']) {
+    const layerRoot = path.join(webSourceRoot, layer);
+    for (const filePath of walk(layerRoot, sourceFile)) {
+      if (importsFromRoot(filePath, featuresRoot)) {
+        throw new Error(
+          `quality: ${layer} layer imports feature implementation: ${rel(filePath)}`
+        );
+      }
+    }
+  }
+
+  for (const feature of ['agent', 'capture', 'files']) {
+    const featureRoot = path.join(featuresRoot, feature);
+    for (const filePath of walk(featureRoot, sourceFile)) {
+      if (importsFromRoot(filePath, workbenchRoot)) {
+        throw new Error(
+          `quality: ${feature} feature imports workbench implementation: ${rel(filePath)}`
+        );
+      }
+    }
+  }
+};
+
 const main = () => {
   assertRemovedBoundariesStayRemoved();
   assertTrackDependencies();
+  assertWebArchitectureBoundaries();
 
   const sourceDirs = [
     path.join(repoRoot, 'packages', 'blockbench-runtime', 'src'),

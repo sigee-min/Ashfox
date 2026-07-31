@@ -12,7 +12,7 @@ import type {
   Transform
 } from '@ashfox/engine-core';
 
-import { objectTransformToCanonical } from './sceneTransform';
+import { objectTransformToCanonical } from '../../../rendering/sceneTransform';
 import {
   createViewportRuntime,
   disposeViewportRuntime,
@@ -28,6 +28,7 @@ interface ViewportRuntimeRefs {
     (nodeId: string, transform: Transform) => void
   >;
   onStats: RefObject<(stats: ViewportStats) => void>;
+  onFrame: RefObject<(frameNonce: number) => void>;
 }
 
 const resizeRenderer = (
@@ -52,6 +53,7 @@ export const useViewportRuntime = (
   const onSelectNodeRef = refs.onSelectNode;
   const onCommitTransformRef = refs.onCommitTransform;
   const onStatsRef = refs.onStats;
+  const onFrameRef = refs.onFrame;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -120,9 +122,12 @@ export const useViewportRuntime = (
 
     let animationFrame = 0;
     let lastStatsUpdate = 0;
+    let frameNonce = 0;
     const render = (time: number): void => {
       runtime.orbit.update();
       runtime.renderer.render(runtime.scene, runtime.camera);
+      frameNonce += 1;
+      onFrameRef.current(frameNonce);
       if (time - lastStatsUpdate > 500) {
         lastStatsUpdate = time;
         onStatsRef.current({
@@ -155,6 +160,7 @@ export const useViewportRuntime = (
     documentRef,
     hostRef,
     onCommitTransformRef,
+    onFrameRef,
     onSelectNodeRef,
     onStatsRef,
     selectedNodeIdRef

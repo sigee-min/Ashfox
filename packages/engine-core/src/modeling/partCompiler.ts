@@ -10,7 +10,10 @@ import {
   createGeneratedCubeFaces
 } from '../textures/generatedMaterial';
 import { compareStableText } from '../stableOrder';
-import { assertExactDecomposition, decomposeOccupancy } from './decompose';
+import {
+  assertExactDecomposition,
+  decomposeSurfaceConformingOccupancy
+} from './decompose';
 import {
   readCompiledParts,
   type CompiledPartState,
@@ -20,7 +23,9 @@ import {
   type PartMaterialDefinition,
   type PartSpec
 } from './partContract';
-import { rasterizePart } from './partPrimitiveAdapter';
+import {
+  canonicalizePartOccupancies
+} from './partOccupancyCanonicalization';
 import {
   compiledPartBoneId,
   compiledPartCubeId,
@@ -31,7 +36,8 @@ import {
   latticeToWorld
 } from './lattice';
 import type {
-  Cuboid
+  Cuboid,
+  LatticePoint
 } from './types';
 
 export interface CompilePartSceneInput {
@@ -156,33 +162,6 @@ const withoutReplacedParts = (
   };
 };
 
-const orderedParts = (
-  parts: readonly PartSpec[],
-  existingPartIds: ReadonlySet<string>
-): readonly PartSpec[] | null => {
-  const remaining = new Map(
-    parts.map((part) => [part.partId, part] as const)
-  );
-  const resolved = new Set(existingPartIds);
-  const ordered: PartSpec[] = [];
-  while (remaining.size > 0) {
-    const next = [...remaining.values()]
-      .filter(
-        (part) =>
-          part.parentPartId === null ||
-          resolved.has(part.parentPartId)
-      )
-      .sort((left, right) =>
-        compareStableText(left.partId, right.partId)
-      )[0];
-    if (!next) return null;
-    ordered.push(next);
-    remaining.delete(next.partId);
-    resolved.add(next.partId);
-  }
-  return ordered;
-};
-
 const worldPoint = (
   value: readonly [number, number, number],
   density: 1 | 2 | 4
@@ -194,7 +173,8 @@ const worldPoint = (
 
 const boneForPart = (
   part: PartSpec,
-  density: 1 | 2 | 4
+  density: 1 | 2 | 4,
+  canonicalAttachmentAnchor: LatticePoint | null
 ): BoneNode => {
   const provenance = {
     partId: part.partId,
@@ -214,9 +194,13 @@ const boneForPart = (
     transform: {
       ...IDENTITY_TRANSFORM,
       pivot:
-        part.attachment === null
+        canonicalAttachmentAnchor === null
           ? IDENTITY_TRANSFORM.pivot
-          : worldPoint(part.attachment.parentAnchor, density)
+          : worldPoint([
+              canonicalAttachmentAnchor.x,
+              canonicalAttachmentAnchor.y,
+              canonicalAttachmentAnchor.z
+            ], density)
     },
     visible: true,
     generation: compiledPartGeneration(provenance, 'bone')
@@ -372,22 +356,35 @@ export const compilePartScene = (
       ([partId]) => !replacedPartIds.has(partId)
     )
   );
-  const ordered = orderedParts(
-    input.parts,
-    new Set(retainedParts.keys())
-  );
-  if (!ordered) {
+  if (retainedParts.size > 0) {
     return failure(
-      'missing_parent',
+      'geometry',
       'parts',
-      'Every part parent must exist or be included in the same upsert.'
+      'Part compilation requires the complete canonical part recipe.'
+    );
+  }
+  const canonicalized = canonicalizePartOccupancies(
+    input.parts,
+    document.settings.surfacePixelDensity
+  );
+  if (!canonicalized.ok) {
+    return failure(
+      'geometry',
+      canonicalized.path,
+      canonicalized.message
     );
   }
   const stripped = withoutReplacedParts(document, replacedPartIds);
   let working = stripped.document;
   const compiledNodes: SceneNode[] = [];
+  const canonicalEnvironment = new Set(
+    canonicalized.parts.flatMap(
+      (entry) => [...entry.canonical.cells]
+    )
+  );
   try {
-    for (const part of ordered) {
+    for (const entry of canonicalized.parts) {
+      const part = entry.spec;
       const baseColor = colors.colors.get(part.materialId);
       if (!baseColor) {
         return failure(
@@ -396,22 +393,15 @@ export const compilePartScene = (
           `Material "${part.materialId}" has no base color.`
         );
       }
-      const occupancy = rasterizePart(
-        document.settings.surfacePixelDensity,
-        part
+      const decomposition = decomposeSurfaceConformingOccupancy(
+        entry.canonical,
+        canonicalEnvironment
       );
-      if (occupancy.cells.size === 0) {
-        return failure(
-          'geometry',
-          `parts.${part.partId}`,
-          'Part primitive produced no occupied cells.'
-        );
-      }
-      const decomposition = decomposeOccupancy(occupancy);
-      assertExactDecomposition(occupancy, decomposition);
+      assertExactDecomposition(entry.canonical, decomposition);
       const bone = boneForPart(
         part,
-        document.settings.surfacePixelDensity
+        document.settings.surfacePixelDensity,
+        entry.canonicalAttachmentAnchor
       );
       const cubes = decomposition.cuboids.map((cuboid) =>
         cubeForCuboid(

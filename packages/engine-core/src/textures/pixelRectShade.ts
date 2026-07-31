@@ -32,6 +32,42 @@ export const DEFAULT_PIXEL_SHADE_STYLE = {
 const clamp = (value: number, minimum: number, maximum: number): number =>
   Math.min(maximum, Math.max(minimum, value));
 
+const TONE_LEVELS = [
+  0.72,
+  0.8,
+  0.87,
+  0.93,
+  1,
+  1.07,
+  1.14,
+  1.22,
+  1.3
+] as const;
+
+const quantizedTone = (scale: number): number =>
+  TONE_LEVELS.reduce((closest, candidate) =>
+    Math.abs(candidate - scale) < Math.abs(closest - scale)
+      ? candidate
+      : closest
+  );
+
+const clusteredNoise = (
+  x: number,
+  y: number,
+  seed: number
+): number =>
+  deterministicPixelNoise(x, y, seed) * 0.5 +
+  deterministicPixelNoise(
+    Math.floor(x / 2),
+    Math.floor(y / 2),
+    seed ^ 0x9e3779b9
+  ) * 0.3 +
+  deterministicPixelNoise(
+    Math.floor(x / 4),
+    Math.floor(y / 4),
+    seed ^ 0x85ebca6b
+  ) * 0.2;
+
 const directionalShade = (
   u: number,
   v: number,
@@ -78,9 +114,11 @@ export const shadePixelRect = (
   );
   const edgeRatio = 1 - clamp(borderDistance / edgeSpan, 0, 1);
   const jitter = (
-    deterministicPixelNoise(localX, localY, config.seed) * 2 - 1
+    clusteredNoise(localX, localY, config.seed) * 2 - 1
   ) * noise;
-  const scale = 1 - direction * intensity - edgeRatio * edge + jitter;
+  const scale = quantizedTone(
+    1 - direction * intensity - edgeRatio * edge + jitter
+  );
   return {
     r: clamp(Math.round(color.r * scale), 0, 255),
     g: clamp(Math.round(color.g * scale), 0, 255),

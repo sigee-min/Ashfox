@@ -14,8 +14,11 @@ import {
   localProjectRevisionForSerial,
   projectRevisionSerial,
   type LocalProjectRecord
-} from '../persistence/localProjectRecord';
-import type { CommandOutcome } from './commandOutcome';
+} from './localProjectRecord';
+import {
+  boundedCommandFindings,
+  type CommandOutcome
+} from './commandOutcome';
 import { createCommandReceipt } from './createCommandReceipt';
 import { LOCAL_COMMAND_ACTOR_ID } from './localCommandActor';
 
@@ -285,7 +288,8 @@ const executeBatch = (
       status: 'rejected',
       commandId: action.batch.batchId,
       revision: state.present.revision,
-      error: result.error
+      error: result.error,
+      ...boundedCommandFindings(result.findings)
     };
     return {
       ...state,
@@ -296,7 +300,7 @@ const executeBatch = (
 
   const serial = state.serial + 1;
   const replacesProject = result.document.id !== state.present.id;
-  const nextSerial = replacesProject ? 1 : serial;
+  const nextSerial = serial;
   const present = stampDocument(
     result.document,
     nextSerial,

@@ -43,6 +43,17 @@ export const projectToThreeScene = (
     options.assets,
     options.untexturedColor
   );
+  const readiness: ProjectSceneProjection['readiness'] = {
+    status: 'pending',
+    error: null
+  };
+  const ready = materials.ready.then(() => {
+    readiness.status = 'ready';
+  }).catch((error: unknown) => {
+    readiness.status = 'failed';
+    readiness.error =
+      error instanceof Error ? error.message : String(error);
+  });
   const orderedNodes = orderedSceneNodes(document);
 
   for (const node of orderedNodes) {
@@ -73,6 +84,8 @@ export const projectToThreeScene = (
     root,
     objectsByNodeId,
     selectable,
+    readiness,
+    ready,
     dispose: () => {
       root.traverse(disposeObject);
       materials.dispose();

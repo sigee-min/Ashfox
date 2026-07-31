@@ -119,6 +119,7 @@ const execute = (
     document,
     {
       batchId,
+      baseProjectId: document.id,
       baseRevision: document.revision,
       operations
     },
@@ -267,6 +268,7 @@ const repeated = executeCommandBatch(
   ordered,
   {
     batchId: 'parts-repeat-identical',
+    baseProjectId: ordered.id,
     baseRevision: ordered.revision,
     operations: [upsert([child, root])]
   },
@@ -377,10 +379,12 @@ for (const density of [1, 2, 4] as const) {
   }
 }
 
+const rawAgentProject = createEmptyProject();
 const rawAgent = executeCommandBatch(
-  createEmptyProject(),
+  rawAgentProject,
   {
     batchId: 'raw-agent-rejected',
+    baseProjectId: rawAgentProject.id,
     baseRevision: 'revision-parts',
     operations: [{
       name: 'scene.cubes.create',
@@ -411,6 +415,7 @@ const rawGeneratedEdit = executeCommandBatch(
   ordered,
   {
     batchId: 'raw-generated-edit',
+    baseProjectId: ordered.id,
     baseRevision: ordered.revision,
     operations: [{
       name: 'scene.nodes.transform',
@@ -464,6 +469,7 @@ const rejectedDetached = executeCommandBatch(
   ordered,
   {
     batchId: 'parts-detached',
+    baseProjectId: ordered.id,
     baseRevision: ordered.revision,
     operations: [upsert([detached])]
   },

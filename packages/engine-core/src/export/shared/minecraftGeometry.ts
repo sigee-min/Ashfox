@@ -7,6 +7,9 @@ import {
   type ProjectDocument,
   type Vec3
 } from '../../model';
+import {
+  effectivelyVisibleSceneNodeIds
+} from '../../sceneVisibility';
 
 export interface MinecraftGeometryFaceUv {
   uv: [number, number];
@@ -147,21 +150,26 @@ const compileLocator = (locator: LocatorNode): MinecraftGeometryLocator => ({
 
 const compileBone = (
   document: ProjectDocument,
-  bone: BoneNode
+  bone: BoneNode,
+  visibleNodeIds: ReadonlySet<string>
 ): MinecraftGeometryBone => {
   const parent =
     bone.parentId === null ? undefined : document.scene.nodes[bone.parentId];
   const cubes = Object.values(document.scene.nodes)
     .filter(
       (node): node is CubeNode =>
-        node.kind === 'cube' && node.visible && node.parentId === bone.id
+        node.kind === 'cube' &&
+        visibleNodeIds.has(node.id) &&
+        node.parentId === bone.id
     )
     .sort((left, right) => left.id.localeCompare(right.id))
     .map(compileCube);
   const locatorEntries = Object.values(document.scene.nodes)
     .filter(
       (node): node is LocatorNode =>
-        node.kind === 'locator' && node.visible && node.parentId === bone.id
+        node.kind === 'locator' &&
+        visibleNodeIds.has(node.id) &&
+        node.parentId === bone.id
     )
     .sort((left, right) => left.id.localeCompare(right.id))
     .map((locator) => [locator.name, compileLocator(locator)] as const);
@@ -188,11 +196,16 @@ const compileBone = (
   };
 };
 
-const createLooseBone = (document: ProjectDocument): MinecraftGeometryBone | null => {
+const createLooseBone = (
+  document: ProjectDocument,
+  visibleNodeIds: ReadonlySet<string>
+): MinecraftGeometryBone | null => {
   const looseCubes = Object.values(document.scene.nodes)
     .filter(
       (node): node is CubeNode =>
-        node.kind === 'cube' && node.visible && node.parentId === null
+        node.kind === 'cube' &&
+        visibleNodeIds.has(node.id) &&
+        node.parentId === null
     )
     .sort((left, right) => left.id.localeCompare(right.id))
     .map(compileCube);
@@ -208,11 +221,16 @@ export const buildMinecraftGeometry = (
   document: ProjectDocument,
   options: MinecraftGeometryCompileOptions
 ): MinecraftGeometryFile => {
+  const visibleNodeIds =
+    effectivelyVisibleSceneNodeIds(document);
   const bones = Object.values(document.scene.nodes)
-    .filter((node): node is BoneNode => node.kind === 'bone' && node.visible)
+    .filter(
+      (node): node is BoneNode =>
+        node.kind === 'bone' && visibleNodeIds.has(node.id)
+    )
     .sort((left, right) => left.id.localeCompare(right.id))
-    .map((bone) => compileBone(document, bone));
-  const looseBone = createLooseBone(document);
+    .map((bone) => compileBone(document, bone, visibleNodeIds));
+  const looseBone = createLooseBone(document, visibleNodeIds);
   if (looseBone) bones.unshift(looseBone);
 
   return {

@@ -18,7 +18,9 @@ export const resolveSelectedNodeId = (
 export const resolveActiveClipId = (
   document: ProjectDocument,
   preferredId: string | null
-): string | null =>
-  preferredId && document.animations[preferredId]
+): string | null => {
+  if (preferredId === null) return null;
+  return document.animations[preferredId]
     ? preferredId
     : Object.keys(document.animations)[0] ?? null;
+};

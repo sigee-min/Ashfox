@@ -8,7 +8,7 @@ import {
   PROJECT_EXPORT_TARGETS,
   projectResourceToken,
   type VisibleExportPreset
-} from '../presentation/projectExportTarget';
+} from '../../../application/projectExportTarget';
 import type { NewProjectInput } from '../newProject';
 import { ProjectTargetFields } from './ProjectTargetFields';
 

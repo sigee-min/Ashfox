@@ -1,17 +1,22 @@
 import type {
   AnimationClip,
-  AnimationScalar,
-  AnimationVec3,
   ProjectDocument,
   TransformChannel,
   Vec3
 } from '../../../model';
+import {
+  sampleComposedNumericTransformChannel,
+  type NumericAnimationVec3
+} from '../../../animation/numericChannel';
+import {
+  assertProjectAnimationsExportable
+} from '../../../animation/capability';
 import { GltfBinaryWriter } from './binaryWriter';
 import type { GltfAnimation } from './types';
 
 interface SampledChannel {
   times: number[];
-  values: AnimationVec3[];
+  values: NumericAnimationVec3[];
   interpolation: 'LINEAR' | 'STEP';
 }
 
@@ -23,13 +28,6 @@ export interface GltfAnimationCompileOptions {
   restScaleById: ReadonlyMap<string, [number, number, number]>;
   unitScale: number;
 }
-
-const numeric = (value: AnimationScalar): number => {
-  if (typeof value !== 'number') {
-    throw new Error('glTF animation compilation requires numeric keyframe values.');
-  }
-  return value;
-};
 
 const quaternionFromEuler = (
   rotation: Vec3
@@ -51,47 +49,12 @@ const quaternionFromEuler = (
   ];
 };
 
-const multiplyQuaternions = (
-  left: readonly [number, number, number, number],
-  right: readonly [number, number, number, number]
-): [number, number, number, number] => {
-  const [lx, ly, lz, lw] = left;
-  const [rx, ry, rz, rw] = right;
-  const result: [number, number, number, number] = [
-    lw * rx + lx * rw + ly * rz - lz * ry,
-    lw * ry - lx * rz + ly * rw + lz * rx,
-    lw * rz + lx * ry - ly * rx + lz * rw,
-    lw * rw - lx * rx - ly * ry - lz * rz
-  ];
-  const length = Math.hypot(...result);
-  return length <= 0.000001
-    ? [0, 0, 0, 1]
-    : result.map((value) => value / length) as [
-        number,
-        number,
-        number,
-        number
-      ];
-};
-
 const compileValues = (
   channel: TransformChannel,
-  values: readonly AnimationVec3[],
-  options: GltfAnimationCompileOptions
+  values: readonly NumericAnimationVec3[]
 ): { values: number[]; componentCount: 3 | 4 } => {
   if (channel.property === 'rotation') {
-    const rest = options.restRotationById.get(channel.targetNodeId) ?? [0, 0, 0];
-    const restQuaternion = quaternionFromEuler(rest);
-    const quaternions = values.map((value) =>
-      multiplyQuaternions(
-        restQuaternion,
-        quaternionFromEuler([
-          numeric(value[0]),
-          numeric(value[1]),
-          numeric(value[2])
-        ])
-      )
-    );
+    const quaternions = values.map(quaternionFromEuler);
     for (let index = 1; index < quaternions.length; index += 1) {
       const previous = quaternions[index - 1];
       const current = quaternions[index];
@@ -114,78 +77,11 @@ const compileValues = (
       componentCount: 4
     };
   }
-  if (channel.property === 'position') {
-    const rest = options.restTranslationById.get(channel.targetNodeId) ?? [0, 0, 0];
-    return {
-      values: values.flatMap((value) => [
-        rest[0] + numeric(value[0]) * options.unitScale,
-        rest[1] + numeric(value[1]) * options.unitScale,
-        rest[2] + numeric(value[2]) * options.unitScale
-      ]),
-      componentCount: 3
-    };
-  }
-  const rest = options.restScaleById.get(channel.targetNodeId) ?? [1, 1, 1];
   return {
-    values: values.flatMap((value) => [
-      rest[0] * numeric(value[0]),
-      rest[1] * numeric(value[1]),
-      rest[2] * numeric(value[2])
-    ]),
+    values: values.flatMap((value) => value),
     componentCount: 3
   };
 };
-
-const catmullRomScalar = (
-  previous: AnimationScalar,
-  start: AnimationScalar,
-  end: AnimationScalar,
-  next: AnimationScalar,
-  progress: number
-): number => {
-  const p0 = numeric(previous);
-  const p1 = numeric(start);
-  const p2 = numeric(end);
-  const p3 = numeric(next);
-  const squared = progress * progress;
-  const cubed = squared * progress;
-  return 0.5 * (
-    2 * p1 +
-    (-p0 + p2) * progress +
-    (2 * p0 - 5 * p1 + 4 * p2 - p3) * squared +
-    (-p0 + 3 * p1 - 3 * p2 + p3) * cubed
-  );
-};
-
-const interpolateCatmullRom = (
-  previous: AnimationVec3,
-  start: AnimationVec3,
-  end: AnimationVec3,
-  next: AnimationVec3,
-  progress: number
-): AnimationVec3 => [
-  catmullRomScalar(
-    previous[0],
-    start[0],
-    end[0],
-    next[0],
-    progress
-  ),
-  catmullRomScalar(
-    previous[1],
-    start[1],
-    end[1],
-    next[1],
-    progress
-  ),
-  catmullRomScalar(
-    previous[2],
-    start[2],
-    end[2],
-    next[2],
-    progress
-  )
-];
 
 const roundedTime = (value: number): number =>
   Math.round(value * 1_000_000) / 1_000_000;
@@ -193,28 +89,22 @@ const roundedTime = (value: number): number =>
 const bakeCatmullRom = (
   channel: TransformChannel,
   clip: AnimationClip,
-  restValue: AnimationVec3
+  sampleAt: (timeSeconds: number) => NumericAnimationVec3
 ): SampledChannel => {
-  const source = [
+  const sourceTimes = [
     ...(channel.keys[0].timeSeconds > 0.000001
-      ? [{ timeSeconds: 0, value: restValue }]
+      ? [0]
       : []),
-    ...channel.keys.map((key) => ({
-      timeSeconds: roundedTime(key.timeSeconds),
-      value: key.value
-    }))
+    ...channel.keys.map((key) => roundedTime(key.timeSeconds))
   ];
-  const finalSource = source[source.length - 1];
-  if (finalSource.timeSeconds < clip.durationSeconds - 0.000001) {
-    source.push({
-      timeSeconds: roundedTime(clip.durationSeconds),
-      value: finalSource.value
-    });
+  const finalSourceTime = sourceTimes[sourceTimes.length - 1];
+  if (finalSourceTime < clip.durationSeconds - 0.000001) {
+    sourceTimes.push(roundedTime(clip.durationSeconds));
   }
   const frameCount = Math.ceil(clip.durationSeconds * clip.fps);
   const times = [
     ...new Set([
-      ...source.map((key) => key.timeSeconds),
+      ...sourceTimes,
       ...Array.from(
         { length: frameCount + 1 },
         (_, index) => roundedTime(
@@ -224,68 +114,70 @@ const bakeCatmullRom = (
       roundedTime(clip.durationSeconds)
     ])
   ].sort((left, right) => left - right);
-  const last = source[source.length - 1];
-  const values = times.map((time) => {
-    if (time <= source[0].timeSeconds + 0.000001) {
-      return source[0].value;
-    }
-    const endIndex = source.findIndex(
-      (key) => key.timeSeconds >= time - 0.000001
-    );
-    if (endIndex <= 0) return last.value;
-    const startIndex = endIndex - 1;
-    const start = source[startIndex];
-    const end = source[endIndex];
-    if (Math.abs(time - end.timeSeconds) <= 0.000001) {
-      return end.value;
-    }
-    const duration = end.timeSeconds - start.timeSeconds;
-    const progress = duration <= 0
-      ? 0
-      : (time - start.timeSeconds) / duration;
-    return interpolateCatmullRom(
-      source[Math.max(0, startIndex - 1)].value,
-      start.value,
-      end.value,
-      source[Math.min(source.length - 1, endIndex + 1)].value,
-      progress
-    );
-  });
   return {
     times,
-    values,
+    values: times.map(sampleAt),
     interpolation: 'LINEAR'
   };
 };
 
+const restValueForChannel = (
+  channel: TransformChannel,
+  options: GltfAnimationCompileOptions
+): NumericAnimationVec3 => {
+  if (channel.property === 'position') {
+    return options.restTranslationById.get(channel.targetNodeId) ??
+      [0, 0, 0];
+  }
+  if (channel.property === 'rotation') {
+    return options.restRotationById.get(channel.targetNodeId) ??
+      [0, 0, 0];
+  }
+  return options.restScaleById.get(channel.targetNodeId) ??
+    [1, 1, 1];
+};
+
 const sampleChannel = (
   channel: TransformChannel,
-  clip: AnimationClip
+  clip: AnimationClip,
+  options: GltfAnimationCompileOptions
 ): SampledChannel => {
   const interpolation = channel.keys[0].interpolation;
-  const restValue: AnimationVec3 =
-    channel.property === 'scale'
-      ? [1, 1, 1]
-      : [0, 0, 0];
+  const restValue = restValueForChannel(channel, options);
+  const sampleAt = (
+    timeSeconds: number
+  ): NumericAnimationVec3 => {
+    const sampled = sampleComposedNumericTransformChannel(
+      channel,
+      timeSeconds,
+      {
+        restValue,
+        ...(channel.property === 'position'
+          ? { translationScale: options.unitScale }
+          : {})
+      }
+    );
+    if (!sampled) {
+      throw new Error(
+        'glTF animation compilation requires numeric keyframe values.'
+      );
+    }
+    return sampled;
+  };
   if (interpolation === 'catmullrom') {
-    return bakeCatmullRom(channel, clip, restValue);
+    return bakeCatmullRom(channel, clip, sampleAt);
   }
   const lastKey = channel.keys[channel.keys.length - 1];
+  const times = [
+    ...(channel.keys[0].timeSeconds > 0.000001 ? [0] : []),
+    ...channel.keys.map((keyframe) => keyframe.timeSeconds),
+    ...(lastKey.timeSeconds < clip.durationSeconds - 0.000001
+      ? [clip.durationSeconds]
+      : [])
+  ];
   return {
-    times: [
-      ...(channel.keys[0].timeSeconds > 0.000001 ? [0] : []),
-      ...channel.keys.map((keyframe) => keyframe.timeSeconds),
-      ...(lastKey.timeSeconds < clip.durationSeconds - 0.000001
-        ? [clip.durationSeconds]
-        : [])
-    ],
-    values: [
-      ...(channel.keys[0].timeSeconds > 0.000001 ? [restValue] : []),
-      ...channel.keys.map((keyframe) => keyframe.value),
-      ...(lastKey.timeSeconds < clip.durationSeconds - 0.000001
-        ? [lastKey.value]
-        : [])
-    ],
+    times,
+    values: times.map(sampleAt),
     interpolation: interpolation === 'step' ? 'STEP' : 'LINEAR'
   };
 };
@@ -294,22 +186,11 @@ export const compileGltfAnimations = (
   document: ProjectDocument,
   options: GltfAnimationCompileOptions
 ): GltfAnimation[] => {
+  assertProjectAnimationsExportable(document);
   const animations: GltfAnimation[] = [];
   for (const clip of Object.values(document.animations).sort((left, right) =>
     left.id.localeCompare(right.id)
   )) {
-    if (
-      Object.keys(clip.triggers).length > 0 ||
-      clip.startDelay ||
-      clip.loopDelay ||
-      clip.animationTimeUpdate ||
-      clip.blendWeight !== undefined ||
-      clip.overridePreviousAnimation !== undefined
-    ) {
-      throw new Error(
-        'glTF core animation cannot compile Minecraft timing expressions or effect tracks.'
-      );
-    }
     const animation: GltfAnimation = {
       name: clip.name,
       samplers: [],
@@ -324,34 +205,15 @@ export const compileGltfAnimations = (
       left.id.localeCompare(right.id)
     )) {
       if (channel.keys.length === 0) continue;
-      if (channel.rotationSpace === 'entity') {
-        throw new Error(
-          'glTF animation cannot compile entity-relative Minecraft rotation.'
-        );
-      }
-      const interpolation = channel.keys[0].interpolation;
-      if (
-        channel.keys.some(
-          (keyframe) =>
-            keyframe.interpolation !== interpolation ||
-            keyframe.preValue !== undefined ||
-            keyframe.postValue !== undefined ||
-            keyframe.easing !== undefined
-        )
-      ) {
-        throw new Error(
-          'glTF channels require uniform LINEAR or STEP keys without Minecraft envelopes.'
-        );
-      }
       const node = options.nodeIndexById.get(channel.targetNodeId);
       if (node === undefined) continue;
-      const sampled = sampleChannel(channel, clip);
+      const sampled = sampleChannel(channel, clip, options);
       const input = options.writer.addFloatAccessor(
         sampled.times,
         1,
         true
       );
-      const compiled = compileValues(channel, sampled.values, options);
+      const compiled = compileValues(channel, sampled.values);
       const output = options.writer.addFloatAccessor(
         compiled.values,
         compiled.componentCount,

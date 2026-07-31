@@ -11,9 +11,9 @@ import { useArtifactUrl } from '../../files/useArtifactUrl';
 import type { GifCaptureFile } from '../../capture/gifCaptureFile';
 import type { GifCaptureRequest } from '../../capture/gifCaptureRequest';
 import { Icon } from '../Icon';
-import type { ProjectExportTarget } from '../presentation/projectExportTarget';
-import type { CameraMode } from '../viewport/cameraPresets';
-import type { ViewportEnvironmentId } from '../viewport/viewportEnvironment';
+import type { ProjectExportTarget } from '../../../application/projectExportTarget';
+import type { CameraMode } from '../../../rendering/cameraPresets';
+import type { ViewportEnvironmentId } from '../../../rendering/viewportEnvironment';
 import { BrandLogo } from './BrandLogo';
 import { CaptureMenu } from './CaptureMenu';
 import { ExportMenu } from './ExportMenu';
@@ -203,6 +203,10 @@ export function WorkbenchHeader({
             data-ashfox-artifact-name={artifactFile.name}
             data-ashfox-artifact-content-type={artifactFile.contentType}
             data-ashfox-artifact-byte-length={artifactFile.bytes.byteLength}
+            data-ashfox-artifact-project-id={artifactFile.projectId}
+            data-ashfox-artifact-source-revision={artifactFile.sourceRevision}
+            data-ashfox-artifact-target={artifactFile.target}
+            data-ashfox-artifact-content-hash={artifactFile.contentHash}
           >
             <Icon name="download" />
           </a>

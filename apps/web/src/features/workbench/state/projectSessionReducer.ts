@@ -1,10 +1,10 @@
-import type { ProjectAssets } from '../../files/projectAssets';
-import type { LocalProjectRecord } from '../persistence/localProjectRecord';
+import type { ProjectAssets } from '../../../application/projectAssets';
+import type { LocalProjectRecord } from '../../../application/localProjectRecord';
 import {
   historyReducer,
   type HistoryAction,
   type HistoryState
-} from './historyReducer';
+} from '../../../application/historyReducer';
 
 export interface ProjectStorageSession {
   generation: number;

@@ -16,8 +16,8 @@ import {
 } from '../../capture/gifFramePlan';
 import type { ArtifactFile } from '../../files/artifactFile';
 import type { FileOperationState } from '../../files/fileOperationState';
-import type { CameraMode } from '../viewport/cameraPresets';
-import type { ViewportEnvironmentId } from '../viewport/viewportEnvironment';
+import type { CameraMode } from '../../../rendering/cameraPresets';
+import type { ViewportEnvironmentId } from '../../../rendering/viewportEnvironment';
 
 type CaptureMode = 'build' | 'animation';
 

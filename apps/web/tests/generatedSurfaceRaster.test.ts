@@ -6,7 +6,7 @@ import type {
 
 import {
   generatedSurfacePixel
-} from '../src/features/textures/renderTextureRaster';
+} from '../src/rendering/renderTextureRaster';
 
 const pattern = {
   seedKey: 'body:copper:north:0',

@@ -1,12 +1,12 @@
 import type { ProjectDocument } from '@ashfox/engine-core';
 
-import type { ProjectAssets } from '../files/projectAssets';
-import { applyAnimationPose } from '../workbench/viewport/animationPose';
+import type { ProjectAssets } from '../../application/projectAssets';
+import { applyAnimationPose } from '../../rendering/animationPose';
 import {
   applyCameraPreset,
   type CameraMode
-} from '../workbench/viewport/cameraPresets';
-import type { ViewportEnvironmentId } from '../workbench/viewport/viewportEnvironment';
+} from '../../rendering/cameraPresets';
+import type { ViewportEnvironmentId } from '../../rendering/viewportEnvironment';
 import {
   throwIfCaptureAborted,
   yieldCaptureFrame
@@ -16,7 +16,7 @@ import {
   disposeGifCaptureSurface,
   encodeGifSurfaceFrame,
   finishGifCaptureSurface,
-  waitForSceneTextures,
+  waitForProjectionTextures,
   type GifCaptureResult
 } from './gifCaptureSurface';
 import {
@@ -60,7 +60,7 @@ export const renderAnimatedGif = async (
   );
 
   try {
-    await waitForSceneTextures(projection.root, options.signal);
+    await waitForProjectionTextures(projection, options.signal);
     for (const frame of plan.frames) {
       throwIfCaptureAborted(options.signal);
       applyAnimationPose(

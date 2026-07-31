@@ -13,6 +13,29 @@ import {
   composeTextureRaster,
   deriveGeneratedTextures
 } from '../src/textures/textureRecipe';
+import {
+  buildSurfacePatternComponents
+} from '../src/textures/surfacePatternComponents';
+
+const stripComponents = buildSurfacePatternComponents(
+  Array.from({ length: 1_000 }, (_, index) => ({
+    id: `strip-${index}`,
+    groupKey: 'copper:north:0',
+    x: index,
+    y: 0,
+    width: 1,
+    height: 1
+  }))
+);
+assert.equal(
+  new Set(
+    [...stripComponents.values()].map(
+      (component) => component.seedKey
+    )
+  ).size,
+  1,
+  'a long coplanar strip must remain one connected pattern component'
+);
 
 const project = createProjectFromInput(
   {
@@ -30,6 +53,7 @@ const authored = executeCommandBatch(
   project,
   {
     batchId: 'surface-authority-part',
+    baseProjectId: project.id,
     baseRevision: project.revision,
     operations: [{
       name: 'model.parts.upsert',
@@ -156,6 +180,38 @@ assert.ok(
       JSON.stringify(wholeNorth[0].pattern?.bounds)
   ),
   'cuboid fragments must share one logical surface rectangle'
+);
+
+const crossPartInput: ProjectDocument = {
+  ...splitDerived.document,
+  scene: {
+    ...splitDerived.document.scene,
+    nodes: {
+      ...splitDerived.document.scene.nodes,
+      [right.id]: {
+        ...splitRight,
+        generation: splitRight.generation
+          ? {
+              ...splitRight.generation,
+              partId: 'body-detail'
+            }
+          : undefined
+      }
+    }
+  }
+};
+const crossPartTexture =
+  crossPartInput.textures[textureId];
+const crossPartNorth = composeTextureRaster(
+  crossPartInput,
+  crossPartTexture
+).regions.filter((region) => region.face === 'north');
+assert.deepEqual(
+  [...new Set(crossPartNorth.map(
+    (region) => region.pattern?.seedKey
+  ))],
+  [wholeNorth[0].pattern?.seedKey],
+  'connected coplanar material must not seam at a semantic part boundary'
 );
 
 const tallLeft: CubeNode = {

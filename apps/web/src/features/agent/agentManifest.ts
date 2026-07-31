@@ -1,11 +1,12 @@
 import { listAgentCommandDefinitions } from '@ashfox/engine-core';
 
 import { agentCommandProtocol } from './agentCommandProtocol';
+import { schemaHash } from './schemaHash';
 
 const commands = listAgentCommandDefinitions().map((definition) => ({
   name: definition.name,
   purpose: definition.purpose,
-  inputSchema: definition.inputSchema
+  schemaHash: schemaHash(definition.inputSchema)
 }));
 
 export const agentManifest = {
@@ -35,40 +36,46 @@ export const agentManifest = {
       command:
         'window.ashfox.inspect({kind:"command",name:"<commands entry>"}) returns the canonical input schema.',
       catalog:
-        'window.ashfox.inspect({kind:"catalog"}) lists existing part, texture, and clip IDs after a reopen or handoff.',
+        'window.ashfox.inspect({kind:"catalog",limit:50}) returns a bounded page of part, texture, and clip IDs; pass nextCursor back as cursor until null.',
       parts:
-        'window.ashfox.inspect({kind:"parts",ids:["<partId>"]}) returns up to 10 exact persisted PartSpecs and materials plus compiled bone IDs, cube counts, and model-space bounds.',
+        'window.ashfox.inspect({kind:"parts",ids:["<partId>"]}) returns up to 10 exact persisted PartSpecs and materials plus compiled bone IDs, bounds, authored-to-canonical cell retention, parent-contact area, and six-view silhouette contribution.',
       entities:
-        'Use kind entity, texture, or clip with at most 10 IDs for exact canonical values.',
+        'Use kind entity, texture, or clip with at most 10 IDs. Oversized clip values return a bounded summary with truncated true.',
+      activity:
+        'window.ashfox.inspect({kind:"activity",limit:50}) returns bounded receipt summaries; pass nextCursor back as cursor until null.',
       validation:
-        'Use kind target for export and production readiness; use kind finding with a path for one exact finding.'
+        'Use kind target for structural validity, mechanical readiness, the mandatory semantic-review flag, and local texture-byte materialization; use kind finding with a path for one exact finding. Export performs the final SHA-256 byte check.'
     },
     run: {
       call:
-        'await window.ashfox.run({batchId:"<unique>",baseRevision:"<current>",operations:[{name:"<command>",payload:{}}]})',
+        'await window.ashfox.run({batchId:"<unique>",baseProjectId:"<project.id>",baseRevision:"<current>",operations:[{name:"<command>",payload:{}}]})',
       atomicity:
         'A batch contains 1-64 agent commands. Compilation, texture derivation, structural validation, and target validation either commit together or leave the project unchanged.',
       idempotency:
-        'For the connected page session, the same batchId and content returns its completed result. Reusing a batchId for different content is rejected.',
+        'For the connected page session and baseProjectId, the same batchId and content returns its completed result. Reusing that project-scoped batchId for different content is rejected.',
       concurrency:
-        'Submit one batch at a time. Success, rejection, no_change, stale revision, cancellation, and exception are terminal and restore connected status.'
+        'Submit one batch at a time. Success returns a bounded receipt with entity counts and at most 16 IDs per effect; inspect the catalog or known IDs for detail. Success, rejection, no_change, stale revision, cancellation, and exception are terminal and restore connected status.'
     },
     present: {
       call:
-        'window.ashfox.present({kind:"animation",clipId:"<clip>",playing:true,timeSeconds:0})',
+        'await window.ashfox.present({kind:"view",mode:"frame",camera:"front",clipId:"<clip-or-null>",timeSeconds:0}); use mode cycle with a clip ID to observe one complete loop.',
       review:
-        'Play every authored clip through at least one loop, then pause with playing false. Presentation never mutates the document.'
+        'The promise resolves from observed renderer state, not request echo. Review perspective, front, side, and top; use cycle for every authored clip. A cycle resolves after one full observed duration and a paused closing frame. Unfaithful preview features fail closed.'
     }
   },
   modeling: {
     authority:
-      'The agent specifies semantic parts, attachments, joints, material IDs, and base colors. ashfox alone creates bones, cuboids, stable IDs, UVs, atlas pixels, and texture resolution. Raw bone and cube commands are unavailable to agents.',
+      'The agent specifies semantic parts, tolerant joins, attachments, joints, material IDs, and base colors. ashfox assigns intersecting seam cells to one deterministic owner and alone creates bones, cuboids, stable IDs, UVs, atlas pixels, and texture resolution. Raw bone and cube commands are unavailable to agents.',
     canonicalState:
-      'ProjectDocument.modeling stores one normalized, sorted PartSpec and material recipe. Generated scene structure is its deterministic projection for rendering and export; validation rejects a missing recipe or structural drift, while UV and raster caches are rederived.',
+      'ProjectDocument.modeling stores one normalized, sorted PartSpec and material recipe, including authored shallow intersections. Generated scene structure is its deterministic single-owner projection for rendering and export; validation rejects a missing recipe, excessive penetration, consumed parts, or structural drift, while UV and raster caches are rederived.',
+    intent:
+      'project.intent.set persists the literal subject, review direction, grounding, required feature notes, required part/material/clip IDs, and only the exact symmetry pairs that truly apply. Code checks shape, used material IDs, non-empty required clips, grounding, and declared lattice reflections; the rendered subject and feature notes still require visual judgment.',
+    grounding:
+      'Grounded assets require contact at lattice y=0 and a uniform-volume center of mass whose xz projection lies inside the convex hull of all ground-contact cell corners. This is a deterministic static-support check, not a simulation or a semantic quality score.',
     lattice:
       'All PartSpec coordinates, radii, sizes, anchors, and thicknesses are integer lattice units. With surface density d in 1, 2, or 4, one lattice unit equals 1/d model unit. Density is immutable while compiled parts exist, so select it before authoring.',
     hierarchy:
-      'A model has exactly one root part. Every child names parentPartId, joint, and attachment. Child geometry is local and translated by parentAnchor - partAnchor; the compiled child must share a lattice face with its parent. Stable animation bone IDs are bone:<partId>.',
+      'A model has exactly one root part. Every child names parentPartId, joint, and attachment. Child geometry is local and translated by parentAnchor - partAnchor. A join may overlap by at most two surface cells; after canonical ownership ashfox snaps the requested joint pivot to the nearest shared face within that range. The child must remain connected and visible. Stable animation bone IDs are bone:<partId>.',
     joints: {
       fixed:
         'Rigid child relationship with no child transform channels. The one fixed root may carry global asset animation.',
@@ -97,20 +104,28 @@ export const agentManifest = {
       'model.parts.upsert receives parts plus material definitions {id,baseColor}. Reuse a material ID only with one #RRGGBB base color. model.parts.material changes complete parts; tonal pixels, UV placement, and atlas size remain derived.',
     mutations: {
       upsert:
-        'model.parts.upsert creates or replaces complete parts in the persisted recipe, then projects the complete recipe. Parent parts may appear later in the payload; input order does not affect output.',
+        'model.parts.upsert creates or replaces complete parts in the persisted recipe, then projects the complete recipe. Parent parts may appear later in the payload; hierarchy and stable IDs determine seam ownership, so input order does not affect output.',
       material:
         'model.parts.material changes canonical material assignment and base color for named parts, then deterministically refreshes their projection.',
+      mirror:
+        'model.parts.mirror copies one complete non-root subtree through an exact lattice plane with explicit stable target IDs, then reapplies canonical seam ownership.',
+      transform:
+        'model.parts.transform translates one part and all descendants by one integer lattice vector and atomically reapplies canonical seam ownership.',
       delete:
         'model.parts.delete removes named parts, descendants, and dependent animation references atomically.'
     },
+    locators:
+      'Use scene.locators.create, scene.locators.update, and scene.locators.delete for the complete attachment-point lifecycle, including name, parent, transform, visibility, scale inheritance, and removal. These commands can only mutate locator nodes; generated bones and geometry remain protected.',
     enforcedInvariants: [
       'integer 1/d lattice alignment',
       'one stable bone per part and one root part',
       'one 6-connected occupied volume per part',
-      'exact, non-overlapping cuboid coverage',
-      'no positive-volume overlap between parts or foreign cubes',
+      'canonical emitted cuboids exactly cover single-owned cells without overlap',
+      'authored seam penetration of at most two surface cells with more than 20% of every part retained',
+      'no positive-volume overlap between canonical parts and foreign cubes',
       'child-parent face contact at the joint anchor',
       'orthographic silhouette contribution from every part',
+      'uniform-volume static support for grounded assets',
       'stable IDs derived from partId, density, and lattice bounds',
       'generated nodes cannot be changed by raw scene commands',
       'persisted recipe and generated structural projection must match'
@@ -118,7 +133,7 @@ export const agentManifest = {
   },
   texture: {
     authority:
-      'The agent chooses material base colors and optional density. ashfox derives external-face UVs, atlas gutters, directional tonal pixels, raster, and final atlas size once per committed batch. Pattern continuity is guaranteed only for the same part, material, direction, and coplanar lattice surface; direction, material, and part boundaries intentionally differ.',
+      'The agent chooses material base colors and optional density. ashfox derives external-face UVs, atlas gutters, directional tonal pixels, raster, and final atlas size once per committed batch. A connected coplanar surface with one material and direction shares one world-aligned pattern even across part or cuboid seams; material, direction, plane, and disconnected-surface boundaries intentionally differ.',
     density:
       'textures.density.set accepts 1, 2, or 4. Pixel side length is 1, 1/2, or 1/4 model unit. The atlas grows from 16×16 to 4096×4096 and never silently lowers density.',
     review:
@@ -134,7 +149,7 @@ export const agentManifest = {
     semanticBoundary:
       'Code proves structure, not subject identity or visual appeal. Compare the rendered model with the request and references; never call that judgment machine-validated.',
     review:
-      'Reject a wrong body or construction plan before detail. Reject missing defining parts, generic humanoid substitution, floating parts, accidental asymmetry, hidden filler, bad pivots, clipping, loop snaps, and details unreadable at gameplay distance.'
+      'Reject a wrong body or construction plan before detail. Reject missing defining parts, generic humanoid substitution, floating parts, accidental asymmetry, hidden filler, bad pivots, unintended visible clipping, loop snaps, and details unreadable at gameplay distance.'
   },
   workflow: [
     {
@@ -145,7 +160,7 @@ export const agentManifest = {
     {
       stage: 'specify',
       instruction:
-        'Derive a short binding part plan: primary axis and stance, defining silhouette, proportions, supports, appendage count and attachment, joints, material regions, and required motion. Do not invent a generic body plan.'
+        'Derive a short binding part plan, then persist it with project.intent.set: literal subject, front, grounding, defining feature notes, exact required part/material/clip IDs, and only intentional exact symmetry. Do not invent a generic body plan.'
     },
     {
       stage: 'prove',
@@ -155,7 +170,7 @@ export const agentManifest = {
     {
       stage: 'author',
       instruction:
-        'Add connected parts in coarse-to-fine checkpoint batches. Correct silhouette and structure before features. Use model.parts.material for palette changes and model.parts.delete for removal.'
+        'Add parts in coarse-to-fine checkpoint batches. Use a one- or two-cell seam intersection when exact face alignment would create a visible gap, then inspect canonicalization and rendered continuity. Correct silhouette and structure before features. Use model.parts.material for palette changes and model.parts.delete for removal.'
     },
     {
       stage: 'animate',
@@ -170,7 +185,7 @@ export const agentManifest = {
     {
       stage: 'produce',
       instruction:
-        'Set the final target, require productionReady, then use the listed save, export, or capture DOM boundary and wait for the matching terminal operation.'
+        'Set the final target, require mechanicallyReady, complete the required visual review, then use the listed save, export, or capture DOM boundary and wait for the matching terminal operation.'
     }
   ],
   domBridge: {
@@ -223,7 +238,7 @@ export const agentManifest = {
   },
   export: {
     precondition:
-      'Satisfy completion, perform texture review, and require inspect kind target productionReady true. This gate does not replace semantic review.',
+      'Satisfy completion, perform the mandatory visual review, and require inspect kind target mechanicallyReady true. Mechanical readiness proves only deterministic structure and target compatibility.',
     targets: {
       geckolib5:
         'ZIP with geometry JSON, animation JSON, and external PNG textures.',
@@ -238,12 +253,14 @@ export const agentManifest = {
       'Use project.target.set through run, activate openExport, set format, namespace, and modelPath, then activate submitExport once. Require succeeded, positive byte length, and matching operation ID before downloadArtifact.'
   },
   recovery: {
+    projectMismatch:
+      'Inspect the active project and discard commands prepared for another baseProjectId. Never transplant an old-project batch by changing only its project ID.',
     staleRevision:
       'Inspect again and retry once with a new batchId and returned revision.',
     invalidPayload:
       'Read the command schema, correct the rejected path, and use a new batchId.',
     invalidState:
-      'Correct the reported recipe, projection, parent, material, connectivity, overlap, silhouette, grid, rig, budget, or target invariant. Failed batches changed nothing.',
+      'Correct the reported recipe, projection, parent, material, connectivity, excessive seam penetration, consumed part, canonical ownership, foreign-geometry conflict, silhouette, grid, rig, budget, or target invariant. Failed batches changed nothing.',
     noChange:
       'Treat no_change as terminal confirmation that the requested state is current.',
     duplicateExecution:

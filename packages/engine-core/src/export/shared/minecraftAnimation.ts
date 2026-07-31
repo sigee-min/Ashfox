@@ -10,6 +10,12 @@ import type {
   TransformChannel,
   TransformKeyframe
 } from '../../model';
+import {
+  effectivelyVisibleSceneNodeIds
+} from '../../sceneVisibility';
+import {
+  assertProjectAnimationsExportable
+} from '../../animation/capability';
 
 export type MinecraftAnimationScalar = number | string;
 export type MinecraftAnimationVector = [
@@ -126,14 +132,6 @@ const compileKeyframe = (
   property: TransformChannel['property'],
   options: MinecraftAnimationCompileOptions
 ): MinecraftAnimationVector | MinecraftAnimationKeyframe => {
-  if (
-    options.dialect === 'bedrock' &&
-    (keyframe.interpolation === 'step' || keyframe.easing)
-  ) {
-    throw new Error(
-      'Bedrock actor animation 1.8.0 cannot compile STEP or GeckoLib easing.'
-    );
-  }
   const vector = serializeVector(keyframe.value, property);
   const hasEnvelope =
     keyframe.preValue !== undefined ||
@@ -198,18 +196,26 @@ const compileChannel = (
 
 const resolveLocatorName = (
   document: ProjectDocument,
-  locatorId: string | undefined
+  locatorId: string | undefined,
+  visibleNodeIds: ReadonlySet<string>
 ): string | undefined => {
   if (!locatorId) return undefined;
+  if (!visibleNodeIds.has(locatorId)) return undefined;
   const locator = document.scene.nodes[locatorId];
   return locator?.kind === 'locator' ? locator.name : undefined;
 };
 
 const compileEffect = (
   document: ProjectDocument,
-  effect: AnimationEffect
-): MinecraftAnimationEffect => {
-  const locator = resolveLocatorName(document, effect.locatorId);
+  effect: AnimationEffect,
+  visibleNodeIds: ReadonlySet<string>
+): MinecraftAnimationEffect | undefined => {
+  const locator = resolveLocatorName(
+    document,
+    effect.locatorId,
+    visibleNodeIds
+  );
+  if (effect.locatorId && !locator) return undefined;
   return {
     effect: effect.effect,
     ...(locator ? { locator } : {}),
@@ -224,16 +230,31 @@ const compileEffect = (
 
 const compileEffectValue = (
   document: ProjectDocument,
-  value: AnimationEffectValue
-): MinecraftAnimationEffect | MinecraftAnimationEffect[] =>
-  isAnimationEffectArray(value)
-    ? value.map((effect) => compileEffect(document, effect))
-    : compileEffect(document, value);
+  value: AnimationEffectValue,
+  visibleNodeIds: ReadonlySet<string>
+):
+  | MinecraftAnimationEffect
+  | MinecraftAnimationEffect[]
+  | undefined => {
+  if (!isAnimationEffectArray(value)) {
+    return compileEffect(document, value, visibleNodeIds);
+  }
+  const effects = value
+    .map((effect) =>
+      compileEffect(document, effect, visibleNodeIds)
+    )
+    .filter(
+      (effect): effect is MinecraftAnimationEffect =>
+        effect !== undefined
+    );
+  return effects.length > 0 ? effects : undefined;
+};
 
 const compileTriggerTracks = (
   document: ProjectDocument,
   tracks: readonly AnimationTriggerTrack[],
-  options: MinecraftAnimationCompileOptions
+  options: MinecraftAnimationCompileOptions,
+  visibleNodeIds: ReadonlySet<string>
 ): Pick<
   MinecraftActorAnimation,
   'sound_effects' | 'particle_effects' | 'timeline'
@@ -253,49 +274,29 @@ const compileTriggerTracks = (
       const timestamp = formatTimestamp(keyframe.timeSeconds);
       if (track.type === 'sound') {
         if (
-          options.dialect === 'geckolib5' &&
-          isAnimationEffectArray(keyframe.value)
-        ) {
-          throw new Error(
-            'GeckoLib 5 effect timestamps require a single decoded value.'
-          );
-        }
-        if (
           isAnimationEffect(keyframe.value) ||
           isAnimationEffectArray(keyframe.value)
         ) {
-          soundEffects[timestamp] = compileEffectValue(
+          const effect = compileEffectValue(
             document,
-            keyframe.value
+            keyframe.value,
+            visibleNodeIds
           );
+          if (effect) soundEffects[timestamp] = effect;
         }
       } else if (track.type === 'particle') {
         if (
-          options.dialect === 'geckolib5' &&
-          isAnimationEffectArray(keyframe.value)
-        ) {
-          throw new Error(
-            'GeckoLib 5 effect timestamps require a single decoded value.'
-          );
-        }
-        if (
           isAnimationEffect(keyframe.value) ||
           isAnimationEffectArray(keyframe.value)
         ) {
-          particleEffects[timestamp] = compileEffectValue(
+          const effect = compileEffectValue(
             document,
-            keyframe.value
+            keyframe.value,
+            visibleNodeIds
           );
+          if (effect) particleEffects[timestamp] = effect;
         }
       } else {
-        if (
-          options.dialect === 'geckolib5' &&
-          isStringArray(keyframe.value)
-        ) {
-          throw new Error(
-            'GeckoLib 5 timeline timestamps require a single string.'
-          );
-        }
         timeline[timestamp] = isStringArray(keyframe.value)
           ? options.dialect === 'bedrock'
             ? keyframe.value
@@ -321,7 +322,8 @@ const compileTriggerTracks = (
 const compileClip = (
   document: ProjectDocument,
   clip: AnimationClip,
-  options: MinecraftAnimationCompileOptions
+  options: MinecraftAnimationCompileOptions,
+  visibleNodeIds: ReadonlySet<string>
 ): MinecraftActorAnimation => {
   const bones: Record<string, MinecraftBoneAnimation> = {};
   const channels = Object.values(clip.channels).sort((left, right) =>
@@ -329,7 +331,13 @@ const compileClip = (
   );
   for (const channel of channels) {
     const target = document.scene.nodes[channel.targetNodeId];
-    if (!target || target.kind !== 'bone') continue;
+    if (
+      !target ||
+      target.kind !== 'bone' ||
+      !visibleNodeIds.has(target.id)
+    ) {
+      continue;
+    }
     const bone = bones[target.name] ?? {};
     if (
       channel.property === 'rotation' &&
@@ -375,7 +383,8 @@ const compileClip = (
       Object.values(clip.triggers).sort((left, right) =>
         left.id.localeCompare(right.id)
       ),
-      options
+      options,
+      visibleNodeIds
     )
   };
 };
@@ -384,11 +393,19 @@ export const buildMinecraftActorAnimation = (
   document: ProjectDocument,
   options: MinecraftAnimationCompileOptions
 ): MinecraftActorAnimationFile => {
+  assertProjectAnimationsExportable(document);
+  const visibleNodeIds =
+    effectivelyVisibleSceneNodeIds(document);
   const animations: Record<string, MinecraftActorAnimation> = {};
   for (const clip of Object.values(document.animations).sort((left, right) =>
     left.id.localeCompare(right.id)
   )) {
-    animations[clip.name] = compileClip(document, clip, options);
+    animations[clip.name] = compileClip(
+      document,
+      clip,
+      options,
+      visibleNodeIds
+    );
   }
   return {
     format_version: options.formatVersion,

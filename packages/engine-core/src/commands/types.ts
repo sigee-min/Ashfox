@@ -5,6 +5,7 @@ import type {
   EntityId,
   KeyframeInterpolation,
   ProjectDocument,
+  ProjectIntent,
   ProjectId,
   Revision,
   SurfacePixelDensity,
@@ -49,6 +50,15 @@ export interface LocatorCreateInput {
   parentId: EntityId | null;
   transform?: Partial<Transform>;
   ignoreInheritedScale?: boolean;
+}
+
+export interface LocatorUpdateInput {
+  id: EntityId;
+  name?: string;
+  parentId?: EntityId | null;
+  transform?: Partial<Transform>;
+  visible?: boolean;
+  ignoreInheritedScale?: boolean | null;
 }
 
 export interface CubeCreateInput {
@@ -133,9 +143,23 @@ export interface CommandPayloadMap {
     namespace: string;
     modelPath: string;
   };
+  'project.intent.set': ProjectIntent;
   'model.parts.upsert': {
     parts: readonly PartSpec[];
     materials: readonly PartMaterialDefinition[];
+  };
+  'model.parts.mirror': {
+    rootPartId: string;
+    axis: SceneAxis;
+    plane: number;
+    partIdMap: readonly {
+      sourcePartId: string;
+      targetPartId: string;
+    }[];
+  };
+  'model.parts.transform': {
+    rootPartId: string;
+    translation: readonly [number, number, number];
   };
   'model.parts.material': {
     partIds: readonly string[];
@@ -150,6 +174,12 @@ export interface CommandPayloadMap {
   };
   'scene.locators.create': {
     locators: readonly LocatorCreateInput[];
+  };
+  'scene.locators.update': {
+    locators: readonly LocatorUpdateInput[];
+  };
+  'scene.locators.delete': {
+    locatorIds: readonly EntityId[];
   };
   'scene.nodes.transform': {
     nodeIds: readonly EntityId[];
@@ -273,6 +303,7 @@ export type ProjectCommand = {
 
 export interface CommandBatch {
   batchId: string;
+  baseProjectId: ProjectId;
   baseRevision: Revision;
   operations: readonly ProjectCommandOperation[];
 }
@@ -311,6 +342,7 @@ export type CommandErrorCode =
   | 'invalid_batch'
   | 'invalid_payload'
   | 'invalid_state'
+  | 'project_mismatch'
   | 'revision_mismatch'
   | 'no_change';
 

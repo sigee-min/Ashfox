@@ -85,6 +85,28 @@ export const packUvAtlas = <TValue>(
   return placements;
 };
 
+export const packUvAtlasWithGutter = <TValue>(
+  rects: readonly UvAtlasRect<TValue>[],
+  width: number,
+  height: number,
+  gutter: number
+): UvAtlasPlacement<TValue>[] | null => {
+  if (!Number.isSafeInteger(gutter) || gutter < 0) return null;
+  const inflated = rects.map((rect) => ({
+    key: rect.key,
+    width: rect.width + gutter * 2,
+    height: rect.height + gutter * 2,
+    value: rect
+  }));
+  const placements = packUvAtlas(inflated, width, height, 0);
+  if (!placements) return null;
+  return placements.map((placement) => ({
+    ...placement.value,
+    x: placement.x + gutter,
+    y: placement.y + gutter
+  }));
+};
+
 export const reduceAtlasPixelsPerBlock = (
   value: number
 ): number | null => {

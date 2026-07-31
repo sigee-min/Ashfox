@@ -3,7 +3,7 @@ import * as THREE from 'three';
 
 import {
   applyCameraPreset
-} from '../src/features/workbench/viewport/cameraPresets';
+} from '../src/rendering/cameraPresets';
 
 const camera = new THREE.PerspectiveCamera(42, 16 / 9, 0.05, 300);
 const compactModel = new THREE.Mesh(

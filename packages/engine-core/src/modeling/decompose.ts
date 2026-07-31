@@ -93,6 +93,58 @@ const expandPositive = (
   }
 });
 
+const faceOcclusionIsUniform = (
+  bounds: LatticeBounds,
+  axis: Axis,
+  positive: boolean,
+  occupied: ReadonlySet<CellKey>
+): boolean => {
+  let expected: boolean | undefined;
+  const observe = (point: LatticePoint): boolean => {
+    const value = occupied.has(cellKey(point));
+    if (expected === undefined) {
+      expected = value;
+      return true;
+    }
+    return expected === value;
+  };
+  if (axis === 'x') {
+    const x = positive ? bounds.max.x : bounds.min.x - 1;
+    for (let y = bounds.min.y; y < bounds.max.y; y += 1) {
+      for (let z = bounds.min.z; z < bounds.max.z; z += 1) {
+        if (!observe({ x, y, z })) return false;
+      }
+    }
+    return true;
+  }
+  if (axis === 'y') {
+    const y = positive ? bounds.max.y : bounds.min.y - 1;
+    for (let x = bounds.min.x; x < bounds.max.x; x += 1) {
+      for (let z = bounds.min.z; z < bounds.max.z; z += 1) {
+        if (!observe({ x, y, z })) return false;
+      }
+    }
+    return true;
+  }
+  const z = positive ? bounds.max.z : bounds.min.z - 1;
+  for (let x = bounds.min.x; x < bounds.max.x; x += 1) {
+    for (let y = bounds.min.y; y < bounds.max.y; y += 1) {
+      if (!observe({ x, y, z })) return false;
+    }
+  }
+  return true;
+};
+
+const hasSurfaceConformingFaces = (
+  bounds: LatticeBounds,
+  occupied: ReadonlySet<CellKey>
+): boolean =>
+  (['x', 'y', 'z'] as const).every(
+    (axis) =>
+      faceOcclusionIsUniform(bounds, axis, false, occupied) &&
+      faceOcclusionIsUniform(bounds, axis, true, occupied)
+  );
+
 const removeCuboidCells = (
   remaining: Set<CellKey>,
   bounds: LatticeBounds
@@ -189,9 +241,10 @@ const compareScores = (
   left.aspectPenalty - right.aspectPenalty ||
   compareLexical(left.lexicalSignature, right.lexicalSignature);
 
-export const decomposeWithAxisOrder = (
+const decomposeWithAxisOrderInternal = (
   grid: OccupancyGrid,
-  axisOrder: AxisOrder
+  axisOrder: AxisOrder,
+  environment: ReadonlySet<CellKey> | null
 ): CuboidDecomposition => {
   assertDensity(grid.density);
   assertAxisOrder(axisOrder);
@@ -208,7 +261,14 @@ export const decomposeWithAxisOrder = (
     let bounds = boundsForCell(seed);
     for (const axis of axisOrder) {
       while (canExpandPositive(bounds, axis, remaining)) {
-        bounds = expandPositive(bounds, axis);
+        const expanded = expandPositive(bounds, axis);
+        if (
+          environment !== null &&
+          !hasSurfaceConformingFaces(expanded, environment)
+        ) {
+          break;
+        }
+        bounds = expanded;
       }
     }
     removeCuboidCells(remaining, bounds);
@@ -224,13 +284,27 @@ export const decomposeWithAxisOrder = (
   };
 };
 
-export const decomposeOccupancy = (
-  grid: OccupancyGrid
+export const decomposeWithAxisOrder = (
+  grid: OccupancyGrid,
+  axisOrder: AxisOrder
+): CuboidDecomposition =>
+  decomposeWithAxisOrderInternal(grid, axisOrder, null);
+
+const bestDecomposition = (
+  grid: OccupancyGrid,
+  environment: ReadonlySet<CellKey> | null
 ): CuboidDecomposition => {
   let best: CuboidDecomposition | undefined;
   for (const axisOrder of GREEDY_AXIS_ORDERS) {
-    const candidate = decomposeWithAxisOrder(grid, axisOrder);
-    if (best === undefined || compareScores(candidate.score, best.score) < 0) {
+    const candidate = decomposeWithAxisOrderInternal(
+      grid,
+      axisOrder,
+      environment
+    );
+    if (
+      best === undefined ||
+      compareScores(candidate.score, best.score) < 0
+    ) {
       best = candidate;
     }
   }
@@ -238,6 +312,23 @@ export const decomposeOccupancy = (
     throw new Error('no greedy axis orders are configured');
   }
   return best;
+};
+
+export const decomposeOccupancy = (
+  grid: OccupancyGrid
+): CuboidDecomposition =>
+  bestDecomposition(grid, null);
+
+export const decomposeSurfaceConformingOccupancy = (
+  grid: OccupancyGrid,
+  environment: ReadonlySet<CellKey>
+): CuboidDecomposition => {
+  if ([...grid.cells].some((key) => !environment.has(key))) {
+    throw new Error(
+      'surface environment must contain every occupancy cell'
+    );
+  }
+  return bestDecomposition(grid, environment);
 };
 
 export const assertExactDecomposition = (

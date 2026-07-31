@@ -1,5 +1,6 @@
 import {
   composeTextureRaster,
+  paintDirectionalSurfacePixel,
   paintSurfacePixel,
   stableTextureSeed,
   type ProjectDocument,
@@ -18,24 +19,6 @@ const rgbColor = (value: string): RgbColor => ({
   r: Number.parseInt(value.slice(1, 3), 16),
   g: Number.parseInt(value.slice(3, 5), 16),
   b: Number.parseInt(value.slice(5, 7), 16)
-});
-
-const FACE_TONE = {
-  up: 1.08,
-  south: 1,
-  east: 0.96,
-  north: 0.92,
-  west: 0.88,
-  down: 0.8
-} as const;
-
-const toneColor = (
-  color: RgbColor,
-  scale: number
-): RgbColor => ({
-  r: Math.min(255, Math.max(0, Math.round(color.r * scale))),
-  g: Math.min(255, Math.max(0, Math.round(color.g * scale))),
-  b: Math.min(255, Math.max(0, Math.round(color.b * scale)))
 });
 
 const fillPixel = (
@@ -69,8 +52,9 @@ export const generatedSurfacePixel = (
       )
     );
   }
-  return paintSurfacePixel(
-    toneColor(rgbColor(region.color), FACE_TONE[region.face]),
+  return paintDirectionalSurfacePixel(
+    rgbColor(region.color),
+    region.face,
     pattern.origin[0] + x - pattern.bounds.x,
     pattern.origin[1] + y - pattern.bounds.y,
     pattern.bounds.width,

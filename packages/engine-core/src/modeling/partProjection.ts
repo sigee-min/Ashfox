@@ -3,7 +3,9 @@ import {
   type ProjectDocument
 } from '../model';
 import { compareStableText } from '../stableOrder';
-import { decomposeOccupancy } from './decompose';
+import {
+  decomposeSurfaceConformingOccupancy
+} from './decompose';
 import { latticeToWorld } from './lattice';
 import {
   compiledPartBoneId,
@@ -13,8 +15,8 @@ import {
   readPartRecipe
 } from './partRecipe';
 import {
-  rasterizePart
-} from './partPrimitiveAdapter';
+  canonicalizePartOccupancies
+} from './partOccupancyCanonicalization';
 import type {
   CompiledPartState,
   PartInvariantIssue
@@ -67,6 +69,29 @@ export const validatePartRecipeProjection = (
   const materials = new Map(
     recipe.materials.map((material) => [material.id, material])
   );
+  const canonicalized = canonicalizePartOccupancies(
+    recipe.parts,
+    document.settings.surfacePixelDensity
+  );
+  if (!canonicalized.ok) {
+    return [{
+      code: 'projection',
+      path: `modeling.${canonicalized.path}`,
+      message: canonicalized.message,
+      entityIds: []
+    }];
+  }
+  const canonicalByPart = new Map(
+    canonicalized.parts.map((part) => [
+      part.spec.partId,
+      part
+    ])
+  );
+  const canonicalEnvironment = new Set(
+    canonicalized.parts.flatMap(
+      (part) => [...part.canonical.cells]
+    )
+  );
   const generatedTextureId = Object.values(document.textures)
     .filter((texture) => texture.atlasMode === 'generate')
     .sort((left, right) => compareStableText(left.id, right.id))[0]?.id;
@@ -83,12 +108,23 @@ export const validatePartRecipeProjection = (
       });
       continue;
     }
-    const expectedOccupancy = rasterizePart(
-      document.settings.surfacePixelDensity,
-      spec
-    );
+    const expectedCanonical = canonicalByPart.get(spec.partId);
+    if (!expectedCanonical) {
+      issues.push({
+        code: 'projection',
+        path: `modeling.parts.${spec.partId}`,
+        message:
+          `Canonical part "${spec.partId}" has no normalized occupancy.`,
+        entityIds: [compiledPartBoneId(spec.partId)]
+      });
+      continue;
+    }
+    const expectedOccupancy = expectedCanonical.canonical;
     const expectedDecomposition =
-      decomposeOccupancy(expectedOccupancy);
+      decomposeSurfaceConformingOccupancy(
+        expectedOccupancy,
+        canonicalEnvironment
+      );
     const expectedIds = new Set(
       expectedDecomposition.cuboids.map((cuboid) =>
         compiledPartCubeId(
@@ -102,9 +138,13 @@ export const validatePartRecipeProjection = (
       actual.cubes.map((cube) => cube.id)
     );
     const expectedPivot: readonly [number, number, number] =
-      spec.attachment === null
+      expectedCanonical.canonicalAttachmentAnchor === null
         ? [0, 0, 0]
-        : spec.attachment.parentAnchor.map((coordinate) =>
+        : [
+            expectedCanonical.canonicalAttachmentAnchor.x,
+            expectedCanonical.canonicalAttachmentAnchor.y,
+            expectedCanonical.canonicalAttachmentAnchor.z
+          ].map((coordinate) =>
             latticeToWorld(
               coordinate,
               document.settings.surfacePixelDensity

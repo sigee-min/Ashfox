@@ -9,7 +9,11 @@ const file: ArtifactFile = {
   kind: 'project',
   name: 'moonveil-kirin.ashfox',
   contentType: 'application/vnd.ashfox.project+zip',
-  bytes: new Uint8Array([1, 2, 3, 4])
+  bytes: new Uint8Array([1, 2, 3, 4]),
+  projectId: 'project-moonveil-kirin',
+  sourceRevision: 'local-0001',
+  target: 'glb',
+  contentHash: 'sha256:test-artifact'
 };
 const blobs: Blob[] = [];
 const revoked: string[] = [];

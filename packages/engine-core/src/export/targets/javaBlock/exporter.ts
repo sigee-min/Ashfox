@@ -8,6 +8,9 @@ import {
   type TextureAsset,
   type Vec3
 } from '../../../model';
+import {
+  effectivelyVisibleSceneNodeIds
+} from '../../../sceneVisibility';
 import { supportsJavaMultiAxisRotation, validateProjectDocument } from '../../../validation';
 import { createJsonExportFile } from '../../json';
 import {
@@ -185,8 +188,13 @@ export const buildMinecraftJavaModel = (document: ProjectDocument): MinecraftJav
     throw new Error('Project does not use the minecraft.java_block profile.');
   }
 
+  const visibleNodeIds =
+    effectivelyVisibleSceneNodeIds(document);
   const cubes = Object.values(document.scene.nodes)
-    .filter((node): node is CubeNode => node.kind === 'cube' && node.visible)
+    .filter(
+      (node): node is CubeNode =>
+        node.kind === 'cube' && visibleNodeIds.has(node.id)
+    )
     .sort((left, right) => left.id.localeCompare(right.id));
   const model: MinecraftJavaModel = {
     format_version: profile.version,

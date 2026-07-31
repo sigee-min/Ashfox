@@ -4,6 +4,9 @@ import {
   type ProjectDocument,
   type Vec3
 } from './model';
+import {
+  effectivelyVisibleSceneNodeIds
+} from './sceneVisibility';
 
 export interface FullyOccludedCube {
   innerId: string;
@@ -74,6 +77,8 @@ const volume = (bounds: CubeBounds): number =>
 export const findFullyOccludedCubes = (
   document: ProjectDocument
 ): readonly FullyOccludedCube[] => {
+  const visibleNodeIds =
+    effectivelyVisibleSceneNodeIds(document);
   const animatedNodeIds = new Set(
     Object.values(document.animations).flatMap((clip) =>
       Object.values(clip.channels).map(
@@ -85,7 +90,7 @@ export const findFullyOccludedCubes = (
     .filter(
       (node): node is CubeNode =>
         node.kind === 'cube' &&
-        node.visible &&
+        visibleNodeIds.has(node.id) &&
         !animatedNodeIds.has(node.id) &&
         hasIdentityRotationAndScale(node)
     )

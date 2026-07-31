@@ -15,13 +15,13 @@ import {
 } from '../newProject';
 import {
   type ProjectExportTarget
-} from '../presentation/projectExportTarget';
+} from '../../../application/projectExportTarget';
 import {
   createProjectSettingsOperations,
   type ProjectSettingsInput
 } from '../projectSettings';
-import type { HistoryAction } from '../state/historyReducer';
-import { LOCAL_COMMAND_ACTOR_ID } from '../state/localCommandActor';
+import type { HistoryAction } from '../../../application/historyReducer';
+import { LOCAL_COMMAND_ACTOR_ID } from '../../../application/localCommandActor';
 
 interface UseWorkbenchProjectCommandsInput {
   document: ProjectDocument;
@@ -56,6 +56,7 @@ export const useWorkbenchProjectCommands = ({
         type: 'execute',
         batch: {
           batchId: crypto.randomUUID(),
+          baseProjectId: document.id,
           baseRevision: document.revision,
           operations
         },
@@ -64,7 +65,7 @@ export const useWorkbenchProjectCommands = ({
         committedAt: new Date().toISOString()
       });
     },
-    [dispatch, document.revision]
+    [dispatch, document.id, document.revision]
   );
 
   const updateProjectSettings = useCallback(

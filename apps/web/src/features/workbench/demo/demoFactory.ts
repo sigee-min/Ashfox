@@ -14,7 +14,7 @@ import {
   createHistoryState,
   historyReducer,
   type HistoryState
-} from '../state/historyReducer';
+} from '../../../application/historyReducer';
 
 export interface DemoTextureSpec {
   id: string;
@@ -207,6 +207,7 @@ export const createDemoHistory = (
         type: 'execute',
         batch: {
           batchId,
+          baseProjectId: state.present.id,
           baseRevision: state.present.revision,
           operations
         },

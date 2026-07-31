@@ -5,11 +5,38 @@ import {
   deterministicPixelNoise,
   faceTexelSize,
   packUvAtlas,
+  packUvAtlasWithGutter,
+  paintDirectionalSurfacePixel,
   paintSurfacePixel,
   reduceAtlasPixelsPerBlock,
   shadePixelRect,
   stableTextureSeed
 } from '../src';
+
+const directionalSeed = stableTextureSeed(
+  'texture-copper:gold-body:north',
+  0x41534846
+);
+assert.deepEqual(
+  paintDirectionalSurfacePixel(
+    { r: 100, g: 100, b: 100 },
+    'up',
+    0,
+    0,
+    1,
+    1,
+    directionalSeed
+  ),
+  paintSurfacePixel(
+    { r: 108, g: 108, b: 108 },
+    0,
+    0,
+    1,
+    1,
+    directionalSeed
+  ),
+  'directional tone must be owned by engine-core'
+);
 
 const from = [-4, 5, -5] as const;
 const to = [4, 10, 5] as const;
@@ -57,6 +84,22 @@ assert.equal(
   ),
   null
 );
+assert.deepEqual(
+  packUvAtlasWithGutter(
+    [{ key: 'safe', width: 2, height: 2, value: 'safe' }],
+    4,
+    4,
+    1
+  )?.map(({ key, x, y, width, height }) => ({
+    key,
+    x,
+    y,
+    width,
+    height
+  })),
+  [{ key: 'safe', x: 1, y: 1, width: 2, height: 2 }],
+  'content UVs must reserve a real gutter on every atlas edge'
+);
 
 assert.equal(reduceAtlasPixelsPerBlock(16), 8);
 assert.equal(reduceAtlasPixelsPerBlock(4), 3);
@@ -97,8 +140,7 @@ assert.deepEqual(
   { r: 190, g: 110, b: 55 },
   'single-pixel details must keep the selected base color'
 );
-assert.ok(
-  new Set(
+const palette = new Set(
     Array.from({ length: 64 }, (_, index) => {
       const color = paintSurfacePixel(
         { r: 190, g: 110, b: 55 },
@@ -110,8 +152,14 @@ assert.ok(
       );
       return `${color.r}:${color.g}:${color.b}`;
     })
-  ).size >= 8,
-  'large faces must preserve rich tonal variation'
+);
+assert.ok(
+  palette.size >= 4,
+  'large faces must preserve deliberate tonal variation'
+);
+assert.ok(
+  palette.size <= 9,
+  'generated surfaces must use a bounded derived palette'
 );
 assert.notDeepEqual(
   paintSurfacePixel(
