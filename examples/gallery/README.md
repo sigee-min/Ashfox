@@ -10,8 +10,8 @@ examples/gallery/<id>/
 ├── project.ashfox     # canonical editable source opened by the card
 ├── poster.png         # .jpg is also supported
 ├── animation.gif      # required card preview
-├── animation.mp4      # required when featured=true
-└── build.gif/.mp4     # optional real authoring-session recording
+├── animation.mp4      # optional alternate playback source
+└── build.gif          # optional real authoring-session recording
 ```
 
 ## Add a demo
@@ -19,7 +19,10 @@ examples/gallery/<id>/
 1. Copy an existing demo folder and rename it to a lowercase slug.
 2. Create the project in the workbench, save its `.ashfox` file into the new
    folder, and replace the poster and animation media. Add build media only
-   when it records the real authoring session.
+   when it records the real authoring session. Author showcase models in
+   meaningful committed passes so the recording visibly progresses from
+   primary mass through silhouette, articulation, focal detail, materials, and
+   motion. Never reconstruct a fake build after completion.
 3. Update `demo.json`; its `id` must match the folder name and its `order` must
    be unique.
 4. Run `npm run test:site`. The build fails on missing files, duplicate ids or

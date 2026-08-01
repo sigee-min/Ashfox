@@ -131,12 +131,6 @@ const loadDemo = async (directoryName) => {
         assertFile(demoRoot, fileName, `${manifestPath} ${key}`)
       )
   );
-  if (featured && files.animationVideo === null) {
-    throw new Error(
-      `${manifestPath} featured demos require media.animation.video.`
-    );
-  }
-
   const metrics = {
     bones: requiredPositiveInteger(
       manifest.metrics.bones,

@@ -104,9 +104,14 @@ assert.deepEqual(
   plan.events.map((event) => event.category),
   ['start', 'geometry', 'texture', 'animation', 'complete']
 );
-assert.equal(plan.frames.length, 20);
+assert.equal(plan.frames.length, 56);
 assert.equal(plan.frames[0]?.event.document.revision, 'local-0000');
 assert.equal(plan.frames.at(-1)?.event.document.revision, 'local-0003');
+assert.ok(
+  (plan.events.find((event) => event.category === 'geometry')
+    ?.createdEntityIds.length ?? 0) > 0,
+  'geometry events must preserve entity creation order for progressive reveal'
+);
 assert.throws(
   () => createBuildCapturePlan([empty], []),
   /at least one committed change/

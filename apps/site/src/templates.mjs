@@ -170,15 +170,16 @@ const landingDemo = (demo) => `
         decoding="async"
         fetchpriority="high"
       >
-      <video
+      <img
         class="studio-playback"
         data-demo-player
         data-media-state="poster"
-        muted
-        playsinline
-        preload="metadata"
+        width="640"
+        height="360"
+        alt=""
+        decoding="async"
         aria-hidden="true"
-      ></video>
+      >
       <span class="capture-live"><i></i> Live viewport</span>
     </div>
     <div class="agent-dock">
@@ -199,7 +200,7 @@ const landingDemo = (demo) => `
           spellcheck="false"
           placeholder="Ask anything"
         >${escapeHtml(demo.sequences[0].prompt)}</textarea>
-        <span class="agent-model"><b>5.6 Sol</b><em>xhigh</em><i>⌄</i></span>
+        <span class="agent-model"><b>${escapeHtml(demo.sequences[0].model)}</b><em>${escapeHtml(demo.sequences[0].reasoning)}</em><i>⌄</i></span>
         <span class="agent-mic" aria-hidden="true"></span>
         <button class="agent-send" type="button" tabindex="-1" disabled aria-label="Prompt runs automatically">
           <b aria-hidden="true">↑</b>
@@ -207,86 +208,6 @@ const landingDemo = (demo) => `
       </div>
     </div>
   </div>
-`;
-
-const landingStory = ({ story }) => `
-  <section
-    class="story-section"
-    id="showcase"
-    data-scroll-story
-    data-sequences="${escapeHtml(JSON.stringify(story))}"
-  >
-    <div class="story-intro" data-reveal>
-      <p class="eyebrow"><span></span>One coherent workflow</p>
-      <h2><span>One request.</span><span>A complete asset.</span></h2>
-      <p>Follow the result from editable structure to authored motion.</p>
-    </div>
-    <div class="story-track">
-      <span class="story-axis" aria-hidden="true"><i></i></span>
-      <div class="story-stage">
-        <div
-          class="story-frame"
-          data-story-desktop-host
-          role="img"
-          aria-label="${escapeHtml(story[0].alt)}"
-        >
-          <img
-            class="story-poster"
-            src="${escapeHtml(story[0].poster)}"
-            data-story-desktop-poster
-            width="1280"
-            height="720"
-            alt=""
-            aria-hidden="true"
-          >
-          <video
-            class="story-playback"
-            data-story-player
-            data-media-state="poster"
-            muted
-            playsinline
-            preload="metadata"
-            aria-hidden="true"
-          ></video>
-        </div>
-        <div class="story-stage-meta" aria-hidden="true">
-          <span data-story-position>01 / 0${story.length}</span>
-          <span>Actual ashfox output</span>
-        </div>
-      </div>
-      <div class="story-chapters">
-        ${story.map((chapter, index) => `
-          <article
-            class="story-chapter ${index % 2 === 0 ? 'story-chapter-left' : 'story-chapter-right'}"
-            data-story-chapter="${index}"
-          >
-            <div
-              class="story-mobile-media"
-              data-story-mobile-host="${index}"
-              role="img"
-              aria-label="${escapeHtml(chapter.alt)}"
-            >
-              <img
-                class="story-poster"
-                src="${escapeHtml(chapter.poster)}"
-                width="1280"
-                height="720"
-                alt=""
-                aria-hidden="true"
-                loading="lazy"
-              >
-            </div>
-            <div class="story-copy">
-              <span>0${index + 1} · ${escapeHtml(chapter.eyebrow)}</span>
-              <h3>${escapeHtml(chapter.title)}</h3>
-              <p>${escapeHtml(chapter.body)}</p>
-              <small>${escapeHtml(chapter.detail)}</small>
-            </div>
-          </article>
-        `).join('')}
-      </div>
-    </div>
-  </section>
 `;
 
 const landingQuickStart = (quickStart) => `
@@ -393,8 +314,6 @@ export const renderLandingPage = ({ assets, config }) => {
         </div>
         <div class="hero-visual">${landingDemo(content.demo)}</div>
       </section>
-
-      ${landingStory({ story: content.story })}
 
       <section class="section output-section" id="outputs">
         <div class="output-copy" data-reveal>
@@ -527,7 +446,7 @@ const galleryCard = (item, index) => `
         class="gallery-media"
         data-gallery-media
         role="img"
-        aria-label="${escapeHtml(item.alt)}"
+        aria-label="${escapeHtml(item.name)}"
       >
         <img
           class="gallery-poster"
@@ -550,23 +469,17 @@ const galleryCard = (item, index) => `
             decoding="async"
           >
         ` : ''}
-        <span class="gallery-category">${escapeHtml(item.category)}</span>
         <span class="gallery-preview-state" aria-hidden="true">
           <i></i><b>Open project</b>
         </span>
       </span>
       <div class="gallery-card-copy">
-        <span class="gallery-phase">${escapeHtml(item.phase)}</span>
         <h2>${escapeHtml(item.name)}</h2>
-        <p>${escapeHtml(item.description)}</p>
-        <small>${escapeHtml(item.detail)}</small>
+        <div class="gallery-model">
+          <b>Model</b><span>${escapeHtml(item.agent.model)}</span>
+        </div>
         <div class="gallery-tags" aria-label="Tags">
           ${item.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join('')}
-        </div>
-        <div class="gallery-metadata">
-          <span><b>Model</b><em>${escapeHtml(item.agent.model)}</em></span>
-          <span><b>Reasoning</b><em>${escapeHtml(item.agent.reasoning)}</em></span>
-          <strong>Open in workbench <i aria-hidden="true">→</i></strong>
         </div>
       </div>
     </a>
@@ -581,7 +494,6 @@ export const renderGalleryPage = ({ assets, config }) => {
       <header class="gallery-hero">
         <p class="eyebrow"><span></span>${escapeHtml(content.eyebrow)}</p>
         <h1>${escapeHtml(content.title)}</h1>
-        <p>${escapeHtml(content.summary)}</p>
       </header>
       <section class="gallery-controls" aria-label="Filter gallery demos">
         <label class="gallery-search">
@@ -641,8 +553,7 @@ export const renderGalleryPage = ({ assets, config }) => {
           position: index + 1,
           item: {
             '@type': 'CreativeWork',
-            name: `${item.name} — ${item.phase}`,
-            description: item.description,
+            name: item.name,
             image: absoluteUrl(config.siteOrigin, item.poster),
             url: absoluteUrl(config.siteOrigin, item.workbench)
           }

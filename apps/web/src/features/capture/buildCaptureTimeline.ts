@@ -22,6 +22,7 @@ export interface BuildCaptureEvent {
   category: BuildCaptureCategory;
   label: string;
   document: ProjectDocument;
+  createdEntityIds: readonly string[];
   revisionCount: number;
   affectedEntityCount: number;
   holdFrames: number;
@@ -42,13 +43,13 @@ export interface BuildCapturePlan {
 }
 
 const HOLD_FRAMES: Readonly<Record<BuildCaptureCategory, number>> = {
-  start: 2,
-  project: 1,
-  geometry: 4,
-  rig: 2,
-  texture: 3,
-  animation: 3,
-  complete: 8
+  start: 8,
+  project: 4,
+  geometry: 12,
+  rig: 6,
+  texture: 8,
+  animation: 10,
+  complete: 18
 };
 
 const GROUP_LIMIT: Readonly<Record<BuildCaptureCategory, number>> = {
@@ -144,9 +145,24 @@ const inferCategory = (
 interface CandidateEvent {
   category: BuildCaptureCategory;
   document: ProjectDocument;
+  createdEntityIds: string[];
   affectedEntityCount: number;
   completedAt: number | null;
 }
+
+const createdEntityIds = (
+  before: ProjectDocument,
+  after: ProjectDocument,
+  receipt?: CommandReceipt
+): string[] => {
+  const recorded = receipt?.effects.createdEntityIds.filter(
+    (id) => after.scene.nodes[id] !== undefined
+  ) ?? [];
+  if (recorded.length > 0) return [...new Set(recorded)];
+  return Object.keys(after.scene.nodes).filter(
+    (id) => before.scene.nodes[id] === undefined
+  );
+};
 
 const hasRenderableGeometry = (
   document: ProjectDocument
@@ -192,12 +208,17 @@ const buildSemanticEvents = (
     const candidate: CandidateEvent = {
       category: inferCategory(before, document, receipt),
       document,
+      createdEntityIds: createdEntityIds(before, document, receipt),
       affectedEntityCount: affectedEntityCount(receipt),
       completedAt: receiptTimestamp(receipt)
     };
     const previous = grouped.at(-1);
     if (previous && shouldGroup(previous, candidate)) {
       previous.document = candidate.document;
+      previous.createdEntityIds = [...new Set([
+        ...previous.createdEntityIds,
+        ...candidate.createdEntityIds
+      ])];
       previous.affectedEntityCount += candidate.affectedEntityCount;
       previous.completedAt = candidate.completedAt;
       previous.revisionCount += 1;
@@ -224,6 +245,7 @@ const buildSemanticEvents = (
       category: 'start',
       label: startLabel,
       document: first,
+      createdEntityIds: [],
       revisionCount: 1,
       affectedEntityCount: 0,
       holdFrames: HOLD_FRAMES.start
@@ -236,6 +258,7 @@ const buildSemanticEvents = (
         event.affectedEntityCount
       ),
       document: event.document,
+      createdEntityIds: event.createdEntityIds,
       revisionCount: event.revisionCount,
       affectedEntityCount: event.affectedEntityCount,
       holdFrames: HOLD_FRAMES[event.category]
@@ -245,6 +268,7 @@ const buildSemanticEvents = (
       category: 'complete',
       label: categoryLabel('complete', 0),
       document: last,
+      createdEntityIds: [],
       revisionCount: 1,
       affectedEntityCount: 0,
       holdFrames: HOLD_FRAMES.complete

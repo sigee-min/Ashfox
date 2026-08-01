@@ -39,6 +39,45 @@ const fillPanel = (
   context.fill();
 };
 
+export const drawBuildFrameOverlay = (
+  context: CanvasRenderingContext2D,
+  label: string,
+  eventIndex: number,
+  eventCount: number,
+  progress: number
+): void => {
+  context.save();
+  context.font = '700 10px ui-monospace, SFMono-Regular, Menlo, monospace';
+  const heading = `BUILD · ${eventIndex + 1}/${eventCount}`;
+  context.font = '600 12px ui-monospace, SFMono-Regular, Menlo, monospace';
+  const copy = label.slice(0, 58);
+  const panelWidth = Math.min(
+    GIF_CAPTURE_WIDTH - 28,
+    Math.max(184, context.measureText(copy).width + 24)
+  );
+  fillPanel(context, 14, 14, panelWidth, 52);
+  context.font = '700 10px ui-monospace, SFMono-Regular, Menlo, monospace';
+  context.fillStyle = '#f0b65d';
+  context.fillText(heading, 25, 33);
+  context.font = '600 12px ui-monospace, SFMono-Regular, Menlo, monospace';
+  context.fillStyle = '#f1e7d2';
+  context.fillText(copy, 25, 53);
+
+  const trackX = 14;
+  const trackY = GIF_CAPTURE_HEIGHT - 10;
+  const trackWidth = GIF_CAPTURE_WIDTH - 28;
+  context.fillStyle = 'rgba(10, 14, 18, 0.72)';
+  context.fillRect(trackX, trackY, trackWidth, 3);
+  context.fillStyle = '#f0b65d';
+  context.fillRect(
+    trackX,
+    trackY,
+    Math.max(2, trackWidth * Math.min(1, Math.max(0, progress))),
+    3
+  );
+  context.restore();
+};
+
 const eventText = (event: GifFrameEvent): string =>
   `${event.type.toUpperCase()} · ${event.label}`;
 

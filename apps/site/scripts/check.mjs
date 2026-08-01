@@ -7,7 +7,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { galleryContent, landingContent } from '../src/content.mjs';
-import { selectStoryChapter } from '../src/landingPlayback.js';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repositoryRoot = path.resolve(siteRoot, '../..');
@@ -231,9 +230,21 @@ for (const item of galleryContent.items) {
     !galleryHtml.includes(`data-gif="${item.gif}"`) ||
     !galleryHtml.includes(`href="${item.workbench}"`) ||
     !galleryHtml.includes(item.agent.model) ||
-    !galleryHtml.includes(item.agent.reasoning)
+    item.tags.some((tag) => !galleryHtml.includes(`>${tag}</span>`))
   ) {
     failures.push(`${route} is missing gallery metadata for ${item.galleryId}`);
+  }
+  for (const [label, value] of [
+    ['description', item.description],
+    ['prompt', item.prompt],
+    ['detail', item.detail],
+    ['reasoning', item.agent.reasoning]
+  ]) {
+    if (galleryHtml.includes(value)) {
+      failures.push(
+        `${route} must not render ${label} for ${item.galleryId}`
+      );
+    }
   }
   const gifPath = path.join(outputRoot, item.gif);
   if (!(await exists(gifPath))) {
@@ -280,17 +291,7 @@ if (!(await exists(galleryIndexPath))) {
     failures.push('gallery JSON index does not match the catalog');
   }
 }
-
 const landingHtml = await readFile(path.join(outputRoot, 'index.html'), 'utf8');
-const storyChapterCount = (
-  landingHtml.match(/\sdata-story-chapter="\d+"/g) ?? []
-).length;
-if (storyChapterCount !== landingContent.story.length) {
-  failures.push(
-    `landing story has ${storyChapterCount} chapters, expected ` +
-    landingContent.story.length
-  );
-}
 const agentInstructionControlCount = (
   landingHtml.match(/\sdata-copy-agent-instruction(?:\s|>)/g) ?? []
 ).length;
@@ -366,52 +367,41 @@ if (
 const heroPlayerCount = (
   landingHtml.match(/\sdata-demo-player(?:\s|>)/g) ?? []
 ).length;
-const storyPlayerCount = (
-  landingHtml.match(/\sdata-story-player(?:\s|>)/g) ?? []
-).length;
-if (heroPlayerCount !== 1 || storyPlayerCount !== 1) {
-  failures.push(
-    `landing must contain one hero and one story player, received ` +
-    `${heroPlayerCount} and ${storyPlayerCount}`
-  );
+if (heroPlayerCount !== 1) {
+  failures.push(`landing must contain one hero player, received ${heroPlayerCount}`);
 }
-if (/data-demo-reel|data-story-media|data-story-src/.test(landingHtml)) {
-  failures.push('legacy GIF playback DOM must not be present');
+if (/data-demo-reel|data-story-/.test(landingHtml)) {
+  failures.push('cut landing showcase DOM must not be present');
 }
 if (/media\/showcase\/[^"']+\.gif/.test(landingHtml)) {
-  failures.push('landing runtime must not reference animated GIF media');
+  failures.push('landing must not reference legacy showcase GIF media');
 }
 const videoTags = landingHtml.match(/<video[\s\S]*?<\/video>/g) ?? [];
-if (
-  videoTags.length !== 2 ||
-  videoTags.some((tag) =>
-    !tag.includes('muted') ||
-    !tag.includes('playsinline') ||
-    !tag.includes('preload="metadata"') ||
-    /\s(?:autoplay|loop)(?:\s|>)/.test(tag)
-  )
-) {
-  failures.push('landing videos must use the controlled playback contract');
+if (videoTags.length !== 0) {
+  failures.push('landing must not retain the legacy video player');
 }
 
 const mediaSources = new Set([
-  ...landingContent.demo.sequences.map((sequence) => sequence.video),
-  ...landingContent.story.map((chapter) => chapter.video)
+  ...landingContent.demo.sequences.map((sequence) => sequence.gif)
 ]);
+if (
+  landingContent.demo.sequences.length !== 1 ||
+  !landingContent.demo.sequences[0]?.gif.endsWith(
+    '/blackfrost-dreadwing/build.gif'
+  )
+) {
+  failures.push('landing must use the current Blackfrost build-process GIF');
+}
 for (const source of mediaSources) {
   const mediaPath = path.join(outputRoot, source);
   if (!(await exists(mediaPath))) {
-    failures.push(`landing video is missing: ${source}`);
+    failures.push(`landing build GIF is missing: ${source}`);
     continue;
   }
   const media = await readFile(mediaPath);
-  if (media.subarray(4, 8).toString('ascii') !== 'ftyp') {
-    failures.push(`landing video is not an MP4 file: ${source}`);
-  }
-  const movieAtom = media.indexOf(Buffer.from('moov'));
-  const mediaAtom = media.indexOf(Buffer.from('mdat'));
-  if (movieAtom < 0 || mediaAtom < 0 || movieAtom > mediaAtom) {
-    failures.push(`landing video must be encoded for fast start: ${source}`);
+  const signature = media.subarray(0, 6).toString('ascii');
+  if (signature !== 'GIF87a' && signature !== 'GIF89a') {
+    failures.push(`landing build media is not a GIF file: ${source}`);
   }
 }
 
@@ -435,26 +425,6 @@ if (!siteScriptSource) {
       failures.push(`hashed site module is missing: ${moduleImport}`);
     }
   }
-}
-
-const selectionFixtures = [
-  { top: 0, bottom: 400 },
-  { top: 300, bottom: 700 }
-];
-if (selectStoryChapter(selectionFixtures, 800) !== 1) {
-  failures.push('story selection must choose the chapter nearest viewport center');
-}
-if (selectStoryChapter(selectionFixtures, 800, 0, 120) !== 0) {
-  failures.push('story selection hysteresis must prevent boundary flicker');
-}
-if (
-  selectStoryChapter([
-    { top: -900, bottom: -500 },
-    { top: -400, bottom: 0 },
-    { top: 100, bottom: 700 }
-  ], 800) !== 2
-) {
-  failures.push('fast scrolling must resolve directly to the final visible chapter');
 }
 
 if (failures.length > 0) {

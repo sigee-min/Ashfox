@@ -80,7 +80,7 @@ export const agentManifest = {
       build:
         'await window.ashfox.capture({kind:"build"})',
       contract:
-        'Supply only kind and optional animation clipId. ashfox derives camera, background, resolution, timing, and file options from the active revision and canonical capture policy. An omitted clipId selects the canonical animation. The result returns file metadata and SHA-256, never raw bytes. Identical active captures share one promise; a different concurrent capture is rejected.'
+        'Supply only kind and optional animation clipId. ashfox derives camera, background, resolution, timing, and file options from the active revision and canonical capture policy. A build capture replays only authentic committed revisions, holds one final-model camera frame, and reveals entities in their recorded creation order; it never invents missing authoring steps. For a readable showcase recording, commit meaningful primary-mass, silhouette, articulation, focal-detail, material, and motion passes instead of one monolithic model operation. An omitted clipId selects the canonical animation. The result returns file metadata and SHA-256, never raw bytes. Identical active captures share one promise; a different concurrent capture is rejected.'
     },
     deliver: {
       call: 'await window.ashfox.deliver()',
@@ -153,7 +153,7 @@ export const agentManifest = {
     {
       stage: 'model',
       instruction:
-        'Create primary masses first. Build limbs proximal-to-distal; verify feet and toe tips advance along intent.forward, then mirror left/right and compare reach. Attach each deep face host to a cranial or housing volume. Place bounded, contrasting eyes on its outer surface with one-cell borders; keep pupil centers and 75% of motifs clear of teeth, brows, masks, and ornaments. Never use a root-only host or eye-count geometry. Fix silhouette, proportions, and joins before detail.'
+        'Commit primary masses, defining silhouette, articulation, focal anatomy, and surface detail as visible passes; never fabricate build history. Build limbs proximal-to-distal and verify feet and toes advance along intent.forward before mirroring. Attach each eye host to deep cranial or housing anatomy. Keep bounded contrasting eyes inset by one cell, pupil centers clear, and 75% of motifs visible. Reject root-only eye hosts. Fix silhouette, proportions, and joins before detail.'
     },
     {
       stage: 'animate',

@@ -4,16 +4,16 @@
   "id": "blackfrost-dreadwing",
   "name": "Blackfrost Dreadwing",
   "category": "Boss",
-  "tags": ["boss", "creature", "animated", "dragon", "blackfrost", "featured", "glTF"],
+  "tags": ["boss", "creature", "animated", "dragon", "blackfrost", "featured", "glTF", "1 draw call", "meshopt"],
   "featured": true,
   "order": 5,
-  "prompt": "Create a colossal black frost dragon crouched like a predator, with enormous torn bat wings, a continuous crown-to-tail spine ridge, frostfire eyes, and a cinematic blizzard awakening.",
-  "description": "A 90-block-wide blackglass apex dragon with 302 optimized cubes, four planted claw rigs, a seven-section serpent neck, fourteen-section scythe tail, semantic frostfire eyes, and a three-act boss animation set.",
+  "prompt": "Create a colossal grounded black frost dragon facing west, with four correctly oriented clawed feet, a deep anatomical head with semantic frostfire eyes, swept bat wings, a crown-to-tail ice ridge, and cinematic idle and roar motion.",
+  "description": "A directly authored 58-bone frost dragon with 2,453 generated surface cubes, two semantic eyes, two animation clips, and a quantized Meshopt GLB compiled to one primitive.",
   "metrics": {
-    "bones": 300,
-    "cubes": 302,
-    "animations": 3,
-    "triangles": 3492,
+    "bones": 58,
+    "cubes": 2453,
+    "animations": 2,
+    "triangles": 11524,
     "glbPrimitives": 1,
     "semanticEyes": 2
   },
@@ -22,17 +22,15 @@
     "poster": "poster.png",
     "build": {
       "gif": "build.gif",
-      "video": "build.mp4",
-      "alt": "Blackfrost Dreadwing dominating the ashfox workbench"
+      "alt": "Blackfrost Dreadwing built from an empty scene through anatomy, wings, eyes, materials, and motion"
     },
     "animation": {
       "gif": "animation.gif",
-      "video": "animation.mp4",
-      "alt": "Blackfrost Dreadwing unfolding its wings into a blizzard roar"
+      "alt": "Blackfrost Dreadwing spreading its wings through a frostfire roar"
     }
   },
   "agent": {
-    "model": "GPT-5.6 Sol",
+    "model": "GPT-5",
     "reasoning": "xhigh"
   }
 }

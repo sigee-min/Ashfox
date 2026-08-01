@@ -70,6 +70,23 @@ const faceAxes = (face: ModelPartFace): FaceAxes => {
   }
 };
 
+const oppositeFace = (face: ModelPartFace): ModelPartFace => {
+  switch (face) {
+    case 'north':
+      return 'south';
+    case 'south':
+      return 'north';
+    case 'east':
+      return 'west';
+    case 'west':
+      return 'east';
+    case 'up':
+      return 'down';
+    case 'down':
+      return 'up';
+  }
+};
+
 const geometryBounds = (
   part: GeometryPartSpec
 ): PartBounds | null => {
@@ -256,14 +273,17 @@ const auditEye = (
     });
   }
 
-  if (options.requiredFace && eye.face !== options.requiredFace) {
+  if (
+    options.requiredFace &&
+    eye.face === oppositeFace(options.requiredFace)
+  ) {
     issues.push({
       code: 'forward-face',
       eyePartId: eye.partId,
       field: 'face',
       message:
-        `Eye "${eye.partId}" faces ${eye.face}, but this audited asset ` +
-        `declares ${options.requiredFace} as forward.`
+        `Eye "${eye.partId}" faces directly away from this audited ` +
+        `asset's declared ${options.requiredFace} forward direction.`
     });
   }
   return issues;

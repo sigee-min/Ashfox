@@ -1,11 +1,11 @@
 <p align="center">
   <img
-    src="examples/gallery/eclipse-cathedral-wyrm/animation.gif"
-    alt="Eclipse Cathedral Wyrm awakening animation created in ashfox"
+    src="examples/gallery/blackfrost-dreadwing/build.gif"
+    alt="Blackfrost Dreadwing built visibly from an empty scene through anatomy, wings, semantic eyes, materials, and motion in ashfox"
     width="900"
   >
   <br>
-  <sub><strong>GPT-5.6 Sol xhigh</strong> · modeled, textured, rigged, and animated · 230 bones · 215 cubes · 2,580 exported triangles · 1 GLB primitive</sub>
+  <sub><strong>GPT-5 xhigh</strong> · authentic 14-stage build · 58 bones · 2,453 generated cubes · 11,524 exported triangles · 1 Meshopt GLB primitive</sub>
 </p>
 
 # ashfox — AI-native low-poly asset workbench
@@ -161,30 +161,13 @@ want to create.
 The workbench keeps its editable project in the browser. Files leave it only
 when the agent delivers the validated target artifact.
 
-## See the web workbench build an asset
-
-The recording below is from the optional web workbench, beginning with an empty
-project.
-
-![The ashfox web workbench building the Eclipse Cathedral Wyrm from an empty scene through rigging, geometry, deterministic texturing, and animation](examples/gallery/eclipse-cathedral-wyrm/build.gif)
-
-<p align="center">
-  <sub>One agent · 230 bones · 215 cubes · articulated cathedral-dragon rig</sub>
-</p>
-
-| Brand guardian | Creature boss | Walking shrine |
-| --- | --- | --- |
-| ![Ashfox Ember Sentinel animation](examples/gallery/ashfox-ember-sentinel/animation.gif) | ![King's Ransom Mimic animation](examples/gallery/kings-ransom-mimic/animation.gif) | ![Mossback Bellwalker animation](examples/gallery/mossback-bellwalker/animation.gif) |
-| 133 bones · 123 cubes | 137 bones · 125 cubes | 155 bones · 143 cubes |
-
-| Mobile war-forge | Cathedral wyrm |
-| --- | --- |
-| ![Forgeheart Nomad animation](examples/gallery/forgeheart-nomad/animation.gif) | ![Eclipse Cathedral Wyrm animation](examples/gallery/eclipse-cathedral-wyrm/animation.gif) |
-| 125 bones · 114 cubes | 230 bones · 215 cubes |
-
-Every showcase above exports as one GLB base-pass primitive.
-
 ## Editable demo gallery
+
+The current featured set is **Blackfrost Dreadwing**, **Aether Spear ·
+Crownshift Interceptor**, **Ironroot · Verdant Crown Tractor**, and **Moonveil ·
+Aurora Sovereign Kirin**. Visit the
+[demo gallery](https://ashfox.io/gallery/) to inspect each animation and open
+the exact editable source directly in the workbench.
 
 Every gallery entry is a self-contained folder under
 [`examples/gallery/`](examples/gallery/README.md). It contains one `demo.json`
@@ -192,10 +175,9 @@ manifest, its media, and the exact `project.ashfox` source. The website discover
 these folders automatically, exposes name search and category filters, and opens
 the selected archive directly in the workbench.
 
-The Aether Spear Rocket is also held to automated delivery budgets: one GLB
-base-pass primitive, a GLB below 100 KB, and GeckoLib/Bedrock JSON below 70 KB.
-These checks protect the editable source while keeping exported game assets
-small and draw-call efficient.
+Automated gallery checks keep manifest metrics synchronized with each editable
+archive, audit connected eye and forward-facing foot anatomy, preserve every
+animation clip, and validate the exported GLB.
 
 ## Local data and source
 

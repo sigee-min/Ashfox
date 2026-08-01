@@ -31,7 +31,7 @@ export const renderResultPng = async (
   const surface = createCaptureSurface({
     width: RESULT_CAPTURE_WIDTH,
     height: RESULT_CAPTURE_HEIGHT,
-    environment: 'studio',
+    environment: 'day',
     cameraMode: 'perspective'
   });
   const projection = createCaptureProjection(document, assets);

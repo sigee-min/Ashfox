@@ -1,5 +1,3 @@
-import * as THREE from 'three';
-
 import type {
   CommandReceipt,
   ProjectDocument
@@ -28,6 +26,7 @@ import {
   type GifCaptureResult
 } from './gifCaptureSurface';
 import { waitForProjectionTextures } from './captureSurface';
+import { drawBuildFrameOverlay } from './gifFrameOverlay';
 import { resolveBuildReviewClip } from './buildReviewClip';
 import { createCaptureProjection } from './createCaptureProjection';
 
@@ -40,23 +39,6 @@ export interface BuildGifCaptureOptions {
   signal: AbortSignal;
   onProgress?: (completed: number, total: number) => void;
 }
-
-const animateBuildCamera = (
-  camera: THREE.PerspectiveCamera,
-  cameraMode: CameraMode,
-  object: THREE.Object3D | undefined,
-  progress: number
-): void => {
-  const target = applyCameraPreset(camera, cameraMode, object);
-  if (cameraMode !== 'perspective') return;
-  const offset = camera.position.clone().sub(target);
-  offset.applyAxisAngle(
-    new THREE.Vector3(0, 1, 0),
-    THREE.MathUtils.lerp(-0.08, 0.08, progress)
-  );
-  camera.position.copy(target).add(offset);
-  camera.lookAt(target);
-};
 
 const applyReviewPose = (
   projection: ProjectSceneProjection,
@@ -80,6 +62,30 @@ const applyReviewPose = (
   );
 };
 
+const applyProgressiveReveal = (
+  projection: ProjectSceneProjection,
+  document: ProjectDocument,
+  createdEntityIds: readonly string[],
+  eventFrameIndex: number,
+  holdFrames: number
+): void => {
+  const renderableIds = createdEntityIds.filter((id) => {
+    const node = document.scene.nodes[id];
+    return node?.visible === true &&
+      (node.kind === 'cube' || node.kind === 'mesh');
+  });
+  if (renderableIds.length === 0) return;
+  const denominator = Math.max(1, holdFrames - 1);
+  const visibleCount = Math.floor(
+    renderableIds.length * eventFrameIndex / denominator
+  );
+  for (let index = 0; index < renderableIds.length; index += 1) {
+    const id = renderableIds[index];
+    const object = id ? projection.objectsByNodeId.get(id) : undefined;
+    if (object) object.visible = index < visibleCount;
+  }
+};
+
 export const renderBuildGif = async (
   options: BuildGifCaptureOptions
 ): Promise<GifCaptureResult> => {
@@ -91,6 +97,19 @@ export const renderBuildGif = async (
     options.environment,
     options.cameraMode
   );
+  const finalDocument = plan.events.at(-1)?.document;
+  if (!finalDocument) throw new Error('Build process has no final frame.');
+  const framingProjection = createCaptureProjection(
+    finalDocument,
+    options.assets,
+    { showTextures: false }
+  );
+  applyCameraPreset(
+    surface.camera,
+    options.cameraMode,
+    framingProjection.root
+  );
+  framingProjection.dispose();
   let activeProjection: ProjectSceneProjection | null = null;
   let activeEventIndex = -1;
 
@@ -133,13 +152,24 @@ export const renderBuildGif = async (
           frame.event.holdFrames
         );
       }
-      animateBuildCamera(
-        surface.camera,
-        options.cameraMode,
-        activeProjection?.root,
-        frame.progress
-      );
-      encodeGifSurfaceFrame(surface);
+      if (activeProjection && frame.event.category === 'geometry') {
+        applyProgressiveReveal(
+          activeProjection,
+          frame.event.document,
+          frame.event.createdEntityIds,
+          frame.eventFrameIndex,
+          frame.event.holdFrames
+        );
+      }
+      encodeGifSurfaceFrame(surface, (context) => {
+        drawBuildFrameOverlay(
+          context,
+          frame.event.label,
+          frame.eventIndex,
+          plan.events.length,
+          frame.progress
+        );
+      });
       options.onProgress?.(frame.index + 1, plan.frames.length);
       await yieldCaptureFrame();
     }

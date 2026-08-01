@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 import {
+  auditEyeAnatomy,
   createProjectFromInput,
   executeCommandBatch,
   readPartRecipe,
@@ -399,6 +400,28 @@ const anatomicalEyeDocument = succeed(
       ]
     }
   }]
+);
+
+const anatomicalEyeRecipe = readPartRecipe(anatomicalEyeDocument);
+assert.equal(anatomicalEyeRecipe.ok, true);
+if (!anatomicalEyeRecipe.ok || anatomicalEyeRecipe.recipe === null) {
+  throw new Error('Anatomical eye recipe is unavailable.');
+}
+assert.deepEqual(
+  auditEyeAnatomy(
+    anatomicalEyeRecipe.recipe.parts,
+    { requiredFace: 'west' }
+  ),
+  [],
+  'A lateral eye is valid for a forward-facing creature.'
+);
+assert.equal(
+  auditEyeAnatomy(
+    anatomicalEyeRecipe.recipe.parts,
+    { requiredFace: 'south' }
+  )[0]?.code,
+  'forward-face',
+  'An eye on the rear face must still be rejected.'
 );
 
 const flattenedEyeHost = run(
