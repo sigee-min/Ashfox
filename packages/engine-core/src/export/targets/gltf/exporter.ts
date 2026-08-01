@@ -15,6 +15,7 @@ import type {
   GltfBuildOptions
 } from './buildTypes';
 import { createGltfBundle } from './bundle';
+import { compressGltfWithMeshopt } from './meshoptCompression';
 import {
   orderedTextures,
   requireResolvedTexture,
@@ -163,6 +164,12 @@ export const buildGltf = (
       generator: 'ashfox engine core',
       ...(profile.copyright ? { copyright: profile.copyright } : {})
     },
+    ...(writer.state.usesMeshQuantization
+      ? {
+          extensionsUsed: ['KHR_mesh_quantization' as const],
+          extensionsRequired: ['KHR_mesh_quantization' as const]
+        }
+      : {}),
     scene: 0,
     scenes: [{ name: document.name, nodes: scene.rootNodeIndices }],
     nodes: scene.nodes,
@@ -181,6 +188,7 @@ export const buildGltf = (
         }
       : {}),
     ...(scene.meshes.length > 0 ? { meshes: scene.meshes } : {}),
+    ...(scene.skins.length > 0 ? { skins: scene.skins } : {}),
     ...(textures.length > 0
       ? {
           images,
@@ -231,15 +239,15 @@ export const exportGltfResolved = async (
   });
   const profile = validation.profile;
   if (profile.imageStorage === 'external') {
-    const compiled = buildGltf(document);
+    const compiled = await compressGltfWithMeshopt(buildGltf(document));
     return createGltfBundle(document, compiled, validation.findings);
   }
   const resolvedTextures = await resolveGltfTextures(
     document,
     options.resolveBlob
   );
-  const compiled = buildGltf(document, {
-    resolvedTextures
-  });
+  const compiled = await compressGltfWithMeshopt(
+    buildGltf(document, { resolvedTextures })
+  );
   return createGltfBundle(document, compiled, validation.findings);
 };

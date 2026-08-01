@@ -4,7 +4,9 @@ import validator from 'gltf-validator';
 import {
   evaluateProductionReadiness,
   executeCommandBatch,
+  exportProductionProject,
   exportProductionProjectResolved,
+  readPartRecipe,
   validateProjectDocument
 } from '@ashfox/engine-core';
 
@@ -17,7 +19,7 @@ import {
   resolveDemoDefinition
 } from '../src/features/workbench/demo/demoRegistry';
 
-assert.equal(DEMO_DEFINITIONS.length, 3);
+assert.equal(DEMO_DEFINITIONS.length, 8);
 assert.equal(resolveDemoDefinition(''), null);
 assert.equal(
   resolveDemoDefinition('?demo=ironroot-tractor')?.slug,
@@ -34,7 +36,7 @@ const validationPng = Uint8Array.from(
 
 const targetProject = (
   document: ReturnType<typeof createDemoHistory>['present'],
-  target: 'glb' | 'geckolib5',
+  target: 'bedrock' | 'glb' | 'geckolib5',
   batchId: string
 ) => {
   const result = executeCommandBatch(document, {
@@ -52,6 +54,7 @@ const targetProject = (
 
 const glbJson = (bytes: Uint8Array): {
   animations?: readonly unknown[];
+  meshes?: ReadonlyArray<{ primitives: readonly unknown[] }>;
 } => {
   const view = new DataView(
     bytes.buffer,
@@ -65,7 +68,6 @@ const glbJson = (bytes: Uint8Array): {
 };
 
 const exportChecks: Promise<void>[] = [];
-
 for (const definition of DEMO_DEFINITIONS) {
   assert.ok(
     definition.bones.length >= 100,
@@ -104,6 +106,51 @@ for (const definition of DEMO_DEFINITIONS) {
     Object.keys(history.present.animations).length,
     definition.animations.length
   );
+  const recipe = readPartRecipe(history.present);
+  assert.equal(recipe.ok, true);
+  if (!recipe.ok) {
+    throw new Error(`${definition.name} semantic recipe is unreadable.`);
+  }
+  assert.equal(
+    recipe.recipe?.parts.filter(
+      (part) => part.kind === 'feature' && part.motif === 'eye'
+    ).length ?? 0,
+    definition.visibleEyeCount,
+    `${definition.name} must use one semantic feature per visible eye`
+  );
+  assert.equal(
+    definition.cubes.some((cube) =>
+      /(?:^|[._-])(?:eye|eyes|eyeball|iris|pupil|glint)(?:$|[._-])/i.test(
+        cube.input.id
+      )
+    ),
+    false,
+    `${definition.name} must not reconstruct eyes from stacked cubes`
+  );
+  if (definition.slug === 'aether-spear-rocket') {
+    const bedrockProject = targetProject(
+      history.present,
+      'bedrock',
+      'demo-aether-spear-target-bedrock-budget'
+    );
+    for (const bundle of [
+      exportProductionProject(history.present),
+      exportProductionProject(bedrockProject)
+    ]) {
+      const jsonBytes = bundle.files.reduce(
+        (sum, file) => sum + (
+          file.kind === 'json'
+            ? new TextEncoder().encode(file.text).byteLength
+            : 0
+        ),
+        0
+      );
+      assert.ok(
+        jsonBytes < 70_000,
+        `${bundle.target.id} Aether JSON must remain below its 70 KB budget`
+      );
+    }
+  }
 
   const authoredScene = structuredClone(history.present.scene);
   const authoredAnimations = structuredClone(history.present.animations);
@@ -140,11 +187,26 @@ for (const definition of DEMO_DEFINITIONS) {
     if (model?.kind !== 'binary') {
       throw new Error(`${definition.name} GLB artifact is missing.`);
     }
+    const gltf = glbJson(model.data);
     assert.equal(
-      glbJson(model.data).animations?.length,
+      gltf.animations?.length,
       definition.animations.length,
       `${definition.name} must preserve every numeric animation clip in GLB`
     );
+    if (definition.slug === 'aether-spear-rocket') {
+      assert.equal(
+        gltf.meshes?.reduce(
+          (count, mesh) => count + mesh.primitives.length,
+          0
+        ),
+        1,
+        'Aether Spear GLB must remain one base-pass primitive'
+      );
+      assert.ok(
+        model.data.byteLength < 100_000,
+        'Aether Spear optimized GLB must remain below its 100 KB budget'
+      );
+    }
     const triggerIds = Object.values(authoredAnimations).flatMap((clip) =>
       Object.values(clip.triggers)
         .filter((track) => track.keys.length > 0)
@@ -162,8 +224,16 @@ for (const definition of DEMO_DEFINITIONS) {
       uri: `${definition.slug}.glb`,
       format: 'glb'
     });
-    assert.equal(report.issues.numErrors, 0);
-    assert.equal(report.issues.numWarnings, 0);
+    assert.equal(
+      report.issues.numErrors,
+      0,
+      `${definition.name} GLB errors: ${JSON.stringify(report.issues.messages)}`
+    );
+    assert.equal(
+      report.issues.numWarnings,
+      0,
+      `${definition.name} GLB warnings: ${JSON.stringify(report.issues.messages)}`
+    );
   })());
 }
 

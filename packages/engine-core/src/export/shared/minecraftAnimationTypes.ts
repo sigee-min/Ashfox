@@ -14,10 +14,14 @@ export interface MinecraftAnimationKeyframe {
   easingArgs?: MinecraftAnimationScalar[];
 }
 
-export type MinecraftAnimationChannel = Record<
+export type MinecraftAnimationTimeline = Record<
   string,
   MinecraftAnimationVector | MinecraftAnimationKeyframe
 >;
+
+export type MinecraftAnimationChannel =
+  | MinecraftAnimationVector
+  | MinecraftAnimationTimeline;
 
 export interface MinecraftBoneAnimation {
   relative_to?: { rotation: 'entity' } | 'entity';

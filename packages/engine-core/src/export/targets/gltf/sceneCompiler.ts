@@ -5,8 +5,9 @@ import type {
 import {
   effectivelyVisibleSceneNodeIds
 } from '../../../sceneVisibility';
-import { compileGltfCubeMesh } from './cubeMeshCompiler';
-import { compileGltfPolygonMesh } from './polygonMeshCompiler';
+import { compileOpaqueCubeFaceOcclusion } from '../../shared/cubeFaceOcclusion';
+import { compileRigidGltfBatches } from './rigidBatchCompiler';
+import { compileGlobalGltfBatch } from './skinnedBatchCompiler';
 import {
   addVec3,
   isIdentityRotation,
@@ -19,7 +20,7 @@ import type {
   GltfCompiledScene,
   GltfSceneCompileOptions
 } from './sceneTypes';
-import type { GltfMesh, GltfNode } from './types';
+import type { GltfNode } from './types';
 
 export type {
   GltfCompiledScene,
@@ -79,28 +80,11 @@ const createGltfNode = (
   }
 });
 
-const compileNodeMesh = (
-  document: ProjectDocument,
-  node: SceneNode,
-  options: GltfSceneCompileOptions
-): GltfMesh | null => {
-  switch (node.kind) {
-    case 'cube':
-      return compileGltfCubeMesh(document, node, options);
-    case 'mesh':
-      return compileGltfPolygonMesh(document, node, options);
-    case 'bone':
-    case 'locator':
-      return null;
-  }
-};
-
 export const compileGltfScene = (
   document: ProjectDocument,
   options: GltfSceneCompileOptions
 ): GltfCompiledScene => {
   const nodes: GltfNode[] = [];
-  const meshes: GltfMesh[] = [];
   const nodeIndexById = new Map<string, number>();
   const restTranslationById = new Map<string, [number, number, number]>();
   const restRotationById = new Map<string, [number, number, number]>();
@@ -109,20 +93,49 @@ export const compileGltfScene = (
   const orderedNodes = Object.values(document.scene.nodes)
     .filter((node) => visibleNodeIds.has(node.id))
     .sort((left, right) => left.id.localeCompare(right.id));
+  const compileOptions: GltfSceneCompileOptions = {
+    ...options,
+    cubeFaceOcclusion: compileOpaqueCubeFaceOcclusion(document)
+  };
 
   for (const node of orderedNodes) {
     const translation = restTranslation(document, node, options.unitScale);
     const gltfNode = createGltfNode(node, translation);
-    const mesh = compileNodeMesh(document, node, options);
-    if (mesh) {
-      gltfNode.mesh = meshes.length;
-      meshes.push(mesh);
-    }
     nodeIndexById.set(node.id, nodes.length);
     restTranslationById.set(node.id, translation);
     restRotationById.set(node.id, [...node.transform.rotation]);
     restScaleById.set(node.id, [...node.transform.scale]);
     nodes.push(gltfNode);
+  }
+
+  const globalBatch = compileGlobalGltfBatch(
+    document,
+    orderedNodes,
+    nodeIndexById,
+    restTranslationById,
+    compileOptions
+  );
+  let meshes = globalBatch ? [globalBatch.mesh] : [];
+  const skins = globalBatch?.skin ? [globalBatch.skin] : [];
+  let optimizedMeshNode: number | undefined;
+  if (globalBatch) {
+    optimizedMeshNode = nodes.length;
+    nodes.push({
+      name: `${document.name} optimized mesh`,
+      ...globalBatch.meshNode
+    });
+  } else {
+    const compiledBatches = compileRigidGltfBatches(
+      document,
+      orderedNodes,
+      restTranslationById,
+      compileOptions
+    );
+    meshes = compiledBatches.meshes;
+    for (const [ownerId, mesh] of compiledBatches.meshIndexByOwnerId) {
+      const nodeIndex = nodeIndexById.get(ownerId);
+      if (nodeIndex !== undefined) nodes[nodeIndex].mesh = mesh;
+    }
   }
 
   for (const node of orderedNodes) {
@@ -134,13 +147,41 @@ export const compileGltfScene = (
     parentNode.children = [...(parentNode.children ?? []), childIndex];
   }
 
-  const rootNodeIndices = document.scene.roots
+  const authoredRootNodeIndices = document.scene.roots
     .map((id) => nodeIndexById.get(id))
     .filter((index): index is number => index !== undefined);
+  const rootNodeIndices = [...authoredRootNodeIndices];
+  if (optimizedMeshNode !== undefined) rootNodeIndices.push(optimizedMeshNode);
+
+  if (skins.length > 0 && authoredRootNodeIndices.length > 0) {
+    if (authoredRootNodeIndices.length === 1) {
+      skins[0] = {
+        ...skins[0],
+        skeleton: authoredRootNodeIndices[0]
+      };
+    } else {
+      const commonRootIndex = nodes.length;
+      nodes.push({
+        name: `${document.name} common rig root`,
+        children: [...authoredRootNodeIndices]
+      });
+      skins[0] = {
+        ...skins[0],
+        skeleton: commonRootIndex
+      };
+      rootNodeIndices.splice(
+        0,
+        rootNodeIndices.length,
+        commonRootIndex,
+        ...(optimizedMeshNode === undefined ? [] : [optimizedMeshNode])
+      );
+    }
+  }
 
   return {
     nodes,
     meshes,
+    skins,
     rootNodeIndices,
     nodeIndexById,
     restTranslationById,

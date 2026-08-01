@@ -110,11 +110,22 @@ const exportedPrimitiveCount = compiled.document.meshes?.reduce(
   (count, mesh) => count + mesh.primitives.length,
   0
 ) ?? 0;
-assert.equal(exportedPrimitiveCount, retainedDirections.size);
+assert.equal(exportedPrimitiveCount, 1);
+const exportedIndexCount = compiled.document.meshes?.reduce(
+  (count, mesh) => count + mesh.primitives.reduce(
+    (meshCount, primitive) => meshCount + (
+      primitive.indices === undefined
+        ? 0
+        : compiled.document.accessors?.[primitive.indices].count ?? 0
+    ),
+    0
+  ),
+  0
+) ?? 0;
 assert.equal(
-  (projected.geometry.getIndex()?.count ?? 0) / 6,
-  exportedPrimitiveCount,
-  'viewport and glTF export must retain the same enabled cube faces'
+  exportedIndexCount,
+  projected.geometry.getIndex()?.count,
+  'viewport and batched glTF export must retain the same enabled triangles'
 );
 
 projected.geometry.dispose();

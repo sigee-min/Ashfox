@@ -1,5 +1,5 @@
 import type { ProjectDocument, TextureAsset } from '../../../model';
-import { createJsonExportFile } from '../../json';
+import { createCompactJsonExportFile } from '../../json';
 import { createExportBundle } from '../../pipeline/createBundle';
 import { validateExportTarget } from '../../pipeline/validateTarget';
 import { buildMinecraftActorAnimation } from '../../shared/minecraftAnimation';
@@ -71,10 +71,10 @@ export const exportMinecraftBedrock = (document: ProjectDocument): ExportBundle 
       ...(hasAnimations ? [animationPath] : [])
     ],
     files: [
-      createJsonExportFile('geometry', geometryPath, geometry),
+      createCompactJsonExportFile('geometry', geometryPath, geometry),
       ...(hasAnimations
         ? [
-            createJsonExportFile(
+            createCompactJsonExportFile(
               'animation',
               animationPath,
               buildMinecraftBedrockAnimations(document)

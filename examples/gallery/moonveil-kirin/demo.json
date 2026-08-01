@@ -1,0 +1,38 @@
+{
+  "$schema": "../schema.json",
+  "schemaVersion": 1,
+  "id": "moonveil-kirin",
+  "name": "Moonveil Kirin",
+  "category": "Creature",
+  "tags": ["creature", "animated", "fantasy", "minecraft", "glTF"],
+  "featured": true,
+  "order": 30,
+  "prompt": "Create a high-quality Minecraft-style fantasy kirin, fully textured, rigged, animated, and ready for a game.",
+  "description": "A fantasy creature with branching antlers, expressive facial detail, an idle loop, and an awakening sequence.",
+  "metrics": {
+    "bones": 108,
+    "cubes": 120,
+    "animations": 2,
+    "triangles": 1426,
+    "glbPrimitives": 1,
+    "semanticEyes": 2
+  },
+  "project": "project.ashfox",
+  "media": {
+    "poster": "poster.jpg",
+    "build": {
+      "gif": "build.gif",
+      "video": "build.mp4",
+      "alt": "Moonveil Kirin being built in ashfox"
+    },
+    "animation": {
+      "gif": "animation.gif",
+      "video": "animation.mp4",
+      "alt": "Moonveil Kirin animation in ashfox"
+    }
+  },
+  "agent": {
+    "model": "GPT-5.6 Sol",
+    "reasoning": "xhigh"
+  }
+}

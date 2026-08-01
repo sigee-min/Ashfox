@@ -4,9 +4,11 @@ import {
   type AnimationTriggerInput,
   type BoneCreateInput,
   type CubeCreateInput,
+  type PartAuthoringSpec,
   type ProjectCommandOperation,
   type ProjectDocument,
   type ProjectIntentInput,
+  type SurfacePixelDensity,
   type TransformChannelInput,
   type Vec3
 } from '@ashfox/engine-core';
@@ -44,12 +46,50 @@ export interface DemoDefinition {
   name: string;
   modelPath: string;
   initialSelectionId: string | null;
+  visibleEyeCount: number;
   intent: ProjectIntentInput;
+  surfacePixelDensity?: SurfacePixelDensity;
   textures: readonly DemoTextureSpec[];
+  parts?: readonly PartAuthoringSpec[];
   bones: readonly BoneCreateInput[];
   cubes: readonly DemoCubeSpec[];
   animations: readonly DemoAnimationSpec[];
 }
+
+const EYE_GEOMETRY_ID =
+  /(?:^|[._-])(?:eye|eyes|eyeball|eyeballs|iris|irises|pupil|pupils|glint|glints)(?:$|[._-])/iu;
+
+const assertSemanticEyeAuthority = (
+  definition: DemoDefinition
+): void => {
+  if (
+    !Number.isInteger(definition.visibleEyeCount) ||
+    definition.visibleEyeCount < 0
+  ) {
+    throw new Error(
+      `${definition.name} visibleEyeCount must be a non-negative integer.`
+    );
+  }
+  const semanticEyeCount = (definition.parts ?? []).filter(
+    (part) => part.kind === 'feature' && part.motif === 'eye'
+  ).length;
+  if (semanticEyeCount !== definition.visibleEyeCount) {
+    throw new Error(
+      `${definition.name} declares ${definition.visibleEyeCount} visible eyes ` +
+      `but authors ${semanticEyeCount} semantic eye features.`
+    );
+  }
+  const stackedEye = definition.cubes.find((cube) =>
+    EYE_GEOMETRY_ID.test(cube.input.id) ||
+    EYE_GEOMETRY_ID.test(cube.input.name)
+  );
+  if (stackedEye) {
+    throw new Error(
+      `${definition.name} cube "${stackedEye.input.id}" describes eye ` +
+      'geometry. Visible eyes must use parent-bound semantic features.'
+    );
+  }
+};
 
 const chunk = <T>(
   values: readonly T[],
@@ -78,7 +118,7 @@ const createBaseProject = (
       width: 16,
       height: 16
     },
-    surfacePixelDensity: 1,
+    surfacePixelDensity: definition.surfacePixelDensity ?? 1,
     coordinateSystem: {
       up: 'y',
       handedness: 'right',
@@ -157,6 +197,7 @@ const animationStages = (
 const buildStages = (
   definition: DemoDefinition
 ): readonly (readonly ProjectCommandOperation[])[] => {
+  assertSemanticEyeAuthority(definition);
   const colors = new Map(
     definition.textures.map((texture) => [
       texture.id,
@@ -171,6 +212,16 @@ const buildStages = (
     name: 'project.intent.set',
     payload: definition.intent
   }],
+  ...(definition.parts && definition.parts.length > 0 ? [[{
+    name: 'model.parts.upsert' as const,
+    payload: {
+      parts: definition.parts,
+      materials: definition.textures.map((texture) => ({
+        id: texture.id,
+        baseColor: texture.background
+      }))
+    }
+  }]] : []),
   ...layerBones(definition.bones).map((bones) => [{
     name: 'scene.bones.create' as const,
     payload: { bones }
@@ -225,9 +276,13 @@ export const createDemoHistory = (
         committedAt: stageTimestamp(index)
       });
       if (next.lastCommandOutcome?.status === 'rejected') {
+        const firstFinding = next.lastCommandOutcome.findings?.[0];
         throw new Error(
           `${definition.name} stage ${index + 1} failed: ` +
-          next.lastCommandOutcome.error.message
+          next.lastCommandOutcome.error.message +
+          (firstFinding
+            ? ` ${firstFinding.path}: ${firstFinding.message}`
+            : '')
         );
       }
       return next;
@@ -308,3 +363,43 @@ export const demoChannel = (
     interpolation: 'linear'
   }))
 });
+
+export interface DemoSurfaceEyeSpec {
+  id: string;
+  anchor: readonly [number, number, number];
+  size: readonly [number, number];
+  irisMaterialId: string;
+}
+
+/**
+ * Paints zero-relief semantic eyes onto one generated face surface.
+ * Coordinates are authored in the project's surface-density lattice.
+ */
+export const demoSurfaceEyes = (
+  surfacePartId: string,
+  origin: readonly [number, number, number],
+  surfaceSize: readonly [number, number],
+  surfaceMaterialId: string,
+  eyes: readonly DemoSurfaceEyeSpec[]
+): readonly PartAuthoringSpec[] => {
+  return [{
+    kind: 'plate',
+    partId: surfacePartId,
+    parentPartId: null,
+    materialId: surfaceMaterialId,
+    joint: { kind: 'fixed' },
+    plane: 'xy',
+    origin,
+    size: surfaceSize,
+    thickness: 1
+  }, ...eyes.map((eye): PartAuthoringSpec => ({
+    kind: 'feature',
+    partId: eye.id,
+    parentPartId: surfacePartId,
+    materialId: eye.irisMaterialId,
+    motif: 'eye',
+    face: 'north',
+    anchor: eye.anchor,
+    size: eye.size
+  }))];
+};

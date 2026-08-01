@@ -1,5 +1,5 @@
 import type { ProjectDocument, TextureAsset } from '../../../model';
-import { createJsonExportFile } from '../../json';
+import { createCompactJsonExportFile } from '../../json';
 import { createExportBundle } from '../../pipeline/createBundle';
 import { validateExportTarget } from '../../pipeline/validateTarget';
 import { buildMinecraftActorAnimation } from '../../shared/minecraftAnimation';
@@ -68,8 +68,16 @@ export const exportGeckoLib5 = (document: ProjectDocument): ExportBundle => {
     rootPath: 'src/main/resources',
     entrypoints: [modelPath, animationPath],
     files: [
-      createJsonExportFile('geometry', modelPath, buildGeckoLib5Geometry(document)),
-      createJsonExportFile('animation', animationPath, buildGeckoLib5Animations(document)),
+      createCompactJsonExportFile(
+        'geometry',
+        modelPath,
+        buildGeckoLib5Geometry(document)
+      ),
+      createCompactJsonExportFile(
+        'animation',
+        animationPath,
+        buildGeckoLib5Animations(document)
+      ),
       ...textureFiles
     ],
   });

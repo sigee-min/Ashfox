@@ -1,5 +1,5 @@
 import type { GltfDocument } from './types';
-import { stringifyDeterministicJson } from '../../json';
+import { stringifyCompactDeterministicJson } from '../../json';
 
 const GLB_MAGIC = 0x46546c67;
 const GLB_VERSION = 2;
@@ -52,7 +52,7 @@ export const buildGlb = (
   document: GltfDocument,
   binary: Uint8Array
 ): Uint8Array => {
-  const json = encodeUtf8(stringifyDeterministicJson(document));
+  const json = encodeUtf8(stringifyCompactDeterministicJson(document));
   const jsonLength = align4(json.byteLength);
   const binaryLength = align4(binary.byteLength);
   const totalLength =

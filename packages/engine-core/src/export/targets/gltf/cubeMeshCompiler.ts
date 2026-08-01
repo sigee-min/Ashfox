@@ -8,9 +8,10 @@ import {
   type Vec3
 } from '../../../model';
 import { compileGltfPrimitive } from './primitiveCompiler';
+import type { GltfPrimitiveData } from './primitiveData';
 import { multiplyVec3 } from './sceneMath';
 import type { GltfSceneCompileOptions } from './sceneTypes';
-import type { GltfMesh, GltfPrimitive } from './types';
+import type { GltfMesh } from './types';
 
 const FACE_CORNERS: Record<
   CubeFaceDirection,
@@ -102,6 +103,28 @@ export const compileGltfCubeMesh = (
   cube: CubeNode,
   options: GltfSceneCompileOptions
 ): GltfMesh => {
+  const data = compileGltfCubePrimitiveData(document, cube, options);
+  return {
+    name: cube.name,
+    primitives: data.map((primitive) =>
+      compileGltfPrimitive(
+        options.writer,
+        primitive.positions,
+        primitive.normals,
+        primitive.uvs,
+        primitive.joints,
+        primitive.material,
+        primitive.indices
+      )
+    )
+  };
+};
+
+export const compileGltfCubePrimitiveData = (
+  document: ProjectDocument,
+  cube: CubeNode,
+  options: GltfSceneCompileOptions
+): GltfPrimitiveData[] => {
   const pivot = cube.transform.pivot;
   const from = cube.bounds.from.map(
     (value, index) => value - pivot[index] - cube.inflate
@@ -109,11 +132,16 @@ export const compileGltfCubeMesh = (
   const to = cube.bounds.to.map(
     (value, index) => value - pivot[index] + cube.inflate
   ) as [number, number, number];
-  const primitives: GltfPrimitive[] = [];
+  const primitives: GltfPrimitiveData[] = [];
 
   for (const direction of CUBE_FACE_DIRECTIONS) {
     const face = cube.faces[direction];
-    if (!face.enabled) continue;
+    if (
+      !face.enabled ||
+      options.cubeFaceOcclusion?.get(cube.id)?.has(direction)
+    ) {
+      continue;
+    }
     const texture =
       face.textureId === null ? undefined : document.textures[face.textureId];
     const positions = FACE_CORNERS[direction](from, to)
@@ -125,20 +153,13 @@ export const compileGltfCubeMesh = (
       face.textureId === null
         ? undefined
         : options.materialByTextureId.get(face.textureId);
-    primitives.push(
-      compileGltfPrimitive(
-        options.writer,
-        positions,
-        normals,
-        uvs,
-        material,
-        [0, 1, 2, 0, 2, 3]
-      )
-    );
+    primitives.push({
+      positions,
+      normals,
+      ...(uvs ? { uvs } : {}),
+      ...(material === undefined ? {} : { material }),
+      indices: [0, 1, 2, 0, 2, 3]
+    });
   }
-
-  return {
-    name: cube.name,
-    primitives
-  };
+  return primitives;
 };

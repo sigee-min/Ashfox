@@ -356,6 +356,7 @@ export const AETHER_SPEAR_ROCKET_DEMO: DemoDefinition = {
   name: 'Aether Spear · Runic Exploration Rocket',
   modelPath: 'aether_spear_rocket',
   initialSelectionId: null,
+  visibleEyeCount: 0,
   intent: {
     subject: 'runic exploration rocket',
     grounding: 'free',

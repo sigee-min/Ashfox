@@ -39,6 +39,7 @@ const compileClip = (
       continue;
     }
     const bone = bones[target.name] ?? {};
+    const compiled = compileMinecraftAnimationChannel(channel, options);
     if (
       channel.property === 'rotation' &&
       channel.rotationSpace === 'entity'
@@ -48,10 +49,7 @@ const compileClip = (
           ? { rotation: 'entity' }
           : 'entity';
     }
-    bone[channel.property] = compileMinecraftAnimationChannel(
-      channel,
-      options
-    );
+    bone[channel.property] = compiled;
     bones[target.name] = bone;
   }
 

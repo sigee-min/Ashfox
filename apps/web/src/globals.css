@@ -75,6 +75,7 @@ kbd {
 }
 
 .workbench-shell {
+  position: relative;
   display: grid;
   grid-template-rows: 44px 42px minmax(0, 1fr) 128px;
   width: 100vw;
@@ -82,6 +83,26 @@ kbd {
   min-width: 0;
   background: var(--bg);
   overflow: hidden;
+}
+
+.gallery-project-status {
+  position: absolute;
+  z-index: 60;
+  top: 96px;
+  right: 12px;
+  max-width: min(380px, calc(100vw - 24px));
+  padding: 9px 12px;
+  border: 1px solid #3b454e;
+  border-radius: 7px;
+  background: rgba(23, 26, 30, 0.95);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.gallery-project-status[data-phase="error"] {
+  border-color: rgba(216, 101, 90, 0.62);
+  color: #f0a29a;
 }
 
 .app-header {

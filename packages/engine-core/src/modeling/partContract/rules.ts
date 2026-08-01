@@ -25,6 +25,18 @@ export const PART_ID_PATTERN_SOURCE =
 
 const ID_PATTERN = new RegExp(PART_ID_PATTERN_SOURCE);
 const BASE_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+const EYE_GEOMETRY_TOKENS = new Set([
+  'eye',
+  'eyes',
+  'eyeball',
+  'eyeballs',
+  'iris',
+  'irises',
+  'pupil',
+  'pupils',
+  'glint',
+  'glints'
+]);
 
 export const PART_AXES = ['x', 'y', 'z'] as const;
 export const PART_FACES = [
@@ -64,6 +76,11 @@ export const isPartId = (value: unknown): value is string =>
 
 export const isPartBaseColor = (value: unknown): value is string =>
   typeof value === 'string' && BASE_COLOR_PATTERN.test(value);
+
+export const describesEyeGeometry = (partId: string): boolean =>
+  partId
+    .split(/[._-]/u)
+    .some((token) => EYE_GEOMETRY_TOKENS.has(token));
 
 export const isGeometryPartSpec = (
   part: PartSpec

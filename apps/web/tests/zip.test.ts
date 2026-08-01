@@ -19,6 +19,22 @@ const archive = createStoredZip(entries);
 assert.deepEqual(readStoredZip(archive), entries);
 assert.deepEqual(createStoredZip(entries), archive);
 
+const compressible = new TextEncoder().encode('ashfox '.repeat(2_000));
+const compressedArchive = createStoredZip([{
+  path: 'model.json',
+  bytes: compressible
+}]);
+assert.equal(new DataView(
+  compressedArchive.buffer,
+  compressedArchive.byteOffset,
+  compressedArchive.byteLength
+).getUint16(8, true), 8);
+assert.ok(compressedArchive.length < compressible.length);
+assert.deepEqual(readStoredZip(compressedArchive), [{
+  path: 'model.json',
+  bytes: compressible
+}]);
+
 const corrupted = new Uint8Array(archive);
 corrupted[30 + new TextEncoder().encode(entries[0].path).length] ^= 0xff;
 assert.throws(

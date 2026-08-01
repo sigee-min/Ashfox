@@ -129,7 +129,7 @@ const fixture = (name: string): string =>
   const geometryFile = bundle.files[0];
   assert.equal(geometryFile.kind, 'json');
   if (geometryFile.kind !== 'json') throw new Error('geometry artifact missing');
-  assert.equal(geometryFile.text, fixture('minecraft-bedrock-geometry.json'));
+  assert.equal(geometryFile.text, fixture('minecraft-bedrock-geometry.json').trim());
   const textureFile = bundle.files[1];
   assert.equal(textureFile.kind, 'blob-copy');
   assert.equal(textureFile.path, 'textures/block/ashfox_crate.png');
@@ -144,7 +144,7 @@ const fixture = (name: string): string =>
   const geometry = buildMinecraftBedrockGeometry(project);
   const idle = animations.animations['animation.ashfox_crate.idle'];
   assert.equal(idle.loop, true);
-  assert.deepEqual(idle.bones?.root.rotation?.['1.0'], [0, -30, 0]);
+  assert.deepEqual(idle.bones?.root.rotation?.['1'], [0, -30, 0]);
   assert.deepEqual(idle.particle_effects?.['0.5'], {
     effect: 'ashfox:crate_spark',
     locator: 'effect',
@@ -177,7 +177,7 @@ const fixture = (name: string): string =>
   const bedrockAnimations = buildMinecraftBedrockAnimations(bedrock);
   assert.deepEqual(
     bedrockAnimations.animations['animation.ashfox_crate.idle']
-      .bones?.root.rotation?.['1.0'],
+      .bones?.root.rotation?.['1'],
     {
       pre: [0, -20, 0],
       post: [0, -30, 0],
@@ -193,7 +193,7 @@ const fixture = (name: string): string =>
   const geckoAnimations = buildGeckoLib5Animations(gecko);
   assert.deepEqual(
     geckoAnimations.animations['animation.ashfox_crate.idle']
-      .bones?.root.rotation?.['1.0'],
+      .bones?.root.rotation?.['1'],
     {
       vector: [0, -30, 0],
       lerp_mode: 'catmullrom'
@@ -259,8 +259,8 @@ const fixture = (name: string): string =>
   if (geometryFile?.kind !== 'json' || animationFile?.kind !== 'json') {
     throw new Error('GeckoLib 5 JSON artifacts missing');
   }
-  assert.equal(geometryFile.text, fixture('geckolib5-geometry.json'));
-  assert.equal(animationFile.text, fixture('geckolib5-animation.json'));
+  assert.equal(geometryFile.text, fixture('geckolib5-geometry.json').trim());
+  assert.equal(animationFile.text, fixture('geckolib5-animation.json').trim());
   assert.equal(
     JSON.stringify(geometry),
     JSON.stringify(geometryFile.data)
@@ -269,6 +269,108 @@ const fixture = (name: string): string =>
     bundle.files[2]?.path,
     'assets/ashfox/textures/block/ashfox_crate.png'
   );
+}
+
+{
+  const project = structuredClone(createAnimatedBedrockProject());
+  const channel = project.animations['clip-idle']
+    .channels['channel-root-rotation'];
+  project.animations['clip-idle'].channels = {
+    ...project.animations['clip-idle'].channels,
+    'channel-root-rotation': {
+      ...channel,
+      keys: [
+        channel.keys[0],
+        {
+          ...channel.keys[0],
+          id: 'key-root-middle',
+          timeSeconds: 0.5,
+          value: [0, 15, 0]
+        },
+        channel.keys[1]
+      ]
+    },
+    'channel-root-position': {
+      ...channel,
+      id: 'channel-root-position',
+      property: 'position',
+      keys: [
+        { ...channel.keys[0], id: 'position-start', value: [0, 0, 0] },
+        { ...channel.keys[1], id: 'position-end', value: [0, 0, 0] }
+      ]
+    },
+    'channel-root-scale': {
+      ...channel,
+      id: 'channel-root-scale',
+      property: 'scale',
+      keys: [
+        { ...channel.keys[0], id: 'scale-start', value: [2, 2, 2] },
+        { ...channel.keys[1], id: 'scale-end', value: [2, 2, 2] }
+      ]
+    }
+  };
+  const root = buildMinecraftBedrockAnimations(project)
+    .animations['animation.ashfox_crate.idle'].bones?.root;
+  assert.deepEqual(Object.keys(root?.rotation ?? {}), ['0', '1']);
+  assert.deepEqual(root?.position, [0, 0, 0]);
+  assert.deepEqual(root?.scale, [2, 2, 2]);
+}
+
+{
+  const project = structuredClone(createBedrockProject());
+  const root = project.scene.nodes['bone-root'];
+  const source = project.scene.nodes['cube-body'];
+  if (root.kind !== 'bone' || source.kind !== 'cube') {
+    throw new Error('opaque occlusion fixture nodes missing');
+  }
+  project.textures['texture-base'] = {
+    ...project.textures['texture-base'],
+    atlasMode: 'generate',
+    raster: { background: '#ffffff', canvasDetails: [] }
+  };
+  const first = {
+    ...source,
+    boxUv: false,
+    transform: {
+      ...source.transform,
+      rotation: [0, 0, 0] as [number, number, number],
+      pivot: [0, 0, 0] as [number, number, number]
+    },
+    bounds: { from: [0, 0, 0], to: [1, 1, 1] }
+  };
+  project.scene.nodes = {
+    ...project.scene.nodes,
+    'cube-body': first,
+    'cube-adjacent': {
+      ...first,
+      id: 'cube-adjacent',
+      name: 'adjacent',
+      bounds: { from: [1, 0, 0], to: [2, 1, 1] }
+    }
+  };
+  const authored = structuredClone(project);
+  const cubes = buildMinecraftBedrockGeometry(project)
+    ['minecraft:geometry'][0].bones[0].cubes ?? [];
+  assert.deepEqual(project, authored);
+  assert.deepEqual(
+    cubes.map((cube) => Array.isArray(cube.uv) ? 6 : Object.keys(cube.uv).length),
+    [5, 5]
+  );
+
+  const factoredProject = structuredClone(project);
+  for (const cube of Object.values(factoredProject.scene.nodes)) {
+    if (cube.kind !== 'cube') continue;
+    cube.boxUv = true;
+    cube.mirror = true;
+    cube.inflate = 1;
+  }
+  const factored = buildMinecraftBedrockGeometry(factoredProject)
+    ['minecraft:geometry'][0].bones[0];
+  assert.equal(factored.mirror, true);
+  assert.equal(factored.inflate, 1);
+  assert.ok(factored.cubes?.every(
+    (cube) => cube.mirror === undefined && cube.inflate === undefined
+  ));
 }
 
 {

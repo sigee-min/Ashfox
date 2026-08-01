@@ -1,0 +1,36 @@
+{
+  "$schema": "../schema.json",
+  "schemaVersion": 1,
+  "id": "eclipse-cathedral-wyrm",
+  "name": "Eclipse Cathedral Wyrm",
+  "category": "Boss",
+  "tags": ["boss", "creature", "animated", "dragon", "cathedral", "glTF"],
+  "featured": false,
+  "order": 80,
+  "prompt": "Create a mechanical cathedral dragon with enormous stained-glass wings, an articulated reliquary body, a living eclipse core, and a cinematic wing-opening awakening.",
+  "description": "A full boss-scale dragon built as a moving reliquary, with more than 200 optimized cubes, stained-glass tracery, articulated neck, jaw, legs and tail, and an eclipse-corona awakening.",
+  "metrics": {
+    "bones": 230,
+    "cubes": 215,
+    "animations": 2,
+    "triangles": 2580,
+    "glbPrimitives": 1,
+    "semanticEyes": 2
+  },
+  "project": "project.ashfox",
+  "media": {
+    "poster": "poster.png",
+    "build": {
+      "gif": "build.gif",
+      "alt": "Eclipse Cathedral Wyrm being built in ashfox"
+    },
+    "animation": {
+      "gif": "animation.gif",
+      "alt": "Eclipse Cathedral Wyrm opening its stained-glass wings"
+    }
+  },
+  "agent": {
+    "model": "GPT-5.6 Sol",
+    "reasoning": "xhigh"
+  }
+}

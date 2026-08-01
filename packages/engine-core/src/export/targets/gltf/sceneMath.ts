@@ -47,6 +47,24 @@ export const quaternionFromEuler = (
   ];
 };
 
+export const rotateVec3ByQuaternion = (
+  value: Vec3,
+  quaternion: readonly [number, number, number, number]
+): [number, number, number] => {
+  const [x, y, z, w] = quaternion;
+  const crossX = y * value[2] - z * value[1];
+  const crossY = z * value[0] - x * value[2];
+  const crossZ = x * value[1] - y * value[0];
+  const secondX = y * crossZ - z * crossY;
+  const secondY = z * crossX - x * crossZ;
+  const secondZ = x * crossY - y * crossX;
+  return [
+    value[0] + 2 * (w * crossX + secondX),
+    value[1] + 2 * (w * crossY + secondY),
+    value[2] + 2 * (w * crossZ + secondZ)
+  ];
+};
+
 export const isIdentityRotation = (rotation: Vec3): boolean =>
   rotation.every((value) => Math.abs(value) <= 0.000001);
 

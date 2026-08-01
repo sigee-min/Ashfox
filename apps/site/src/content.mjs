@@ -1,12 +1,21 @@
 import { showcaseCatalog } from './showcaseCatalog.mjs';
 
-const [tractor, rocket, kirin] = showcaseCatalog;
+const requiredDemo = (id) => {
+  const item = showcaseCatalog.find((demo) => demo.id === id);
+  if (!item) throw new Error(`Required landing demo is missing: ${id}`);
+  return item;
+};
+
+const rocket = requiredDemo('aether-spear-rocket');
+const tractor = requiredDemo('ironroot-tractor');
+const kirin = requiredDemo('moonveil-kirin');
+const featuredDemos = showcaseCatalog.filter((item) => item.featured);
 
 export const landingContent = {
   eyebrow: 'AI-native low-poly workbench',
-  titleLines: ['Describe it.', 'Watch it come alive.'],
+  titleLines: ['Describe it.', 'Ship it game-ready.'],
   summary:
-    'Your AI agent models, textures, rigs, and animates your asset live in ashfox—ready for your game.',
+    'Your AI agent models, textures, rigs, and animates one editable asset live in ashfox—then delivers optimized Bedrock, GeckoLib, glTF, or GLB output.',
   quickStart: {
     title: 'One instruction. Then describe what you want.',
     body:
@@ -15,7 +24,7 @@ export const landingContent = {
       'Fetch and follow https://ashfox.io/workbench/agent-manifest.json using a direct HTTP request such as curl.'
   },
   demo: {
-    sequences: showcaseCatalog.map((item) => ({
+    sequences: featuredDemos.map((item) => ({
       name: item.name,
       prompt: item.prompt,
       poster: item.poster,
@@ -29,7 +38,7 @@ export const landingContent = {
       title: 'Structure takes shape.',
       body:
         'An empty scene becomes an articulated machine with every part still editable.',
-      detail: '108 bones · 125 cubes · articulated drivetrain',
+      detail: `${tractor.detail} · articulated drivetrain`,
       poster: tractor.poster,
       video: tractor.build.video,
       alt: tractor.build.alt
@@ -39,7 +48,7 @@ export const landingContent = {
       title: 'Built to move.',
       body:
         'Rig, runes, engine plume, and launch timing remain one coherent project.',
-      detail: '131 bones · 166 cubes · launch sequence',
+      detail: `${rocket.detail} · launch sequence`,
       poster: rocket.poster,
       video: rocket.animation.video,
       alt: rocket.animation.alt
@@ -49,7 +58,7 @@ export const landingContent = {
       title: 'Character stays alive.',
       body:
         'Geometry, derived pixels, expressive details, and animation share the same source.',
-      detail: '113 bones · 131 cubes · 2 animation clips',
+      detail: `${kirin.detail} · 2 animation clips`,
       poster: kirin.poster,
       video: kirin.animation.video,
       alt: kirin.animation.alt
@@ -80,25 +89,33 @@ export const landingContent = {
   ],
   formats: [
     ['Java block', 'A version-matched resource pack with model and textures.'],
-    ['GeckoLib 5', 'Geometry, animation, and textures for Minecraft Java.'],
-    ['Bedrock', 'Geometry and actor animation for Bedrock workflows.'],
-    ['GLB', 'One embedded binary asset for portable delivery.'],
-    ['glTF', 'Open scene data with external resources when needed.']
+    ['GeckoLib 5', 'Compact geometry, animation, and textures for Minecraft Java.'],
+    ['Bedrock', 'Optimized geometry and actor animation for Bedrock workflows.'],
+    ['GLB', 'Batched, compressed geometry in one portable binary asset.'],
+    ['glTF', 'Optimized open scene data with external resources when needed.']
   ]
 };
 
 export const galleryContent = {
-  eyebrow: 'Gallery',
-  title: 'Made in ashfox.',
+  eyebrow: 'Editable demo projects',
+  title: 'Open the source.',
   summary:
-    'Finished low-poly assets. Point to a card—or tap it—to watch the build.',
-  pageSize: 3,
+    'Search the latest production demos, filter by asset type, and open any complete .ashfox project directly in the workbench.',
+  categories: [...new Set(showcaseCatalog.map((item) => item.category))]
+    .sort((left, right) => left.localeCompare(right)),
   items: showcaseCatalog.map((item) => ({
     ...item,
     galleryId: item.id,
-    phase: 'Complete asset',
+    phase: 'Game-ready source',
     gif: item.build.gif,
-    alt: item.build.alt
+    alt: item.build.alt,
+    searchText: [
+      item.name,
+      item.category,
+      item.description,
+      item.prompt,
+      ...item.tags
+    ].join(' ')
   }))
 };
 

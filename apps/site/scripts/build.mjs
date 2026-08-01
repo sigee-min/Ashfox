@@ -11,13 +11,16 @@ import { fileURLToPath } from 'node:url';
 
 import { loadDocumentation } from '../src/docs.mjs';
 import {
-  galleryPageRoute,
   renderDocumentationPage,
   renderGalleryPage,
   renderLandingPage,
   renderNotFoundPage
 } from '../src/templates.mjs';
 import { galleryContent } from '../src/content.mjs';
+import {
+  gallerySourceRoot,
+  showcaseCatalog
+} from '../src/showcaseCatalog.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = path.resolve(siteRoot, '..', '..');
@@ -94,21 +97,10 @@ const assets = {
 };
 const config = { siteOrigin, workbenchUrl };
 const documents = await loadDocumentation(docsRoot);
-const galleryPageCount = Math.ceil(
-  galleryContent.items.length / galleryContent.pageSize
-);
-const galleryRoutes = Array.from(
-  { length: galleryPageCount },
-  (_, pageIndex) => galleryPageRoute(pageIndex)
-);
+const galleryRoute = '/gallery/';
 
 await writeRoute('/', renderLandingPage({ assets, config }));
-for (let pageIndex = 0; pageIndex < galleryPageCount; pageIndex += 1) {
-  await writeRoute(
-    galleryPageRoute(pageIndex),
-    renderGalleryPage({ assets, config, pageIndex })
-  );
-}
+await writeRoute(galleryRoute, renderGalleryPage({ assets, config }));
 for (const document of documents) {
   await writeRoute(
     document.route,
@@ -121,6 +113,16 @@ await writeFile(
 );
 await cp(publicRoot, outputRoot, { recursive: true });
 await cp(brandRoot, path.join(outputRoot, 'brand'), { recursive: true });
+await cp(gallerySourceRoot, path.join(outputRoot, 'demos'), {
+  recursive: true
+});
+await writeFile(
+  path.join(outputRoot, 'demos', 'index.json'),
+  `${JSON.stringify({
+    schemaVersion: 1,
+    demos: showcaseCatalog
+  }, null, 2)}\n`
+);
 await writeFile(
   path.join(outputRoot, '_headers'),
   `/*
@@ -153,14 +155,18 @@ await writeFile(
 /media/*
   Cache-Control: public, max-age=604800
 
-/media/showcase/*.gif
+/demos/*
   Cache-Control: public, max-age=3600, must-revalidate
+
+/demos/*.ashfox
+  Content-Type: application/vnd.ashfox.project+zip
 `
 );
 await writeFile(
   path.join(outputRoot, '_redirects'),
   `/docs /docs/ 301
 /gallery /gallery/ 301
+/gallery/page/* /gallery/ 301
 `
 );
 await writeFile(
@@ -176,12 +182,12 @@ await writeFile(
   sitemap([
     '/',
     '/workbench/',
-    ...galleryRoutes,
+    galleryRoute,
     ...documents.map((document) => document.route)
   ])
 );
 
 console.log(
   `ashfox static site built: ${documents.length} docs, ` +
-  `${galleryPageCount} gallery pages, ${outputRoot}`
+  `${galleryContent.items.length} gallery demos, ${outputRoot}`
 );

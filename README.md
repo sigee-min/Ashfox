@@ -1,21 +1,24 @@
 <p align="center">
   <img
-    src="apps/site/public/media/showcase/aether-spear-rocket-animation.gif"
-    alt="Aether Spear Rocket launch animation created in ashfox"
+    src="examples/gallery/eclipse-cathedral-wyrm/animation.gif"
+    alt="Eclipse Cathedral Wyrm awakening animation created in ashfox"
     width="900"
   >
   <br>
-  <sub><strong>GPT-5.6 Sol xhigh · 3 minutes</strong> · modeled, textured, rigged, and animated · 131 bones · 166 cubes</sub>
+  <sub><strong>GPT-5.6 Sol xhigh</strong> · modeled, textured, rigged, and animated · 230 bones · 215 cubes · 2,580 exported triangles · 1 GLB primitive</sub>
 </p>
 
-# Blockbench MCP, ready in minutes
+# ashfox — AI-native low-poly asset workbench
 
-Connect your AI agent to Blockbench for deterministic modeling, texturing,
-animation, validation, preview, and export. The Blockbench plugin remains a
-fully supported part of this repository.
+Describe an asset and watch your AI agent model, texture, rig, and animate it in
+an editable browser workbench. Keep the canonical `.ashfox` source, then export
+runtime-optimized Bedrock, GeckoLib 5, glTF, or GLB output. A fully supported
+Blockbench MCP workflow is included for teams already using Blockbench.
 
 <p align="center">
   <a href="https://ashfox.io"><strong>Explore ashfox.io →</strong></a>
+  &nbsp;·&nbsp;
+  <a href="https://ashfox.io/gallery/"><strong>Open the demo gallery →</strong></a>
   <br>
   <sub>Build complete low-poly assets with your AI agent—no modeling app required.</sub>
 </p>
@@ -24,6 +27,8 @@ fully supported part of this repository.
   <a href="#connect-blockbench"><strong>Connect Blockbench</strong></a>
   &nbsp;·&nbsp;
   <a href="#use-without-blockbench"><strong>Use without Blockbench</strong></a>
+  &nbsp;·&nbsp;
+  <a href="#editable-demo-gallery"><strong>Demo gallery</strong></a>
   &nbsp;·&nbsp;
   <a href="https://ashfox.io/docs/"><strong>Read the guides</strong></a>
 </p>
@@ -161,16 +166,36 @@ when the agent delivers the validated target artifact.
 The recording below is from the optional web workbench, beginning with an empty
 project.
 
-![The ashfox web workbench building the Aether Spear Rocket from an empty scene through rigging, geometry, deterministic texturing, and animation](apps/site/public/media/showcase/aether-spear-rocket-build.gif)
+![The ashfox web workbench building the Eclipse Cathedral Wyrm from an empty scene through rigging, geometry, deterministic texturing, and animation](examples/gallery/eclipse-cathedral-wyrm/build.gif)
 
 <p align="center">
-  <sub>One agent · 131 bones · 166 cubes · animated launch rig</sub>
+  <sub>One agent · 230 bones · 215 cubes · articulated cathedral-dragon rig</sub>
 </p>
 
-| Fantasy creature | Arcane tractor |
+| Brand guardian | Creature boss | Walking shrine |
+| --- | --- | --- |
+| ![Ashfox Ember Sentinel animation](examples/gallery/ashfox-ember-sentinel/animation.gif) | ![King's Ransom Mimic animation](examples/gallery/kings-ransom-mimic/animation.gif) | ![Mossback Bellwalker animation](examples/gallery/mossback-bellwalker/animation.gif) |
+| 133 bones · 123 cubes | 137 bones · 125 cubes | 155 bones · 143 cubes |
+
+| Mobile war-forge | Cathedral wyrm |
 | --- | --- |
-| ![Moonveil Kirin animation](apps/site/public/media/showcase/moonveil-kirin-animation.gif) | ![Ironroot Tractor animation](apps/site/public/media/showcase/ironroot-tractor-animation.gif) |
-| 113 bones · 131 cubes | 108 bones · 125 cubes |
+| ![Forgeheart Nomad animation](examples/gallery/forgeheart-nomad/animation.gif) | ![Eclipse Cathedral Wyrm animation](examples/gallery/eclipse-cathedral-wyrm/animation.gif) |
+| 125 bones · 114 cubes | 230 bones · 215 cubes |
+
+Every showcase above exports as one GLB base-pass primitive.
+
+## Editable demo gallery
+
+Every gallery entry is a self-contained folder under
+[`examples/gallery/`](examples/gallery/README.md). It contains one `demo.json`
+manifest, its media, and the exact `project.ashfox` source. The website discovers
+these folders automatically, exposes name search and category filters, and opens
+the selected archive directly in the workbench.
+
+The Aether Spear Rocket is also held to automated delivery budgets: one GLB
+base-pass primitive, a GLB below 100 KB, and GeckoLib/Bedrock JSON below 70 KB.
+These checks protect the editable source while keeping exported game assets
+small and draw-call efficient.
 
 ## Local data and source
 

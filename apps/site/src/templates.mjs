@@ -151,7 +151,7 @@ const landingDemo = (demo) => `
     id="demo"
     data-agent-demo
     data-sequences="${escapeHtml(JSON.stringify(demo.sequences))}"
-    data-empty-src="/media/showcase/empty-workspace.jpg"
+    data-empty-src="/media/empty-workspace.jpg"
   >
     <div
       class="studio-capture"
@@ -399,9 +399,9 @@ export const renderLandingPage = ({ assets, config }) => {
       <section class="section output-section" id="outputs">
         <div class="output-copy" data-reveal>
           <p class="eyebrow"><span></span>Export</p>
-          <h2>Ready for the game.</h2>
-          <p>Export the same finished project for Minecraft or any supported 3D pipeline.</p>
-          <a class="text-link" href="/docs/guides/save-and-export/">Export guide <span>→</span></a>
+          <h2>Editable source. Runtime-ready output.</h2>
+          <p>Keep the complete .ashfox project, while target compilers remove hidden work, reduce animation data, and batch GLB geometry without changing the visible asset.</p>
+          <a class="text-link" href="/gallery/">Open editable demos <span>→</span></a>
         </div>
         <div class="format-grid">
           ${content.formats.map(([name, description], index) => `
@@ -507,42 +507,21 @@ export const renderLandingPage = ({ assets, config }) => {
   });
 };
 
-export const galleryPageRoute = (pageIndex) =>
-  pageIndex === 0 ? '/gallery/' : `/gallery/page/${pageIndex + 1}/`;
-
-const galleryPagination = ({ currentPage, pageCount }) => pageCount < 2
-  ? ''
-  : `
-  <nav class="gallery-pagination" aria-label="Gallery pages">
-    ${currentPage > 0
-      ? `<a class="gallery-page-direction" href="${galleryPageRoute(currentPage - 1)}" rel="prev">← Previous</a>`
-      : '<span class="gallery-page-direction" aria-disabled="true">← Previous</span>'}
-    <span class="gallery-pages">
-      ${Array.from({ length: pageCount }, (_, pageIndex) => `
-        <a
-          href="${galleryPageRoute(pageIndex)}"
-          ${pageIndex === currentPage ? 'aria-current="page"' : ''}
-          aria-label="Gallery page ${pageIndex + 1}"
-        >${pageIndex + 1}</a>
-      `).join('')}
-    </span>
-    ${currentPage < pageCount - 1
-      ? `<a class="gallery-page-direction" href="${galleryPageRoute(currentPage + 1)}" rel="next">Next →</a>`
-      : '<span class="gallery-page-direction" aria-disabled="true">Next →</span>'}
-  </nav>
-`;
-
 const galleryCard = (item, index) => `
-  <article class="gallery-card">
-    <button
+  <article
+    class="gallery-card"
+    data-gallery-item
+    data-gallery-id="${escapeHtml(item.galleryId)}"
+    data-gallery-category="${escapeHtml(item.category)}"
+    data-gallery-search="${escapeHtml(item.searchText)}"
+  >
+    <a
       class="gallery-preview"
-      type="button"
+      href="${escapeHtml(item.workbench)}"
       data-gallery-card
-      data-gallery-id="${escapeHtml(item.galleryId)}"
       data-gif="${escapeHtml(item.gif)}"
       data-preview-state="poster"
-      aria-label="Watch ${escapeHtml(item.name)} build process"
-      aria-pressed="false"
+      aria-label="Open ${escapeHtml(item.name)} in the ashfox workbench"
     >
       <span
         class="gallery-media"
@@ -573,32 +552,30 @@ const galleryCard = (item, index) => `
         ` : ''}
         <span class="gallery-category">${escapeHtml(item.category)}</span>
         <span class="gallery-preview-state" aria-hidden="true">
-          <i></i><b>Watch build</b>
+          <i></i><b>Open project</b>
         </span>
       </span>
-    </button>
-    <div class="gallery-card-copy">
-      <span>${escapeHtml(item.phase)}</span>
-      <h2>${escapeHtml(item.name)}</h2>
-      <p>${escapeHtml(item.description)}</p>
-      <small>${escapeHtml(item.detail)}</small>
-      <dl class="gallery-metadata">
-        <div><dt>Model</dt><dd>${escapeHtml(item.agent.model)}</dd></div>
-        <div><dt>Reasoning</dt><dd>${escapeHtml(item.agent.reasoning)}</dd></div>
-      </dl>
-    </div>
+      <div class="gallery-card-copy">
+        <span class="gallery-phase">${escapeHtml(item.phase)}</span>
+        <h2>${escapeHtml(item.name)}</h2>
+        <p>${escapeHtml(item.description)}</p>
+        <small>${escapeHtml(item.detail)}</small>
+        <div class="gallery-tags" aria-label="Tags">
+          ${item.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join('')}
+        </div>
+        <div class="gallery-metadata">
+          <span><b>Model</b><em>${escapeHtml(item.agent.model)}</em></span>
+          <span><b>Reasoning</b><em>${escapeHtml(item.agent.reasoning)}</em></span>
+          <strong>Open in workbench <i aria-hidden="true">→</i></strong>
+        </div>
+      </div>
+    </a>
   </article>
 `;
 
-export const renderGalleryPage = ({ assets, config, pageIndex }) => {
+export const renderGalleryPage = ({ assets, config }) => {
   const content = galleryContent;
-  const pageCount = Math.ceil(content.items.length / content.pageSize);
-  if (pageIndex < 0 || pageIndex >= pageCount) {
-    throw new Error(`Gallery page is out of range: ${pageIndex + 1}`);
-  }
-  const start = pageIndex * content.pageSize;
-  const items = content.items.slice(start, start + content.pageSize);
-  const path = galleryPageRoute(pageIndex);
+  const path = '/gallery/';
   const body = `
     <main class="gallery" id="main" data-gallery>
       <header class="gallery-hero">
@@ -606,29 +583,43 @@ export const renderGalleryPage = ({ assets, config, pageIndex }) => {
         <h1>${escapeHtml(content.title)}</h1>
         <p>${escapeHtml(content.summary)}</p>
       </header>
+      <section class="gallery-controls" aria-label="Filter gallery demos">
+        <label class="gallery-search">
+          <span class="sr-only">Search demos by name</span>
+          <span class="gallery-search-icon" aria-hidden="true"></span>
+          <input
+            type="search"
+            placeholder="Search demos by name"
+            autocomplete="off"
+            data-gallery-search-input
+          >
+        </label>
+        <div class="gallery-filters" aria-label="Asset categories">
+          <button type="button" data-gallery-filter="all" aria-pressed="true">All</button>
+          ${content.categories.map((category) => `
+            <button
+              type="button"
+              data-gallery-filter="${escapeHtml(category)}"
+              aria-pressed="false"
+            >${escapeHtml(category)}</button>
+          `).join('')}
+        </div>
+        <p class="gallery-results" data-gallery-results aria-live="polite">
+          ${content.items.length} demos
+        </p>
+      </section>
       <section
         class="gallery-grid"
         aria-label="ashfox showcase assets"
       >
-        ${items.map(galleryCard).join('')}
+        ${content.items.map(galleryCard).join('')}
       </section>
-      ${galleryPagination({ currentPage: pageIndex, pageCount })}
+      <section class="gallery-empty" data-gallery-empty hidden>
+        <p>No demos match this search.</p>
+        <button type="button" data-gallery-reset>Clear filters</button>
+      </section>
     </main>
   `;
-  const previousPath = pageIndex > 0
-    ? galleryPageRoute(pageIndex - 1)
-    : null;
-  const nextPath = pageIndex < pageCount - 1
-    ? galleryPageRoute(pageIndex + 1)
-    : null;
-  const headLinks = [
-    previousPath
-      ? `<link rel="prev" href="${escapeHtml(absoluteUrl(config.siteOrigin, previousPath))}">`
-      : '',
-    nextPath
-      ? `<link rel="next" href="${escapeHtml(absoluteUrl(config.siteOrigin, nextPath))}">`
-      : ''
-  ].filter(Boolean).join('\n');
 
   return pageShell({
     active: 'gallery',
@@ -636,33 +627,29 @@ export const renderGalleryPage = ({ assets, config, pageIndex }) => {
     body,
     config,
     description: content.summary,
-    headLinks,
     path,
     structuredData: {
       '@context': 'https://schema.org',
       '@type': 'CollectionPage',
-      name: pageIndex === 0
-        ? 'ashfox gallery'
-        : `ashfox gallery — page ${pageIndex + 1}`,
+      name: 'ashfox gallery',
       url: absoluteUrl(config.siteOrigin, path),
       description: content.summary,
       mainEntity: {
         '@type': 'ItemList',
-        itemListElement: items.map((item, index) => ({
+        itemListElement: content.items.map((item, index) => ({
           '@type': 'ListItem',
-          position: start + index + 1,
+          position: index + 1,
           item: {
             '@type': 'CreativeWork',
             name: `${item.name} — ${item.phase}`,
             description: item.description,
-            image: absoluteUrl(config.siteOrigin, item.poster)
+            image: absoluteUrl(config.siteOrigin, item.poster),
+            url: absoluteUrl(config.siteOrigin, item.workbench)
           }
         }))
       }
     },
-    title: pageIndex === 0
-      ? 'Gallery'
-      : `Gallery — Page ${pageIndex + 1}`
+    title: 'Gallery'
   });
 };
 

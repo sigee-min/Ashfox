@@ -2,46 +2,77 @@
 
 These complete projects show editable geometry, textures, rigging, and
 animation. Paste a project prompt into your agent when you want it to inspect
-the structure.
+the structure. You can also search and filter every project in the
+[demo gallery](/gallery/).
 
-## Ironroot Tractor
+## Eclipse Cathedral Wyrm
 
-![Ironroot Tractor animation in ashfox](/media/showcase/ironroot-tractor-animation.gif)
+![Eclipse Cathedral Wyrm animation in ashfox](/demos/eclipse-cathedral-wyrm/animation.gif)
 
-A Minecraft-style field machine with 108 bones, 125 cubes, articulated wheels,
-and a mechanical work cycle.
-
-```text
-Open https://ashfox.io/workbench/?demo=ironroot-tractor in your controlled
-browser. Inspect the complete project and summarize its hierarchy, textures,
-animation clips, and export target. Do not change it yet.
-```
-
-## Aether Spear Rocket
-
-![Aether Spear Rocket launch animation in ashfox](/media/showcase/aether-spear-rocket-animation.gif)
-
-A runic exploration rocket with 131 bones, 166 cubes, animated launch rigging,
-and a complete engine-plume sequence.
+A boss-scale mechanical dragon with 230 bones, 215 cubes, stained-glass wings,
+an articulated reliquary body, and a cinematic eclipse awakening.
 
 ```text
-Open https://ashfox.io/workbench/?demo=aether-spear-rocket in your controlled
-browser. Inspect the complete project and summarize its hierarchy, textures,
-animation clips, and export target. Do not change it yet.
+Open https://ashfox.io/workbench/?project=%2Fdemos%2Feclipse-cathedral-wyrm%2Fproject.ashfox in your controlled
+browser. Inspect the hierarchy, cathedral-wing rig, textures, animation clips,
+and export target. Do not change it yet.
 ```
 
-## Moonveil Kirin
+## Ashfox Ember Sentinel
 
-![Moonveil Kirin animation in ashfox](/media/showcase/moonveil-kirin-animation.gif)
+![Ashfox Ember Sentinel animation in ashfox](/demos/ashfox-ember-sentinel/animation.gif)
 
-A fantasy creature with 113 bones, 131 cubes, expressive facial details, and
-idle and awaken animation clips.
+Ashfox's nine-tailed spirit guardian has 133 bones, 123 cubes, expressive
+semantic eyes, forged armor, and an animated cyan ember halo.
 
 ```text
-Open https://ashfox.io/workbench/?demo=moonveil-kirin in your controlled
-browser. Inspect the complete project and summarize its hierarchy, textures,
-animation clips, and export target. Do not change it yet.
+Open https://ashfox.io/workbench/?project=%2Fdemos%2Fashfox-ember-sentinel%2Fproject.ashfox in your controlled
+browser. Inspect the hierarchy, nine-tail rig, textures, animation clips, and
+export target. Do not change it yet.
 ```
+
+## King's Ransom Mimic
+
+![King's Ransom Mimic animation in ashfox](/demos/kings-ransom-mimic/animation.gif)
+
+A crowned vault predator with 137 bones, 125 cubes, a semantic lock eye,
+articulated claws, layered teeth, and a theatrical awakening.
+
+```text
+Open https://ashfox.io/workbench/?project=%2Fdemos%2Fkings-ransom-mimic%2Fproject.ashfox in your controlled
+browser. Inspect the hierarchy, mimic transformation, textures, animation
+clips, and export target. Do not change it yet.
+```
+
+## Mossback Bellwalker
+
+![Mossback Bellwalker animation in ashfox](/demos/mossback-bellwalker/animation.gif)
+
+A six-legged walking shrine with 155 bones, 143 cubes, pagoda roofs, a great
+bell, spirit lanterns, and an opening celestial observatory.
+
+```text
+Open https://ashfox.io/workbench/?project=%2Fdemos%2Fmossback-bellwalker%2Fproject.ashfox in your controlled
+browser. Inspect the hierarchy, walking-shrine rig, textures, animation clips,
+and export target. Do not change it yet.
+```
+
+## Forgeheart Nomad
+
+![Forgeheart Nomad animation in ashfox](/demos/forgeheart-nomad/animation.gif)
+
+A mobile war-forge with 125 bones, 114 cubes, a giant hammer, articulated
+tongs, wheel mechanisms, and a caravan-to-warform deployment.
+
+```text
+Open https://ashfox.io/workbench/?project=%2Fdemos%2Fforgeheart-nomad%2Fproject.ashfox in your controlled
+browser. Inspect the hierarchy, tool-arm rig, textures, animation clips, and
+export target. Do not change it yet.
+```
+
+All five export as one GLB base-pass primitive. The gallery also keeps the
+Aether Spear Rocket, Ironroot Tractor, and Moonveil Kirin as editable reference
+projects.
 
 For a blank project, use the standard prompt in
 [Get started](ai-agent-quick-start.md).

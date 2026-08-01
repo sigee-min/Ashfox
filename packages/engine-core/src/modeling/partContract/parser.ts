@@ -15,7 +15,10 @@ import {
   parseEnum,
   rejectUnknownKeys
 } from './parsePrimitives';
-import { PART_CONTRACT_LIMITS } from './rules';
+import {
+  describesEyeGeometry,
+  PART_CONTRACT_LIMITS
+} from './rules';
 import type {
   ParsedPart,
   PartContractIssue,
@@ -57,6 +60,14 @@ const parsePart = (
   );
   const common = parseCommon(input, path, issues);
   if (common === null) return { value: null, estimatedCells: 0 };
+  if (kind !== 'feature' && describesEyeGeometry(common.partId)) {
+    addIssue(
+      issues,
+      `${path}.partId`,
+      'relationship',
+      'Visible eyes must use one parent-bound feature with motif "eye"; eye, iris, pupil, and glint geometry is not allowed.'
+    );
+  }
 
   let parsed: ParsedPart;
   switch (kind) {

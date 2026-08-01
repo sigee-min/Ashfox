@@ -10,6 +10,10 @@ import {
 import {
   effectivelyVisibleSceneNodeIds
 } from '../../sceneVisibility';
+import {
+  compileOpaqueCubeFaceOcclusion,
+  type CubeFaceOcclusion
+} from './cubeFaceOcclusion';
 
 export interface MinecraftGeometryFaceUv {
   uv: [number, number];
@@ -28,17 +32,23 @@ export interface MinecraftGeometryCube {
   mirror?: boolean;
 }
 
-export interface MinecraftGeometryLocator {
+export interface MinecraftGeometryLocatorTransform {
   offset: [number, number, number];
   rotation: [number, number, number];
   ignore_inherited_scale?: boolean;
 }
 
+export type MinecraftGeometryLocator =
+  | [number, number, number]
+  | MinecraftGeometryLocatorTransform;
+
 export interface MinecraftGeometryBone {
   name: string;
   parent?: string;
-  pivot: [number, number, number];
+  pivot?: [number, number, number];
   rotation?: [number, number, number];
+  mirror?: boolean;
+  inflate?: number;
   cubes?: MinecraftGeometryCube[];
   locators?: Record<string, MinecraftGeometryLocator>;
 }
@@ -68,6 +78,8 @@ export interface MinecraftGeometryCompileOptions {
   };
 }
 
+const NO_OCCLUDED_FACES: ReadonlySet<CubeFaceDirection> = new Set();
+
 const addPosition = (value: Vec3, position: Vec3): [number, number, number] => [
   value[0] + position[0],
   value[1] + position[1],
@@ -77,12 +89,13 @@ const addPosition = (value: Vec3, position: Vec3): [number, number, number] => [
 const negate = (value: number): number => (Math.abs(value) <= 0.000001 ? 0 : -value);
 
 const compileFaceUv = (
-  cube: CubeNode
+  cube: CubeNode,
+  occluded: ReadonlySet<CubeFaceDirection>
 ): Partial<Record<CubeFaceDirection, MinecraftGeometryFaceUv>> => {
   const uv: Partial<Record<CubeFaceDirection, MinecraftGeometryFaceUv>> = {};
   for (const direction of CUBE_FACE_DIRECTIONS) {
     const face = cube.faces[direction];
-    if (!face.enabled || !face.uv) continue;
+    if (!face.enabled || !face.uv || occluded.has(direction)) continue;
     const entry: MinecraftGeometryFaceUv = {
       uv: [face.uv[0], face.uv[1]],
       uv_size: [face.uv[2] - face.uv[0], face.uv[3] - face.uv[1]],
@@ -100,7 +113,10 @@ const compileFaceUv = (
   return uv;
 };
 
-const compileCube = (cube: CubeNode): MinecraftGeometryCube => {
+const compileCube = (
+  cube: CubeNode,
+  occlusion: CubeFaceOcclusion
+): MinecraftGeometryCube => {
   const from = addPosition(cube.bounds.from, cube.transform.position);
   const to = addPosition(cube.bounds.to, cube.transform.position);
   const size: [number, number, number] = [
@@ -127,12 +143,14 @@ const compileCube = (cube: CubeNode): MinecraftGeometryCube => {
       : {}),
     uv: cube.boxUv
       ? [cube.uvOffset?.[0] ?? 0, cube.uvOffset?.[1] ?? 0]
-      : compileFaceUv(cube),
+      : compileFaceUv(cube, occlusion.get(cube.id) ?? NO_OCCLUDED_FACES),
     ...(cube.boxUv && cube.mirror ? { mirror: true } : {})
   };
 };
 
-const compileLocator = (locator: LocatorNode): MinecraftGeometryLocator => ({
+const compileLocator = (
+  locator: LocatorNode
+): MinecraftGeometryLocatorTransform => ({
   offset: [
     negate(locator.transform.position[0]),
     locator.transform.position[1],
@@ -148,10 +166,47 @@ const compileLocator = (locator: LocatorNode): MinecraftGeometryLocator => ({
     : {})
 });
 
+const compileCompactLocator = (
+  locator: LocatorNode
+): MinecraftGeometryLocator => {
+  const compiled = compileLocator(locator);
+  return compiled.rotation.every((value) => Math.abs(value) <= 0.000001) &&
+    !compiled.ignore_inherited_scale
+    ? compiled.offset
+    : compiled;
+};
+
+const factorCubeDefaults = (
+  cubes: readonly MinecraftGeometryCube[]
+): {
+  cubes: MinecraftGeometryCube[];
+  mirror?: boolean;
+  inflate?: number;
+} => {
+  const factorMirror = cubes.length > 1 && cubes.every(
+    (cube) => cube.mirror === true
+  );
+  const inflate = cubes[0]?.inflate ?? 0;
+  const factorInflate = cubes.length > 1 && inflate !== 0 && cubes.every(
+    (cube) => (cube.inflate ?? 0) === inflate
+  );
+  return {
+    cubes: cubes.map((cube) => {
+      const compact = { ...cube };
+      if (factorMirror) delete compact.mirror;
+      if (factorInflate) delete compact.inflate;
+      return compact;
+    }),
+    ...(factorMirror ? { mirror: true } : {}),
+    ...(factorInflate ? { inflate } : {})
+  };
+};
+
 const compileBone = (
   document: ProjectDocument,
   bone: BoneNode,
-  visibleNodeIds: ReadonlySet<string>
+  visibleNodeIds: ReadonlySet<string>,
+  occlusion: CubeFaceOcclusion
 ): MinecraftGeometryBone => {
   const parent =
     bone.parentId === null ? undefined : document.scene.nodes[bone.parentId];
@@ -163,7 +218,8 @@ const compileBone = (
         node.parentId === bone.id
     )
     .sort((left, right) => left.id.localeCompare(right.id))
-    .map(compileCube);
+    .map((cube) => compileCube(cube, occlusion));
+  const factored = factorCubeDefaults(cubes);
   const locatorEntries = Object.values(document.scene.nodes)
     .filter(
       (node): node is LocatorNode =>
@@ -172,24 +228,30 @@ const compileBone = (
         node.parentId === bone.id
     )
     .sort((left, right) => left.id.localeCompare(right.id))
-    .map((locator) => [locator.name, compileLocator(locator)] as const);
+    .map((locator) => [locator.name, compileCompactLocator(locator)] as const);
   const rotation = bone.transform.rotation;
   const hasRotation = rotation.some((value) => Math.abs(value) > 0.000001);
 
   return {
     name: bone.name,
     ...(parent?.kind === 'bone' ? { parent: parent.name } : {}),
-    pivot: [
-      negate(bone.transform.pivot[0]),
-      bone.transform.pivot[1],
-      bone.transform.pivot[2]
-    ],
+    ...(bone.transform.pivot.some((value) => Math.abs(value) > 0.000001)
+      ? {
+          pivot: [
+            negate(bone.transform.pivot[0]),
+            bone.transform.pivot[1],
+            bone.transform.pivot[2]
+          ] as [number, number, number]
+        }
+      : {}),
     ...(hasRotation
       ? {
           rotation: [negate(rotation[0]), negate(rotation[1]), rotation[2]]
         }
       : {}),
-    ...(cubes.length > 0 ? { cubes } : {}),
+    ...(factored.mirror ? { mirror: factored.mirror } : {}),
+    ...(factored.inflate !== undefined ? { inflate: factored.inflate } : {}),
+    ...(factored.cubes.length > 0 ? { cubes: factored.cubes } : {}),
     ...(locatorEntries.length > 0
       ? { locators: Object.fromEntries(locatorEntries) }
       : {})
@@ -198,7 +260,8 @@ const compileBone = (
 
 const createLooseBone = (
   document: ProjectDocument,
-  visibleNodeIds: ReadonlySet<string>
+  visibleNodeIds: ReadonlySet<string>,
+  occlusion: CubeFaceOcclusion
 ): MinecraftGeometryBone | null => {
   const looseCubes = Object.values(document.scene.nodes)
     .filter(
@@ -208,12 +271,14 @@ const createLooseBone = (
         node.parentId === null
     )
     .sort((left, right) => left.id.localeCompare(right.id))
-    .map(compileCube);
+    .map((cube) => compileCube(cube, occlusion));
   if (looseCubes.length === 0) return null;
+  const factored = factorCubeDefaults(looseCubes);
   return {
     name: 'ashfox_root',
-    pivot: [0, 0, 0],
-    cubes: looseCubes
+    ...(factored.mirror ? { mirror: factored.mirror } : {}),
+    ...(factored.inflate !== undefined ? { inflate: factored.inflate } : {}),
+    cubes: factored.cubes
   };
 };
 
@@ -223,14 +288,17 @@ export const buildMinecraftGeometry = (
 ): MinecraftGeometryFile => {
   const visibleNodeIds =
     effectivelyVisibleSceneNodeIds(document);
+  const occlusion = compileOpaqueCubeFaceOcclusion(document, {
+    groupLooseCubes: true
+  });
   const bones = Object.values(document.scene.nodes)
     .filter(
       (node): node is BoneNode =>
         node.kind === 'bone' && visibleNodeIds.has(node.id)
     )
     .sort((left, right) => left.id.localeCompare(right.id))
-    .map((bone) => compileBone(document, bone, visibleNodeIds));
-  const looseBone = createLooseBone(document, visibleNodeIds);
+    .map((bone) => compileBone(document, bone, visibleNodeIds, occlusion));
+  const looseBone = createLooseBone(document, visibleNodeIds, occlusion);
   if (looseBone) bones.unshift(looseBone);
 
   return {

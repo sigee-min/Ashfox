@@ -77,11 +77,37 @@ for (const file of htmlFiles) {
       }
     }
   }
+  const sources = [...html.matchAll(/\ssrc="([^"]+)"/g)]
+    .map((match) => match[1]);
+  for (const source of sources) {
+    if (/^(?:https?:|data:)/.test(source)) continue;
+    const pathname = source.split(/[?#]/)[0];
+    if (!pathname.startsWith('/')) continue;
+    if (!(await exists(path.join(outputRoot, pathname)))) {
+      failures.push(`${file}: missing source asset ${source}`);
+    }
+  }
   if (/localhost|127\.0\.0\.1/.test(html)) {
     failures.push(`${file}: local development origin leaked into output`);
   }
-  if (/href="(?:https:\/\/ashfox\.io)?\/workbench\/?/.test(html)) {
-    failures.push(`${file}: people must start through the agent instruction`);
+  const workbenchHrefs = hrefs.filter((href) =>
+    /^(?:https:\/\/ashfox\.io)?\/workbench\/?/.test(href)
+  );
+  const isGalleryPage = file === path.join(
+    outputRoot,
+    'gallery',
+    'index.html'
+  );
+  if (!isGalleryPage && workbenchHrefs.length > 0) {
+    failures.push(`${file}: only gallery demos may link into the workbench`);
+  }
+  if (
+    isGalleryPage &&
+    workbenchHrefs.some((href) =>
+      !/^\/workbench\/\?project=%2Fdemos%2F[a-z0-9-]+%2Fproject\.ashfox$/.test(href)
+    )
+  ) {
+    failures.push(`${file}: gallery workbench link is not a safe demo path`);
   }
   const requiredMetadata = [
     '<meta name="description"',
@@ -158,84 +184,57 @@ if (!(await exists(sitemapPath))) {
   }
 }
 
-const galleryPageCount = Math.ceil(
-  galleryContent.items.length / galleryContent.pageSize
-);
-const renderedGalleryIds = [];
-for (let pageIndex = 0; pageIndex < galleryPageCount; pageIndex += 1) {
-  const route = pageIndex === 0
-    ? '/gallery/'
-    : `/gallery/page/${pageIndex + 1}/`;
-  const galleryPath = path.join(outputRoot, route, 'index.html');
-  if (!(await exists(galleryPath))) {
-    failures.push(`gallery page is missing: ${route}`);
-    continue;
-  }
-  const html = await readFile(galleryPath, 'utf8');
-  const expectedItems = galleryContent.items.slice(
-    pageIndex * galleryContent.pageSize,
-    (pageIndex + 1) * galleryContent.pageSize
-  );
-  const ids = [...html.matchAll(/\sdata-gallery-id="([^"]+)"/g)]
-    .map((match) => match[1]);
-  renderedGalleryIds.push(...ids);
-  if (ids.length !== expectedItems.length) {
-    failures.push(
-      `${route} has ${ids.length} gallery cards, expected ${expectedItems.length}`
-    );
-  }
-  if (ids.join('|') !== expectedItems.map((item) => item.galleryId).join('|')) {
-    failures.push(`${route} gallery item order does not match the catalog`);
-  }
-  const playerCount = (
-    html.match(/\sdata-gallery-player(?:\s|>)/g) ?? []
-  ).length;
-  if (playerCount !== 1) {
-    failures.push(`${route} must contain exactly one GIF player`);
-  }
-  if (/\ssrc="[^"]+\.gif(?:[?#][^"]*)?"/.test(html)) {
-    failures.push(`${route} must start from posters without loading a GIF`);
-  }
-  for (const item of expectedItems) {
-    if (
-      !html.includes(`data-gif="${item.gif}"`) ||
-      !html.includes(item.agent.model) ||
-      !html.includes(item.agent.reasoning)
-    ) {
-      failures.push(`${route} is missing gallery metadata for ${item.galleryId}`);
-    }
-  }
-  const canonical = `https://ashfox.io${route}`;
-  if (!html.includes(`<link rel="canonical" href="${canonical}">`)) {
-    failures.push(`${route} canonical URL is incorrect`);
-  }
-  if (pageIndex > 0) {
-    const previousRoute = pageIndex === 1
-      ? '/gallery/'
-      : `/gallery/page/${pageIndex}/`;
-    if (!html.includes(
-      `<link rel="prev" href="https://ashfox.io${previousRoute}">`
-    )) {
-      failures.push(`${route} is missing its previous-page relation`);
-    }
-  }
-  if (pageIndex < galleryPageCount - 1) {
-    const nextRoute = `/gallery/page/${pageIndex + 2}/`;
-    if (!html.includes(
-      `<link rel="next" href="https://ashfox.io${nextRoute}">`
-    )) {
-      failures.push(`${route} is missing its next-page relation`);
-    }
-  }
-}
+const route = '/gallery/';
+const galleryPath = path.join(outputRoot, 'gallery', 'index.html');
+const galleryHtml = await readFile(galleryPath, 'utf8');
+const renderedGalleryIds = [
+  ...galleryHtml.matchAll(/\sdata-gallery-id="([^"]+)"/g)
+].map((match) => match[1]);
 const expectedGalleryIds = galleryContent.items.map((item) => item.galleryId);
 if (
-  new Set(renderedGalleryIds).size !== expectedGalleryIds.length ||
-  renderedGalleryIds.some((id) => !expectedGalleryIds.includes(id))
+  renderedGalleryIds.join('|') !== expectedGalleryIds.join('|') ||
+  new Set(renderedGalleryIds).size !== expectedGalleryIds.length
 ) {
-  failures.push('gallery items must be rendered exactly once across all pages');
+  failures.push('gallery items must be server-rendered once in catalog order');
+}
+if (
+  !galleryHtml.includes('data-gallery-search-input') ||
+  !galleryHtml.includes('data-gallery-filter="all"') ||
+  !galleryHtml.includes('data-gallery-results') ||
+  !galleryHtml.includes('data-gallery-empty')
+) {
+  failures.push('gallery search, filters, result count, or empty state is missing');
+}
+for (const category of galleryContent.categories) {
+  if (!galleryHtml.includes(`data-gallery-filter="${category}"`)) {
+    failures.push(`gallery category filter is missing: ${category}`);
+  }
+}
+const playerCount = (
+  galleryHtml.match(/\sdata-gallery-player(?:\s|>)/g) ?? []
+).length;
+if (playerCount !== 1) {
+  failures.push(`${route} must contain exactly one shared GIF player`);
+}
+if (/\ssrc="[^"]+\.gif(?:[?#][^"]*)?"/.test(galleryHtml)) {
+  failures.push(`${route} must start from posters without loading a GIF`);
+}
+if (
+  !galleryHtml.includes(
+    '<link rel="canonical" href="https://ashfox.io/gallery/">'
+  )
+) {
+  failures.push(`${route} canonical URL is incorrect`);
 }
 for (const item of galleryContent.items) {
+  if (
+    !galleryHtml.includes(`data-gif="${item.gif}"`) ||
+    !galleryHtml.includes(`href="${item.workbench}"`) ||
+    !galleryHtml.includes(item.agent.model) ||
+    !galleryHtml.includes(item.agent.reasoning)
+  ) {
+    failures.push(`${route} is missing gallery metadata for ${item.galleryId}`);
+  }
   const gifPath = path.join(outputRoot, item.gif);
   if (!(await exists(gifPath))) {
     failures.push(`gallery GIF is missing: ${item.gif}`);
@@ -244,6 +243,41 @@ for (const item of galleryContent.items) {
   const signature = (await readFile(gifPath)).subarray(0, 6).toString('ascii');
   if (signature !== 'GIF87a' && signature !== 'GIF89a') {
     failures.push(`gallery preview is not a GIF file: ${item.gif}`);
+  }
+  const manifestPath = path.join(outputRoot, item.manifest);
+  if (!(await exists(manifestPath))) {
+    failures.push(`gallery manifest is missing: ${item.manifest}`);
+  } else {
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+    if (manifest.schemaVersion !== 1 || manifest.id !== item.galleryId) {
+      failures.push(`gallery manifest identity is invalid: ${item.manifest}`);
+    }
+  }
+  const projectPath = path.join(outputRoot, item.project);
+  if (!(await exists(projectPath))) {
+    failures.push(`gallery project is missing: ${item.project}`);
+  } else {
+    const archive = await readFile(projectPath);
+    if (
+      archive.subarray(0, 4).toString('hex') !== '504b0304' ||
+      !archive.includes(Buffer.from('manifest.json')) ||
+      !archive.includes(Buffer.from('project.json'))
+    ) {
+      failures.push(`gallery project is not an ashfox archive: ${item.project}`);
+    }
+  }
+}
+const galleryIndexPath = path.join(outputRoot, 'demos', 'index.json');
+if (!(await exists(galleryIndexPath))) {
+  failures.push('gallery JSON index is missing');
+} else {
+  const galleryIndex = JSON.parse(await readFile(galleryIndexPath, 'utf8'));
+  const indexIds = galleryIndex.demos?.map((item) => item.id) ?? [];
+  if (
+    galleryIndex.schemaVersion !== 1 ||
+    indexIds.join('|') !== expectedGalleryIds.join('|')
+  ) {
+    failures.push('gallery JSON index does not match the catalog');
   }
 }
 

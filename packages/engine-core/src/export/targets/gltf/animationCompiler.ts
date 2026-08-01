@@ -12,6 +12,7 @@ import {
   assertProjectAnimationsExportable
 } from '../../../animation/capability';
 import { GltfBinaryWriter } from './binaryWriter';
+import { optimizeGltfAnimationSamples } from './animationOptimizer';
 import type { GltfAnimation } from './types';
 
 interface SampledChannel {
@@ -194,6 +195,32 @@ export const compileGltfAnimations = (
 ): GltfAnimation[] => {
   assertProjectAnimationsExportable(document);
   const animations: GltfAnimation[] = [];
+  const timeAccessorByValues = new Map<string, number>();
+  const outputAccessorByValues = new Map<string, number>();
+  const cachedAccessor = (
+    cache: Map<string, number>,
+    values: readonly number[],
+    componentCount: 1 | 3 | 4,
+    includeBounds: boolean,
+    encoding: 'float' | 'normalized-short' = 'float'
+  ): number => {
+    const key =
+      `${encoding}:${componentCount}:${values.map(Math.fround).join(',')}`;
+    const existing = cache.get(key);
+    if (existing !== undefined) return existing;
+    if (encoding === 'normalized-short' && componentCount !== 4) {
+      throw new Error('Normalized glTF animation outputs must be VEC4.');
+    }
+    const accessor = encoding === 'normalized-short'
+      ? options.writer.addNormalizedShortAccessor(values, 4)
+      : options.writer.addFloatAccessor(
+          values,
+          componentCount,
+          includeBounds
+        );
+    cache.set(key, accessor);
+    return accessor;
+  };
   for (const clip of Object.values(document.animations).sort((left, right) =>
     left.id.localeCompare(right.id)
   )) {
@@ -214,16 +241,25 @@ export const compileGltfAnimations = (
       const node = options.nodeIndexById.get(channel.targetNodeId);
       if (node === undefined) continue;
       const sampled = sampleChannel(channel, clip, options);
-      const input = options.writer.addFloatAccessor(
-        sampled.times,
+      const compiled = compileValues(channel, sampled.values);
+      const optimized = optimizeGltfAnimationSamples(channel, {
+        times: sampled.times,
+        values: compiled.values,
+        componentCount: compiled.componentCount,
+        interpolation: sampled.interpolation
+      });
+      const input = cachedAccessor(
+        timeAccessorByValues,
+        optimized.times,
         1,
         true
       );
-      const compiled = compileValues(channel, sampled.values);
-      const output = options.writer.addFloatAccessor(
-        compiled.values,
-        compiled.componentCount,
-        false
+      const output = cachedAccessor(
+        outputAccessorByValues,
+        optimized.values,
+        optimized.componentCount,
+        false,
+        channel.property === 'rotation' ? 'normalized-short' : 'float'
       );
       const sampler = animation.samplers.length;
       animation.samplers.push({

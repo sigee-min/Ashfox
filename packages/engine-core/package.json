@@ -8,5 +8,8 @@
   },
   "scripts": {
     "test": "node run.js"
+  },
+  "dependencies": {
+    "meshoptimizer": "^1.2.0"
   }
 }

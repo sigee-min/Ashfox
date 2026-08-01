@@ -1,0 +1,36 @@
+{
+  "$schema": "../schema.json",
+  "schemaVersion": 1,
+  "id": "ashfox-ember-sentinel",
+  "name": "Ashfox Ember Sentinel",
+  "category": "Creature",
+  "tags": ["creature", "brand", "animated", "fox", "guardian", "glTF"],
+  "featured": false,
+  "order": 50,
+  "prompt": "Create an iconic nine-tailed Ashfox guardian with forged armor, a cyan spirit heart, expressive fox features, and a supernatural halo ignition.",
+  "description": "Ashfox's orange spirit guardian combines nine articulated tails, readable fox expression, layered armor, and a cyan ember-halo transformation.",
+  "metrics": {
+    "bones": 133,
+    "cubes": 123,
+    "animations": 2,
+    "triangles": 1476,
+    "glbPrimitives": 1,
+    "semanticEyes": 2
+  },
+  "project": "project.ashfox",
+  "media": {
+    "poster": "poster.png",
+    "build": {
+      "gif": "build.gif",
+      "alt": "Ashfox Ember Sentinel being built in ashfox"
+    },
+    "animation": {
+      "gif": "animation.gif",
+      "alt": "Ashfox Ember Sentinel igniting its nine-tail spirit halo"
+    }
+  },
+  "agent": {
+    "model": "GPT-5.6 Sol",
+    "reasoning": "xhigh"
+  }
+}

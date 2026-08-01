@@ -8,6 +8,7 @@ import {
   demoBone,
   demoChannel,
   demoCube,
+  demoSurfaceEyes,
   type DemoCubeSpec,
   type DemoDefinition
 } from './demoFactory';
@@ -55,28 +56,6 @@ addBone('bone-muzzle', 'bone-head', [0, 23.4, -10.5], 'muzzle');
 addBone('bone-jaw', 'bone-muzzle', [0, 22.65, -10.2], 'jaw');
 addBone('bone-ear-left', 'bone-head', [-2.1, 26, -7.9], 'ear_left');
 addBone('bone-ear-right', 'bone-head', [2.1, 26, -7.9], 'ear_right');
-
-for (const side of ['left', 'right'] as const) {
-  const sign = side === 'left' ? -1 : 1;
-  addBone(
-    `bone-eye-${side}`,
-    'bone-head',
-    [sign * 1.45, 25.5, -10],
-    `eye_${side}`
-  );
-  addBone(
-    `bone-eyelid-${side}-upper`,
-    `bone-eye-${side}`,
-    [sign * 1.45, 25.9, -10.36],
-    `eyelid_${side}_upper`
-  );
-  addBone(
-    `bone-eyelid-${side}-lower`,
-    `bone-eye-${side}`,
-    [sign * 1.45, 25.12, -10.36],
-    `eyelid_${side}_lower`
-  );
-}
 
 const legData = [
   ['front-left', -3, -3.2],
@@ -177,61 +156,6 @@ cubes.push(
   demoCube('cube-ear-right-inner', 'bone-ear-right', pivotOf('bone-ear-right'), [2.25, 27.3, -8.65], [0.75, 3.1, 0.5], T.gold, { rotation: [0, 0, 22] })
 );
 
-for (const side of ['left', 'right'] as const) {
-  const sign = side === 'left' ? -1 : 1;
-  const eyePivot = pivotOf(`bone-eye-${side}`);
-  cubes.push(
-    demoCube(
-      `cube-eye-${side}-socket`,
-      `bone-eye-${side}`,
-      eyePivot,
-      [sign * 1.45, 25.5, -11.42],
-      [1.8, 1.65, 0.5],
-      T.hoof
-    ),
-    demoCube(
-      `cube-eye-${side}-iris`,
-      `bone-eye-${side}`,
-      eyePivot,
-      [sign * 1.45, 25.5, -11.69],
-      [1.15, 1.2, 0.22],
-      T.eye
-    ),
-    demoCube(
-      `cube-eye-${side}-pupil`,
-      `bone-eye-${side}`,
-      eyePivot,
-      [sign * 1.45, 25.45, -11.84],
-      [0.5, 0.78, 0.5],
-      T.hoof
-    ),
-    demoCube(
-      `cube-eye-${side}-glint`,
-      `bone-eye-${side}`,
-      eyePivot,
-      [sign * 1.18, 25.8, -11.96],
-      [0.5, 0.5, 0.5],
-      T.moonlight
-    ),
-    demoCube(
-      `cube-eyelid-${side}-upper`,
-      `bone-eyelid-${side}-upper`,
-      pivotOf(`bone-eyelid-${side}-upper`),
-      [sign * 1.45, 26.05, -11.97],
-      [2, 0.5, 0.5],
-      T.coat
-    ),
-    demoCube(
-      `cube-eyelid-${side}-lower`,
-      `bone-eyelid-${side}-lower`,
-      pivotOf(`bone-eyelid-${side}-lower`),
-      [sign * 1.45, 24.96, -11.97],
-      [2, 0.5, 0.5],
-      T.coat
-    )
-  );
-}
-
 for (const [id, x, z] of legData) {
   const upper = `bone-leg-${id}-upper`;
   const lower = `bone-leg-${id}-lower`;
@@ -319,21 +243,6 @@ for (const side of ['left', 'right'] as const) {
 }
 
 const idleChannels = [
-  demoChannel('kirin-idle-body', 'bone-body', 'rotation', [
-    [0, [0, 0, 0]],
-    [1.8, [1.4, 0, 0]],
-    [3.6, [0, 0, 0]]
-  ]),
-  demoChannel('kirin-idle-chest', 'bone-chest', 'scale', [
-    [0, [1, 1, 1]],
-    [1.8, [1.025, 1.04, 1.025]],
-    [3.6, [1, 1, 1]]
-  ]),
-  demoChannel('kirin-idle-head', 'bone-head', 'rotation', [
-    [0, [0, -3, 0]],
-    [1.8, [2, 4, 0]],
-    [3.6, [0, -3, 0]]
-  ]),
   demoChannel('kirin-idle-ear-left', 'bone-ear-left', 'rotation', [
     [0, [0, 0, -4]],
     [1.4, [0, 0, 10]],
@@ -379,20 +288,6 @@ for (let index = 0; index < 24; index += 3) {
 for (const side of ['left', 'right'] as const) {
   const direction = side === 'left' ? -1 : 1;
   idleChannels.push(
-    demoChannel(`kirin-blink-${side}-upper`, `bone-eyelid-${side}-upper`, 'position', [
-      [0, [0, 0, 0]],
-      [1.5, [0, 0, 0]],
-      [1.62, [0, -0.62, 0]],
-      [1.76, [0, 0, 0]],
-      [3.6, [0, 0, 0]]
-    ]),
-    demoChannel(`kirin-blink-${side}-lower`, `bone-eyelid-${side}-lower`, 'position', [
-      [0, [0, 0, 0]],
-      [1.5, [0, 0, 0]],
-      [1.62, [0, 0.52, 0]],
-      [1.76, [0, 0, 0]],
-      [3.6, [0, 0, 0]]
-    ]),
     demoChannel(`kirin-antler-glide-${side}`, `bone-antler-${side}-main-1`, 'rotation', [
       [0, [0, 0, direction * 2]],
       [1.8, [0, direction * 2, direction * -2]],
@@ -407,9 +302,9 @@ const awakenChannels = [
     [1.2, [0, 1.4, 0]],
     [2.4, [0, 0, 0]]
   ]),
-  demoChannel('kirin-awaken-head', 'bone-head', 'rotation', [
-    [0, [18, 0, 0]],
-    [0.8, [-12, 0, 0]],
+  demoChannel('kirin-awaken-face-surface', 'bone:kirin.face.surface', 'position', [
+    [0, [0, 0, 0]],
+    [1.2, [0, 1.4, 0]],
     [2.4, [0, 0, 0]]
   ]),
   demoChannel('kirin-awaken-jaw', 'bone-jaw', 'rotation', [
@@ -450,6 +345,7 @@ export const MOONVEIL_KIRIN_DEMO: DemoDefinition = {
   name: 'Moonveil · Celestial Kirin',
   modelPath: 'moonveil_celestial_kirin',
   initialSelectionId: null,
+  visibleEyeCount: 2,
   intent: {
     subject: 'celestial fantasy kirin',
     grounding: 'free',
@@ -459,6 +355,7 @@ export const MOONVEIL_KIRIN_DEMO: DemoDefinition = {
       'precise surface-bound eyes'
     ]
   },
+  surfacePixelDensity: 2,
   textures: [
     {
       id: T.coat,
@@ -483,7 +380,7 @@ export const MOONVEIL_KIRIN_DEMO: DemoDefinition = {
     {
       id: T.eye,
       name: 'Living eyes',
-      background: '#123c59'
+      background: '#50c5e5'
     },
     {
       id: T.aura,
@@ -491,6 +388,14 @@ export const MOONVEIL_KIRIN_DEMO: DemoDefinition = {
       background: '#3a1769'
     }
   ],
+  parts: demoSurfaceEyes(
+    'kirin.face.surface',
+    [-5, 50, -25],
+    [10, 3],
+    T.coat,
+    [{ id: 'kirin.eye.left', anchor: [-3, 51, -25], size: [4, 3], irisMaterialId: T.eye },
+      { id: 'kirin.eye.right', anchor: [3, 51, -25], size: [4, 3], irisMaterialId: T.eye }]
+  ),
   bones,
   cubes,
   animations: [

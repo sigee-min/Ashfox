@@ -65,6 +65,8 @@ fs.writeFileSync(
     '/home/ / 301',
     '/workbench /workbench/ 301',
     '/docs /docs/ 301',
+    '/gallery /gallery/ 301',
+    '/gallery/page/* /gallery/ 301',
     ''
   ].join('\n')
 );
@@ -122,6 +124,12 @@ fs.writeFileSync(
 
 /media/*
   Cache-Control: public, max-age=604800
+
+/demos/*
+  Cache-Control: public, max-age=3600, must-revalidate
+
+/demos/*.ashfox
+  Content-Type: application/vnd.ashfox.project+zip
 `
 );
 

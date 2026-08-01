@@ -1,6 +1,6 @@
 import type { ProjectDocument } from '../../../model';
 import type { InvariantFinding } from '../../../validation/types';
-import { createJsonExportFile } from '../../json';
+import { createCompactJsonExportFile } from '../../json';
 import { createExportBundle } from '../../pipeline/createBundle';
 import type {
   BinaryExportFile,
@@ -22,7 +22,7 @@ export const createGltfBundle = (
   const binaryPath = `${profile.modelPath}.bin`;
   const modelFile =
     profile.container === 'gltf'
-      ? createJsonExportFile(
+      ? createCompactJsonExportFile(
           'model',
           modelPath,
           compiled.document,

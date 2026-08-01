@@ -1,76 +1,239 @@
-export const showcaseCatalog = [
-  {
-    id: 'ironroot-tractor',
-    name: 'Ironroot Tractor',
-    category: 'Machine',
-    prompt:
-      'Create a high-quality Minecraft-style arcane field tractor, fully textured, rigged, animated, and ready for a game.',
-    description:
-      'An articulated field machine with driven wheels and a mechanical work cycle.',
-    detail: '108 bones · 125 cubes',
-    poster: '/media/showcase/ironroot-tractor.jpg',
-    build: {
-      gif: '/media/showcase/ironroot-tractor-build.gif',
-      video: '/media/showcase/ironroot-tractor-build-67d5899a68.mp4',
-      alt: 'Ironroot Tractor being built in ashfox'
-    },
-    animation: {
-      gif: '/media/showcase/ironroot-tractor-animation.gif',
-      alt: 'Ironroot Tractor animation in ashfox'
-    },
-    agent: {
-      model: 'GPT-5.6 Sol',
-      reasoning: 'xhigh'
-    }
-  },
-  {
-    id: 'aether-spear-rocket',
-    name: 'Aether Spear Rocket',
-    category: 'Vehicle',
-    prompt:
-      'Create a high-quality Minecraft-style runic exploration rocket, fully textured, rigged, animated, and ready for a game.',
-    description:
-      'A runic exploration rocket with staged launch motion and an engine plume.',
-    detail: '131 bones · 166 cubes',
-    poster: '/media/showcase/aether-spear-rocket.jpg',
-    build: {
-      gif: '/media/showcase/aether-spear-rocket-build.gif',
-      video: '/media/showcase/aether-spear-rocket-build-8e87bfcfca.mp4',
-      alt: 'Aether Spear Rocket being built in ashfox'
-    },
-    animation: {
-      gif: '/media/showcase/aether-spear-rocket-animation.gif',
-      video: '/media/showcase/aether-spear-rocket-animation-e7407f0759.mp4',
-      alt: 'Aether Spear Rocket launch animation in ashfox'
-    },
-    agent: {
-      model: 'GPT-5.6 Sol',
-      reasoning: 'xhigh'
-    }
-  },
-  {
-    id: 'moonveil-kirin',
-    name: 'Moonveil Kirin',
-    category: 'Creature',
-    prompt:
-      'Create a high-quality Minecraft-style fantasy kirin, fully textured, rigged, animated, and ready for a game.',
-    description:
-      'A fantasy creature with expressive facial detail and a complete idle rig.',
-    detail: '113 bones · 131 cubes',
-    poster: '/media/showcase/moonveil-kirin.jpg',
-    build: {
-      gif: '/media/showcase/moonveil-kirin-build.gif',
-      video: '/media/showcase/moonveil-kirin-build-5e7b88c4c4.mp4',
-      alt: 'Moonveil Kirin being built in ashfox'
-    },
-    animation: {
-      gif: '/media/showcase/moonveil-kirin-animation.gif',
-      video: '/media/showcase/moonveil-kirin-animation-01e622fc44.mp4',
-      alt: 'Moonveil Kirin animation in ashfox'
-    },
-    agent: {
-      model: 'GPT-5.6 Sol',
-      reasoning: 'xhigh'
-    }
+import {
+  readdir,
+  readFile,
+  stat
+} from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const sourceDirectory = path.dirname(fileURLToPath(import.meta.url));
+
+export const gallerySourceRoot = path.resolve(
+  sourceDirectory,
+  '../../..',
+  'examples',
+  'gallery'
+);
+
+const isRecord = (value) =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const requiredString = (value, label) => {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error(`${label} must be a non-empty string.`);
   }
-];
+  return value.trim();
+};
+
+const requiredPositiveInteger = (value, label) => {
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(`${label} must be a non-negative integer.`);
+  }
+  return value;
+};
+
+const localFileName = (value, label) => {
+  const fileName = requiredString(value, label);
+  if (
+    path.basename(fileName) !== fileName ||
+    !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(fileName)
+  ) {
+    throw new Error(`${label} must name a file in the demo folder.`);
+  }
+  return fileName;
+};
+
+const assertFile = async (demoRoot, fileName, label) => {
+  const target = path.join(demoRoot, fileName);
+  try {
+    if (!(await stat(target)).isFile()) throw new Error();
+  } catch {
+    throw new Error(`${label} is missing: ${target}`);
+  }
+};
+
+const publicFile = (id, fileName) =>
+  `/demos/${encodeURIComponent(id)}/${encodeURIComponent(fileName)}`;
+
+const loadDemo = async (directoryName) => {
+  const demoRoot = path.join(gallerySourceRoot, directoryName);
+  const manifestPath = path.join(demoRoot, 'demo.json');
+  let manifest;
+  try {
+    manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+  } catch (error) {
+    throw new Error(
+      `Cannot read gallery manifest ${manifestPath}: ${error.message}`
+    );
+  }
+  if (!isRecord(manifest) || manifest.schemaVersion !== 1) {
+    throw new Error(`${manifestPath} must use gallery schemaVersion 1.`);
+  }
+
+  const id = requiredString(manifest.id, `${manifestPath} id`);
+  const featured = manifest.featured === true;
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id) || id !== directoryName) {
+    throw new Error(
+      `${manifestPath} id must be a lowercase slug matching its folder.`
+    );
+  }
+  if (!Array.isArray(manifest.tags) || manifest.tags.length === 0) {
+    throw new Error(`${manifestPath} tags must be a non-empty array.`);
+  }
+  const tags = manifest.tags.map((tag, index) =>
+    requiredString(tag, `${manifestPath} tags[${index}]`)
+  );
+  if (new Set(tags.map((tag) => tag.toLocaleLowerCase())).size !== tags.length) {
+    throw new Error(`${manifestPath} tags must be unique.`);
+  }
+  if (!isRecord(manifest.metrics)) {
+    throw new Error(`${manifestPath} metrics must be an object.`);
+  }
+  if (!isRecord(manifest.media) || !isRecord(manifest.media.build)) {
+    throw new Error(`${manifestPath} media.build must be an object.`);
+  }
+  if (!isRecord(manifest.media.animation)) {
+    throw new Error(`${manifestPath} media.animation must be an object.`);
+  }
+  if (!isRecord(manifest.agent)) {
+    throw new Error(`${manifestPath} agent must be an object.`);
+  }
+
+  const files = {
+    project: localFileName(manifest.project, `${manifestPath} project`),
+    poster: localFileName(manifest.media.poster, `${manifestPath} media.poster`),
+    buildGif: localFileName(manifest.media.build.gif, `${manifestPath} media.build.gif`),
+    buildVideo: manifest.media.build.video === undefined
+      ? null
+      : localFileName(
+          manifest.media.build.video,
+          `${manifestPath} media.build.video`
+        ),
+    animationGif: localFileName(
+      manifest.media.animation.gif,
+      `${manifestPath} media.animation.gif`
+    ),
+    animationVideo: manifest.media.animation.video === undefined
+      ? null
+      : localFileName(
+          manifest.media.animation.video,
+          `${manifestPath} media.animation.video`
+        )
+  };
+  await Promise.all(
+    Object.entries(files)
+      .filter(([, fileName]) => fileName !== null)
+      .map(([key, fileName]) =>
+        assertFile(demoRoot, fileName, `${manifestPath} ${key}`)
+      )
+  );
+  if (featured && files.buildVideo === null) {
+    throw new Error(`${manifestPath} featured demos require media.build.video.`);
+  }
+
+  const metrics = {
+    bones: requiredPositiveInteger(
+      manifest.metrics.bones,
+      `${manifestPath} metrics.bones`
+    ),
+    cubes: requiredPositiveInteger(
+      manifest.metrics.cubes,
+      `${manifestPath} metrics.cubes`
+    ),
+    animations: requiredPositiveInteger(
+      manifest.metrics.animations,
+      `${manifestPath} metrics.animations`
+    ),
+    triangles: requiredPositiveInteger(
+      manifest.metrics.triangles,
+      `${manifestPath} metrics.triangles`
+    ),
+    glbPrimitives: requiredPositiveInteger(
+      manifest.metrics.glbPrimitives,
+      `${manifestPath} metrics.glbPrimitives`
+    ),
+    semanticEyes: requiredPositiveInteger(
+      manifest.metrics.semanticEyes,
+      `${manifestPath} metrics.semanticEyes`
+    )
+  };
+  const detail = [
+    `${metrics.bones} bones`,
+    `${metrics.cubes} cubes`,
+    `${metrics.triangles.toLocaleString('en-US')} tris`,
+    `${metrics.glbPrimitives} GLB ${metrics.glbPrimitives === 1 ? 'primitive' : 'primitives'}`,
+    ...(metrics.semanticEyes > 0
+      ? [`${metrics.semanticEyes} semantic ${metrics.semanticEyes === 1 ? 'eye' : 'eyes'}`]
+      : [])
+  ].join(' · ');
+
+  return {
+    schemaVersion: 1,
+    id,
+    name: requiredString(manifest.name, `${manifestPath} name`),
+    category: requiredString(manifest.category, `${manifestPath} category`),
+    tags,
+    featured,
+    order: requiredPositiveInteger(manifest.order, `${manifestPath} order`),
+    prompt: requiredString(manifest.prompt, `${manifestPath} prompt`),
+    description: requiredString(
+      manifest.description,
+      `${manifestPath} description`
+    ),
+    detail,
+    metrics,
+    manifest: publicFile(id, 'demo.json'),
+    project: publicFile(id, files.project),
+    workbench: `/workbench/?project=${encodeURIComponent(publicFile(id, files.project))}`,
+    poster: publicFile(id, files.poster),
+    build: {
+      gif: publicFile(id, files.buildGif),
+      ...(files.buildVideo
+        ? { video: publicFile(id, files.buildVideo) }
+        : {}),
+      alt: requiredString(
+        manifest.media.build.alt,
+        `${manifestPath} media.build.alt`
+      )
+    },
+    animation: {
+      gif: publicFile(id, files.animationGif),
+      ...(files.animationVideo
+        ? { video: publicFile(id, files.animationVideo) }
+        : {}),
+      alt: requiredString(
+        manifest.media.animation.alt,
+        `${manifestPath} media.animation.alt`
+      )
+    },
+    agent: {
+      model: requiredString(manifest.agent.model, `${manifestPath} agent.model`),
+      reasoning: requiredString(
+        manifest.agent.reasoning,
+        `${manifestPath} agent.reasoning`
+      )
+    }
+  };
+};
+
+const loadShowcaseCatalog = async () => {
+  const directories = (await readdir(gallerySourceRoot, {
+    withFileTypes: true
+  }))
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
+    .map((entry) => entry.name);
+  const catalog = await Promise.all(directories.map(loadDemo));
+  const ids = new Set(catalog.map((item) => item.id));
+  const orders = new Set(catalog.map((item) => item.order));
+  if (ids.size !== catalog.length) {
+    throw new Error('Gallery demo ids must be unique.');
+  }
+  if (orders.size !== catalog.length) {
+    throw new Error('Gallery demo order values must be unique.');
+  }
+  return catalog.sort(
+    (left, right) => left.order - right.order || left.name.localeCompare(right.name)
+  );
+};
+
+export const showcaseCatalog = await loadShowcaseCatalog();

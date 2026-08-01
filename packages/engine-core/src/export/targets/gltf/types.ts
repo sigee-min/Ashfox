@@ -13,15 +13,28 @@ export interface GltfBufferView {
   buffer: number;
   byteOffset: number;
   byteLength: number;
+  byteStride?: number;
   target?: 34962 | 34963;
+  extensions?: {
+    EXT_meshopt_compression: {
+      buffer: number;
+      byteOffset: number;
+      byteLength: number;
+      byteStride: number;
+      count: number;
+      mode: 'ATTRIBUTES' | 'TRIANGLES' | 'INDICES';
+      filter?: 'NONE' | 'OCTAHEDRAL' | 'QUATERNION' | 'EXPONENTIAL';
+    };
+  };
 }
 
 export interface GltfAccessor {
   bufferView: number;
   byteOffset?: number;
-  componentType: 5123 | 5125 | 5126;
+  componentType: 5121 | 5122 | 5123 | 5125 | 5126;
+  normalized?: boolean;
   count: number;
-  type: 'SCALAR' | 'VEC2' | 'VEC3' | 'VEC4';
+  type: 'SCALAR' | 'VEC2' | 'VEC3' | 'VEC4' | 'MAT4';
   min?: number[];
   max?: number[];
 }
@@ -31,6 +44,8 @@ export interface GltfPrimitive {
     POSITION: number;
     NORMAL?: number;
     TEXCOORD_0?: number;
+    JOINTS_0?: number;
+    WEIGHTS_0?: number;
   };
   indices?: number;
   material?: number;
@@ -45,6 +60,7 @@ export interface GltfMesh {
 export interface GltfNode {
   name?: string;
   mesh?: number;
+  skin?: number;
   children?: number[];
   translation?: [number, number, number];
   rotation?: [number, number, number, number];
@@ -55,6 +71,13 @@ export interface GltfNode {
     visible: boolean;
     ashfoxTags?: string[];
   };
+}
+
+export interface GltfSkin {
+  name?: string;
+  inverseBindMatrices?: number;
+  skeleton?: number;
+  joints: number[];
 }
 
 export interface GltfExternalImage {
@@ -124,6 +147,10 @@ export interface GltfAnimation {
 
 export interface GltfDocument {
   asset: GltfAsset;
+  extensionsUsed?: Array<'EXT_meshopt_compression' | 'KHR_mesh_quantization'>;
+  extensionsRequired?: Array<
+    'EXT_meshopt_compression' | 'KHR_mesh_quantization'
+  >;
   scene: 0;
   scenes: Array<{ name?: string; nodes: number[] }>;
   nodes: GltfNode[];
@@ -131,6 +158,7 @@ export interface GltfDocument {
   bufferViews?: GltfBufferView[];
   accessors?: GltfAccessor[];
   meshes?: GltfMesh[];
+  skins?: GltfSkin[];
   images?: GltfImage[];
   samplers?: GltfSampler[];
   textures?: GltfTexture[];

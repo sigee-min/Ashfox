@@ -38,7 +38,7 @@ export const serializeAnimationVector = (
 
 export const formatAnimationTimestamp = (timeSeconds: number): string => {
   const rounded = Number(timeSeconds.toFixed(4));
-  return Number.isInteger(rounded) ? `${rounded}.0` : String(rounded);
+  return String(rounded);
 };
 
 export const containsMolang = (value: AnimationVec3): boolean =>

@@ -215,7 +215,7 @@ export const modelPartSpecSchema = {
     {
       type: 'object',
       description:
-        'Feature. A zero-depth surface marking. New: parentPartId, materialId, motif, face, anchor, and size. Existing same-kind patch: only changed fields. It paints the generated surface and never creates a protruding cube.',
+        'Feature. The only valid representation for a visible eye: a zero-depth surface marking. New: parentPartId, materialId, motif, face, anchor, and size. Existing same-kind patch: only changed fields. It paints the generated surface and never creates a protruding cube; eye, iris, pupil, and glint geometry parts are rejected.',
       properties: {
         ...commonProperties,
         joint: {

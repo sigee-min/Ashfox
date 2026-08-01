@@ -8,6 +8,7 @@ import type {
   MinecraftAnimationKeyframe,
   MinecraftAnimationVector
 } from './minecraftAnimationTypes';
+import { optimizeMinecraftAnimationChannel } from './minecraftAnimationOptimizer';
 import {
   formatAnimationTimestamp,
   serializeAnimationScalar,
@@ -70,8 +71,12 @@ export const compileMinecraftAnimationChannel = (
   channel: TransformChannel,
   options: MinecraftAnimationCompileOptions
 ): MinecraftAnimationChannel => {
-  const result: MinecraftAnimationChannel = {};
-  for (const keyframe of channel.keys) {
+  const optimized = optimizeMinecraftAnimationChannel(channel);
+  if (optimized.constant) {
+    return serializeAnimationVector(optimized.constant, channel.property);
+  }
+  const result: Extract<MinecraftAnimationChannel, Record<string, unknown>> = {};
+  for (const keyframe of optimized.keys) {
     result[formatAnimationTimestamp(keyframe.timeSeconds)] = compileKeyframe(
       keyframe,
       channel.property,

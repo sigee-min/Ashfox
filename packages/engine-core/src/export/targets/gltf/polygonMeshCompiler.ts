@@ -5,12 +5,13 @@ import type {
   Vec3
 } from '../../../model';
 import { compileGltfPrimitive } from './primitiveCompiler';
+import type { GltfPrimitiveData } from './primitiveData';
 import {
   multiplyVec3,
   subtractVec3
 } from './sceneMath';
 import type { GltfSceneCompileOptions } from './sceneTypes';
-import type { GltfMesh, GltfPrimitive } from './types';
+import type { GltfMesh } from './types';
 
 const normalize = (value: Vec3): [number, number, number] => {
   const length = Math.hypot(value[0], value[1], value[2]);
@@ -121,7 +122,29 @@ export const compileGltfPolygonMesh = (
   mesh: MeshNode,
   options: GltfSceneCompileOptions
 ): GltfMesh => {
-  const primitives: GltfPrimitive[] = [];
+  const data = compileGltfPolygonPrimitiveData(document, mesh, options);
+  return {
+    name: mesh.name,
+    primitives: data.map((primitive) =>
+      compileGltfPrimitive(
+        options.writer,
+        primitive.positions,
+        primitive.normals,
+        primitive.uvs,
+        primitive.joints,
+        primitive.material,
+        primitive.indices
+      )
+    )
+  };
+};
+
+export const compileGltfPolygonPrimitiveData = (
+  document: ProjectDocument,
+  mesh: MeshNode,
+  options: GltfSceneCompileOptions
+): GltfPrimitiveData[] => {
+  const primitives: GltfPrimitiveData[] = [];
   const pivot = mesh.transform.pivot;
   for (const face of Object.values(mesh.faces).sort((left, right) =>
     left.id.localeCompare(right.id)
@@ -147,21 +170,16 @@ export const compileGltfPolygonMesh = (
         })
       : undefined;
     const indices = triangulatePolygon(vertexPositions, normal);
-    primitives.push(
-      compileGltfPrimitive(
-        options.writer,
-        positions,
-        normals,
-        uvs,
-        face.textureId === null
-          ? undefined
-          : options.materialByTextureId.get(face.textureId),
-        indices
-      )
-    );
+    const material = face.textureId === null
+      ? undefined
+      : options.materialByTextureId.get(face.textureId);
+    primitives.push({
+      positions,
+      normals,
+      ...(uvs ? { uvs } : {}),
+      ...(material === undefined ? {} : { material }),
+      indices
+    });
   }
-  return {
-    name: mesh.name,
-    primitives
-  };
+  return primitives;
 };

@@ -18,6 +18,7 @@
     "build:site": "npm --workspace @ashfox/site run build",
     "build:web": "npm --workspace @ashfox/web run build",
     "build:blockbench": "node scripts/build-blockbench.js",
+    "gallery:projects": "node scripts/generate-gallery-projects.js",
     "preview:public": "node scripts/serve-public.js",
     "dev:web": "npm --workspace @ashfox/web run dev",
     "test:web": "npm --workspace @ashfox/web run test && npm run test:engine-core",

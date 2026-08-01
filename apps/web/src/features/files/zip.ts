@@ -1,3 +1,5 @@
+import { deflateSync, inflateSync } from 'fflate';
+
 const CRC_TABLE = Array.from({ length: 256 }, (_, index) => {
   let value = index;
   for (let bit = 0; bit < 8; bit += 1) {
@@ -25,6 +27,8 @@ interface EncodedEntry extends ZipEntry {
   name: Uint8Array;
   crc: number;
   offset: number;
+  compressedBytes: Uint8Array;
+  method: 0 | 8;
 }
 
 const writeUint16 = (
@@ -76,9 +80,9 @@ const localHeader = (entry: EncodedEntry): Uint8Array => {
   writeUint32(header, 0, 0x04034b50);
   writeUint16(header, 4, 20);
   writeUint16(header, 6, 0x0800);
-  writeUint16(header, 8, 0);
+  writeUint16(header, 8, entry.method);
   writeUint32(header, 14, entry.crc);
-  writeUint32(header, 18, entry.bytes.length);
+  writeUint32(header, 18, entry.compressedBytes.length);
   writeUint32(header, 22, entry.bytes.length);
   writeUint16(header, 26, entry.name.length);
   header.set(entry.name, 30);
@@ -91,9 +95,9 @@ const centralHeader = (entry: EncodedEntry): Uint8Array => {
   writeUint16(header, 4, 20);
   writeUint16(header, 6, 20);
   writeUint16(header, 8, 0x0800);
-  writeUint16(header, 10, 0);
+  writeUint16(header, 10, entry.method);
   writeUint32(header, 16, entry.crc);
-  writeUint32(header, 20, entry.bytes.length);
+  writeUint32(header, 20, entry.compressedBytes.length);
   writeUint32(header, 24, entry.bytes.length);
   writeUint16(header, 28, entry.name.length);
   writeUint32(header, 42, entry.offset);
@@ -118,18 +122,24 @@ export const createStoredZip = (
 ): Uint8Array => {
   let offset = 0;
   const encoded: EncodedEntry[] = entries.map((entry) => {
+    const deflated = deflateSync(entry.bytes, { level: 9 });
+    const compressedBytes = deflated.length < entry.bytes.length
+      ? deflated
+      : entry.bytes;
     const value: EncodedEntry = {
       ...entry,
       name: new TextEncoder().encode(entry.path),
       crc: crc32(entry.bytes),
-      offset
+      offset,
+      compressedBytes,
+      method: compressedBytes === entry.bytes ? 0 : 8
     };
-    offset += 30 + value.name.length + value.bytes.length;
+    offset += 30 + value.name.length + value.compressedBytes.length;
     return value;
   });
   const localParts = encoded.flatMap((entry) => [
     localHeader(entry),
-    entry.bytes
+    entry.compressedBytes
   ]);
   const centralParts = encoded.map(centralHeader);
   const central = concatBytes(centralParts);
@@ -209,6 +219,7 @@ export const readStoredZip = (
 
   const entries: ZipEntry[] = [];
   const paths = new Set<string>();
+  let uncompressedBytes = 0;
   let cursor = centralOffset;
   for (let index = 0; index < entryCount; index += 1) {
     if (readUint32(bytes, cursor) !== CENTRAL_SIGNATURE) {
@@ -227,12 +238,14 @@ export const readStoredZip = (
       cursor + 46 + nameLength + extraLength + commentLength;
     if (
       (flags & ~0x0800) !== 0 ||
-      method !== 0 ||
-      compressedSize !== size ||
+      (method !== 0 && method !== 8) ||
+      (method === 0 && compressedSize !== size) ||
+      size > MAX_ZIP_BYTES - uncompressedBytes ||
       nextCursor > endOffset
     ) {
-      throw new Error('ZIP entries must be stored without compression.');
+      throw new Error('ZIP entry compression metadata is invalid.');
     }
+    uncompressedBytes += size;
     const path = decodePath(
       bytes.subarray(cursor + 46, cursor + 46 + nameLength)
     );
@@ -262,11 +275,22 @@ export const readStoredZip = (
     );
     const dataStart =
       localOffset + 30 + localNameLength + localExtraLength;
-    const dataEnd = dataStart + size;
+    const dataEnd = dataStart + compressedSize;
     if (localPath !== path || dataEnd > centralOffset) {
       throw new Error(`ZIP local entry "${path}" is invalid.`);
     }
-    const entryBytes = bytes.slice(dataStart, dataEnd);
+    const compressedBytes = bytes.slice(dataStart, dataEnd);
+    let entryBytes: Uint8Array;
+    try {
+      entryBytes = method === 8
+        ? inflateSync(compressedBytes, { out: new Uint8Array(size) })
+        : compressedBytes;
+    } catch {
+      throw new Error(`ZIP entry "${path}" failed to decompress.`);
+    }
+    if (entryBytes.length !== size) {
+      throw new Error(`ZIP entry "${path}" has an invalid size.`);
+    }
     if (crc32(entryBytes) !== expectedCrc) {
       throw new Error(`ZIP entry "${path}" failed its checksum.`);
     }

@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useEffect,
   useMemo,
   useReducer,
   useState
@@ -39,25 +40,45 @@ import {
   createProjectSessionState,
   projectSessionReducer
 } from '../state/projectSessionReducer';
+import {
+  loadGalleryProject,
+  resolveGalleryProjectUrl
+} from './galleryProjectLoader';
+
+export type GalleryProjectLoadPhase =
+  'idle' | 'loading' | 'loaded' | 'error';
+
+interface GalleryProjectLoadStatus {
+  phase: GalleryProjectLoadPhase;
+  message: string;
+}
 
 const createInitialProject = () => {
   const search =
     typeof window === 'undefined' ? '' : window.location.search;
   const definition = resolveDemoDefinition(search);
+  const projectUrl = typeof window === 'undefined'
+    ? null
+    : resolveGalleryProjectUrl(search, window.location.origin);
   return {
     definition,
+    projectUrl,
     history: definition
       ? createDemoHistory(definition)
       : createHistoryState(
           createBlankWorkbenchProject(new Date().toISOString())
         ),
-    isShowcase: definition !== null
+    isShowcase: definition !== null || projectUrl !== null
   };
 };
 
 export const useWorkbenchProjectSession = () => {
   const [operationLease] = useState(createOperationLease);
   const [initialProject] = useState(createInitialProject);
+  const [galleryProjectStatus, setGalleryProjectStatus] =
+    useState<GalleryProjectLoadStatus>(() => initialProject.projectUrl
+      ? { phase: 'loading', message: 'Opening demo project…' }
+      : { phase: 'idle', message: '' });
   const [project, dispatchProject] = useReducer(
     projectSessionReducer,
     initialProject,
@@ -124,6 +145,39 @@ export const useWorkbenchProjectSession = () => {
     });
   }, []);
 
+  useEffect(() => {
+    if (!initialProject.projectUrl) return undefined;
+    const controller = new AbortController();
+    setGalleryProjectStatus({
+      phase: 'loading',
+      message: 'Opening demo project…'
+    });
+    void loadGalleryProject(
+      initialProject.projectUrl,
+      controller.signal
+    ).then((archive) => {
+      replaceProject(archive);
+      setGalleryProjectStatus({
+        phase: 'loaded',
+        message: 'Demo project opened.'
+      });
+    }).catch((error: unknown) => {
+      if (
+        controller.signal.aborted ||
+        (error instanceof DOMException && error.name === 'AbortError')
+      ) {
+        return;
+      }
+      setGalleryProjectStatus({
+        phase: 'error',
+        message: error instanceof Error
+          ? `Could not open demo: ${error.message}`
+          : 'Could not open demo project.'
+      });
+    });
+    return () => controller.abort();
+  }, [initialProject.projectUrl, replaceProject]);
+
   return {
     initialSelectionId:
       initialProject.definition?.initialSelectionId ?? null,
@@ -136,6 +190,7 @@ export const useWorkbenchProjectSession = () => {
     report,
     buildCaptureDocuments,
     storageStatus,
+    galleryProjectStatus,
     operationLease,
     dispatchProject,
     dispatchUserMutation,

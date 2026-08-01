@@ -106,7 +106,7 @@ export const agentManifest = {
       radial:
         'Axis-aligned disk or ring: center, axis, outer radius, optional inner radius, depth.',
       feature:
-        'Zero-depth eye marking: parentPartId, motif:"eye", face, anchor, and size of at least [4,3]. materialId is the iris base color. ashfox derives the outline, pupil, highlight, parent-surface projection, and UV pixels; never build an eye by stacking cubes.'
+        'The only valid eye representation is a zero-depth marking: parentPartId, motif:"eye", face, anchor, and size of at least [4,3]. materialId is the iris base color. ashfox derives the outline, pupil, highlight, parent-surface projection, and UV pixels. Geometry part IDs describing eyes, irises, pupils, or glints are rejected.'
     },
     joints:
       'Omit joint for rigid attachment. A hinge rotates around one declared axis; a ball joint rotates around XYZ. Attachment coordinates and pivots are never authored.',
@@ -135,7 +135,7 @@ export const agentManifest = {
     structure:
       'Prioritize a recognizable silhouette, correct anatomy or construction, believable proportions, connected major masses, readable focal features, and useful articulation before small detail.',
     fidelity:
-      'Follow the requested subject rather than substituting a generic humanoid or generic vehicle. For creatures, preserve body plan, limb placement, head-to-body relationship, posture, and defining anatomy. Represent each visible eye with one parent-bound eye feature, not iris, pupil, highlight, or socket cubes.',
+      'Follow the requested subject rather than substituting a generic humanoid or generic vehicle. For creatures, preserve body plan, limb placement, head-to-body relationship, posture, and defining anatomy. Represent each visible eye with exactly one parent-bound eye feature. Iris, pupil, highlight, glint, eyeball, and socket cube constructions fail the modeling contract.',
     review:
       'Machine checks prove structure and export compatibility, not identity or appeal. Reject missing defining parts, floating pieces, swallowed geometry, accidental symmetry, unintended clipping, bad pivots, loop snaps, and details unreadable at gameplay distance.'
   },

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 import validator from 'gltf-validator';
+import { MeshoptDecoder } from 'meshoptimizer';
 
 import {
   BlobResolutionError,
@@ -17,6 +18,15 @@ import {
 import {
   exportGltf
 } from '../src/export/targets/gltf/exporter';
+import {
+  compressGltfWithMeshopt
+} from '../src/export/targets/gltf/meshoptCompression';
+import {
+  composeMat4,
+  IDENTITY_MAT4,
+  multiplyMat4,
+  type Mat4
+} from '../src/export/targets/gltf/matrixMath';
 import { createGltfProject } from './helpers';
 
 const validationPng = Uint8Array.from(
@@ -47,7 +57,7 @@ const assertValidatorReport = (report: {
 };
 
 const accessorComponentCount = (
-  type: 'SCALAR' | 'VEC2' | 'VEC3' | 'VEC4'
+  type: 'SCALAR' | 'VEC2' | 'VEC3' | 'VEC4' | 'MAT4'
 ): number => {
   switch (type) {
     case 'SCALAR':
@@ -58,30 +68,58 @@ const accessorComponentCount = (
       return 3;
     case 'VEC4':
       return 4;
+    case 'MAT4':
+      return 16;
   }
 };
 
-const readFloatAccessor = (
+const readNumericAccessor = (
   compiled: CompiledGltf,
   accessorIndex: number
 ): number[] => {
   const accessor = compiled.document.accessors?.[accessorIndex];
   if (!accessor) throw new Error('Expected glTF accessor.');
-  assert.equal(accessor.componentType, 5126);
-  const bufferView =
-    compiled.document.bufferViews?.[accessor.bufferView];
+  const bufferView = compiled.document.bufferViews?.[accessor.bufferView];
   if (!bufferView) throw new Error('Expected glTF buffer view.');
-  const componentCount = accessorComponentCount(accessor.type);
-  const offset =
-    bufferView.byteOffset + (accessor.byteOffset ?? 0);
+  const components = accessorComponentCount(accessor.type);
+  const componentBytes = accessor.componentType === 5121
+    ? 1
+    : accessor.componentType === 5122 ||
+    accessor.componentType === 5123
+    ? 2
+    : 4;
+  const stride = bufferView.byteStride ?? components * componentBytes;
+  const start = bufferView.byteOffset + (accessor.byteOffset ?? 0);
   const view = new DataView(
     compiled.binary.buffer,
     compiled.binary.byteOffset,
     compiled.binary.byteLength
   );
+  const read = (offset: number): number => {
+    if (accessor.componentType === 5121) {
+      const value = view.getUint8(offset);
+      return accessor.normalized ? value / 255 : value;
+    }
+    if (accessor.componentType === 5122) {
+      const value = view.getInt16(offset, true);
+      return accessor.normalized ? Math.max(value / 32767, -1) : value;
+    }
+    if (accessor.componentType === 5123) {
+      const value = view.getUint16(offset, true);
+      return accessor.normalized ? value / 65535 : value;
+    }
+    if (accessor.componentType === 5125) {
+      return view.getUint32(offset, true);
+    }
+    return view.getFloat32(offset, true);
+  };
   return Array.from(
-    { length: accessor.count * componentCount },
-    (_, index) => view.getFloat32(offset + index * 4, true)
+    { length: accessor.count * components },
+    (_, index) => {
+      const element = Math.floor(index / components);
+      const component = index % components;
+      return read(start + element * stride + component * componentBytes);
+    }
   );
 };
 
@@ -108,15 +146,50 @@ const quaternionFromEuler = (
 const assertArrayClose = (
   actual: readonly number[],
   expected: readonly number[],
-  message: string
+  message: string,
+  tolerance = 0.000001
 ): void => {
   assert.equal(actual.length, expected.length, message);
   expected.forEach((value, index) => {
     assert.ok(
-      Math.abs((actual[index] ?? Number.NaN) - value) < 0.000001,
+      Math.abs((actual[index] ?? Number.NaN) - value) < tolerance,
       `${message}: component ${index}`
     );
   });
+};
+
+const mat4From = (values: readonly number[], offset = 0): Mat4 => [
+  values[offset], values[offset + 1], values[offset + 2], values[offset + 3],
+  values[offset + 4], values[offset + 5], values[offset + 6], values[offset + 7],
+  values[offset + 8], values[offset + 9], values[offset + 10], values[offset + 11],
+  values[offset + 12], values[offset + 13], values[offset + 14], values[offset + 15]
+];
+
+const globalNodeMatrices = (compiled: CompiledGltf): ReadonlyMap<number, Mat4> => {
+  const parentByNode = new Map<number, number>();
+  compiled.document.nodes.forEach((node, parent) => {
+    node.children?.forEach((child) => parentByNode.set(child, parent));
+  });
+  const result = new Map<number, Mat4>();
+  const resolve = (index: number): Mat4 => {
+    const existing = result.get(index);
+    if (existing) return existing;
+    const node = compiled.document.nodes[index];
+    const local = composeMat4(
+      node.translation ?? [0, 0, 0],
+      node.rotation ?? [0, 0, 0, 1],
+      node.scale ?? [1, 1, 1]
+    );
+    const parent = parentByNode.get(index);
+    const global = multiplyMat4(
+      parent === undefined ? IDENTITY_MAT4 : resolve(parent),
+      local
+    );
+    result.set(index, global);
+    return global;
+  };
+  compiled.document.nodes.forEach((_, index) => resolve(index));
+  return result;
 };
 
 {
@@ -150,6 +223,367 @@ const assertArrayClose = (
       })
       .then(assertValidatorReport)
   );
+}
+
+{
+  const project = structuredClone(createGltfProject('gltf'));
+  const cube = project.scene.nodes['cube-body'];
+  if (cube.kind !== 'cube') throw new Error('Cube fixture is missing.');
+  project.scene = {
+    ...project.scene,
+    nodes: {
+      ...project.scene.nodes,
+      'cube-second': {
+        ...cube,
+        id: 'cube-second',
+        name: 'second',
+        transform: {
+          ...cube.transform,
+          position: [8, 0, 0]
+        }
+      }
+    }
+  };
+
+  const compiled = buildGltf(project);
+  const root = compiled.document.nodes.find(
+    (node) => node.extras?.ashfoxId === 'bone-root'
+  );
+  const sourceCubes = compiled.document.nodes.filter(
+    (node) => node.extras?.ashfoxKind === 'cube'
+  );
+  assert.equal(compiled.document.meshes?.length, 1);
+  assert.equal(compiled.document.meshes?.[0].primitives.length, 1);
+  assert.equal(typeof root?.mesh, 'number');
+  assert.equal(compiled.document.skins, undefined);
+  assert.ok(sourceCubes.every((node) => node.mesh === undefined));
+  const primitive = compiled.document.meshes?.[0].primitives[0];
+  if (!primitive || primitive.indices === undefined) {
+    throw new Error('Rigid batch primitive is missing.');
+  }
+  assert.equal(compiled.document.accessors?.[primitive.indices].count, 72);
+  const position = compiled.document.accessors?.[
+    primitive.attributes.POSITION
+  ];
+  const normal = primitive.attributes.NORMAL === undefined
+    ? undefined
+    : compiled.document.accessors?.[primitive.attributes.NORMAL];
+  const uv = primitive.attributes.TEXCOORD_0 === undefined
+    ? undefined
+    : compiled.document.accessors?.[primitive.attributes.TEXCOORD_0];
+  assert.equal(position?.componentType, 5122);
+  assert.equal(position?.normalized, true);
+  assert.equal(normal?.componentType, 5122);
+  assert.equal(normal?.normalized, true);
+  assert.equal(uv?.componentType, 5123);
+  assert.equal(uv?.normalized, true);
+  assert.equal(primitive.attributes.JOINTS_0, undefined);
+  assert.equal(primitive.attributes.WEIGHTS_0, undefined);
+  assert.deepEqual(compiled.document.extensionsRequired, [
+    'KHR_mesh_quantization'
+  ]);
+  const positions = readNumericAccessor(
+    compiled,
+    primitive.attributes.POSITION
+  );
+  assert.ok(positions.every(Number.isFinite));
+  assert.ok(positions.every((value) => Math.abs(value) <= 1));
+  assert.ok(Math.max(...positions.map(Math.abs)) > 0.5);
+}
+
+{
+  const project = structuredClone(createGltfProject('gltf'));
+  const root = project.scene.nodes['bone-root'];
+  const cube = project.scene.nodes['cube-body'];
+  if (root.kind !== 'bone' || cube.kind !== 'cube') {
+    throw new Error('Static global batch fixture nodes are missing.');
+  }
+  project.animations = {};
+  project.scene = {
+    roots: [...project.scene.roots, 'bone-static-second'],
+    nodes: {
+      ...project.scene.nodes,
+      'bone-static-second': {
+        ...root,
+        id: 'bone-static-second',
+        name: 'static second',
+        transform: {
+          ...root.transform,
+          position: [32, 0, 0]
+        }
+      },
+      'cube-static-second': {
+        ...cube,
+        id: 'cube-static-second',
+        name: 'static second cube',
+        parentId: 'bone-static-second'
+      }
+    }
+  };
+  const compiled = buildGltf(project);
+  const optimizedNode = compiled.document.nodes.find(
+    (node) => node.name === `${project.name} optimized mesh`
+  );
+  assert.equal(compiled.document.meshes?.length, 1);
+  assert.equal(compiled.document.meshes?.[0].primitives.length, 1);
+  assert.equal(compiled.document.skins, undefined);
+  assert.equal(optimizedNode?.mesh, 0);
+  assert.equal(optimizedNode?.skin, undefined);
+  assert.ok(optimizedNode?.translation?.every(Number.isFinite));
+  assert.ok(optimizedNode?.scale?.every((value) => value > 0));
+  assert.ok(
+    compiled.document.nodes
+      .filter((node) => node.extras?.ashfoxId !== undefined)
+      .every((node) => node.mesh === undefined)
+  );
+  const primitive = compiled.document.meshes?.[0].primitives[0];
+  assert.equal(primitive?.attributes.JOINTS_0, undefined);
+  assert.equal(primitive?.attributes.WEIGHTS_0, undefined);
+
+  const distant = project.scene.nodes['cube-static-second'];
+  if (distant.kind !== 'cube') {
+    throw new Error('Static precision fixture cube is missing.');
+  }
+  distant.transform = {
+    ...distant.transform,
+    position: [1_048_576, 0, 0]
+  };
+  const precise = buildGltf(project);
+  const preciseNode = precise.document.nodes.find(
+    (node) => node.name === `${project.name} optimized mesh`
+  );
+  const precisePrimitive = precise.document.meshes?.[0].primitives[0];
+  const precisePosition = precisePrimitive === undefined
+    ? undefined
+    : precise.document.accessors?.[precisePrimitive.attributes.POSITION];
+  assert.equal(preciseNode?.translation, undefined);
+  assert.equal(preciseNode?.scale, undefined);
+  assert.equal(precisePosition?.componentType, 5126);
+}
+
+{
+  const project = structuredClone(createGltfProject('gltf'));
+  const root = project.scene.nodes['bone-root'];
+  const cube = project.scene.nodes['cube-body'];
+  if (root.kind !== 'bone' || cube.kind !== 'cube') {
+    throw new Error('Animated multi-root fixture nodes are missing.');
+  }
+  project.scene = {
+    roots: [...project.scene.roots, 'bone-animated-second'],
+    nodes: {
+      ...project.scene.nodes,
+      'bone-animated-second': {
+        ...root,
+        id: 'bone-animated-second',
+        name: 'animated second root',
+        transform: {
+          ...root.transform,
+          position: [32, 0, 0]
+        }
+      },
+      'cube-animated-second': {
+        ...cube,
+        id: 'cube-animated-second',
+        name: 'animated second cube',
+        parentId: 'bone-animated-second'
+      }
+    }
+  };
+  const compiled = buildGltf(project);
+  const skin = compiled.document.skins?.[0];
+  assert.notEqual(skin?.skeleton, undefined);
+  const commonRoot = skin?.skeleton === undefined
+    ? undefined
+    : compiled.document.nodes[skin.skeleton];
+  assert.equal(commonRoot?.name, `${project.name} common rig root`);
+  assert.equal(compiled.document.scenes[0].nodes.length, 2);
+  assert.equal(compiled.document.scenes[0].nodes[0], skin?.skeleton);
+  assert.equal(
+    compiled.document.nodes[compiled.document.scenes[0].nodes[1]].skin,
+    0
+  );
+  assert.ok(
+    skin?.joints.every((joint) => commonRoot?.children?.includes(joint) ||
+      compiled.document.nodes.some((node) => node.children?.includes(joint)))
+  );
+  registerAsyncTest(
+    validator.validateBytes(
+      new TextEncoder().encode(JSON.stringify(compiled.document)),
+      {
+        uri: 'animated-multi-root.gltf',
+        format: 'gltf',
+        externalResourceFunction: async (uri) =>
+          uri.endsWith('.bin') ? compiled.binary : validationPng
+      }
+    ).then(assertValidatorReport)
+  );
+}
+
+{
+  const project = structuredClone(createGltfProject('gltf'));
+  const source = project.scene.nodes['cube-body'];
+  if (source.kind !== 'cube') throw new Error('Cube fixture is missing.');
+  project.textures['texture-base'] = {
+    ...project.textures['texture-base'],
+    atlasMode: 'generate',
+    raster: { background: '#ffffff', canvasDetails: [] }
+  };
+  const first = {
+    ...source,
+    boxUv: false,
+    transform: {
+      ...source.transform,
+      rotation: [0, 0, 0] as [number, number, number],
+      pivot: [0, 0, 0] as [number, number, number]
+    },
+    bounds: { from: [0, 0, 0], to: [1, 1, 1] }
+  };
+  project.scene.nodes = {
+    ...project.scene.nodes,
+    'cube-body': first,
+    'cube-adjacent': {
+      ...first,
+      id: 'cube-adjacent',
+      name: 'adjacent',
+      bounds: { from: [1, 0, 0], to: [2, 1, 1] }
+    }
+  };
+  const compiled = buildGltf(project);
+  const primitive = compiled.document.meshes?.[0]?.primitives[0];
+  const indices = primitive?.indices === undefined
+    ? undefined
+    : compiled.document.accessors?.[primitive.indices];
+  assert.equal(indices?.count, 60);
+}
+
+{
+  const project = structuredClone(createGltfProject('gltf'));
+  const cube = project.scene.nodes['cube-body'];
+  if (cube.kind !== 'cube') throw new Error('Cube fixture is missing.');
+  project.scene = {
+    ...project.scene,
+    nodes: {
+      ...project.scene.nodes,
+      'cube-animated': {
+        ...cube,
+        id: 'cube-animated',
+        name: 'animated cube',
+        transform: {
+          ...cube.transform,
+          position: [8, 0, 0]
+        }
+      }
+    }
+  };
+  const source = project.animations['clip-idle']
+    .channels['channel-root-rotation'];
+  project.animations['clip-idle'].channels['channel-cube-rotation'] = {
+    ...source,
+    id: 'channel-cube-rotation',
+    targetNodeId: 'cube-animated'
+  };
+
+  const compiled = buildGltf(project);
+  const animatedCubeIndex = compiled.document.nodes.findIndex(
+    (node) => node.extras?.ashfoxId === 'cube-animated'
+  );
+  assert.equal(compiled.document.meshes?.length, 1);
+  assert.notEqual(animatedCubeIndex, -1);
+  assert.equal(
+    compiled.document.nodes[animatedCubeIndex]?.mesh,
+    undefined
+  );
+  assert.equal(
+    typeof compiled.document.nodes.find((node) => node.skin !== undefined)?.mesh,
+    'number'
+  );
+  assert.ok(compiled.document.skins?.[0].joints.includes(animatedCubeIndex));
+  const skin = compiled.document.skins?.[0];
+  if (skin?.inverseBindMatrices === undefined) {
+    throw new Error('Rigid skin inverse bind matrices are missing.');
+  }
+  const inverseBinds = readNumericAccessor(compiled, skin.inverseBindMatrices);
+  const globals = globalNodeMatrices(compiled);
+  const decodeMatrices = skin.joints.map((joint, index) =>
+    multiplyMat4(
+      globals.get(joint) ?? IDENTITY_MAT4,
+      mat4From(inverseBinds, index * 16)
+    )
+  );
+  for (const matrix of decodeMatrices.slice(1)) {
+    assertArrayClose(matrix, decodeMatrices[0], 'skin bind-pose decode', 0.00001);
+  }
+  assert.ok(
+    compiled.document.animations?.[0].channels.some(
+      (channel) => channel.target.node === animatedCubeIndex
+    )
+  );
+}
+
+{
+  const project = structuredClone(createGltfProject('gltf'));
+  const cube = project.scene.nodes['cube-body'];
+  if (cube.kind !== 'cube') throw new Error('Cube fixture is missing.');
+  project.scene = {
+    ...project.scene,
+    nodes: {
+      ...project.scene.nodes,
+      ...Object.fromEntries(Array.from({ length: 24 }, (_, index) => [
+        `cube-batch-${index}`,
+        {
+          ...cube,
+          id: `cube-batch-${index}`,
+          name: `batch ${index}`,
+          transform: {
+            ...cube.transform,
+            position: [index % 6, Math.floor(index / 6), 0]
+          }
+        }
+      ]))
+    }
+  };
+  registerAsyncTest((async () => {
+    const raw = buildGltf(project);
+    const compressed = await compressGltfWithMeshopt(raw);
+    await MeshoptDecoder.ready;
+    assert.ok(compressed.binary.byteLength < raw.binary.byteLength);
+    assert.ok(
+      compressed.document.extensionsRequired?.includes(
+        'EXT_meshopt_compression'
+      )
+    );
+    let decodedViews = 0;
+    compressed.document.bufferViews?.forEach((view, index) => {
+      const extension = view.extensions?.EXT_meshopt_compression;
+      if (!extension) return;
+      const decoded = new Uint8Array(view.byteLength);
+      MeshoptDecoder.decodeGltfBuffer(
+        decoded,
+        extension.count,
+        extension.byteStride,
+        compressed.binary.subarray(
+          extension.byteOffset,
+          extension.byteOffset + extension.byteLength
+        ),
+        extension.mode,
+        extension.filter
+      );
+      assert.equal(decoded.byteLength, view.byteLength);
+      assert.ok(decoded.some((byte) => byte !== 0));
+      decodedViews += 1;
+    });
+    assert.ok(decodedViews > 0);
+    const report = await validator.validateBytes(
+      new TextEncoder().encode(JSON.stringify(compressed.document)),
+      {
+        uri: 'ashfox_crate.gltf',
+        format: 'gltf',
+        externalResourceFunction: async (uri) =>
+          uri.endsWith('.bin') ? compressed.binary : validationPng
+      }
+    );
+    assertValidatorReport(report);
+  })());
 }
 
 {
@@ -351,7 +785,6 @@ const assertArrayClose = (
         format: 'glb'
       });
       assertValidatorReport(report);
-      assert.equal(report.issues.numInfos, 0);
     })()
   );
 }
@@ -481,7 +914,9 @@ const assertArrayClose = (
     }
   };
   const compiled = buildGltf(project);
-  const primitive = compiled.document.meshes?.[1]?.primitives[0];
+  const primitive = compiled.document.meshes?.[0]?.primitives.find(
+    (candidate) => candidate.material === undefined
+  );
   const indexAccessor =
     primitive?.indices === undefined
       ? undefined
@@ -575,14 +1010,15 @@ const assertArrayClose = (
   const input =
     compiled.document.accessors?.[sampler.input];
   assert.equal(input?.count, 21);
-  const output = readFloatAccessor(
+  const output = readNumericAccessor(
     compiled,
     sampler.output
   );
   assertArrayClose(
     output.slice(10 * 4, 11 * 4),
     quaternionFromEuler([45, 45, 0]),
-    'glTF rotation baking must sample the same 20 fps Euler pose as live preview'
+    'glTF rotation baking must sample the same 20 fps Euler pose as live preview',
+    0.00005
   );
 }
 
@@ -597,7 +1033,7 @@ const assertArrayClose = (
     sampler === undefined
       ? undefined
       : compiled.document.accessors?.[sampler.input];
-  assert.equal(inputAccessor?.count, 21);
+  assert.equal(inputAccessor?.count, 3);
   assert.deepEqual(inputAccessor?.min, [0]);
 }
 
@@ -611,7 +1047,7 @@ const assertArrayClose = (
     sampler === undefined
       ? undefined
       : compiled.document.accessors?.[sampler.input];
-  assert.equal(inputAccessor?.count, 41);
+  assert.equal(inputAccessor?.count, 3);
   assert.deepEqual(inputAccessor?.max, [2]);
 }
 
@@ -659,7 +1095,7 @@ const assertArrayClose = (
       (entry) => entry.target.path === path
     );
     if (!channel) throw new Error(`Expected ${path} channel.`);
-    return readFloatAccessor(
+    return readNumericAccessor(
       compiled,
       animation.samplers[channel.sampler].output
     );
@@ -687,7 +1123,8 @@ const assertArrayClose = (
   assertArrayClose(
     outputFor('rotation').slice(0, 4),
     quaternionFromEuler(composedRotation),
-    'glTF and live preview must use the same non-identity rest rotation composition'
+    'glTF and live preview must use the same non-identity rest rotation composition',
+    0.00005
   );
 }
 

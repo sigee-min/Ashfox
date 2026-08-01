@@ -6,17 +6,32 @@ export const compileGltfPrimitive = (
   positions: readonly number[],
   normals: readonly number[],
   uvs: readonly number[] | undefined,
+  joints: readonly number[] | undefined,
   material: number | undefined,
   indices: readonly number[]
-): GltfPrimitive => ({
-  attributes: {
-    POSITION: writer.addFloatAccessor(positions, 3, true, 34962),
-    NORMAL: writer.addFloatAccessor(normals, 3, false, 34962),
-    ...(uvs
-      ? { TEXCOORD_0: writer.addFloatAccessor(uvs, 2, false, 34962) }
-      : {})
-  },
-  indices: writer.addIndexAccessor(indices),
-  ...(material === undefined ? {} : { material }),
-  mode: 4
-});
+): GltfPrimitive => {
+  const attributes = writer.addInterleavedVertexAccessors(
+    positions,
+    normals,
+    uvs,
+    joints
+  );
+  return {
+    attributes: {
+      POSITION: attributes.position,
+      NORMAL: attributes.normal,
+      ...(attributes.uv === undefined
+        ? {}
+        : { TEXCOORD_0: attributes.uv }),
+      ...(attributes.joints === undefined || attributes.weights === undefined
+        ? {}
+        : {
+            JOINTS_0: attributes.joints,
+            WEIGHTS_0: attributes.weights
+          })
+    },
+    indices: writer.addIndexAccessor(indices),
+    ...(material === undefined ? {} : { material }),
+    mode: 4
+  };
+};

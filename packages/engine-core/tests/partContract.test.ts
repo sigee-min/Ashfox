@@ -229,6 +229,24 @@ if (!rootFeature.ok) {
   );
 }
 
+const stackedEyeGeometry = normalizePartSpec({
+  ...rootMass,
+  partId: 'face.eye.pupil'
+});
+assert.equal(stackedEyeGeometry.ok, false);
+if (!stackedEyeGeometry.ok) {
+  assert.equal(
+    stackedEyeGeometry.issues.some(
+      (issue) =>
+        issue.path === '$.partId' &&
+        issue.code === 'relationship' &&
+        issue.message.includes('motif "eye"')
+    ),
+    true,
+    'eye-like geometry ids must be rejected in favor of semantic features'
+  );
+}
+
 const nonConvexPlate = normalizePartSpec({
   kind: 'plate',
   partId: 'broken.plate',

@@ -269,6 +269,7 @@ export const IRONROOT_TRACTOR_DEMO: DemoDefinition = {
   name: 'Ironroot · Arcane Field Tractor',
   modelPath: 'ironroot_arcane_tractor',
   initialSelectionId: null,
+  visibleEyeCount: 0,
   intent: {
     subject: 'arcane field tractor',
     grounding: 'free',

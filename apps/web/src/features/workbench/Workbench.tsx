@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 
 import { agentCommandProtocol } from '../agent/agentCommandProtocol';
 import { useProjectFileActions } from '../files/useProjectFileActions';
@@ -43,6 +43,17 @@ export function Workbench() {
     selectedNodeId: view.selectedNodeId,
     dispatch: project.dispatchUserMutation
   });
+
+  useEffect(() => {
+    if (project.galleryProjectStatus.phase !== 'loaded') return;
+    view.changeActiveClip(
+      Object.keys(project.document.animations)[0] ?? null
+    );
+  }, [
+    project.document.animations,
+    project.galleryProjectStatus.phase,
+    view.changeActiveClip
+  ]);
 
   const createProject = useCallback((input: NewProjectInput): void => {
     if (project.operationLease.currentOwner() !== null) return;
@@ -90,6 +101,7 @@ export function Workbench() {
       data-ashfox-file-operation={files.operation.phase}
       data-ashfox-file-kind={files.operation.kind ?? ''}
       data-ashfox-file-operation-id={files.operation.operationId}
+      data-ashfox-project-load={project.galleryProjectStatus.phase}
       onDragOver={(event) => event.preventDefault()}
       onDrop={files.drop}
     >
@@ -126,6 +138,16 @@ export function Workbench() {
         onSetCamera={view.setCamera}
         onToggleViewportOption={view.toggleViewportOption}
       />
+      {(project.galleryProjectStatus.phase === 'loading' ||
+        project.galleryProjectStatus.phase === 'error') && (
+        <div
+          className="gallery-project-status"
+          data-phase={project.galleryProjectStatus.phase}
+          role="status"
+        >
+          {project.galleryProjectStatus.message}
+        </div>
+      )}
       <ViewportWorkspace
         document={project.document}
         assets={project.assets}
