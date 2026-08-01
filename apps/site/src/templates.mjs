@@ -210,6 +210,88 @@ const landingDemo = (demo) => `
   </div>
 `;
 
+const landingStory = ({ story }) => `
+  <section
+    class="story-section"
+    id="showcase"
+    data-scroll-story
+    data-sequences="${escapeHtml(JSON.stringify(story))}"
+  >
+    <div class="story-intro" data-reveal>
+      <p class="eyebrow"><span></span>From build to game-ready</p>
+      <h2><span>One request.</span><span>Three finished worlds.</span></h2>
+      <p>The build above becomes structured machines, motion, and character below.</p>
+    </div>
+    <div class="story-track">
+      <span class="story-axis" aria-hidden="true"><i></i></span>
+      <div class="story-stage">
+        <div
+          class="story-frame"
+          data-story-desktop-host
+          role="img"
+          aria-label="${escapeHtml(story[0].alt)}"
+        >
+          <img
+            class="story-poster"
+            src="${escapeHtml(story[0].poster)}"
+            data-story-desktop-poster
+            width="1280"
+            height="720"
+            alt=""
+            aria-hidden="true"
+          >
+          <img
+            class="story-playback"
+            data-story-player
+            data-media-state="poster"
+            width="640"
+            height="360"
+            alt=""
+            decoding="async"
+            aria-hidden="true"
+          >
+        </div>
+        <div class="story-stage-meta" aria-hidden="true">
+          <span data-story-position>01 / 0${story.length}</span>
+          <span>Actual ashfox output</span>
+        </div>
+      </div>
+      <div class="story-chapters">
+        ${story.map((chapter, index) => `
+          <article
+            class="story-chapter ${index % 2 === 0 ? 'story-chapter-left' : 'story-chapter-right'}"
+            data-story-chapter="${index}"
+            data-story-demo="${escapeHtml(chapter.id)}"
+          >
+            <div
+              class="story-mobile-media"
+              data-story-mobile-host="${index}"
+              role="img"
+              aria-label="${escapeHtml(chapter.alt)}"
+            >
+              <img
+                class="story-poster"
+                src="${escapeHtml(chapter.poster)}"
+                width="1280"
+                height="720"
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+              >
+            </div>
+            <div class="story-copy">
+              <span>0${index + 1} · ${escapeHtml(chapter.eyebrow)}</span>
+              <h3>${escapeHtml(chapter.title)}</h3>
+              <p>${escapeHtml(chapter.body)}</p>
+              <small>${escapeHtml(chapter.detail)}</small>
+            </div>
+          </article>
+        `).join('')}
+      </div>
+    </div>
+  </section>
+`;
+
 const landingQuickStart = (quickStart) => `
   <section class="quick-start-section" id="quick-start" data-reveal>
     <div class="quick-start-copy">
@@ -314,6 +396,8 @@ export const renderLandingPage = ({ assets, config }) => {
         </div>
         <div class="hero-visual">${landingDemo(content.demo)}</div>
       </section>
+
+      ${landingStory({ story: content.story })}
 
       <section class="section output-section" id="outputs">
         <div class="output-copy" data-reveal>

@@ -12,6 +12,14 @@ const landingFlagship = showcaseCatalog.find(
 if (!landingFlagship?.build) {
   throw new Error('Blackfrost Dreadwing requires build-process media.');
 }
+const requiredDemo = (id) => {
+  const item = showcaseCatalog.find((demo) => demo.id === id);
+  if (!item) throw new Error(`Required landing demo is missing: ${id}`);
+  return item;
+};
+const tractor = requiredDemo('ironroot-tractor');
+const rocket = requiredDemo('aether-spear-rocket');
+const kirin = requiredDemo('moonveil-kirin');
 
 export const landingContent = {
   eyebrow: 'AI-native low-poly workbench',
@@ -37,6 +45,41 @@ export const landingContent = {
       cooldownMs: 2400
     }]
   },
+  story: [
+    {
+      id: tractor.id,
+      eyebrow: 'Structure',
+      title: 'Every part has a job.',
+      body:
+        'Wheel rigs, steering, cabin, lights, and hitch remain editable while the complete machine moves as one.',
+      detail: `${tractor.detail} · articulated drivetrain`,
+      poster: tractor.poster,
+      gif: tractor.animation.gif,
+      alt: tractor.animation.alt
+    },
+    {
+      id: rocket.id,
+      eyebrow: 'Motion',
+      title: 'Built to move.',
+      body:
+        'Rig, runes, engine plume, and launch timing remain one coherent project.',
+      detail: `${rocket.detail} · launch sequence`,
+      poster: rocket.poster,
+      gif: rocket.animation.gif,
+      alt: rocket.animation.alt
+    },
+    {
+      id: kirin.id,
+      eyebrow: 'Character',
+      title: 'Character stays alive.',
+      body:
+        'Geometry, derived pixels, expressive details, and animation share the same editable source.',
+      detail: `${kirin.detail} · 2 animation clips`,
+      poster: kirin.poster,
+      gif: kirin.animation.gif,
+      alt: kirin.animation.alt
+    }
+  ],
   guides: [
     {
       index: '01',

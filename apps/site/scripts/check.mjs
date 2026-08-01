@@ -370,8 +370,8 @@ const heroPlayerCount = (
 if (heroPlayerCount !== 1) {
   failures.push(`landing must contain one hero player, received ${heroPlayerCount}`);
 }
-if (/data-demo-reel|data-story-/.test(landingHtml)) {
-  failures.push('cut landing showcase DOM must not be present');
+if (/data-demo-reel/.test(landingHtml)) {
+  failures.push('legacy landing reel DOM must not be present');
 }
 if (/media\/showcase\/[^"']+\.gif/.test(landingHtml)) {
   failures.push('landing must not reference legacy showcase GIF media');
@@ -381,8 +381,31 @@ if (videoTags.length !== 0) {
   failures.push('landing must not retain the legacy video player');
 }
 
+const storyPlayerCount = (
+  landingHtml.match(/\sdata-story-player(?:\s|>)/g) ?? []
+).length;
+const storyChapterCount = (
+  landingHtml.match(/\sdata-story-chapter="[0-9]+"/g) ?? []
+).length;
+const expectedStoryIds = [
+  'ironroot-tractor',
+  'aether-spear-rocket',
+  'moonveil-kirin'
+];
+if (storyPlayerCount !== 1 || storyChapterCount !== 3) {
+  failures.push(
+    'landing must contain one shared GIF story player and three chapters'
+  );
+}
+for (const storyId of expectedStoryIds) {
+  if (!landingHtml.includes(`data-story-demo="${storyId}"`)) {
+    failures.push(`landing story is missing featured demo: ${storyId}`);
+  }
+}
+
 const mediaSources = new Set([
-  ...landingContent.demo.sequences.map((sequence) => sequence.gif)
+  ...landingContent.demo.sequences.map((sequence) => sequence.gif),
+  ...landingContent.story.map((sequence) => sequence.gif)
 ]);
 if (
   landingContent.demo.sequences.length !== 1 ||
@@ -392,16 +415,23 @@ if (
 ) {
   failures.push('landing must use the current Blackfrost build-process GIF');
 }
+if (
+  landingContent.story.length !== 3 ||
+  landingContent.story.map((chapter) => chapter.id).join('|') !==
+    expectedStoryIds.join('|')
+) {
+  failures.push('landing must preserve the three-demo showcase story');
+}
 for (const source of mediaSources) {
   const mediaPath = path.join(outputRoot, source);
   if (!(await exists(mediaPath))) {
-    failures.push(`landing build GIF is missing: ${source}`);
+    failures.push(`landing GIF is missing: ${source}`);
     continue;
   }
   const media = await readFile(mediaPath);
   const signature = media.subarray(0, 6).toString('ascii');
   if (signature !== 'GIF87a' && signature !== 'GIF89a') {
-    failures.push(`landing build media is not a GIF file: ${source}`);
+    failures.push(`landing media is not a GIF file: ${source}`);
   }
 }
 

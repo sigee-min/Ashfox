@@ -1,4 +1,6 @@
 const MEDIA_READY_TIMEOUT_MS = 8_000;
+const STORY_SETTLE_MS = 110;
+const STORY_HYSTERESIS_PX = 48;
 
 const wait = (duration, signal) => new Promise((resolve) => {
   if (signal.aborted) {
@@ -262,12 +264,221 @@ const initializeHeroDemo = ({ authority, prefersReducedMotion }) => {
   };
 };
 
+export const selectStoryChapter = (
+  rectangles,
+  viewportHeight,
+  currentIndex = -1,
+  hysteresis = STORY_HYSTERESIS_PX
+) => {
+  const viewportCenter = viewportHeight / 2;
+  const visible = rectangles
+    .map((rectangle, index) => ({
+      distance: Math.abs(
+        (rectangle.top + rectangle.bottom) / 2 - viewportCenter
+      ),
+      index,
+      rectangle
+    }))
+    .filter(({ rectangle }) =>
+      rectangle.bottom > 0 && rectangle.top < viewportHeight
+    );
+  if (visible.length === 0) return -1;
+  visible.sort((left, right) => left.distance - right.distance);
+  const closest = visible[0];
+  const current = visible.find(({ index }) => index === currentIndex);
+  if (current && current.distance <= closest.distance + hysteresis) {
+    return currentIndex;
+  }
+  return closest.index;
+};
+
+const initializeStory = ({ authority, prefersReducedMotion }) => {
+  const story = document.querySelector('[data-scroll-story]');
+  if (!(story instanceof HTMLElement)) return () => {};
+  const chapters = [...story.querySelectorAll('[data-story-chapter]')];
+  const mobileHosts = [...story.querySelectorAll('[data-story-mobile-host]')];
+  const desktopHost = story.querySelector('[data-story-desktop-host]');
+  const desktopPoster = story.querySelector('[data-story-desktop-poster]');
+  const position = story.querySelector('[data-story-position]');
+  const playerImage = story.querySelector('[data-story-player]');
+  const sequences = parseSequences(story);
+  if (
+    !(desktopHost instanceof HTMLElement) ||
+    !(desktopPoster instanceof HTMLImageElement) ||
+    !(playerImage instanceof HTMLImageElement) ||
+    sequences.length !== chapters.length ||
+    mobileHosts.length !== chapters.length
+  ) {
+    return () => {};
+  }
+
+  const owner = 'story';
+  const player = createGifPlayer({
+    authority,
+    owner,
+    root: story,
+    image: playerImage
+  });
+  const mobileLayout = window.matchMedia('(max-width: 900px)');
+  let activeIndex = -1;
+  let candidateIndex = -1;
+  let evaluationFrame = 0;
+  let settleTimer = 0;
+  let sectionVisible = false;
+  let playbackRequest = 0;
+  let observer = null;
+
+  const movePlayer = (index) => {
+    const target = mobileLayout.matches ? mobileHosts[index] : desktopHost;
+    if (
+      target instanceof HTMLElement &&
+      playerImage.parentElement !== target
+    ) {
+      target.append(playerImage);
+    }
+  };
+
+  const setActiveChapter = (index) => {
+    activeIndex = index;
+    story.dataset.activeIndex = String(index);
+    story.style.setProperty(
+      '--story-progress',
+      String((index + 1) / chapters.length)
+    );
+    for (const [chapterIndex, chapter] of chapters.entries()) {
+      chapter.dataset.active = String(chapterIndex === index);
+    }
+    if (position instanceof HTMLElement) {
+      position.textContent = `0${index + 1} / 0${chapters.length}`;
+    }
+  };
+
+  const playChapter = async (index, force = false) => {
+    if (!sequences[index]) return;
+    if (
+      !force &&
+      activeIndex === index &&
+      playerImage.dataset.mediaState !== 'poster'
+    ) {
+      return;
+    }
+    const request = playbackRequest + 1;
+    playbackRequest = request;
+    const sequence = sequences[index];
+    setActiveChapter(index);
+    desktopPoster.src = sequence.poster;
+    desktopHost.setAttribute('aria-label', sequence.alt);
+    movePlayer(index);
+    const started = await player.play(sequence.gif);
+    if (request !== playbackRequest || !started) return;
+    story.dataset.gifSrc = sequence.gif;
+  };
+
+  const stopPlayback = () => {
+    playbackRequest += 1;
+    window.clearTimeout(settleTimer);
+    settleTimer = 0;
+    player.stop();
+    delete story.dataset.gifSrc;
+  };
+  const unregister = authority.register(owner, stopPlayback);
+
+  const selectCurrentChapter = () => selectStoryChapter(
+    chapters.map((chapter) => chapter.getBoundingClientRect()),
+    window.innerHeight,
+    activeIndex
+  );
+
+  const settleChapter = (index) => {
+    if (index < 0) return;
+    if (
+      index === activeIndex &&
+      playerImage.dataset.mediaState !== 'poster' &&
+      playerImage.dataset.mediaState !== 'error'
+    ) {
+      return;
+    }
+    if (index === candidateIndex && settleTimer) return;
+    candidateIndex = index;
+    window.clearTimeout(settleTimer);
+    settleTimer = window.setTimeout(() => {
+      settleTimer = 0;
+      const latestIndex = selectCurrentChapter();
+      if (
+        latestIndex === candidateIndex &&
+        sectionVisible &&
+        !document.hidden
+      ) {
+        playChapter(latestIndex, latestIndex === activeIndex);
+      }
+    }, STORY_SETTLE_MS);
+  };
+
+  const evaluate = () => {
+    evaluationFrame = 0;
+    if (!sectionVisible || document.hidden || prefersReducedMotion) return;
+    settleChapter(selectCurrentChapter());
+  };
+
+  const scheduleEvaluation = () => {
+    if (evaluationFrame) return;
+    evaluationFrame = window.requestAnimationFrame(evaluate);
+  };
+
+  const onLayoutChange = () => {
+    if (activeIndex >= 0) movePlayer(activeIndex);
+    scheduleEvaluation();
+  };
+  const onVisibilityChange = () => {
+    if (document.hidden) stopPlayback();
+    else scheduleEvaluation();
+  };
+
+  setActiveChapter(0);
+  if (prefersReducedMotion) {
+    desktopPoster.src = sequences[0].poster;
+    desktopHost.setAttribute('aria-label', sequences[0].alt);
+  } else {
+    window.addEventListener('scroll', scheduleEvaluation, { passive: true });
+    window.addEventListener('resize', onLayoutChange);
+    mobileLayout.addEventListener('change', onLayoutChange);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    if ('IntersectionObserver' in window) {
+      observer = new IntersectionObserver(([entry]) => {
+        sectionVisible = Boolean(entry?.isIntersecting);
+        if (sectionVisible) scheduleEvaluation();
+        else stopPlayback();
+      });
+      observer.observe(story);
+    } else {
+      sectionVisible = true;
+      scheduleEvaluation();
+    }
+  }
+
+  return () => {
+    observer?.disconnect();
+    stopPlayback();
+    player.destroy();
+    unregister();
+    window.cancelAnimationFrame(evaluationFrame);
+    window.removeEventListener('scroll', scheduleEvaluation);
+    window.removeEventListener('resize', onLayoutChange);
+    mobileLayout.removeEventListener('change', onLayoutChange);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+  };
+};
+
 export const initializeLandingPlayback = ({
   prefersReducedMotion = window.matchMedia(
     '(prefers-reduced-motion: reduce)'
   ).matches
 } = {}) => {
   const authority = createPlaybackAuthority();
-  const cleanups = [initializeHeroDemo({ authority, prefersReducedMotion })];
+  const cleanups = [
+    initializeHeroDemo({ authority, prefersReducedMotion }),
+    initializeStory({ authority, prefersReducedMotion })
+  ];
   return () => cleanups.forEach((cleanup) => cleanup());
 };
