@@ -13,6 +13,7 @@ export {
   type CubeFaces,
   type CubeNode,
   type ProjectDocument,
+  type ProjectForwardDirection,
   type SceneNode,
   type SurfacePixelDensity,
   type TextureAsset,
@@ -97,6 +98,12 @@ export {
   completePartAuthoringSpec,
   projectSpacePartAuthoringSpec
 } from './modeling/partAuthoring';
+export {
+  derivePartAttachments
+} from './modeling/partAttachmentDerivation';
+export {
+  normalizePartSpecs
+} from './modeling/partContract';
 export type {
   PartAuthoringSpec,
   PartSpec
@@ -107,6 +114,19 @@ export {
   canonicalizePartOccupancies
 } from './modeling/partOccupancyCanonicalization';
 export {
+  auditEyeAnatomy,
+  EYE_ANATOMY_POLICY,
+  type EyeAnatomyAuditOptions,
+  type EyeAnatomyIssue,
+  type EyeAnatomyIssueCode
+} from './modeling/eyeAnatomy';
+export {
+  auditEyeVisibility,
+  EYE_VISIBILITY_POLICY,
+  type EyeVisibilityIssue,
+  type EyeVisibilityIssueCode
+} from './modeling/eyeVisibility';
+export {
   attachmentContactMetrics,
   orthographicContributionMetrics
 } from './modeling/partQualityMetrics';
@@ -114,6 +134,14 @@ export {
   normalizePartRecipe,
   readPartRecipe
 } from './modeling/partRecipe';
+export {
+  partTranslation
+} from './modeling/partPrimitiveAdapter';
+export {
+  worldCubeBounds,
+  worldBoundsOverlap,
+  type WorldAxisAlignedBounds
+} from './modeling/worldCubeBounds';
 export { measureStaticSupport } from './modeling/staticSupportMetric';
 
 export {

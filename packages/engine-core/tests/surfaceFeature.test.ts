@@ -44,7 +44,15 @@ const authored = execute(empty, 'surface-eye-author', [{
   payload: {
     parts: [{
       kind: 'mass',
+      partId: 'cranium',
+      materialId: 'coat',
+      center: [0, 0, -8],
+      radii: [4, 4, 3],
+      profile: 'hard'
+    }, {
+      kind: 'mass',
       partId: 'head',
+      parentPartId: 'cranium',
       materialId: 'coat',
       center: [0, 0, 0],
       radii: [5, 5, 5],
@@ -73,7 +81,7 @@ assert.equal(recipe.ok, true);
 if (!recipe.ok || recipe.recipe === null) {
   throw new Error('Surface feature recipe is unavailable.');
 }
-assert.equal(recipe.recipe.parts.length, 2);
+assert.equal(recipe.recipe.parts.length, 3);
 assert.equal(
   recipe.recipe.parts.find((part) => part.partId === 'eye.left')?.kind,
   'feature'
@@ -84,7 +92,7 @@ assert.equal(compiled.ok, true);
 if (!compiled.ok) throw new Error(compiled.issues[0]?.message);
 assert.deepEqual(
   [...compiled.parts.keys()],
-  ['head'],
+  ['cranium', 'head'],
   'a surface feature must not create a bone or geometry part'
 );
 assert.equal(
@@ -165,7 +173,10 @@ const outsideParent = execute(
 );
 assert.equal(outsideParent.ok, false);
 if (!outsideParent.ok) {
-  assert.match(outsideParent.error.message, /outside parent/i);
+  assert.match(
+    outsideParent.error.message,
+    /outside parent|leave at least 1 lattice cell/i
+  );
 }
 
 const deleted = execute(
@@ -185,5 +196,5 @@ if (!deletedRecipe.ok || deletedRecipe.recipe === null) {
 }
 assert.deepEqual(
   deletedRecipe.recipe.parts.map((part) => part.partId),
-  ['head']
+  ['cranium', 'head']
 );

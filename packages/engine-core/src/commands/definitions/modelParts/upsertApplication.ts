@@ -13,6 +13,7 @@ import {
 } from '../../../modeling/partAttachmentDerivation';
 import { completePartAuthoringSpec } from '../../../modeling/partAuthoring';
 import { compilePartScene } from '../../../modeling/partCompiler';
+import { auditEyeAnatomy } from '../../../modeling/eyeAnatomy';
 import {
   normalizePartRecipe,
   readPartRecipe,
@@ -174,6 +175,27 @@ const mergeMaterials = (
   return [...existingMaterials.values()];
 };
 
+const validateEyeAnatomy = (
+  combinedParts: readonly PartSpec[],
+  partIndexById: ReadonlyMap<string, number>
+): ApplicationFailure | null => {
+  const issue = auditEyeAnatomy(combinedParts)[0];
+  if (!issue) return null;
+  const index = partIndexById.get(issue.eyePartId);
+  return {
+    ok: false,
+    error: {
+      code: 'invalid_payload',
+      message: issue.message,
+      path: index === undefined
+        ? 'payload.parts'
+        : `payload.parts[${index}].${issue.field}`,
+      expected:
+        'a bounded semantic eye on the outer face of a deep, connected volumetric head or display housing'
+    }
+  };
+};
+
 const compileParts = (
   document: ProjectDocument,
   parts: readonly PartSpec[],
@@ -315,6 +337,11 @@ export const applyUpsertModelParts = (
       }
     };
   }
+  const eyeAnatomyIssue = validateEyeAnatomy(
+    derived.parts,
+    completed.partIndexById
+  );
+  if (eyeAnatomyIssue) return eyeAnatomyIssue;
   return compileParts(
     document,
     derived.parts,

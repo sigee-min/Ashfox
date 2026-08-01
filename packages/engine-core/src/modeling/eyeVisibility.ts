@@ -1,0 +1,318 @@
+import type {
+  CubeNode,
+  ModelPartFace,
+  ProjectDocument,
+  Vec3
+} from '../model';
+import {
+  isSceneNodeEffectivelyVisible
+} from '../sceneVisibility';
+import type {
+  FeaturePartSpec,
+  PartMaterialDefinition,
+  PartSpec
+} from './partContract';
+import {
+  readPartRecipe
+} from './partRecipe';
+import {
+  worldCubeBounds,
+  type WorldAxisAlignedBounds
+} from './worldCubeBounds';
+
+type AxisIndex = 0 | 1 | 2;
+
+interface FaceAxes {
+  normal: AxisIndex;
+  u: AxisIndex;
+  v: AxisIndex;
+  sign: -1 | 1;
+}
+
+interface EyeSurfaceCell {
+  localX: number;
+  localY: number;
+  point: Vec3;
+}
+
+export const EYE_VISIBILITY_POLICY = Object.freeze({
+  minimumVisibleFraction: 0.75,
+  minimumColorDistance: 72,
+  minimumChannelDistance: 48
+});
+
+export type EyeVisibilityIssueCode =
+  | 'surface-missing'
+  | 'surface-occluded'
+  | 'center-occluded'
+  | 'low-contrast';
+
+export interface EyeVisibilityIssue {
+  code: EyeVisibilityIssueCode;
+  eyePartId: string;
+  message: string;
+  visibleFraction?: number;
+  blockerNodeIds?: readonly string[];
+}
+
+const faceAxes = (face: ModelPartFace): FaceAxes => {
+  switch (face) {
+    case 'north':
+      return { normal: 2, u: 0, v: 1, sign: -1 };
+    case 'south':
+      return { normal: 2, u: 0, v: 1, sign: 1 };
+    case 'east':
+      return { normal: 0, u: 2, v: 1, sign: 1 };
+    case 'west':
+      return { normal: 0, u: 2, v: 1, sign: -1 };
+    case 'up':
+      return { normal: 1, u: 0, v: 2, sign: 1 };
+    case 'down':
+      return { normal: 1, u: 0, v: 2, sign: -1 };
+  }
+};
+
+const insideEye = (
+  x: number,
+  y: number,
+  width: number,
+  height: number
+): boolean => {
+  const horizontal = (x + 0.5 - width / 2) / (width / 2);
+  const vertical = (y + 0.5 - height / 2) / (height / 2);
+  return horizontal * horizontal + vertical * vertical <= 1;
+};
+
+const eyeSurfaceCells = (
+  eye: FeaturePartSpec,
+  density: number
+): readonly EyeSurfaceCell[] => {
+  const axes = faceAxes(eye.face);
+  const minimumU = eye.anchor[axes.u] - Math.floor(eye.size[0] / 2);
+  const minimumV = eye.anchor[axes.v] - Math.floor(eye.size[1] / 2);
+  const cells: EyeSurfaceCell[] = [];
+  for (let y = 0; y < eye.size[1]; y += 1) {
+    for (let x = 0; x < eye.size[0]; x += 1) {
+      if (!insideEye(x, y, eye.size[0], eye.size[1])) continue;
+      const point: [number, number, number] = [0, 0, 0];
+      point[axes.normal] = eye.anchor[axes.normal] / density;
+      point[axes.u] = (minimumU + x + 0.5) / density;
+      point[axes.v] = (minimumV + y + 0.5) / density;
+      cells.push({ localX: x, localY: y, point });
+    }
+  }
+  return cells;
+};
+
+const facePlane = (
+  bounds: WorldAxisAlignedBounds,
+  axes: FaceAxes
+): number => axes.sign > 0
+  ? bounds.max[axes.normal]
+  : bounds.min[axes.normal];
+
+const containsSurfacePoint = (
+  bounds: WorldAxisAlignedBounds,
+  point: Vec3,
+  axes: FaceAxes,
+  epsilon: number
+): boolean =>
+  Math.abs(facePlane(bounds, axes) - point[axes.normal]) <= epsilon &&
+  point[axes.u] > bounds.min[axes.u] + epsilon &&
+  point[axes.u] < bounds.max[axes.u] - epsilon &&
+  point[axes.v] > bounds.min[axes.v] + epsilon &&
+  point[axes.v] < bounds.max[axes.v] - epsilon;
+
+const blocksSurfacePoint = (
+  bounds: WorldAxisAlignedBounds,
+  point: Vec3,
+  axes: FaceAxes,
+  epsilon: number
+): boolean => {
+  if (
+    point[axes.u] <= bounds.min[axes.u] + epsilon ||
+    point[axes.u] >= bounds.max[axes.u] - epsilon ||
+    point[axes.v] <= bounds.min[axes.v] + epsilon ||
+    point[axes.v] >= bounds.max[axes.v] - epsilon
+  ) {
+    return false;
+  }
+  const eyeDepth = point[axes.normal] * axes.sign;
+  const cubeForward = Math.max(
+    bounds.min[axes.normal] * axes.sign,
+    bounds.max[axes.normal] * axes.sign
+  );
+  return cubeForward >= eyeDepth - epsilon;
+};
+
+const parseHex = (value: string): readonly [number, number, number] | null => {
+  const match = value.match(/^#([0-9a-f]{6})$/iu);
+  if (!match) return null;
+  return [
+    Number.parseInt(match[1].slice(0, 2), 16),
+    Number.parseInt(match[1].slice(2, 4), 16),
+    Number.parseInt(match[1].slice(4, 6), 16)
+  ];
+};
+
+const lowContrast = (
+  eye: PartMaterialDefinition | undefined,
+  host: PartMaterialDefinition | undefined
+): boolean => {
+  if (!eye || !host) return true;
+  const eyeColor = parseHex(eye.baseColor);
+  const hostColor = parseHex(host.baseColor);
+  if (!eyeColor || !hostColor) return true;
+  const deltas = eyeColor.map(
+    (channel, index) => Math.abs(channel - hostColor[index])
+  );
+  const distance = Math.hypot(...deltas);
+  return (
+    distance < EYE_VISIBILITY_POLICY.minimumColorDistance ||
+    Math.max(...deltas) < EYE_VISIBILITY_POLICY.minimumChannelDistance
+  );
+};
+
+const visibleCubes = (document: ProjectDocument): readonly CubeNode[] =>
+  Object.values(document.scene.nodes).filter(
+    (node): node is CubeNode =>
+      node.kind === 'cube' &&
+      isSceneNodeEffectivelyVisible(document, node.id) &&
+      Object.values(node.faces).some((face) => face.enabled)
+  );
+
+const auditEye = (
+  document: ProjectDocument,
+  eye: FeaturePartSpec,
+  partsById: ReadonlyMap<string, PartSpec>,
+  materialsById: ReadonlyMap<string, PartMaterialDefinition>,
+  cubes: readonly CubeNode[],
+  boundsById: ReadonlyMap<string, WorldAxisAlignedBounds>
+): readonly EyeVisibilityIssue[] => {
+  const issues: EyeVisibilityIssue[] = [];
+  const axes = faceAxes(eye.face);
+  const epsilon = 1 / document.settings.surfacePixelDensity / 1_000;
+  const hostCubes = cubes.filter(
+    (cube) => cube.generation?.partId === eye.parentPartId
+  );
+  const blockers = cubes.filter(
+    (cube) => cube.generation?.partId !== eye.parentPartId
+  );
+  const cells = eyeSurfaceCells(
+    eye,
+    document.settings.surfacePixelDensity
+  );
+  const supported = cells.filter((cell) => hostCubes.some((cube) => {
+    const bounds = boundsById.get(cube.id);
+    return bounds !== undefined &&
+      containsSurfacePoint(bounds, cell.point, axes, epsilon);
+  }));
+  if (supported.length !== cells.length) {
+    issues.push({
+      code: 'surface-missing',
+      eyePartId: eye.partId,
+      message:
+        `Eye "${eye.partId}" is not fully painted on a compiled outer ` +
+        'host surface after attachment placement.'
+    });
+  }
+
+  const blockedByCell = new Map<EyeSurfaceCell, readonly string[]>();
+  for (const cell of supported) {
+    const ids = blockers.flatMap((cube) => {
+      const bounds = boundsById.get(cube.id);
+      return bounds && blocksSurfacePoint(bounds, cell.point, axes, epsilon)
+        ? [cube.id]
+        : [];
+    });
+    if (ids.length > 0) blockedByCell.set(cell, ids);
+  }
+  const visibleCount = supported.length - blockedByCell.size;
+  const visibleFraction = cells.length === 0 ? 0 : visibleCount / cells.length;
+  const blockerNodeIds = [...new Set(
+    [...blockedByCell.values()].flat()
+  )].sort((left, right) => left.localeCompare(right));
+  if (visibleFraction < EYE_VISIBILITY_POLICY.minimumVisibleFraction) {
+    issues.push({
+      code: 'surface-occluded',
+      eyePartId: eye.partId,
+      visibleFraction,
+      blockerNodeIds,
+      message:
+        `Eye "${eye.partId}" leaves only ` +
+        `${Math.round(visibleFraction * 100)}% of its motif visible. ` +
+        'Other geometry may not disguise or cover the semantic eye.'
+    });
+  }
+  const centerX = Math.floor(eye.size[0] / 2);
+  const centerY = Math.floor(eye.size[1] / 2);
+  const center = supported.find(
+    (cell) => cell.localX === centerX && cell.localY === centerY
+  );
+  if (!center || blockedByCell.has(center)) {
+    issues.push({
+      code: 'center-occluded',
+      eyePartId: eye.partId,
+      ...(center ? {
+        blockerNodeIds: blockedByCell.get(center) ?? []
+      } : {}),
+      message:
+        `Eye "${eye.partId}" has no unobstructed pupil center. ` +
+        'A slit, tooth, mask, or decorative cube cannot stand in for an eye.'
+    });
+  }
+
+  const host = eye.parentPartId === null
+    ? undefined
+    : partsById.get(eye.parentPartId);
+  if (
+    lowContrast(
+      materialsById.get(eye.materialId),
+      host ? materialsById.get(host.materialId) : undefined
+    )
+  ) {
+    issues.push({
+      code: 'low-contrast',
+      eyePartId: eye.partId,
+      message:
+        `Eye "${eye.partId}" does not contrast enough with its host ` +
+        'surface to remain readable in the delivered texture.'
+    });
+  }
+  return issues;
+};
+
+/**
+ * Audits the delivered rest-pose scene rather than trusting semantic labels.
+ * It verifies that every eye is painted on compiled host geometry, retains an
+ * unobstructed pupil and readable area, and contrasts with its host material.
+ */
+export const auditEyeVisibility = (
+  document: ProjectDocument
+): readonly EyeVisibilityIssue[] => {
+  const recipe = readPartRecipe(document);
+  if (!recipe.ok || recipe.recipe === null) return [];
+  const eyes = recipe.recipe.parts.filter(
+    (part): part is FeaturePartSpec =>
+      part.kind === 'feature' && part.motif === 'eye'
+  );
+  if (eyes.length === 0) return [];
+  const partsById = new Map(
+    recipe.recipe.parts.map((part) => [part.partId, part])
+  );
+  const materialsById = new Map(
+    recipe.recipe.materials.map((material) => [material.id, material])
+  );
+  const cubes = visibleCubes(document);
+  const boundsById = new Map(
+    cubes.map((cube) => [cube.id, worldCubeBounds(document, cube)])
+  );
+  return eyes.flatMap((eye) => auditEye(
+    document,
+    eye,
+    partsById,
+    materialsById,
+    cubes,
+    boundsById
+  ));
+};

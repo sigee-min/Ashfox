@@ -13,6 +13,8 @@ Describe:
 - **target** — Java block, GeckoLib 5, Bedrock, GLB, or glTF;
 - **game version** — choose one of the versions shown for a Minecraft target;
 - **structure** — important parts, proportions, symmetry, and articulation;
+- **forward** — the exact direction the face, feet, toes, wheels, or tracks
+  travel toward;
 - **surface** — base-color palette, material separation, and focal details;
 - **motion** — for an animated target, required clips, pace, weight, and loop
   behavior.
@@ -53,6 +55,8 @@ bones, or UV coordinates:
 - “Move each wheel attachment to the center of its axle.”
 - “Preserve the body proportions while widening only the rear track.”
 - “Stagger the four leg cycles evenly.”
+- “Keep every ordinary toe north of its foot; only the authored dewclaw may
+  point backward.”
 - “Close the idle loop without changing its duration.”
 
 ashfox applies related edits together, so Activity and Undo represent the whole
@@ -66,6 +70,10 @@ Ask the agent to render front, side, and three-quarter views in Studio
 lighting, then check Day, Evening, and Night when lighting readability matters.
 Have it verify that large forms read before decoration, focal details remain
 visible, and moving parts have useful pivots without resting intersections.
+For directional creatures, also render the top view. Trace shoulder or hip,
+knee or elbow, ankle or wrist, foot, and toe in order. The foot and ordinary
+toes must continue toward the declared forward direction in both side and top
+views; mirroring left to right must never reverse the forward axis.
 
 ## Review textures and UVs
 
@@ -79,7 +87,24 @@ visible, and moving parts have useful pivots without resting intersections.
 - Keep important accents visible at the distance where the asset will be used.
 - Use one zero-depth eye feature per visible eye. Its iris base color, face,
   anchor, and pixel size are authored once; ashfox derives the outline, pupil,
-  highlight, UV projection, and atlas pixels. Do not stack eye cubes.
+  highlight, UV projection, and atlas pixels. Its direct parent must be a deep
+  face mass or segment attached to a second volumetric cranium, body, or
+  display housing. The eye belongs on that host's outermost surface and must
+  leave at least one lattice cell of visible anatomy around every edge. A
+  valid host has at least four lattice cells of depth and at least half as much
+  depth as its smaller face span. Its support must have at least 10% of the
+  host's bounding volume and a smallest span at least half the host depth; a
+  token tab does not establish anatomy. A root-only face volume, shallow host,
+  full-face marking, plate, radial, detached mask, billboard, or thin overlay
+  made only to host or count eyes is invalid. Do not stack eye cubes. Any later
+  part edit rechecks the complete eye assembly, including edits that flatten
+  or detach the host. These bounds are evaluated after ashfox derives the
+  host's final attachment placement, not against the unplaced request. For a
+  registered demo, the delivered rest pose must also paint the full motif on
+  compiled geometry, keep its pupil center unobstructed, leave at least 75% of
+  the motif visible, and use an iris color that clearly contrasts with the
+  host. Teeth, brows, masks, and ornaments are blockers regardless of how they
+  are named.
 - Let ashfox derive the tonal pixel surface pattern from each base color.
   Coplanar generated surfaces share world-lattice pattern coordinates, so a
   cuboid split does not restart the pattern.

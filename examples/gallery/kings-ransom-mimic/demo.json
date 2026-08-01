@@ -10,10 +10,10 @@
   "prompt": "Create a royal treasure chest mimic with a crooked crown, gilded filigree, articulated claws, a living lock eye, and a theatrical awakening animation.",
   "description": "A crowned vault predator with an expressive lock-eye, layered teeth, unfolding limbs, flying coins, and a full royal awakening sequence.",
   "metrics": {
-    "bones": 137,
-    "cubes": 125,
+    "bones": 128,
+    "cubes": 113,
     "animations": 2,
-    "triangles": 1500,
+    "triangles": 1332,
     "glbPrimitives": 1,
     "semanticEyes": 1
   },

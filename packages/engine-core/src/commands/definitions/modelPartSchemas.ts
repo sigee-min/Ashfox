@@ -215,7 +215,7 @@ export const modelPartSpecSchema = {
     {
       type: 'object',
       description:
-        'Feature. The only valid representation for a visible eye: a zero-depth surface marking. New: parentPartId, materialId, motif, face, anchor, and size. Existing same-kind patch: only changed fields. It paints the generated surface and never creates a protruding cube; eye, iris, pupil, and glint geometry parts are rejected.',
+        'Feature. The only valid representation for a visible eye: a bounded zero-depth surface marking on the outer face of a deep mass or segment, itself connected to a meaningful second volumetric cranial, body, or display-housing part rather than a token support tab. The host needs at least four lattice cells of depth, a head-like depth ratio, and visible anatomy around every edge after its engine-derived attachment translation. New: parentPartId, materialId, motif, face, anchor, and size. Existing same-kind patch: only changed fields. It paints the generated surface and never creates a protruding cube; standalone face volumes, plates, radials, detached masks, billboards, and eye, iris, pupil, or glint geometry parts are rejected.',
       properties: {
         ...commonProperties,
         joint: {

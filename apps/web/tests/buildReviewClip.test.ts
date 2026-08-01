@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 import {
   createWorkbenchProject
-} from '../src/features/workbench/sampleProject';
+} from './fixtures/workbenchProject';
 import {
   resolveBuildReviewClip
 } from '../src/features/capture/buildReviewClip';

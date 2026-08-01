@@ -317,12 +317,34 @@ The accepted cells are extruded by integer depth.
 ### Feature
 
 A feature owns no volume, bone, or cube. It declares one `eye` motif on an
-exposed rectangle of its geometric parent's canonical surface. The compiler
-requires every covered cell to belong to that parent and remain externally
-visible, rejects overlapping features, then projects the marking across the
-parent's generated UV regions. The texture composer derives the outline, iris,
-pupil, and highlight from one material color. Atlas packing and export bake the
-result without introducing another geometry or raster authority.
+exposed rectangle of its geometric parent's canonical surface. The command
+compiler accepts an eye only when its direct parent is a sufficiently deep
+`mass` or `segment`, that host is itself attached to a second volumetric
+`mass` or `segment`, the marking lies on the host's outermost face, and at
+least one lattice cell of host anatomy remains around all four edges. Thus a
+root-only volume, flattened mass, full-face marking, `plate`, or `radial`
+cannot act as face anatomy. Concretely, the host depth span is at least four
+lattice cells and at least half its smaller face span. The direct support's
+bounding volume is at least 10% of the host's and its smallest span is at least
+half the host depth, preventing a tiny anti-audit tab from establishing false
+connectivity. Geometry bounds include the engine-derived attachment
+translation, so a child host cannot pass with a border before snapping and
+place the eye against an edge afterward. Existing canonical recipes remain readable for
+compatibility, but every `model.parts.upsert` re-audits all eyes in the
+combined recipe; changing an unrelated part or reshaping a host cannot retain
+an invalid legacy eye assembly. The compiler also requires every covered cell
+to belong to that parent and remain externally visible, rejects overlapping
+features, then projects the marking across the parent's generated UV regions.
+The texture composer derives the outline, iris, pupil, and highlight from one
+material color. Atlas packing and export bake the result without introducing
+another geometry or raster authority.
+
+Gallery delivery adds a result-space audit over the compiled rest pose. It
+samples the actual eye motif cells against world-space cube bounds, requires a
+compiled host surface for every sampled cell, keeps the pupil center clear,
+requires at least 75% visible motif area, and checks iris-to-host color
+contrast. Blockers are geometric, so renaming a tooth, mask, or ornament cannot
+bypass the rule.
 
 ## Attachment and rig
 

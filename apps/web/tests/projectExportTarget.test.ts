@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { createWorkbenchProject } from '../src/features/workbench/sampleProject';
+import { createWorkbenchProject } from './fixtures/workbenchProject';
 import {
   defaultProjectGameVersionFor,
   isMinecraftExportTarget,
@@ -31,7 +31,7 @@ const geckoTarget = projectExportTargetFor(geckoProject);
 assert.deepEqual(geckoTarget, {
   target: 'geckolib5',
   namespace: 'ashfox',
-  modelPath: 'moonveil_celestial_kirin',
+  modelPath: 'workbench_unit_fixture',
   gameVersion: '26.1'
 });
 
@@ -42,13 +42,13 @@ const glbProject = {
     version: '2.0' as const,
     container: 'glb' as const,
     imageStorage: 'embedded' as const,
-    modelPath: 'moonveil_celestial_kirin'
+    modelPath: 'workbench_unit_fixture'
   }
 };
 assert.deepEqual(projectExportTargetFor(glbProject), {
   target: 'glb',
   namespace: 'ashfox',
-  modelPath: 'moonveil_celestial_kirin',
+  modelPath: 'workbench_unit_fixture',
   gameVersion: null
 });
 
@@ -62,6 +62,6 @@ const genericProject = {
 assert.deepEqual(projectExportTargetFor(genericProject), {
   target: 'ashfox.generic',
   namespace: 'ashfox',
-  modelPath: 'moonveil_celestial_kirin',
+  modelPath: 'workbench_unit_fixture',
   gameVersion: null
 });

@@ -11,9 +11,9 @@
   "description": "A full boss-scale dragon built as a moving reliquary, with more than 200 optimized cubes, stained-glass tracery, articulated neck, jaw, legs and tail, and an eclipse-corona awakening.",
   "metrics": {
     "bones": 230,
-    "cubes": 215,
+    "cubes": 251,
     "animations": 2,
-    "triangles": 2580,
+    "triangles": 2754,
     "glbPrimitives": 1,
     "semanticEyes": 2
   },

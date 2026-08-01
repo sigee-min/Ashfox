@@ -7,7 +7,7 @@ import {
   createLocalProjectRecord,
   LOCAL_PROJECT_SCHEMA_VERSION
 } from '../src/application/localProjectRecord';
-import { createWorkbenchProject } from '../src/features/workbench/sampleProject';
+import { createWorkbenchProject } from './fixtures/workbenchProject';
 
 const document = createWorkbenchProject();
 const candidate = createLocalProjectRecord({

@@ -8,7 +8,7 @@ import {
   createStoredZip,
   readStoredZip
 } from '../src/features/files/zip';
-import { createWorkbenchProject } from '../src/features/workbench/sampleProject';
+import { createWorkbenchProject } from './fixtures/workbenchProject';
 
 const document = createWorkbenchProject();
 const pngHeader = [137, 80, 78, 71, 13, 10, 26, 10];

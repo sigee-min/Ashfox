@@ -9,7 +9,7 @@ import {
   localProjectRevisionForSerial,
   projectRevisionSerial
 } from '../src/application/localProjectRecord';
-import { createWorkbenchProject } from '../src/features/workbench/sampleProject';
+import { createWorkbenchProject } from './fixtures/workbenchProject';
 
 assert.equal(isLocalProjectRevision('local-0012'), true);
 assert.equal(isLocalProjectRevision('source-revision'), false);

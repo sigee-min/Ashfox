@@ -5,7 +5,7 @@ import {
 } from '../src/features/files/assetMaterialization';
 import {
   createWorkbenchProject
-} from '../src/features/workbench/sampleProject';
+} from './fixtures/workbenchProject';
 
 const source = createWorkbenchProject();
 const generated = evaluateAssetMaterialization(source, {});

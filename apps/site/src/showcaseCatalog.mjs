@@ -89,10 +89,7 @@ const loadDemo = async (directoryName) => {
   if (!isRecord(manifest.metrics)) {
     throw new Error(`${manifestPath} metrics must be an object.`);
   }
-  if (!isRecord(manifest.media) || !isRecord(manifest.media.build)) {
-    throw new Error(`${manifestPath} media.build must be an object.`);
-  }
-  if (!isRecord(manifest.media.animation)) {
+  if (!isRecord(manifest.media) || !isRecord(manifest.media.animation)) {
     throw new Error(`${manifestPath} media.animation must be an object.`);
   }
   if (!isRecord(manifest.agent)) {
@@ -102,13 +99,20 @@ const loadDemo = async (directoryName) => {
   const files = {
     project: localFileName(manifest.project, `${manifestPath} project`),
     poster: localFileName(manifest.media.poster, `${manifestPath} media.poster`),
-    buildGif: localFileName(manifest.media.build.gif, `${manifestPath} media.build.gif`),
-    buildVideo: manifest.media.build.video === undefined
+    buildGif: !isRecord(manifest.media.build)
       ? null
       : localFileName(
-          manifest.media.build.video,
-          `${manifestPath} media.build.video`
+          manifest.media.build.gif,
+          `${manifestPath} media.build.gif`
         ),
+    buildVideo:
+      !isRecord(manifest.media.build) ||
+      manifest.media.build.video === undefined
+        ? null
+        : localFileName(
+            manifest.media.build.video,
+            `${manifestPath} media.build.video`
+          ),
     animationGif: localFileName(
       manifest.media.animation.gif,
       `${manifestPath} media.animation.gif`
@@ -127,8 +131,10 @@ const loadDemo = async (directoryName) => {
         assertFile(demoRoot, fileName, `${manifestPath} ${key}`)
       )
   );
-  if (featured && files.buildVideo === null) {
-    throw new Error(`${manifestPath} featured demos require media.build.video.`);
+  if (featured && files.animationVideo === null) {
+    throw new Error(
+      `${manifestPath} featured demos require media.animation.video.`
+    );
   }
 
   const metrics = {
@@ -186,16 +192,20 @@ const loadDemo = async (directoryName) => {
     project: publicFile(id, files.project),
     workbench: `/workbench/?project=${encodeURIComponent(publicFile(id, files.project))}`,
     poster: publicFile(id, files.poster),
-    build: {
-      gif: publicFile(id, files.buildGif),
-      ...(files.buildVideo
-        ? { video: publicFile(id, files.buildVideo) }
-        : {}),
-      alt: requiredString(
-        manifest.media.build.alt,
-        `${manifestPath} media.build.alt`
-      )
-    },
+    ...(files.buildGif && isRecord(manifest.media.build)
+      ? {
+          build: {
+            gif: publicFile(id, files.buildGif),
+            ...(files.buildVideo
+              ? { video: publicFile(id, files.buildVideo) }
+              : {}),
+            alt: requiredString(
+              manifest.media.build.alt,
+              `${manifestPath} media.build.alt`
+            )
+          }
+        }
+      : {}),
     animation: {
       gif: publicFile(id, files.animationGif),
       ...(files.animationVideo

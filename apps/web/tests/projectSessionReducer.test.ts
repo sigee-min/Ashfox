@@ -4,7 +4,7 @@ import {
   LOCAL_PROJECT_SCHEMA_VERSION,
   type LocalProjectRecord
 } from '../src/application/localProjectRecord';
-import { createWorkbenchProject } from '../src/features/workbench/sampleProject';
+import { createWorkbenchProject } from './fixtures/workbenchProject';
 import { createHistoryState } from '../src/application/historyReducer';
 import {
   createProjectSessionState,

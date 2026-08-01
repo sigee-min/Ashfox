@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 import { createProjectFromInput } from '@ashfox/engine-core';
 
-import { createWorkbenchProject } from '../src/features/workbench/sampleProject';
+import { createWorkbenchProject } from './fixtures/workbenchProject';
 import { LOCAL_PROJECT_SCHEMA_VERSION } from '../src/application/localProjectRecord';
 import {
   createHistoryState,

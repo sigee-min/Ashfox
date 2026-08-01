@@ -38,6 +38,7 @@ export function Viewport({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const documentRef = useLatestValue(document);
   const selectedNodeIdRef = useLatestValue(selectedNodeId);
+  const cameraCommandRef = useLatestValue(cameraCommand);
   const onSelectNodeRef = useLatestValue(onSelectNode);
   const onCommitTransformRef = useLatestValue(onCommitTransform);
   const onStatsRef = useLatestValue(onStats);
@@ -51,6 +52,7 @@ export function Viewport({
     timeSeconds: playhead
   });
   const pendingPresentationRef = useRef<number | null>(null);
+  const framedProjectIdRef = useRef<string | null>(null);
   const onFrameRef = useLatestValue((frameNonce: number): void => {
     const pending = pendingPresentationRef.current;
     if (pending === null) return;
@@ -93,8 +95,13 @@ export function Viewport({
     });
     runtime.projection = projection;
     runtime.scene.add(projection.root);
+    if (framedProjectIdRef.current !== document.id) {
+      applyCameraCommand(runtime, cameraCommandRef.current);
+      framedProjectIdRef.current = document.id;
+    }
   }, [
     assets,
+    cameraCommandRef,
     document,
     options.showSkeleton,
     options.showWireframe,

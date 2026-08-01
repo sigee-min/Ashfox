@@ -2,33 +2,28 @@
   "$schema": "../schema.json",
   "schemaVersion": 1,
   "id": "aether-spear-rocket",
-  "name": "Aether Spear Rocket",
+  "name": "Aether Spear · Crownshift Interceptor",
   "category": "Vehicle",
-  "tags": ["vehicle", "animated", "rocket", "minecraft", "glTF"],
+  "tags": ["vehicle", "animated", "spaceship", "interceptor", "sci-fi", "glTF"],
   "featured": true,
   "order": 10,
-  "prompt": "Create a high-quality Minecraft-style runic exploration rocket, fully textured, rigged, animated, and ready for a game.",
-  "description": "A runic exploration rocket with staged launch motion, animated service panels, and an engine plume.",
+  "prompt": "Build a horizontal needle-prow crownshift interceptor with a swept delta silhouette, paired canards, twin ring engines, luminous cockpit core, dorsal command crown, and a dramatic jump animation.",
+  "description": "A fast-reading sci-fi interceptor with a long spear nose, swept gold-edged wings, twin cyan ring drives, paired engine nacelles, cockpit core, and crown fins.",
   "metrics": {
-    "bones": 131,
-    "cubes": 166,
+    "bones": 26,
+    "cubes": 1610,
     "animations": 2,
-    "triangles": 1976,
+    "triangles": 7662,
     "glbPrimitives": 1,
     "semanticEyes": 0
   },
   "project": "project.ashfox",
   "media": {
-    "poster": "poster.jpg",
-    "build": {
-      "gif": "build.gif",
-      "video": "build.mp4",
-      "alt": "Aether Spear Rocket being built in ashfox"
-    },
+    "poster": "poster.png",
     "animation": {
       "gif": "animation.gif",
       "video": "animation.mp4",
-      "alt": "Aether Spear Rocket launch animation in ashfox"
+      "alt": "Aether Spear Crownshift Interceptor charging its twin ring drives in ashfox"
     }
   },
   "agent": {

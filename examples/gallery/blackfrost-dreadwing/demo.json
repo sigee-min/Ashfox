@@ -1,0 +1,38 @@
+{
+  "$schema": "../schema.json",
+  "schemaVersion": 1,
+  "id": "blackfrost-dreadwing",
+  "name": "Blackfrost Dreadwing",
+  "category": "Boss",
+  "tags": ["boss", "creature", "animated", "dragon", "blackfrost", "featured", "glTF"],
+  "featured": true,
+  "order": 5,
+  "prompt": "Create a colossal black frost dragon crouched like a predator, with enormous torn bat wings, a continuous crown-to-tail spine ridge, frostfire eyes, and a cinematic blizzard awakening.",
+  "description": "A 90-block-wide blackglass apex dragon with 302 optimized cubes, four planted claw rigs, a seven-section serpent neck, fourteen-section scythe tail, semantic frostfire eyes, and a three-act boss animation set.",
+  "metrics": {
+    "bones": 300,
+    "cubes": 302,
+    "animations": 3,
+    "triangles": 3492,
+    "glbPrimitives": 1,
+    "semanticEyes": 2
+  },
+  "project": "project.ashfox",
+  "media": {
+    "poster": "poster.png",
+    "build": {
+      "gif": "build.gif",
+      "video": "build.mp4",
+      "alt": "Blackfrost Dreadwing dominating the ashfox workbench"
+    },
+    "animation": {
+      "gif": "animation.gif",
+      "video": "animation.mp4",
+      "alt": "Blackfrost Dreadwing unfolding its wings into a blizzard roar"
+    }
+  },
+  "agent": {
+    "model": "GPT-5.6 Sol",
+    "reasoning": "xhigh"
+  }
+}

@@ -10,7 +10,7 @@ import {
 } from '../src/features/capture/createCaptureProjection';
 import {
   createWorkbenchProject
-} from '../src/features/workbench/sampleProject';
+} from './fixtures/workbenchProject';
 
 const empty = createProjectFromInput(
   {

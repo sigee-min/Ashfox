@@ -106,6 +106,7 @@ assert.match(
   /name,target\?,gameVersion\?,density\?/
 );
 assert.match(manifest.authoring.coordinates, /1\/d model unit/);
+assert.match(manifest.authoring.intent, /explicitly set forward/);
 assert.match(manifest.authoring.hierarchy, /derives .*snap/);
 assert.match(manifest.authoring.hierarchy, /UVs/);
 assert.match(manifest.authoring.materials, /square surface pixels/);
@@ -124,7 +125,23 @@ assert.match(manifest.animation.patch, /removePartIds/);
 assert.match(manifest.quality.required, /never a quality target/);
 assert.match(manifest.quality.required, /may retain canonical clips/);
 assert.match(manifest.quality.fidelity, /generic humanoid/);
+assert.match(manifest.quality.fidelity, /foot to toe/);
+assert.match(manifest.quality.fidelity, /Semantic eye count alone is not proof/);
+assert.match(manifest.quality.fidelity, /left\/right counterparts/);
+assert.match(manifest.quality.fidelity, /root-only eye host/);
+assert.match(manifest.quality.review, /side, top, and three-quarter/);
+assert.match(manifest.quality.review, /reversed feet/);
 assert.match(manifest.quality.review, /identity or appeal/);
+assert.match(manifest.authoring.parts.feature, /deep mass or segment/);
+assert.match(manifest.authoring.parts.feature, /billboard/);
+assert.match(manifest.authoring.parts.feature, /second volumetric/);
+assert.match(manifest.authoring.parts.feature, /one lattice cell/);
+assert.match(manifest.authoring.parts.feature, /at least 10%/);
+assert.match(manifest.authoring.parts.feature, /token tab/);
+assert.match(manifest.authoring.parts.feature, /re-audits all existing eyes/);
+assert.match(manifest.authoring.parts.feature, /attachment placement/);
+assert.match(manifest.authoring.parts.feature, /75%/);
+assert.match(manifest.authoring.parts.feature, /pupil center unobstructed/);
 
 const agentDefinitions = listAgentCommandDefinitions();
 for (const commandName of ['project.create', 'project.target.set']) {

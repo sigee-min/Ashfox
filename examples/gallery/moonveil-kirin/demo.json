@@ -2,33 +2,28 @@
   "$schema": "../schema.json",
   "schemaVersion": 1,
   "id": "moonveil-kirin",
-  "name": "Moonveil Kirin",
+  "name": "Moonveil · Aurora Sovereign Kirin",
   "category": "Creature",
-  "tags": ["creature", "animated", "fantasy", "minecraft", "glTF"],
+  "tags": ["creature", "animated", "fantasy", "kirin", "aurora", "semantic-eyes", "glTF"],
   "featured": true,
   "order": 30,
-  "prompt": "Create a high-quality Minecraft-style fantasy kirin, fully textured, rigged, animated, and ready for a game.",
-  "description": "A fantasy creature with branching antlers, expressive facial detail, an idle loop, and an awakening sequence.",
+  "prompt": "Build a regal midnight-blue kirin with a deep connected head, two embedded semantic eyes, pearl cloud mane, gold-violet antlers, four correctly forward-pointing hooves, an aurora comet tail, and a moonstep canter.",
+  "description": "A regal celestial kirin with connected facial anatomy, readable embedded eyes, symmetrical crown antlers, cloud-white mane, four correctly oriented hooves, and a rose-violet comet tail.",
   "metrics": {
-    "bones": 108,
-    "cubes": 120,
+    "bones": 40,
+    "cubes": 2164,
     "animations": 2,
-    "triangles": 1426,
+    "triangles": 9902,
     "glbPrimitives": 1,
     "semanticEyes": 2
   },
   "project": "project.ashfox",
   "media": {
-    "poster": "poster.jpg",
-    "build": {
-      "gif": "build.gif",
-      "video": "build.mp4",
-      "alt": "Moonveil Kirin being built in ashfox"
-    },
+    "poster": "poster.png",
     "animation": {
       "gif": "animation.gif",
       "video": "animation.mp4",
-      "alt": "Moonveil Kirin animation in ashfox"
+      "alt": "Moonveil Aurora Sovereign Kirin performing its moonstep canter in ashfox"
     }
   },
   "agent": {

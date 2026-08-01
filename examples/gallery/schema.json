@@ -52,7 +52,7 @@
     "media": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["poster", "build", "animation"],
+      "required": ["poster", "animation"],
       "properties": {
         "poster": { "$ref": "#/$defs/fileName" },
         "build": { "$ref": "#/$defs/mediaSet" },

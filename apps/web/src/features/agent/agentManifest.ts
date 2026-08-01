@@ -92,7 +92,7 @@ export const agentManifest = {
     project:
       'Start with project.create {name,target?,gameVersion?,density?}. Read compatibility.options or inspect the command schema before choosing a Minecraft version. Target defaults to glb, each Minecraft target has one curated default version, and density defaults to 1. IDs, timestamps, namespace, and model path are derived. Use density 2 or 4 for smaller surface pixels before adding geometry.',
     intent:
-      'Set project.intent.set {subject,forward?,grounding?,features?}. Each call replaces the intent; omitted values become north, free, and []. Features are short visual review criteria, not entity IDs.',
+      'Set project.intent.set {subject,forward?,grounding?,features?}. Each call replaces the intent; omitted values become north, free, and []. For any asset with limbs, wheels, tracks, a head, or another directional body plan, explicitly set forward before authoring geometry and treat it as binding. Features are short visual review criteria, not entity IDs.',
     coordinates:
       'Author integer lattice coordinates in project space: +x east, +y up, +z south. At density d, one lattice unit is 1/d model unit. Plate outline points alone are relative to their project-space origin.',
     hierarchy:
@@ -106,7 +106,7 @@ export const agentManifest = {
       radial:
         'Axis-aligned disk or ring: center, axis, outer radius, optional inner radius, depth.',
       feature:
-        'The only valid eye representation is a zero-depth marking: parentPartId, motif:"eye", face, anchor, and size of at least [4,3]. materialId is the iris base color. ashfox derives the outline, pupil, highlight, parent-surface projection, and UV pixels. Geometry part IDs describing eyes, irises, pupils, or glints are rejected.'
+        'The only valid eye representation is a zero-depth marking: parentPartId, motif:"eye", face, anchor, and size of at least [4,3]. Its direct parent must be a deep mass or segment that visibly forms the face: normal-axis span at least 4 lattice cells and at least half the smaller face span. That host must itself attach to a meaningful second volumetric cranium, body, or display housing; the support bounding volume must be at least 10% of the host and its smallest span at least half the host depth, so a token tab cannot pass. Put the marking on the host’s outermost face and leave at least one lattice cell of visible anatomy around every edge after engine-derived attachment placement. A standalone face volume, full-face paint, plate, radial, detached mask, billboard, or thin overlay cannot satisfy eye count. materialId is the contrasting iris base color. ashfox derives the outline, pupil, highlight, parent-surface projection, and UV pixels. Delivered demo assets must keep the pupil center unobstructed, at least 75% of every motif visible, and clear color contrast with the host; anonymously named teeth, ornaments, masks, or other geometry still count as blockers. Geometry part IDs describing eyes, irises, pupils, or glints are rejected. Every later model.parts.upsert re-audits all existing eyes, so flattening or detaching a host is rejected even when the eye itself is not edited.'
     },
     joints:
       'Omit joint for rigid attachment. A hinge rotates around one declared axis; a ball joint rotates around XYZ. Attachment coordinates and pivots are never authored.',
@@ -135,9 +135,9 @@ export const agentManifest = {
     structure:
       'Prioritize a recognizable silhouette, correct anatomy or construction, believable proportions, connected major masses, readable focal features, and useful articulation before small detail.',
     fidelity:
-      'Follow the requested subject rather than substituting a generic humanoid or generic vehicle. For creatures, preserve body plan, limb placement, head-to-body relationship, posture, and defining anatomy. Represent each visible eye with exactly one parent-bound eye feature. Iris, pupil, highlight, glint, eyeball, and socket cube constructions fail the modeling contract.',
+      'Follow the requested subject rather than substituting a generic humanoid or generic vehicle. For creatures, preserve body plan, limb placement, head-to-body relationship, posture, and defining anatomy. Resolve intent.forward into the project-space forward vector before placing limbs. For every planted limb, trace hip or shoulder to knee or elbow to ankle or wrist to foot to toe; the foot center and the forward tip of every ordinary toe or claw must both advance along that vector, and left/right counterparts must have matching forward reach. A rear-facing toe, dewclaw, or species exception must be visibly intentional, never an accidental front/rear mirror. Represent each visible eye with exactly one feature on a deep face host connected to a second cranial or housing volume. Semantic eye count alone is not proof of a valid face: the delivered pupil center must remain unobstructed, most of the motif must remain visible, and the iris must contrast with its host. A root-only eye host, shallow host, full-face marking, occluding ornament, iris, pupil, highlight, glint, eyeball, socket cube, face plate, or billboard fails the modeling contract.',
     review:
-      'Machine checks prove structure and export compatibility, not identity or appeal. Reject missing defining parts, floating pieces, swallowed geometry, accidental symmetry, unintended clipping, bad pivots, loop snaps, and details unreadable at gameplay distance.'
+      'Machine checks prove structure and export compatibility, not identity or appeal. Before acceptance, inspect front, side, top, and three-quarter views. In side and top views, verify every foot and toe against intent.forward; in front and three-quarter views, verify that eyes remain embedded in the moving head, visibly contrasting, and free of teeth, masks, or ornaments across the pupil center. Reject reversed feet, accidental forward-axis mirrors, detached or occluded eye surfaces, missing defining parts, floating pieces, swallowed geometry, accidental symmetry, unintended clipping, bad pivots, loop snaps, and details unreadable at gameplay distance.'
   },
   workflow: [
     {
@@ -148,12 +148,12 @@ export const agentManifest = {
     {
       stage: 'plan',
       instruction:
-        'Replace project intent with the literal subject, front, grounding, and a short defining-feature plan. Choose the correct body or construction plan before coordinates.'
+        'Replace project intent with the literal subject, explicit forward direction, grounding, and a short defining-feature plan. Resolve that direction to the coordinate system and choose the correct body or construction plan before coordinates.'
     },
     {
       stage: 'model',
       instruction:
-        'Create the root and primary connected masses first, inspect them, then add secondary forms and surface features. Correct silhouette, proportions, and joins before small detail.'
+        'Create primary masses first. Build limbs proximal-to-distal; verify feet and toe tips advance along intent.forward, then mirror left/right and compare reach. Attach each deep face host to a cranial or housing volume. Place bounded, contrasting eyes on its outer surface with one-cell borders; keep pupil centers and 75% of motifs clear of teeth, brows, masks, and ornaments. Never use a root-only host or eye-count geometry. Fix silhouette, proportions, and joins before detail.'
     },
     {
       stage: 'animate',

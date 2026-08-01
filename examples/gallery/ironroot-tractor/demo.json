@@ -2,32 +2,28 @@
   "$schema": "../schema.json",
   "schemaVersion": 1,
   "id": "ironroot-tractor",
-  "name": "Ironroot Tractor",
+  "name": "Ironroot · Verdant Crown Tractor",
   "category": "Machine",
-  "tags": ["machine", "animated", "tractor", "minecraft", "glTF"],
+  "tags": ["machine", "animated", "tractor", "orchard", "copper", "glTF"],
   "featured": true,
   "order": 20,
-  "prompt": "Create a high-quality Minecraft-style arcane field tractor, fully textured, rigged, animated, and ready for a game.",
-  "description": "An articulated field machine with driven wheels, steering, pistons, and a mechanical work cycle.",
+  "prompt": "Build a heroic green-and-copper orchard tractor with a wide crown canopy, glazed cab, readable headlights, heavy rear wheels, steering front wheels, exhaust hardware, and an animated field-drive cycle.",
+  "description": "A polished orchard machine with a strong four-wheel silhouette, luminous wheel hubs, glazed cab, crown canopy, front light bar, exhaust stack, intake, and rear hitch.",
   "metrics": {
-    "bones": 108,
-    "cubes": 125,
+    "bones": 34,
+    "cubes": 1081,
     "animations": 2,
-    "triangles": 1476,
+    "triangles": 4900,
     "glbPrimitives": 1,
     "semanticEyes": 0
   },
   "project": "project.ashfox",
   "media": {
-    "poster": "poster.jpg",
-    "build": {
-      "gif": "build.gif",
-      "video": "build.mp4",
-      "alt": "Ironroot Tractor being built in ashfox"
-    },
+    "poster": "poster.png",
     "animation": {
       "gif": "animation.gif",
-      "alt": "Ironroot Tractor animation in ashfox"
+      "video": "animation.mp4",
+      "alt": "Ironroot Verdant Crown Tractor driving in the ashfox workbench"
     }
   },
   "agent": {

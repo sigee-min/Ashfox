@@ -6,7 +6,7 @@ import type {
 } from '@ashfox/engine-core';
 
 import { createBuildCapturePlan } from '../src/features/capture/buildCaptureTimeline';
-import { createWorkbenchProject } from '../src/features/workbench/sampleProject';
+import { createWorkbenchProject } from './fixtures/workbenchProject';
 
 const base = createWorkbenchProject();
 const empty: ProjectDocument = {

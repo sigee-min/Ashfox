@@ -217,6 +217,228 @@ if (plate.kind === 'plate') {
   assert.equal(Object.hasOwn(plate, 'size'), false);
 }
 
+const eyeOnPlate = run(plateDocument, 'authoring-eye-on-plate', [{
+  name: 'model.parts.upsert',
+  payload: {
+    parts: [{
+      kind: 'feature',
+      partId: 'face.marking',
+      parentPartId: 'body',
+      materialId: 'eye',
+      motif: 'eye',
+      face: 'north',
+      anchor: [3, 1, 0],
+      size: [4, 3]
+    }],
+    materials: [{ id: 'eye', baseColor: '#FFFFFF' }]
+  }
+}]);
+assert.equal(eyeOnPlate.ok, false);
+if (!eyeOnPlate.ok) {
+  assert.equal(
+    eyeOnPlate.error.path,
+    'operations[0].payload.parts[0].parentPartId'
+  );
+  assert.match(eyeOnPlate.error.message, /volumetric mass or segment/);
+  assert.match(eyeOnPlate.error.message, /billboard/);
+}
+
+const eyeOnStandaloneMass = run(
+  rootOnly,
+  'authoring-eye-on-standalone-mass',
+  [{
+    name: 'model.parts.upsert',
+    payload: {
+      parts: [{
+        kind: 'feature',
+        partId: 'face.marking',
+        parentPartId: 'body',
+        materialId: 'eye',
+        motif: 'eye',
+        face: 'north',
+        anchor: [0, 0, -2],
+        size: [4, 3]
+      }],
+      materials: [{ id: 'eye', baseColor: '#FFFFFF' }]
+    }
+  }]
+);
+assert.equal(eyeOnStandaloneMass.ok, false);
+if (!eyeOnStandaloneMass.ok) {
+  assert.match(eyeOnStandaloneMass.error.message, /standalone face volume/i);
+  assert.match(eyeOnStandaloneMass.error.message, /detached mask/i);
+}
+
+const eyeOnTokenSupport = run(
+  emptyProject('authoring-eye-token-support'),
+  'authoring-eye-token-support-create',
+  [{
+    name: 'model.parts.upsert',
+    payload: {
+      parts: [{
+        kind: 'mass',
+        partId: 'token.support',
+        parentPartId: null,
+        materialId: 'gold',
+        center: [0, 0, 4],
+        radii: [1, 1, 1],
+        profile: 'hard'
+      }, {
+        kind: 'mass',
+        partId: 'fake.head',
+        parentPartId: 'token.support',
+        materialId: 'gold',
+        center: [0, 0, 0],
+        radii: [5, 5, 3],
+        profile: 'hard'
+      }, {
+        kind: 'feature',
+        partId: 'face.marking',
+        parentPartId: 'fake.head',
+        materialId: 'eye',
+        motif: 'eye',
+        face: 'north',
+        anchor: [0, 0, -3],
+        size: [4, 3]
+      }],
+      materials: [
+        { id: 'gold', baseColor: '#C58A32' },
+        { id: 'eye', baseColor: '#FFFFFF' }
+      ]
+    }
+  }]
+);
+assert.equal(eyeOnTokenSupport.ok, false);
+if (!eyeOnTokenSupport.ok) {
+  assert.match(eyeOnTokenSupport.error.message, /token support volume/i);
+  assert.match(eyeOnTokenSupport.error.message, /tiny anti-audit tab/i);
+}
+
+const attachmentShiftedEye = run(
+  emptyProject('authoring-eye-shifted-border'),
+  'authoring-eye-shifted-border-create',
+  [{
+    name: 'model.parts.upsert',
+    payload: {
+      parts: [{
+        kind: 'mass',
+        partId: 'housing.support',
+        parentPartId: null,
+        materialId: 'gold',
+        center: [0, 10, -14],
+        radii: [4, 1, 2],
+        profile: 'hard'
+      }, {
+        kind: 'mass',
+        partId: 'housing.face',
+        parentPartId: 'housing.support',
+        materialId: 'gold',
+        center: [0, 15, -11],
+        radii: [6, 3, 2],
+        profile: 'hard'
+      }, {
+        kind: 'feature',
+        partId: 'housing.eye',
+        parentPartId: 'housing.face',
+        materialId: 'eye',
+        motif: 'eye',
+        face: 'north',
+        anchor: [0, 15, -13],
+        size: [8, 4]
+      }],
+      materials: [
+        { id: 'gold', baseColor: '#C58A32' },
+        { id: 'eye', baseColor: '#22D3EE' }
+      ]
+    }
+  }]
+);
+assert.equal(attachmentShiftedEye.ok, false);
+if (!attachmentShiftedEye.ok) {
+  assert.match(
+    attachmentShiftedEye.error.message,
+    /visible host anatomy on every side/i
+  );
+}
+
+const anatomicalEyeDocument = succeed(
+  emptyProject('authoring-anatomical-eye'),
+  'authoring-anatomical-eye-create',
+  [{
+    name: 'model.parts.upsert',
+    payload: {
+      parts: [{
+        kind: 'mass',
+        partId: 'cranium',
+        parentPartId: null,
+        materialId: 'gold',
+        center: [0, 0, 5],
+        radii: [4, 4, 2],
+        profile: 'hard'
+      }, {
+        kind: 'mass',
+        partId: 'head',
+        parentPartId: 'cranium',
+        materialId: 'gold',
+        center: [0, 0, 0],
+        radii: [5, 5, 3],
+        profile: 'hard'
+      }, {
+        kind: 'feature',
+        partId: 'face.marking',
+        parentPartId: 'head',
+        materialId: 'eye',
+        motif: 'eye',
+        face: 'north',
+        anchor: [0, 0, -3],
+        size: [4, 3]
+      }],
+      materials: [
+        { id: 'gold', baseColor: '#C58A32' },
+        { id: 'eye', baseColor: '#FFFFFF' }
+      ]
+    }
+  }]
+);
+
+const flattenedEyeHost = run(
+  anatomicalEyeDocument,
+  'authoring-anatomical-eye-flatten-host',
+  [{
+    name: 'model.parts.upsert',
+    payload: {
+      parts: [{
+        kind: 'mass',
+        partId: 'head',
+        radii: [5, 5, 1]
+      }]
+    }
+  }]
+);
+assert.equal(flattenedEyeHost.ok, false);
+if (!flattenedEyeHost.ok) {
+  assert.match(flattenedEyeHost.error.message, /too shallow/i);
+}
+
+const fullFaceEye = run(
+  anatomicalEyeDocument,
+  'authoring-anatomical-eye-full-face',
+  [{
+    name: 'model.parts.upsert',
+    payload: {
+      parts: [{
+        kind: 'feature',
+        partId: 'face.marking',
+        size: [10, 6]
+      }]
+    }
+  }]
+);
+assert.equal(fullFaceEye.ok, false);
+if (!fullFaceEye.ok) {
+  assert.match(fullFaceEye.error.message, /painting the whole face is a mask/i);
+}
+
 const inferred = succeed(rootOnly, 'authoring-infer-parent', [{
   name: 'model.parts.upsert',
   payload: {

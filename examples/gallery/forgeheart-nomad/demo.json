@@ -10,10 +10,10 @@
   "prompt": "Create a traveling forge caravan transformed into an upright war golem with a giant hammer, articulated tongs, wheel mechanisms, and a living furnace heart.",
   "description": "A soot-and-copper mobile forge with a readable war-golem silhouette, working tool arms, wheel hardware, chimney crown, and full caravan-to-warform deployment.",
   "metrics": {
-    "bones": 124,
-    "cubes": 113,
+    "bones": 123,
+    "cubes": 130,
     "animations": 2,
-    "triangles": 1368,
+    "triangles": 1430,
     "glbPrimitives": 1,
     "semanticEyes": 2
   },

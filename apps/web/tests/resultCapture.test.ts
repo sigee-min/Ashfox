@@ -16,7 +16,7 @@ import {
 } from '../src/features/capture/resultCaptureFile';
 import {
   createWorkbenchProject
-} from '../src/features/workbench/sampleProject';
+} from './fixtures/workbenchProject';
 
 const pngBytes = new Uint8Array([
   0x89, 0x50, 0x4e, 0x47,

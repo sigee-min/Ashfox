@@ -24,7 +24,7 @@ const roundTripParts = (): readonly PartAuthoringSpec[] => [{
   parentPartId: 'core',
   materialId: 'stone',
   center: [7, 0, 0],
-  radii: [1, 1, 1],
+  radii: [3, 3, 3],
   profile: 'balanced'
 }, {
   kind: 'segment',
@@ -67,11 +67,11 @@ const roundTripParts = (): readonly PartAuthoringSpec[] => [{
 }, {
   kind: 'feature',
   partId: 'feature.detail',
-  parentPartId: 'core',
+  parentPartId: 'mass.detail',
   materialId: 'stone',
   motif: 'eye',
   face: 'down',
-  anchor: [0, -4, 0],
+  anchor: [7, -3, 0],
   size: [4, 3]
 }];
 
@@ -189,7 +189,7 @@ for (const density of [1, 2, 4] as const) {
     inspectedMass?.kind === 'mass'
       ? inspectedMass.center
       : null,
-    [5, 0, 0],
+    [7, 0, 0],
     'inspect must expose the snapped project-space position'
   );
   assert.deepEqual(
@@ -217,7 +217,7 @@ for (const density of [1, 2, 4] as const) {
     inspectedFeature?.kind === 'feature'
       ? inspectedFeature.anchor
       : null,
-    [0, -4, 0]
+    [7, -3, 0]
   );
   const beforeRoundTrip = compiledVisualSnapshot(authored.document);
   const reapplied = executeCommandBatch(

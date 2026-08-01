@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { createWorkbenchProject } from '../src/features/workbench/sampleProject';
+import { createWorkbenchProject } from './fixtures/workbenchProject';
 import {
   resolveActiveClipId,
   resolveSelectedNodeId

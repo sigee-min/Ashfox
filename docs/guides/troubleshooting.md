@@ -42,8 +42,24 @@ The eyes disappear in the three-quarter view.
 Move them slightly higher and outward without changing the head silhouette.
 ```
 
-Move or resize the eye's single surface feature, or change its iris material.
-Do not add socket, pupil, or highlight cubes.
+Move or resize the eye's single surface feature on the existing volumetric
+face host, or change its iris material. The host must have head-like depth,
+attach to a second cranial or housing volume, expose the eye on its outermost
+surface, and leave visible anatomy around every edge. Do not add socket,
+pupil, or highlight cubes, and do not add a separate root volume, plate, mask,
+billboard, or thin overlay just to carry the eye. Check the compiled rest pose,
+not only the part recipe: the pupil center must be clear, at least 75% of the
+motif must remain visible, and the iris must contrast with the host. Move or
+remove any tooth, brow, ornament, or anonymously named cube that covers it.
+
+## Feet or toes point backward
+
+Ask the agent to read the project's declared forward direction, then render
+side and top views. It should trace each planted limb from shoulder or hip to
+knee or elbow, ankle or wrist, foot, and toe. Ordinary toes and claws must
+continue forward. A rear-facing dewclaw or species-specific exception must be
+explicitly requested and visually intentional. Mirror left to right only
+across the body axis; never mirror across the forward axis.
 
 ## An animation does not play correctly
 

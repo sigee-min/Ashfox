@@ -28,20 +28,20 @@ export const landingContent = {
       name: item.name,
       prompt: item.prompt,
       poster: item.poster,
-      video: item.build.video,
+      video: item.animation.video,
       cooldownMs: 2400
     }))
   },
   story: [
     {
       eyebrow: 'Structure',
-      title: 'Structure takes shape.',
+      title: 'Every part has a job.',
       body:
-        'An empty scene becomes an articulated machine with every part still editable.',
+        'Wheel rigs, steering, cabin, lights, and hitch remain editable while the complete machine moves as one.',
       detail: `${tractor.detail} · articulated drivetrain`,
       poster: tractor.poster,
-      video: tractor.build.video,
-      alt: tractor.build.alt
+      video: tractor.animation.video,
+      alt: tractor.animation.alt
     },
     {
       eyebrow: 'Motion',
@@ -107,8 +107,8 @@ export const galleryContent = {
     ...item,
     galleryId: item.id,
     phase: 'Game-ready source',
-    gif: item.build.gif,
-    alt: item.build.alt,
+    gif: item.animation.gif,
+    alt: item.animation.alt,
     searchText: [
       item.name,
       item.category,

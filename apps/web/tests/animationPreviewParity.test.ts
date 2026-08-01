@@ -15,7 +15,7 @@ import {
 } from '../src/rendering/animationPose';
 import {
   createWorkbenchProject
-} from '../src/features/workbench/sampleProject';
+} from './fixtures/workbenchProject';
 
 const assertArrayClose = (
   actual: readonly number[],

@@ -25,12 +25,6 @@ import type {
   ProjectArchiveFile
 } from '../../files/projectArchive';
 import {
-  createDemoHistory
-} from '../demo/demoFactory';
-import {
-  resolveDemoDefinition
-} from '../demo/demoRegistry';
-import {
   createBlankWorkbenchProject
 } from '../newProject';
 import {
@@ -56,19 +50,15 @@ interface GalleryProjectLoadStatus {
 const createInitialProject = () => {
   const search =
     typeof window === 'undefined' ? '' : window.location.search;
-  const definition = resolveDemoDefinition(search);
   const projectUrl = typeof window === 'undefined'
     ? null
     : resolveGalleryProjectUrl(search, window.location.origin);
   return {
-    definition,
     projectUrl,
-    history: definition
-      ? createDemoHistory(definition)
-      : createHistoryState(
-          createBlankWorkbenchProject(new Date().toISOString())
-        ),
-    isShowcase: definition !== null || projectUrl !== null
+    history: createHistoryState(
+      createBlankWorkbenchProject(new Date().toISOString())
+    ),
+    isShowcase: projectUrl !== null
   };
 };
 
@@ -179,8 +169,7 @@ export const useWorkbenchProjectSession = () => {
   }, [initialProject.projectUrl, replaceProject]);
 
   return {
-    initialSelectionId:
-      initialProject.definition?.initialSelectionId ?? null,
+    initialSelectionId: null,
     initialClipId:
       Object.keys(initialProject.history.present.animations)[0] ?? null,
     document,
