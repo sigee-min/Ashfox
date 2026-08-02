@@ -2,18 +2,18 @@
   "$schema": "../schema.json",
   "schemaVersion": 1,
   "id": "ashfox-ember-sentinel",
-  "name": "Ashfox Ember Sentinel",
+  "name": "Ashfox · Ember Sentinel",
   "category": "Creature",
-  "tags": ["creature", "brand", "animated", "fox", "guardian", "glTF"],
+  "tags": ["creature", "animated", "fox", "guardian", "nine-tailed", "game-ready", "semantic-eyes", "glTF", "meshopt"],
   "featured": false,
   "order": 50,
-  "prompt": "Create an iconic nine-tailed Ashfox guardian with forged armor, a cyan spirit heart, expressive fox features, and a supernatural halo ignition.",
-  "description": "Ashfox's orange spirit guardian combines nine articulated tails, readable fox expression, layered armor, and a cyan ember-halo transformation.",
+  "prompt": "Create a game-ready nine-tailed ember guardian fox with natural quadruped anatomy, forward-facing paws and claws, semantic spirit eyes, layered forged armor, and a dramatic full-tail ignition animation.",
+  "description": "A fully rigged ember guardian with natural planted anatomy, nine independently articulated flame tails, semantic cyan eyes, layered armor, and one-primitive optimized GLB output.",
   "metrics": {
-    "bones": 134,
-    "cubes": 147,
+    "bones": 71,
+    "cubes": 809,
     "animations": 2,
-    "triangles": 1592,
+    "triangles": 4612,
     "glbPrimitives": 1,
     "semanticEyes": 2
   },
@@ -22,11 +22,11 @@
     "poster": "poster.png",
     "build": {
       "gif": "build.gif",
-      "alt": "Ashfox Ember Sentinel being built in ashfox"
+      "alt": "Ashfox Ember Sentinel built from anatomy through nine articulated tails in ashfox"
     },
     "animation": {
       "gif": "animation.gif",
-      "alt": "Ashfox Ember Sentinel igniting its nine-tail spirit halo"
+      "alt": "Ashfox Ember Sentinel raising and igniting all nine articulated flame tails"
     }
   },
   "agent": {
