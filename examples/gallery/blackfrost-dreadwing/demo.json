@@ -2,18 +2,18 @@
   "$schema": "../schema.json",
   "schemaVersion": 1,
   "id": "blackfrost-dreadwing",
-  "name": "Blackfrost Dreadwing",
+  "name": "Blackfrost · Dreadwing Ascendant",
   "category": "Boss",
-  "tags": ["boss", "creature", "animated", "dragon", "blackfrost", "featured", "glTF", "1 draw call", "meshopt"],
+  "tags": ["boss", "creature", "animated", "wyvern", "blackfrost", "game-ready", "semantic-eyes", "glTF", "1 draw call", "meshopt", "quantized"],
   "featured": true,
   "order": 5,
-  "prompt": "Create a colossal grounded black frost dragon facing west, with four correctly oriented clawed feet, a deep anatomical head with semantic frostfire eyes, swept bat wings, a crown-to-tail ice ridge, and cinematic idle and roar motion.",
-  "description": "A directly authored 58-bone frost dragon with 2,453 generated surface cubes, two semantic eyes, two animation clips, and a quantized Meshopt GLB compiled to one primitive.",
+  "prompt": "Create a true grounded blackfrost wyvern facing west: two powerful hind legs, wing-knuckle forelimbs with planted talons, a deep connected cranium with two embedded frostfire eyes, swept membrane wings, crown-to-tail ice armor, and cinematic idle and roar motion.",
+  "description": "A directly authored game-ready wyvern with deep semantic eye anatomy, consistently forward talons, articulated wing membranes and ice armor, two production animation clips, and a quantized Meshopt GLB compiled to one primitive.",
   "metrics": {
-    "bones": 58,
-    "cubes": 2453,
+    "bones": 69,
+    "cubes": 2996,
     "animations": 2,
-    "triangles": 11524,
+    "triangles": 14766,
     "glbPrimitives": 1,
     "semanticEyes": 2
   },
@@ -30,7 +30,7 @@
     }
   },
   "agent": {
-    "model": "GPT-5",
+    "model": "GPT-5.6 Sol",
     "reasoning": "xhigh"
   }
 }

@@ -73,7 +73,9 @@ export const createViewportEnvironment = (
 
   if (id === 'studio') {
     background = new THREE.Color('#171b20');
-    fog = new THREE.Fog('#171b20', 110, 220);
+    // Studio is the inspection environment: even the largest authored demo
+    // must keep its far-side face, eyes, and silhouette readable.
+    fog = new THREE.Fog('#171b20', 320, 640);
   } else if (id === 'day') {
     background = createGradientTexture('#4389d2', '#80bcef', '#d9eeff');
     fog = new THREE.Fog('#c7e1f4', 140, 280);

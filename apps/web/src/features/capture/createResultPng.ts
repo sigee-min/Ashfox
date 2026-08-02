@@ -1,12 +1,12 @@
 import type { ProjectDocument } from '@ashfox/engine-core';
 
 import type { ProjectAssets } from '../../application/projectAssets';
-import { applyCameraPreset } from '../../rendering/cameraPresets';
 import { throwIfCaptureAborted } from './captureAbort';
 import {
   captureSurfacePngBytes,
   createCaptureSurface,
   disposeCaptureSurface,
+  frameCaptureObject,
   waitForProjectionTextures
 } from './captureSurface';
 import { createCaptureProjection } from './createCaptureProjection';
@@ -31,12 +31,12 @@ export const renderResultPng = async (
   const surface = createCaptureSurface({
     width: RESULT_CAPTURE_WIDTH,
     height: RESULT_CAPTURE_HEIGHT,
-    environment: 'day',
+    environment: 'studio',
     cameraMode: 'perspective'
   });
   const projection = createCaptureProjection(document, assets);
   surface.scene.add(projection.root);
-  applyCameraPreset(surface.camera, 'perspective', projection.root);
+  frameCaptureObject(surface, 'perspective', projection.root);
 
   try {
     await waitForProjectionTextures(projection, context.signal);

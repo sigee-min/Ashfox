@@ -6,7 +6,6 @@ import type {
 import type { ProjectAssets } from '../../application/projectAssets';
 import { applyAnimationPose } from '../../rendering/animationPose';
 import {
-  applyCameraPreset,
   type CameraMode
 } from '../../rendering/cameraPresets';
 import type { ProjectSceneProjection } from '../../rendering/sceneTypes';
@@ -25,7 +24,10 @@ import {
   finishGifCaptureSurface,
   type GifCaptureResult
 } from './gifCaptureSurface';
-import { waitForProjectionTextures } from './captureSurface';
+import {
+  frameCaptureObject,
+  waitForProjectionTextures
+} from './captureSurface';
 import { drawBuildFrameOverlay } from './gifFrameOverlay';
 import { resolveBuildReviewClip } from './buildReviewClip';
 import { createCaptureProjection } from './createCaptureProjection';
@@ -104,8 +106,8 @@ export const renderBuildGif = async (
     options.assets,
     { showTextures: false }
   );
-  applyCameraPreset(
-    surface.camera,
+  frameCaptureObject(
+    surface,
     options.cameraMode,
     framingProjection.root
   );

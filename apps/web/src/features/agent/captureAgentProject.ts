@@ -118,7 +118,7 @@ const captureRequestFor = (
       kind: 'build',
       documents,
       receipts: currentBuildActivity(document, documents, activity),
-      environment: 'day',
+      environment: 'studio',
       cameraMode: 'perspective'
     };
   }
@@ -146,7 +146,7 @@ const captureRequestFor = (
   return {
     kind: 'animation',
     clipId: clip.id,
-    environment: 'day',
+    environment: 'studio',
     cameraMode: 'perspective'
   };
 };

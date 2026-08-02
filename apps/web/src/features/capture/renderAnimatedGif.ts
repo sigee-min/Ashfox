@@ -3,7 +3,6 @@ import type { ProjectDocument } from '@ashfox/engine-core';
 import type { ProjectAssets } from '../../application/projectAssets';
 import { applyAnimationPose } from '../../rendering/animationPose';
 import {
-  applyCameraPreset,
   type CameraMode
 } from '../../rendering/cameraPresets';
 import type { ViewportEnvironmentId } from '../../rendering/viewportEnvironment';
@@ -18,7 +17,10 @@ import {
   finishGifCaptureSurface,
   type GifCaptureResult
 } from './gifCaptureSurface';
-import { waitForProjectionTextures } from './captureSurface';
+import {
+  frameCaptureObject,
+  waitForProjectionTextures
+} from './captureSurface';
 import {
   createGifFramePlan,
   GIF_CAPTURE_FPS
@@ -53,8 +55,8 @@ export const renderAnimatedGif = async (
     options.assets
   );
   surface.scene.add(projection.root);
-  applyCameraPreset(
-    surface.camera,
+  frameCaptureObject(
+    surface,
     options.cameraMode,
     projection.root
   );

@@ -59,7 +59,10 @@ export const createViewportRuntime = (
   orbit.enableDamping = true;
   orbit.dampingFactor = 0.08;
   orbit.minDistance = 8;
-  orbit.maxDistance = 90;
+  // Large gallery creatures need the object-framing camera distance to win.
+  // A 90-unit clamp forced their heads, tails, and antlers off-screen after
+  // applyCameraPreset had correctly computed a wider shot.
+  orbit.maxDistance = 240;
   orbit.update();
 
   const transform = new TransformControls(camera, canvas);

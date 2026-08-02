@@ -169,7 +169,7 @@ export const test = (async (): Promise<void> => {
   assert.deepEqual(received, {
     kind: 'animation',
     clipId: 'idle',
-    environment: 'day',
+    environment: 'studio',
     cameraMode: 'perspective'
   });
   assert.equal(result.ok, true);

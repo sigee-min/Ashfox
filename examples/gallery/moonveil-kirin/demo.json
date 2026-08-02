@@ -2,28 +2,31 @@
   "$schema": "../schema.json",
   "schemaVersion": 1,
   "id": "moonveil-kirin",
-  "name": "Moonveil · Aurora Sovereign Kirin",
+  "name": "Moonveil · Celestial Kirin",
   "category": "Creature",
-  "tags": ["creature", "animated", "fantasy", "kirin", "aurora", "semantic-eyes", "glTF"],
+  "tags": ["creature", "animated", "fantasy", "kirin", "aurora", "game-ready", "semantic-eyes", "glTF", "1 draw call", "meshopt", "quantized"],
   "featured": true,
   "order": 30,
-  "prompt": "Build a regal midnight-blue kirin with a deep connected head, two embedded semantic eyes, pearl cloud mane, gold-violet antlers, four correctly forward-pointing hooves, an aurora comet tail, and a moonstep canter.",
-  "description": "A regal celestial kirin with connected facial anatomy, readable embedded eyes, symmetrical crown antlers, cloud-white mane, four correctly oriented hooves, and a rose-violet comet tail.",
+  "prompt": "Build a regal midnight-blue celestial kirin facing west, with a deep neck-to-cranium-to-muzzle anatomy, two embedded semantic eyes, branched gold-violet antlers, pearl cloud mane, four correctly forward-pointing cloven hooves, an aurora comet tail, and a flowing gallop.",
+  "description": "A directly authored game-ready celestial kirin with connected facial anatomy, readable embedded eyes, four grounded cloven hooves, layered cloud armor, comet-tail silhouette, two production animation clips, and a one-primitive quantized Meshopt GLB.",
   "metrics": {
-    "bones": 40,
-    "cubes": 2164,
+    "bones": 89,
+    "cubes": 2124,
     "animations": 2,
-    "triangles": 9902,
+    "triangles": 10432,
     "glbPrimitives": 1,
     "semanticEyes": 2
   },
   "project": "project.ashfox",
   "media": {
     "poster": "poster.png",
+    "build": {
+      "gif": "build.gif",
+      "alt": "Moonveil Celestial Kirin built from an empty scene through anatomy, grounded hooves, antlers, semantic eyes, materials, and motion"
+    },
     "animation": {
       "gif": "animation.gif",
-      "video": "animation.mp4",
-      "alt": "Moonveil Aurora Sovereign Kirin performing its moonstep canter in ashfox"
+      "alt": "Moonveil Celestial Kirin performing its Aurora Gallop in ashfox"
     }
   },
   "agent": {

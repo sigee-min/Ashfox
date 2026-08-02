@@ -85,6 +85,32 @@ export const createCaptureSurface = (
   };
 };
 
+const CAPTURE_FRAME_DISTANCE_SCALE = 1.08;
+
+export const frameCaptureObject = (
+  surface: CaptureSurface,
+  cameraMode: CameraMode,
+  object: THREE.Object3D
+): void => {
+  const target = applyCameraPreset(
+    surface.camera,
+    cameraMode,
+    object
+  );
+  const offset = surface.camera.position
+    .clone()
+    .sub(target)
+    .multiplyScalar(CAPTURE_FRAME_DISTANCE_SCALE);
+  surface.camera.position.copy(target).add(offset);
+  surface.camera.lookAt(target);
+  surface.camera.updateProjectionMatrix();
+
+  // Gallery and process captures must keep every authored edge readable.
+  // Environment fog remains available in the live viewport, but it should
+  // not wash out large models in exported marketing artifacts.
+  surface.scene.fog = null;
+};
+
 export const renderCaptureSurface = (
   surface: CaptureSurface
 ): void => {
