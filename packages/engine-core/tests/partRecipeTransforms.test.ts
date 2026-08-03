@@ -16,7 +16,9 @@ import {
   type PartSpec
 } from '../src/modeling/partContract';
 import { cellKey, parseCellKey } from '../src/modeling/lattice';
-import { rasterizePart } from '../src/modeling/partPrimitiveAdapter';
+import {
+  validationOccupancyForPart
+} from '../src/modeling/semanticCuboidGrammar';
 import { surfaceFeaturePixels } from '../src/modeling/surfaceFeature';
 import { normalizePartRecipe } from '../src/modeling/partRecipe';
 import {
@@ -148,7 +150,7 @@ const reflectedCellKeys = (
   axis: Axis,
   plane: number
 ): readonly string[] =>
-  [...rasterizePart(1, part).cells]
+  [...validationOccupancyForPart(part, 1).cells]
     .map((key) =>
       cellKey(reflectLatticeCell(parseCellKey(key), axis, plane))
     )
@@ -222,7 +224,7 @@ for (const { axis, plane } of reflectionCases) {
       throw new Error('Primitive kind changed during reflection.');
     }
     assert.deepEqual(
-      [...rasterizePart(1, target).cells].sort(),
+      [...validationOccupancyForPart(target, 1).cells].sort(),
       reflectedCellKeys(source, axis, plane),
       `${source.kind} occupancy must reflect exactly on ${axis}=${plane}`
     );
@@ -374,7 +376,8 @@ const createProject = (id: string): ProjectDocument =>
 const execute = (
   document: ProjectDocument,
   batchId: string,
-  operations: CommandBatch['operations']
+  operations: CommandBatch['operations'],
+  source: 'agent' | 'system' = 'agent'
 ): ProjectDocument => {
   const result = executeCommandBatch(
     document,
@@ -384,7 +387,7 @@ const execute = (
       baseRevision: document.revision,
       operations
     },
-    { source: 'agent' }
+    { source }
   );
   if (!result.ok) {
     throw new Error(
@@ -703,7 +706,8 @@ const densityTwoEmpty = execute(
   [{
     name: 'textures.density.set',
     payload: { density: 2 }
-  }]
+  }],
+  'system'
 );
 const densityTwoModel = execute(
   densityTwoEmpty,

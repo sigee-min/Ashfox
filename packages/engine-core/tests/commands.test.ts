@@ -69,7 +69,6 @@ assert.deepEqual(
     'model.parts.material',
     'model.parts.delete',
     'scene.locators.delete',
-    'textures.density.set',
     'animation.motion.upsert',
     'animation.clip.delete'
   ]

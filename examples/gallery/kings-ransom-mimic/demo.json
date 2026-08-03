@@ -11,9 +11,9 @@
   "description": "A crowned vault predator with an expressive lock-eye, layered teeth, unfolding limbs, flying coins, and a full royal awakening sequence.",
   "metrics": {
     "bones": 128,
-    "cubes": 113,
+    "cubes": 109,
     "animations": 2,
-    "triangles": 1332,
+    "triangles": 1308,
     "glbPrimitives": 1,
     "semanticEyes": 1
   },

@@ -12,6 +12,9 @@ export {
 } from './partContract/parser';
 export type {
   BallPartJoint,
+  EyeFeaturePartSpec,
+  EyeGlyph,
+  FeatureGlyph,
   FeatureMotif,
   FeaturePartAuthoringSpec,
   FeaturePartSpec,
@@ -22,7 +25,12 @@ export type {
   LatticeVec2,
   LatticeVec3,
   MassPartAuthoringSpec,
+  MassPartProfile,
   MassPartSpec,
+  MouthGlyph,
+  MouthFeaturePartSpec,
+  NoseGlyph,
+  NoseFeaturePartSpec,
   PartAttachment,
   PartAuthoringSpec,
   PartAxis,

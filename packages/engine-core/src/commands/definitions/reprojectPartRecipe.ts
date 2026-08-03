@@ -6,6 +6,7 @@ import {
   compilePartScene,
   type CompilePartSceneFailure
 } from '../../modeling/partCompiler';
+import { derivePartAttachments } from '../../modeling/partAttachmentDerivation';
 import { withPartRecipe } from '../../modeling/partRecipe';
 import {
   ensureGeneratedTexture
@@ -30,9 +31,25 @@ export const reprojectPartRecipe = (
   document: ProjectDocument,
   recipe: ConstrainedModelRecipe
 ): ReprojectPartRecipeResult => {
+  const attachments = derivePartAttachments(
+    recipe.parts,
+    document.settings.surfacePixelDensity
+  );
+  if (!attachments.ok) {
+    return {
+      ok: false,
+      failure: {
+        ok: false,
+        code: 'geometry',
+        path: attachments.path,
+        pathScope: 'payload',
+        message: attachments.message
+      }
+    };
+  }
   const setup = ensureGeneratedTexture(document);
   const compiled = compilePartScene(setup.document, {
-    parts: recipe.parts,
+    parts: attachments.parts,
     materials: recipe.materials,
     textureId: setup.textureId
   });
@@ -42,7 +59,11 @@ export const reprojectPartRecipe = (
       failure: compiled
     };
   }
-  const projected = withPartRecipe(compiled.document, recipe);
+  const projectedRecipe: ConstrainedModelRecipe = {
+    ...recipe,
+    parts: compiled.projectedParts
+  };
+  const projected = withPartRecipe(compiled.document, projectedRecipe);
   return {
     ok: true,
     document: projected,

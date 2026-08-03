@@ -4,6 +4,9 @@ import type {
   ProjectDocument,
   ValidationReport
 } from '@ashfox/engine-core';
+import {
+  measureDocumentFormComposition
+} from '@ashfox/engine-core';
 
 import { Icon } from '../Icon';
 import { SceneTree } from './SceneTree';
@@ -23,6 +26,12 @@ export function SceneOverlay({
   onSelectNode,
   onToggleVisibility
 }: SceneOverlayProps) {
+  const formComposition = measureDocumentFormComposition(document);
+  const archivedCubeCount = Object.values(document.scene.nodes).filter(
+    (node) =>
+      node.kind === 'cube' &&
+      node.generation?.authority !== 'ashfox.part-compiler'
+  ).length;
   return (
     <aside className="floating-panel scene-overlay">
       <div className="panel-heading">
@@ -66,6 +75,21 @@ export function SceneOverlay({
             </button>
           ))}
         </div>
+      </div>
+      <div className="form-composition-summary">
+        <span>
+          <strong>Form composition</strong>
+          <small>
+            {formComposition.semanticParts} semantic parts
+          </small>
+        </span>
+        <small>
+          {formComposition.compiledCuboids} compiled cuboids ·{' '}
+          {formComposition.cellScaleCuboids} cell-scale
+        </small>
+        {archivedCubeCount > 0 ? (
+          <small>{archivedCubeCount} archived cubes excluded</small>
+        ) : null}
       </div>
       <div className="validation-summary">
         <span className={`validation-icon${report.valid ? ' is-valid' : ''}`}>

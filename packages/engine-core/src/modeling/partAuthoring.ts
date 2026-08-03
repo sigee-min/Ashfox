@@ -4,7 +4,7 @@ import type {
   PartAuthoringSpec,
   PartSpec
 } from './partContract';
-import { partTranslation } from './partPrimitiveAdapter';
+import { partTranslation } from './partTranslation';
 
 const addVec3 = (
   value: LatticeVec3,
@@ -111,6 +111,20 @@ export const completePartAuthoringSpec = (
       : { ...input }
   ) as PartAuthoringSpec;
 
+  if (
+    completed.kind === 'mass' &&
+    existing?.kind !== 'mass' &&
+    completed.profile === undefined
+  ) {
+    return {
+      ok: true,
+      value: {
+        ...completed,
+        profile: 'block'
+      }
+    };
+  }
+
   if (completed.kind === 'segment' && isLatticeVec3(completed.radii)) {
     return {
       ok: true,
@@ -150,6 +164,28 @@ export const completePartAuthoringSpec = (
       ...withoutSize
     } = completed;
     return { ok: true, value: withoutSize };
+  }
+
+  if (
+    completed.kind === 'feature' &&
+    existing?.kind !== 'feature' &&
+    completed.glyph === undefined
+  ) {
+    const glyph = completed.motif === 'eye'
+      ? 'square'
+      : completed.motif === 'nose'
+        ? 'dot'
+        : completed.motif === 'mouth'
+          ? 'neutral'
+          : undefined;
+    if (glyph === undefined) return { ok: true, value: completed };
+    return {
+      ok: true,
+      value: {
+        ...completed,
+        glyph
+      }
+    };
   }
 
   return { ok: true, value: completed };

@@ -36,7 +36,7 @@ export interface ProjectCreateInput {
   name: string;
   target?: ExportPreset;
   gameVersion?: MinecraftGameVersion;
-  density?: SurfacePixelDensity;
+  density?: 1;
 }
 
 export interface ProjectDocumentCreateInput {

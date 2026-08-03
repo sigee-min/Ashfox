@@ -31,7 +31,7 @@ import type {
   ReadinessFinding
 } from './inspectWorkflowTypes';
 
-const VISUAL_REVIEW_RESPONSE_LIMIT = 5;
+const VISUAL_REVIEW_RESPONSE_LIMIT = 6;
 
 interface WorkflowPosition {
   stage: InspectWorkflowStage;

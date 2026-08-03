@@ -21,7 +21,7 @@ export const agentManifest = {
   workbench: agentCommandProtocol.workbench,
   href: agentCommandProtocol.href,
   description:
-    'Canonical machine guide for creating, reviewing, capturing, and exporting one complete low-poly asset with ashfox.',
+    'Canonical machine guide for creating, reviewing, capturing, and exporting one system-styled iconic pixel asset with ashfox.',
   compatibility: {
     options: compatibility,
     contract:
@@ -44,7 +44,7 @@ export const agentManifest = {
     deliverMethod: 'deliver',
     inspect: {
       current:
-        'window.ashfox.inspect() returns the active operation, current revision, stage, first blocker, up to three bounded nextActions, counts, canonical export target, and remaining visual reviews. An operation action is ready to submit; a command action requires its current schema and project-specific payload.',
+        'window.ashfox.inspect() returns the active operation, current revision, stage, first blocker, up to three bounded nextActions, counts, diagnostic form composition, canonical export target, and remaining visual reviews. Compiled and cell-scale cuboid counts reveal accidental compiler fragmentation; they are not artistic budgets or quality scores. An operation action is ready to submit; a command action requires its current schema and project-specific payload.',
       command:
         'window.ashfox.inspect({kind:"command",name:"<command>"}) returns the exact current input schema. Read it immediately before using an unfamiliar command.',
       parts:
@@ -90,28 +90,31 @@ export const agentManifest = {
   },
   authoring: {
     project:
-      'Start with project.create {name,target?,gameVersion?,density?}. Read compatibility.options or inspect the command schema before choosing a Minecraft version. Target defaults to glb, each Minecraft target has one curated default version, and density defaults to 1. IDs, timestamps, namespace, and model path are derived. Use density 2 or 4 for smaller surface pixels before adding geometry.',
+      'Start with project.create {name,target?,gameVersion?,density?}. Read compatibility.options or inspect the command schema before choosing a Minecraft version. Target defaults to glb, each Minecraft target has one curated default version, and density is fixed to 1. IDs, timestamps, namespace, and model path are derived. Never simulate texture detail with density 2 or 4 geometry.',
+    iconic:
+      'Iconic pixel is the only new-authoring style. Author semantic cuboid forms on a 1-unit lattice and spend geometry only where it changes silhouette, depth, articulation, or an identity-defining shape. There is no numeric artistic cube ceiling: formComposition is diagnostic, not a pass/fail budget. Pixel variation belongs to deterministic system-generated surface clusters and noise, never anonymous detail cubes or agent-painted texels. There is no style escape hatch in the authoring API.',
     intent:
       'Set project.intent.set {subject,forward?,grounding?,features?}. Each call replaces the intent; omitted values become north, free, and []. For any asset with limbs, wheels, tracks, a head, or another directional body plan, explicitly set forward before authoring geometry and treat it as binding. Features are short visual review criteria, not entity IDs.',
     coordinates:
-      'Author integer lattice coordinates in project space: +x east, +y up, +z south. At density d, one lattice unit is 1/d model unit. Plate outline points alone are relative to their project-space origin.',
+      'Author integer lattice coordinates in project space: +x east, +y up, +z south. In iconic projects one lattice unit is one model unit. Plate outline points alone are relative to their project-space origin.',
     hierarchy:
-      'The project has exactly one root. A lone initial part becomes it; an initial multi-part batch marks one root with parentPartId:null. A later fixed child may omit parentPartId only when exactly one touching parent is unambiguous. Feature, hinge, and ball parts name their parent. ashfox derives shallow snap, shared-face anchor, pivot, seam ownership, bones, cuboids, UVs, and texture pixels.',
+      'The project has exactly one root. A lone initial part becomes it; an initial multi-part batch marks one root with parentPartId:null. A later fixed child may omit parentPartId only when exactly one touching parent is unambiguous. Feature, hinge, and ball parts name their parent. ashfox rederives model-scale parent contact, shared-face anchors, pivots, seam ownership, and direct semantic cuboids. Treat partId as the semantic scene-tree label; generated cube nodes are implementation detail.',
     parts: {
-      mass: 'Blocky or rounded volume: center, radii, optional profile.',
+      mass:
+        'Primary semantic volume: center, radii, optional profile. profile:"block" is the default and should carry the torso, head, pelvis, wheel housing, or other major read. Use soft, balanced, or hard only when the rounded contour materially changes the silhouette.',
       segment:
-        'Tapered sweep: 2-8 points. One radii triple broadcasts to all points; otherwise provide one triple per point.',
+        'Semantic span chain: 2-8 control points. A straight constant-thickness span emits one cuboid; bends and meaningful taper transitions add short intentional steps. One radii triple broadcasts to all points; otherwise provide one triple per point.',
       plate:
-        'Extruded surface: plane, origin, thickness, and either rectangle size or one ordered triangle/trapezoid/rectangle outline.',
+        'Stepped silhouette surface: plane, origin, thickness, and either rectangle size or one ordered triangle/trapezoid/rectangle outline. Sharp outline turns receive narrow silhouette accents instead of dense raster stairs.',
       radial:
-        'Axis-aligned disk or ring: center, axis, outer radius, optional inner radius, depth.',
+        'Axis-aligned disk or ring: center, axis, outer radius, optional inner radius, depth. Radius changes proportion; the compiler keeps a small disk/ring template rather than sampling a curve.',
       feature:
-        'The only valid eye representation is a zero-depth marking: parentPartId, motif:"eye", face, anchor, and size of at least [4,3]. Its direct parent must be a deep mass or segment that visibly forms the face: normal-axis span at least 4 lattice cells and at least half the smaller face span. That host must itself attach to a meaningful second volumetric cranium, body, or display housing; the support bounding volume must be at least 10% of the host and its smallest span at least half the host depth, so a token tab cannot pass. Put the marking on the host’s outermost face and leave at least one lattice cell of visible anatomy around every edge after engine-derived attachment placement. A standalone face volume, full-face paint, plate, radial, detached mask, billboard, or thin overlay cannot satisfy eye count. materialId is the contrasting iris base color. ashfox derives the outline, pupil, highlight, parent-surface projection, and UV pixels. Delivered demo assets must keep the pupil center unobstructed, at least 75% of every motif visible, and clear color contrast with the host; anonymously named teeth, ornaments, masks, or other geometry still count as blockers. Geometry part IDs describing eyes, irises, pupils, or glints are rejected. Every later model.parts.upsert re-audits all existing eyes, so flattening or detaching a host is rejected even when the eye itself is not edited.'
+        'A feature is a zero-depth semantic marking on one exposed mass or segment face; anchor is a preferred location that Ashfox projects to the nearest valid host rectangle. Use motif:"eye" with glyph:"dot"|"square"|"slit", motif:"nose" with glyph:"dot"|"snout", or motif:"mouth" with glyph:"neutral"|"fang"|"beak". New focal motifs receive deterministic compact defaults and flat role pixels; an eye derives outline/iris/pupil roles without ellipse, gloss, highlight, eyeball, socket cube, face plate, or billboard. Use motif:"patch" for color-only identity regions such as a belly, muzzle, stripe block, panel, or marking, with no glyph or pixel map. Ashfox fills patches with its deterministic palette cluster, directional tone, and automatic noise. Geometry part IDs describing eyes, irises, pupils, or glints are rejected.'
     },
     joints:
       'Omit joint for rigid attachment. A hinge rotates around one declared axis; a ball joint rotates around XYZ. Attachment coordinates and pivots are never authored.',
     materials:
-      'A new part names materialId and defines an unknown ID once in optional materials [{id,baseColor}]. model.parts.material accepts materialId, baseColor, or both; baseColor alone derives or reuses an ID, and recoloring part of a shared material forks it. ashfox derives tonal pixels, equal square surface pixels, UV gutters, raster, and atlas size.',
+      'A new part names materialId and defines an unknown ID once in optional materials [{id,baseColor}]. model.parts.material accepts materialId, baseColor, or both; baseColor alone derives or reuses an ID, and recoloring part of a shared material forks it. The agent chooses role-based base colors and semantic feature regions, not individual pixels, shades, or noise. Ashfox owns the deterministic three-tone palette clusters, clustered automatic noise, face-direction tones, equal square surface pixels, continuity across compiled cuboids, UV gutters, raster, and atlas size. Automatic texture noise is required visual synthesis, not disposable detail.',
     mutations:
       'model.parts.upsert is a same-kind patch: every omitted field on an existing part is preserved. A kind change must provide a complete new shape. Use material for palette edits, transform {rootPartId,by} for a subtree move, mirror {rootPartId,axis,plane} for reflection, and delete for removal. Inspect affected parts after structural edits.'
   },
@@ -131,13 +134,13 @@ export const agentManifest = {
   },
   quality: {
     required:
-      'A complete asset has intentional geometry and generated texture coverage. Animation-capable targets also require canonical idle. A static profile may retain canonical clips for later animated delivery. Part count is never a quality target.',
+      'A complete asset has intentional semantic geometry and system-generated texture coverage. No absolute cuboid count proves quality: prefer the least geometry that preserves silhouette, depth, articulation, and identity, while allowing complexity when those meanings require it. Animation-capable targets also require canonical idle. A static profile may retain canonical clips for later animated delivery.',
     structure:
-      'Prioritize a recognizable silhouette, correct anatomy or construction, believable proportions, connected major masses, readable focal features, and useful articulation before small detail.',
+      'Prioritize a recognizable silhouette, correct anatomy or construction, believable proportions, connected major masses, readable focal features, and useful articulation. Every geometry part must change silhouette, depth, articulation, or a named identity shape. Put color-only information in semantic surface features; delete filler, bevel-like stair steps, repeated scale cubes, and ribs that disappear at gameplay distance. Never remove or replace Ashfox automatic surface noise—it is the renderer’s pixel-painting layer.',
     fidelity:
-      'Follow the requested subject rather than substituting a generic humanoid or generic vehicle. For creatures, preserve body plan, limb placement, head-to-body relationship, posture, and defining anatomy. Resolve intent.forward into the project-space forward vector before placing limbs. For every planted limb, trace hip or shoulder to knee or elbow to ankle or wrist to foot to toe; the foot center and the forward tip of every ordinary toe or claw must both advance along that vector, and left/right counterparts must have matching forward reach. A rear-facing toe, dewclaw, or species exception must be visibly intentional, never an accidental front/rear mirror. Represent each visible eye with exactly one feature on a deep face host connected to a second cranial or housing volume. Semantic eye count alone is not proof of a valid face: the delivered pupil center must remain unobstructed, most of the motif must remain visible, and the iris must contrast with its host. A root-only eye host, shallow host, full-face marking, occluding ornament, iris, pupil, highlight, glint, eyeball, socket cube, face plate, or billboard fails the modeling contract.',
+      'Follow the requested subject rather than substituting a generic humanoid or generic vehicle. Preserve body plan, limb placement, head-to-body relationship, posture, and two or three defining cues before any secondary detail. Resolve intent.forward into the project-space forward vector before placing limbs. Represent each visible eye with exactly one compact pixel glyph on the owning head or housing volume. Semantic eye count alone is not proof of a readable face: the pupil pixel must remain unobstructed and the glyph must contrast with its host. Gloss, highlights, eyeballs, sockets, and layered eye geometry fail the iconic contract.',
     review:
-      'Machine checks prove structure and export compatibility, not identity or appeal. Before acceptance, inspect front, side, top, and three-quarter views. In side and top views, verify every foot and toe against intent.forward; in front and three-quarter views, verify that eyes remain embedded in the moving head, visibly contrasting, and free of teeth, masks, or ornaments across the pupil center. Reject reversed feet, accidental forward-axis mirrors, detached or occluded eye surfaces, missing defining parts, floating pieces, swallowed geometry, accidental symmetry, unintended clipping, bad pivots, loop snaps, and details unreadable at gameplay distance.'
+      'Machine checks prove structure and export compatibility, not identity or appeal. Before acceptance, inspect front, side, top, three-quarter, and native gameplay-size views. Squint-test the silhouette and verify that the face reads before zooming in. Reject reversed feet, accidental forward-axis mirrors, detached or occluded eye glyphs, missing defining parts, floating pieces, swallowed geometry, accidental symmetry, unintended clipping, bad pivots, loop snaps, micro-geometry noise, and details visible only in close-up.'
   },
   workflow: [
     {
@@ -153,7 +156,7 @@ export const agentManifest = {
     {
       stage: 'model',
       instruction:
-        'Commit primary masses, defining silhouette, articulation, focal anatomy, and surface detail as visible passes; never fabricate build history. Build limbs proximal-to-distal and verify feet and toes advance along intent.forward before mirroring. Attach each eye host to deep cranial or housing anatomy. Keep bounded contrasting eyes inset by one cell, pupil centers clear, and 75% of motifs visible. Reject root-only eye hosts. Fix silhouette, proportions, and joins before detail.'
+        'Commit primary masses, silhouette, articulation, eye glyphs, and semantic patches as visible passes. Start major masses with profile:"block". Inspect formComposition only to find accidental compiler fragmentation; it is not a target. Build limbs proximal-to-distal, verify feet against intent.forward, then mirror. Fix proportions and joins before assigning surface roles. Describe one compact eye glyph and meaningful color regions; Ashfox synthesizes pixel shades and noise.'
     },
     {
       stage: 'animate',
@@ -173,7 +176,7 @@ export const agentManifest = {
   ],
   recovery: {
     invalidInput:
-      'Inspect the named command schema, correct only the reported path, and submit again.',
+      'Inspect the named command schema, correct only the reported path, and submit again. Do not retry with a denser grid or replace semantic surface color with detail geometry.',
     invalidState:
       'Inspect the first blocker. Submit an operation nextAction directly, or inspect a command nextAction before supplying its payload. A failed atomic request changed nothing.',
     concurrent:

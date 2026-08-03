@@ -48,7 +48,20 @@ export const PART_FACES = [
   'down'
 ] as const;
 export const PART_PROFILES = ['soft', 'balanced', 'hard'] as const;
-export const FEATURE_MOTIFS = ['eye'] as const;
+export const MASS_PART_PROFILES = ['block', ...PART_PROFILES] as const;
+export const FEATURE_MOTIFS = ['eye', 'nose', 'mouth', 'patch'] as const;
+export const EYE_GLYPHS = ['dot', 'square', 'slit'] as const;
+export const NOSE_GLYPHS = ['dot', 'snout'] as const;
+export const MOUTH_GLYPHS = ['neutral', 'fang', 'beak'] as const;
+export const FEATURE_GLYPHS = [
+  'dot',
+  'square',
+  'slit',
+  'snout',
+  'neutral',
+  'fang',
+  'beak'
+] as const;
 export const PLATE_PLANES = ['xy', 'xz', 'yz'] as const;
 export const COMMON_PART_KEYS = [
   'kind',
@@ -65,7 +78,7 @@ export const PART_KIND_KEYS: Readonly<
   segment: ['points', 'radii', 'profile'],
   plate: ['plane', 'origin', 'outline', 'thickness'],
   radial: ['axis', 'center', 'outerRadius', 'innerRadius', 'depth'],
-  feature: ['motif', 'face', 'anchor', 'size']
+  feature: ['motif', 'glyph', 'face', 'anchor', 'size']
 };
 
 export const isPartId = (value: unknown): value is string =>

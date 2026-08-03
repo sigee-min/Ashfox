@@ -154,14 +154,33 @@ const palette = new Set(
     })
 );
 assert.ok(
-  palette.size >= 4,
-  'large faces must preserve deliberate tonal variation'
+  palette.size === 3,
+  'large iconic faces must use exactly one bounded three-tone ramp'
+);
+const alternateSeed = stableTextureSeed(
+  'texture-copper:gold-body:north:alternate',
+  0x41534846
 );
 assert.ok(
-  palette.size <= 9,
-  'generated surfaces must use a bounded derived palette'
+  Array.from({ length: 64 }, (_, index) => {
+    const x = index % 8;
+    const y = Math.floor(index / 8);
+    return JSON.stringify(
+      paintSurfacePixel({ r: 190, g: 110, b: 55 }, x, y, 8, 8, seed)
+    ) !== JSON.stringify(
+      paintSurfacePixel(
+        { r: 190, g: 110, b: 55 },
+        x,
+        y,
+        8,
+        8,
+        alternateSeed
+      )
+    );
+  }).some(Boolean),
+  'stable semantic seeds must produce meaningful automatic tone placement'
 );
-assert.notDeepEqual(
+assert.deepEqual(
   paintSurfacePixel(
     { r: 190, g: 110, b: 55 },
     0,
@@ -178,7 +197,7 @@ assert.notDeepEqual(
     2,
     seed
   ),
-  'compact faces must not collapse to a single color'
+  'compact faces must stay flat instead of inventing unreadable shading noise'
 );
 
 const thinRegion = { x: 0, y: 0, width: 2, height: 2 };

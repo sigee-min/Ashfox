@@ -3,9 +3,6 @@ import {
   type ProjectDocument
 } from '../model';
 import { compareStableText } from '../stableOrder';
-import {
-  decomposeSurfaceConformingOccupancy
-} from './decompose';
 import { latticeToWorld } from './lattice';
 import {
   compiledPartBoneId,
@@ -91,11 +88,6 @@ export const validatePartRecipeProjection = (
       part
     ])
   );
-  const canonicalEnvironment = new Set(
-    canonicalized.parts.flatMap(
-      (part) => [...part.canonical.cells]
-    )
-  );
   const generatedTextureId = Object.values(document.textures)
     .filter((texture) => texture.atlasMode === 'generate')
     .sort((left, right) => compareStableText(left.id, right.id))[0]?.id;
@@ -124,13 +116,8 @@ export const validatePartRecipeProjection = (
       continue;
     }
     const expectedOccupancy = expectedCanonical.canonical;
-    const expectedDecomposition =
-      decomposeSurfaceConformingOccupancy(
-        expectedOccupancy,
-        canonicalEnvironment
-      );
     const expectedIds = new Set(
-      expectedDecomposition.cuboids.map((cuboid) =>
+      expectedCanonical.cuboids.map((cuboid) =>
         compiledPartCubeId(
           spec.partId,
           document.settings.surfacePixelDensity,

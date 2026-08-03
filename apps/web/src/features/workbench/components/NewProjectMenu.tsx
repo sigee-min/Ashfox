@@ -61,6 +61,12 @@ export function NewProjectMenu({
           onChange={(event) => setName(event.target.value)}
         />
       </label>
+      <div className="iconic-style-card" aria-label="Authoring style">
+        <strong>Iconic pixel</strong>
+        <span>
+          Fixed 1-unit forms · semantic parts · generated pixel surfaces
+        </span>
+      </div>
       <div
         className="export-target-list"
         role="radiogroup"
@@ -105,7 +111,8 @@ export function NewProjectMenu({
         </label>
       ) : null}
       <p className="new-project-note">
-        Your current project remains in local browser storage.
+        Form grammar and generated surface style are fixed. Your current
+        project remains in local browser storage.
       </p>
       <button
         type="submit"

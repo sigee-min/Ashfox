@@ -11,9 +11,9 @@
   "description": "A directly authored game-ready celestial kirin with connected facial anatomy, readable embedded eyes, four grounded cloven hooves, layered cloud armor, comet-tail silhouette, two production animation clips, and a one-primitive quantized Meshopt GLB.",
   "metrics": {
     "bones": 89,
-    "cubes": 2124,
+    "cubes": 227,
     "animations": 2,
-    "triangles": 10432,
+    "triangles": 2024,
     "glbPrimitives": 1,
     "semanticEyes": 2
   },

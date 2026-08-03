@@ -4,7 +4,6 @@ export type { SurfacePixelDensity } from '../model';
 
 export type Axis = 'x' | 'y' | 'z';
 
-export type AxisOrder = readonly [Axis, Axis, Axis];
 
 export type LatticePoint = Readonly<{
   x: number;
@@ -29,7 +28,8 @@ export type OccupancyGrid = Readonly<{
   cells: ReadonlySet<CellKey>;
 }>;
 
-export type MassProfile = 'soft' | 'balanced' | 'hard';
+export type RoundedProfile = 'soft' | 'balanced' | 'hard';
+export type MassProfile = 'block' | RoundedProfile;
 
 export type RasterMassPrimitive = Readonly<{
   kind: 'mass';
@@ -46,7 +46,7 @@ export type RasterSegmentControlPoint = Readonly<{
 export type RasterSegmentPrimitive = Readonly<{
   kind: 'segment';
   points: readonly RasterSegmentControlPoint[];
-  profile: MassProfile;
+  profile: RoundedProfile;
 }>;
 
 export type RasterRectangleShape = Readonly<{
@@ -96,18 +96,4 @@ export type RasterPrimitive =
 
 export type Cuboid = Readonly<{
   bounds: LatticeBounds;
-}>;
-
-export type DecompositionScore = Readonly<{
-  boxCount: number;
-  internalSeamArea: number;
-  aspectPenalty: number;
-  lexicalSignature: string;
-}>;
-
-export type CuboidDecomposition = Readonly<{
-  density: SurfacePixelDensity;
-  axisOrder: AxisOrder;
-  cuboids: readonly Cuboid[];
-  score: DecompositionScore;
 }>;

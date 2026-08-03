@@ -8,13 +8,17 @@ import {
   isSceneNodeEffectivelyVisible
 } from '../sceneVisibility';
 import type {
-  FeaturePartSpec,
+  EyeFeaturePartSpec,
   PartMaterialDefinition,
   PartSpec
 } from './partContract';
 import {
   readPartRecipe
 } from './partRecipe';
+import {
+  eyeGlyphPixelRole,
+  type EyeGlyphPixelRole
+} from './eyeGlyph';
 import {
   worldCubeBounds,
   type WorldAxisAlignedBounds
@@ -32,6 +36,7 @@ interface FaceAxes {
 interface EyeSurfaceCell {
   localX: number;
   localY: number;
+  role: EyeGlyphPixelRole;
   point: Vec3;
 }
 
@@ -72,19 +77,8 @@ const faceAxes = (face: ModelPartFace): FaceAxes => {
   }
 };
 
-const insideEye = (
-  x: number,
-  y: number,
-  width: number,
-  height: number
-): boolean => {
-  const horizontal = (x + 0.5 - width / 2) / (width / 2);
-  const vertical = (y + 0.5 - height / 2) / (height / 2);
-  return horizontal * horizontal + vertical * vertical <= 1;
-};
-
 const eyeSurfaceCells = (
-  eye: FeaturePartSpec,
+  eye: EyeFeaturePartSpec,
   density: number
 ): readonly EyeSurfaceCell[] => {
   const axes = faceAxes(eye.face);
@@ -93,12 +87,19 @@ const eyeSurfaceCells = (
   const cells: EyeSurfaceCell[] = [];
   for (let y = 0; y < eye.size[1]; y += 1) {
     for (let x = 0; x < eye.size[0]; x += 1) {
-      if (!insideEye(x, y, eye.size[0], eye.size[1])) continue;
+      const role = eyeGlyphPixelRole(
+        eye.glyph,
+        x,
+        y,
+        eye.size[0],
+        eye.size[1]
+      );
+      if (role === null) continue;
       const point: [number, number, number] = [0, 0, 0];
       point[axes.normal] = eye.anchor[axes.normal] / density;
       point[axes.u] = (minimumU + x + 0.5) / density;
       point[axes.v] = (minimumV + y + 0.5) / density;
-      cells.push({ localX: x, localY: y, point });
+      cells.push({ localX: x, localY: y, role, point });
     }
   }
   return cells;
@@ -183,7 +184,7 @@ const visibleCubes = (document: ProjectDocument): readonly CubeNode[] =>
 
 const auditEye = (
   document: ProjectDocument,
-  eye: FeaturePartSpec,
+  eye: EyeFeaturePartSpec,
   partsById: ReadonlyMap<string, PartSpec>,
   materialsById: ReadonlyMap<string, PartMaterialDefinition>,
   cubes: readonly CubeNode[],
@@ -244,21 +245,18 @@ const auditEye = (
         'Other geometry may not disguise or cover the semantic eye.'
     });
   }
-  const centerX = Math.floor(eye.size[0] / 2);
-  const centerY = Math.floor(eye.size[1] / 2);
-  const center = supported.find(
-    (cell) => cell.localX === centerX && cell.localY === centerY
-  );
-  if (!center || blockedByCell.has(center)) {
+  const pupilCells = supported.filter((cell) => cell.role === 'pupil');
+  const visiblePupil = pupilCells.find((cell) => !blockedByCell.has(cell));
+  if (!visiblePupil) {
     issues.push({
       code: 'center-occluded',
       eyePartId: eye.partId,
-      ...(center ? {
-        blockerNodeIds: blockedByCell.get(center) ?? []
-      } : {}),
+      blockerNodeIds: [...new Set(
+        pupilCells.flatMap((cell) => blockedByCell.get(cell) ?? [])
+      )].sort((left, right) => left.localeCompare(right)),
       message:
-        `Eye "${eye.partId}" has no unobstructed pupil center. ` +
-        'A slit, tooth, mask, or decorative cube cannot stand in for an eye.'
+        `Eye "${eye.partId}" has no unobstructed pupil pixel. ` +
+        'A tooth, mask, or decorative cube cannot stand in for an eye.'
     });
   }
 
@@ -293,7 +291,7 @@ export const auditEyeVisibility = (
   const recipe = readPartRecipe(document);
   if (!recipe.ok || recipe.recipe === null) return [];
   const eyes = recipe.recipe.parts.filter(
-    (part): part is FeaturePartSpec =>
+    (part): part is EyeFeaturePartSpec =>
       part.kind === 'feature' && part.motif === 'eye'
   );
   if (eyes.length === 0) return [];

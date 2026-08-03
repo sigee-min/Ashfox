@@ -1,11 +1,16 @@
 import {
   COMMON_PART_KEYS,
+  EYE_GLYPHS,
+  FEATURE_GLYPHS,
   FEATURE_MOTIFS,
+  MOUTH_GLYPHS,
+  NOSE_GLYPHS,
   PART_AXES,
   PART_CONTRACT_LIMITS,
   PART_FACES,
   PART_KIND_KEYS,
   PART_KINDS,
+  MASS_PART_PROFILES,
   PART_PROFILES,
   PLATE_PLANES,
   isPartId
@@ -18,13 +23,18 @@ import type {
   PartContractIssue,
   PartContractIssueCode,
   PartJoint,
+  MassPartProfile,
   PartProfile,
   UnknownRecord
 } from './types';
 
 export {
   COMMON_PART_KEYS,
+  EYE_GLYPHS,
+  FEATURE_GLYPHS,
   FEATURE_MOTIFS,
+  MOUTH_GLYPHS,
+  NOSE_GLYPHS,
   PART_AXES,
   PART_FACES,
   PART_KIND_KEYS,
@@ -318,6 +328,15 @@ export const parseProfile = (
   value === undefined
     ? 'balanced'
     : parseEnum(value, PART_PROFILES, path, issues);
+
+export const parseMassProfile = (
+  value: unknown,
+  path: string,
+  issues: PartContractIssue[]
+): MassPartProfile | null =>
+  value === undefined
+    ? 'balanced'
+    : parseEnum(value, MASS_PART_PROFILES, path, issues);
 
 export const axisSpan = (minimum: number, maximum: number): number =>
   maximum - minimum;

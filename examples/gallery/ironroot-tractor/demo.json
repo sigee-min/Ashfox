@@ -11,9 +11,9 @@
   "description": "A polished orchard machine with a strong four-wheel silhouette, luminous wheel hubs, glazed cab, crown canopy, front light bar, exhaust stack, intake, and rear hitch.",
   "metrics": {
     "bones": 34,
-    "cubes": 1081,
+    "cubes": 93,
     "animations": 2,
-    "triangles": 4900,
+    "triangles": 882,
     "glbPrimitives": 1,
     "semanticEyes": 0
   },

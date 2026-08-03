@@ -23,6 +23,7 @@ const animationReviewClipIds = (
 
 export type VisualReviewCamera =
   | 'perspective'
+  | 'native'
   | 'front'
   | 'side'
   | 'top';
@@ -35,6 +36,7 @@ export interface VisualReviewPlanItem {
 
 const STATIC_CAMERAS: readonly VisualReviewCamera[] = [
   'perspective',
+  'native',
   'front',
   'side',
   'top'

@@ -182,6 +182,66 @@ assert.equal(Object.hasOwn(newFeature, 'parentPartId'), false);
 assert.equal(Object.hasOwn(newFeature, 'joint'), false);
 assert.equal(Object.hasOwn(newFeature, 'motif'), false);
 
+const newEye = complete({
+  kind: 'feature',
+  partId: 'eye.new',
+  parentPartId: 'head',
+  materialId: 'eye',
+  motif: 'eye',
+  face: 'south',
+  anchor: [0, 4, 2],
+  size: [2, 2]
+});
+assert.equal(newEye.kind, 'feature');
+if (newEye.kind === 'feature') {
+  assert.equal(newEye.glyph, 'square');
+}
+
+const newSurfacePatch = complete({
+  kind: 'feature',
+  partId: 'muzzle.patch',
+  parentPartId: 'head',
+  materialId: 'cream',
+  motif: 'patch',
+  face: 'south',
+  anchor: [0, 2, 2],
+  size: [4, 2]
+});
+assert.equal(newSurfacePatch.kind, 'feature');
+if (newSurfacePatch.kind === 'feature') {
+  assert.equal(newSurfacePatch.glyph, undefined);
+}
+
+const newNose = complete({
+  kind: 'feature',
+  partId: 'nose.new',
+  parentPartId: 'head',
+  materialId: 'nose',
+  motif: 'nose',
+  face: 'south',
+  anchor: [0, 1, 2],
+  size: [2, 2]
+});
+assert.equal(newNose.kind, 'feature');
+if (newNose.kind === 'feature') {
+  assert.equal(newNose.glyph, 'dot');
+}
+
+const newMouth = complete({
+  kind: 'feature',
+  partId: 'mouth.new',
+  parentPartId: 'head',
+  materialId: 'mouth',
+  motif: 'mouth',
+  face: 'south',
+  anchor: [0, -1, 2],
+  size: [3, 1]
+});
+assert.equal(newMouth.kind, 'feature');
+if (newMouth.kind === 'feature') {
+  assert.equal(newMouth.glyph, 'neutral');
+}
+
 const segment = complete({
   kind: 'segment',
   partId: 'tail',

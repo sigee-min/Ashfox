@@ -25,6 +25,7 @@ assert.deepEqual(
   required.map(visualReviewKey),
   [
     'frame:perspective',
+    'frame:native',
     'frame:front',
     'frame:side',
     'frame:top',
@@ -52,6 +53,7 @@ assert.deepEqual(
   requiredVisualReviews(staticTargetDocument).map(visualReviewKey),
   [
     'frame:perspective',
+    'frame:native',
     'frame:front',
     'frame:side',
     'frame:top'

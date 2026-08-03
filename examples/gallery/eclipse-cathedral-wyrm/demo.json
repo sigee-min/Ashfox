@@ -11,9 +11,9 @@
   "description": "A boss-scale cathedral wyrm rebuilt around a readable quadruped silhouette, embedded semantic eyes, correctly oriented claws, articulated stained-glass wings, reliquary armor, an eclipse core, and two production-ready animation clips.",
   "metrics": {
     "bones": 88,
-    "cubes": 4584,
+    "cubes": 244,
     "animations": 2,
-    "triangles": 21112,
+    "triangles": 2312,
     "glbPrimitives": 1,
     "semanticEyes": 2
   },

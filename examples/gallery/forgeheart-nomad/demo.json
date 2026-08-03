@@ -11,9 +11,9 @@
   "description": "A soot-and-copper mobile forge with a readable war-golem silhouette, working tool arms, wheel hardware, chimney crown, and full caravan-to-warform deployment.",
   "metrics": {
     "bones": 123,
-    "cubes": 130,
+    "cubes": 115,
     "animations": 2,
-    "triangles": 1430,
+    "triangles": 1352,
     "glbPrimitives": 1,
     "semanticEyes": 2
   },

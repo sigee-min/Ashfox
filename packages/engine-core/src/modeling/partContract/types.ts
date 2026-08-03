@@ -1,7 +1,12 @@
 import type {
   GeneratedPartJoint,
+  ModelEyeGlyph,
+  ModelFeatureGlyph,
   ModelFeaturePartSpec,
   ModelFeatureMotif,
+  ModelMouthGlyph,
+  ModelNoseGlyph,
+  ModelMassProfile,
   ModelMassPartSpec,
   ModelPartAttachment,
   ModelPartFace,
@@ -24,7 +29,12 @@ export type LatticeVec3 = ModelPartLatticeVec3;
 export type PartAxis = Axis;
 export type PartFace = ModelPartFace;
 export type PartProfile = ModelPartProfile;
+export type MassPartProfile = ModelMassProfile;
 export type FeatureMotif = ModelFeatureMotif;
+export type EyeGlyph = ModelEyeGlyph;
+export type NoseGlyph = ModelNoseGlyph;
+export type MouthGlyph = ModelMouthGlyph;
+export type FeatureGlyph = ModelFeatureGlyph;
 
 export type FixedPartJoint =
   Extract<GeneratedPartJoint, { kind: 'fixed' }>;
@@ -40,6 +50,18 @@ export type SegmentPartSpec = ModelSegmentPartSpec;
 export type PlatePartSpec = ModelPlatePartSpec;
 export type RadialPartSpec = ModelRadialPartSpec;
 export type FeaturePartSpec = ModelFeaturePartSpec;
+export type EyeFeaturePartSpec = FeaturePartSpec & {
+  motif: 'eye';
+  glyph?: EyeGlyph;
+};
+export type NoseFeaturePartSpec = FeaturePartSpec & {
+  motif: 'nose';
+  glyph?: NoseGlyph;
+};
+export type MouthFeaturePartSpec = FeaturePartSpec & {
+  motif: 'mouth';
+  glyph?: MouthGlyph;
+};
 export type PartSpec = ModelPartSpec;
 export type PartMaterialDefinition = ModelPartMaterial;
 
@@ -54,7 +76,7 @@ export interface MassPartAuthoringSpec extends PartAuthoringBase {
   kind: 'mass';
   center?: LatticeVec3;
   radii?: LatticeVec3;
-  profile?: PartProfile;
+  profile?: MassPartProfile;
 }
 
 export interface SegmentPartAuthoringSpec extends PartAuthoringBase {
@@ -88,6 +110,7 @@ export interface FeaturePartAuthoringSpec
   parentPartId?: string | null;
   joint?: FixedPartJoint;
   motif?: FeatureMotif;
+  glyph?: FeatureGlyph;
   face?: PartFace;
   anchor?: LatticeVec3;
   size?: LatticeVec2;

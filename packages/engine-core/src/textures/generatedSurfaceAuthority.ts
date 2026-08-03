@@ -40,7 +40,8 @@ export interface GeneratedSurfacePattern {
 
 export interface GeneratedSurfaceMarking {
   id: string;
-  motif: 'eye';
+  motif: ModelFeaturePartSpec['motif'];
+  glyph?: ModelFeaturePartSpec['glyph'];
   color: string;
   x: number;
   y: number;
@@ -368,6 +369,7 @@ const addSurfaceFeatureMarkings = (
       const marking: GeneratedSurfaceMarking = {
         id: feature.partId,
         motif: feature.motif,
+        ...(feature.glyph === undefined ? {} : { glyph: feature.glyph }),
         color,
         x: clipped.x - faceRect.x,
         y: clipped.y - faceRect.y,

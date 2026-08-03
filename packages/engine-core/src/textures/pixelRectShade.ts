@@ -23,9 +23,9 @@ export interface PixelShadeConfig {
 }
 
 export const DEFAULT_PIXEL_SHADE_STYLE = {
-  intensity: 0.22,
-  edge: 0.12,
-  noise: 0.06,
+  intensity: 0.14,
+  edge: 0.05,
+  noise: 0.11,
   lightDir: 'tl_br'
 } as const;
 
@@ -33,15 +33,9 @@ const clamp = (value: number, minimum: number, maximum: number): number =>
   Math.min(maximum, Math.max(minimum, value));
 
 const TONE_LEVELS = [
-  0.72,
-  0.8,
-  0.87,
-  0.93,
+  0.84,
   1,
-  1.07,
-  1.14,
-  1.22,
-  1.3
+  1.16
 ] as const;
 
 const quantizedTone = (scale: number): number =>
@@ -56,17 +50,17 @@ const clusteredNoise = (
   y: number,
   seed: number
 ): number =>
-  deterministicPixelNoise(x, y, seed) * 0.5 +
+  deterministicPixelNoise(x, y, seed) * 0.1 +
   deterministicPixelNoise(
     Math.floor(x / 2),
     Math.floor(y / 2),
     seed ^ 0x9e3779b9
-  ) * 0.3 +
+  ) * 0.4 +
   deterministicPixelNoise(
     Math.floor(x / 4),
     Math.floor(y / 4),
     seed ^ 0x85ebca6b
-  ) * 0.2;
+  ) * 0.5;
 
 const directionalShade = (
   u: number,

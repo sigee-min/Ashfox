@@ -10,16 +10,15 @@ Include the project settings in the first request:
 
 - **Name** — the human-readable project name;
 - **Format** — Java block, GeckoLib 5, Bedrock, GLB, or glTF;
-- **Game version** — one of the versions offered for a Minecraft format;
-- **Surface detail** — 1×, 2×, or 4×.
+- **Game version** — one of the versions offered for a Minecraft format.
 
 ```text
-Create a GeckoLib 5 project named Ember Stag at 2× surface detail.
+Create a GeckoLib 5 project named Ember Stag.
 ```
 
-Choose surface detail before modeling. ashfox grows the generated atlas as
-needed while keeping one square texel per selected lattice unit. Export-safe
-resource identifiers are derived from the project and validated automatically.
+Ashfox uses its fixed iconic form scale and grows the generated atlas as
+needed. Export-safe resource identifiers are derived from the project and
+validated automatically.
 
 ## Export a finished asset
 

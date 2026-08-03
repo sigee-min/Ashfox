@@ -1,6 +1,7 @@
 import {
   attachmentContactMetrics,
   canonicalizePartOccupancies,
+  measureDocumentFormComposition,
   orthographicContributionMetrics,
   projectSpacePartAuthoringSpec,
   readCompiledParts,
@@ -107,6 +108,10 @@ const compiledPartSummaries = (
       finding.severity === 'error' &&
       finding.code === 'model.part_projection'
   );
+  const formComposition = measureDocumentFormComposition(document);
+  const compositionByPart = new Map(
+    formComposition.parts.map((part) => [part.partId, part])
+  );
   return {
     valid: projectionFinding === undefined,
     firstIssue: projectionFinding ?? null,
@@ -126,12 +131,24 @@ const compiledPartSummaries = (
             projection: {
               kind: 'surface',
               motif: spec.motif,
+              ...(spec.motif === 'patch'
+                ? {}
+                : {
+                    glyph: spec.glyph ?? (
+                      spec.motif === 'eye'
+                        ? 'square'
+                        : spec.motif === 'nose'
+                          ? 'dot'
+                          : 'neutral'
+                    )
+                  }),
               face: spec.face,
               anchor: spec.anchor,
               size: spec.size
             },
             boneId: null,
             cubeCount: 0,
+            compilerComposition: null,
             modelBounds: null,
             canonicalization: null,
             attachmentContact: null,
@@ -160,6 +177,8 @@ const compiledPartSummaries = (
           material: materials.get(part.materialId) ?? null,
           boneId: part.bone.id,
           cubeCount: part.cubes.length,
+          compilerComposition:
+            compositionByPart.get(part.partId) ?? null,
           modelBounds: { from, to },
           canonicalization:
             canonicalizationByPart.get(part.partId) ?? null,

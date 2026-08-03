@@ -588,7 +588,8 @@ for (const density of [1, 2, 4] as const) {
           [{
             name: 'textures.density.set',
             payload: { density }
-          }]
+          }],
+          'system'
         );
   const densityModel = execute(
     densityProject,

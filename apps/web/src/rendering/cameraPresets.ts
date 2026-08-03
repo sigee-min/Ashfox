@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 
-export type CameraMode = 'perspective' | 'front' | 'side' | 'top';
+export type CameraMode =
+  | 'perspective'
+  | 'native'
+  | 'front'
+  | 'side'
+  | 'top';
 
 const CAMERA_TARGET = new THREE.Vector3(0, 16, 0);
 const CAMERA_PADDING = 1.18;
@@ -14,6 +19,7 @@ const cameraDirection = (mode: CameraMode): THREE.Vector3 => {
     case 'top':
       return new THREE.Vector3(0, 1, 0);
     case 'perspective':
+    case 'native':
       return new THREE.Vector3(41, 13, -52).normalize();
   }
 };
@@ -30,6 +36,7 @@ const frameDimensions = (
     case 'top':
       return [size.x, size.z, size.y];
     case 'perspective':
+    case 'native':
       return [size.x, size.y, size.z];
   }
 };
@@ -56,7 +63,7 @@ const objectFrame = (
   const distance = Math.max(
     12,
     (Math.max(widthDistance, heightDistance) + depth / 2) *
-      CAMERA_PADDING
+      (mode === 'native' ? 2.35 : CAMERA_PADDING)
   );
   return { target, distance };
 };

@@ -11,9 +11,9 @@
   "description": "A fast-reading sci-fi interceptor with a long spear nose, swept gold-edged wings, twin cyan ring drives, paired engine nacelles, cockpit core, and crown fins.",
   "metrics": {
     "bones": 26,
-    "cubes": 1610,
+    "cubes": 127,
     "animations": 2,
-    "triangles": 7662,
+    "triangles": 1086,
     "glbPrimitives": 1,
     "semanticEyes": 0
   },

@@ -184,18 +184,19 @@ assert.deepEqual(unreviewed, {
   }],
   remainingVisualReviews: [
     'frame:perspective',
+    'frame:native',
     'frame:front',
     'frame:side',
     'frame:top',
     'cycle:perspective:idle'
   ],
-  remainingVisualReviewCount: 5,
+  remainingVisualReviewCount: 6,
   visualReviewsTruncated: false
 });
 
 const receipt = (
   mode: 'frame' | 'cycle',
-  camera: 'perspective' | 'front' | 'side' | 'top',
+  camera: 'perspective' | 'native' | 'front' | 'side' | 'top',
   clipId: string | null,
   revision = readyProject.revision
 ): VisualReviewReceipt => ({
@@ -213,6 +214,7 @@ const receipt = (
 
 const completeReceipts = [
   receipt('frame', 'perspective', null),
+  receipt('frame', 'native', null),
   receipt('frame', 'front', null),
   receipt('frame', 'side', null),
   receipt('frame', 'top', null),
@@ -292,6 +294,7 @@ const staticJavaUnreviewed = deriveInspectWorkflow(
 assert.equal(staticJavaUnreviewed.stage, 'review');
 assert.deepEqual(staticJavaUnreviewed.remainingVisualReviews, [
   'frame:perspective',
+  'frame:native',
   'frame:front',
   'frame:side',
   'frame:top'
@@ -300,7 +303,7 @@ const staticJavaReviewed = deriveInspectWorkflow(
   staticJava,
   staticJavaReport,
   staticJavaReadiness,
-  completeReceipts.slice(0, 4)
+  completeReceipts.filter((candidate) => candidate.mode === 'frame')
 );
 assert.equal(staticJavaReviewed.stage, 'deliver');
 assert.deepEqual(staticJavaReviewed.remainingVisualReviews, []);
@@ -357,8 +360,8 @@ const staleReview = deriveInspectWorkflow(
   }))
 );
 assert.equal(staleReview.stage, 'review');
-assert.equal(staleReview.remainingVisualReviews.length, 5);
-assert.equal(staleReview.remainingVisualReviewCount, 5);
+assert.equal(staleReview.remainingVisualReviews.length, 6);
+assert.equal(staleReview.remainingVisualReviewCount, 6);
 
 const unspecified = structuredClone(createGltfProject());
 const unspecifiedReport = validateProjectDocument(unspecified);

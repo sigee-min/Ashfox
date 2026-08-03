@@ -11,9 +11,9 @@
   "description": "A fully rigged ember guardian with natural planted anatomy, nine independently articulated flame tails, semantic cyan eyes, layered armor, and one-primitive optimized GLB output.",
   "metrics": {
     "bones": 71,
-    "cubes": 809,
+    "cubes": 149,
     "animations": 2,
-    "triangles": 4612,
+    "triangles": 1340,
     "glbPrimitives": 1,
     "semanticEyes": 2
   },

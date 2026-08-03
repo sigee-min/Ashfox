@@ -11,10 +11,6 @@ import {
 } from '../textures/generatedMaterial';
 import { compareStableText } from '../stableOrder';
 import {
-  assertExactDecomposition,
-  decomposeSurfaceConformingOccupancy
-} from './decompose';
-import {
   readCompiledParts,
   type CompiledPartState,
   type PartInvariantIssue
@@ -50,6 +46,7 @@ export interface CompilePartSceneInput {
 export interface CompilePartSceneSuccess {
   ok: true;
   document: ProjectDocument;
+  projectedParts: readonly PartSpec[];
   createdIds: readonly string[];
   changedIds: readonly string[];
   removedIds: readonly string[];
@@ -378,11 +375,6 @@ export const compilePartScene = (
   const stripped = withoutReplacedParts(document, replacedPartIds);
   let working = stripped.document;
   const compiledNodes: SceneNode[] = [];
-  const canonicalEnvironment = new Set(
-    canonicalized.parts.flatMap(
-      (entry) => [...entry.canonical.cells]
-    )
-  );
   try {
     for (const entry of canonicalized.parts) {
       const part = entry.spec;
@@ -394,17 +386,12 @@ export const compilePartScene = (
           `Material "${part.materialId}" has no base color.`
         );
       }
-      const decomposition = decomposeSurfaceConformingOccupancy(
-        entry.canonical,
-        canonicalEnvironment
-      );
-      assertExactDecomposition(entry.canonical, decomposition);
       const bone = boneForPart(
         part,
         document.settings.surfacePixelDensity,
         entry.canonicalAttachmentAnchor
       );
-      const cubes = decomposition.cuboids.map((cuboid) =>
+      const cubes = entry.cuboids.map((cuboid) =>
         cubeForCuboid(
           document,
           part,
@@ -464,6 +451,12 @@ export const compilePartScene = (
   return {
     ok: true,
     document: changed ? working : document,
+    projectedParts: input.parts.map((part) => {
+      if (part.kind !== 'feature') return part;
+      return canonicalized.features.find(
+        (feature) => feature.partId === part.partId
+      ) ?? part;
+    }),
     ...changes
   };
 };

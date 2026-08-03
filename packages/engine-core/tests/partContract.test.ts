@@ -229,6 +229,92 @@ if (!rootFeature.ok) {
   );
 }
 
+const surfacePatch = normalizePartSpec({
+  kind: 'feature',
+  partId: 'belly.patch',
+  parentPartId: 'body.core',
+  materialId: 'material.cream',
+  motif: 'patch',
+  face: 'south',
+  anchor: [0, 16, 8],
+  size: [8, 6]
+});
+assert.equal(surfacePatch.ok, true);
+if (surfacePatch.ok && surfacePatch.value.kind === 'feature') {
+  assert.equal(surfacePatch.value.motif, 'patch');
+  assert.equal(surfacePatch.value.glyph, undefined);
+}
+
+const patchWithEyeGlyph = normalizePartSpec({
+  kind: 'feature',
+  partId: 'belly.patch',
+  parentPartId: 'body.core',
+  materialId: 'material.cream',
+  motif: 'patch',
+  glyph: 'square',
+  face: 'south',
+  anchor: [0, 16, 8],
+  size: [8, 6]
+});
+assert.equal(patchWithEyeGlyph.ok, false);
+if (!patchWithEyeGlyph.ok) {
+  assert.ok(
+    patchWithEyeGlyph.issues.some(
+      (issue) =>
+        issue.path === '$.glyph' &&
+        issue.message.includes('does not accept a focal glyph')
+    )
+  );
+}
+
+const noseFeature = normalizePartSpec({
+  kind: 'feature',
+  partId: 'nose.snout',
+  parentPartId: 'body.core',
+  materialId: 'material.nose',
+  motif: 'nose',
+  glyph: 'snout',
+  face: 'south',
+  anchor: [0, 16, 8],
+  size: [4, 2]
+});
+assert.equal(noseFeature.ok, true);
+
+const mouthFeature = normalizePartSpec({
+  kind: 'feature',
+  partId: 'mouth.fang',
+  parentPartId: 'body.core',
+  materialId: 'material.mouth',
+  motif: 'mouth',
+  glyph: 'fang',
+  face: 'south',
+  anchor: [0, 14, 8],
+  size: [3, 2]
+});
+assert.equal(mouthFeature.ok, true);
+
+const mismatchedMouthGlyph = normalizePartSpec({
+  kind: 'feature',
+  partId: 'mouth.invalid',
+  parentPartId: 'body.core',
+  materialId: 'material.mouth',
+  motif: 'mouth',
+  glyph: 'slit',
+  face: 'south',
+  anchor: [0, 14, 8],
+  size: [3, 2]
+});
+assert.equal(mismatchedMouthGlyph.ok, false);
+if (!mismatchedMouthGlyph.ok) {
+  assert.ok(
+    mismatchedMouthGlyph.issues.some(
+      (issue) =>
+        issue.path === '$.glyph' &&
+        issue.message.includes('not valid for the mouth')
+    )
+  );
+}
+
 const stackedEyeGeometry = normalizePartSpec({
   ...rootMass,
   partId: 'face.eye.pupil'

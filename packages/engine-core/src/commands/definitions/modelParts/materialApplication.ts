@@ -214,7 +214,10 @@ const compileMaterialChange = (
       }
     };
   }
-  const projected = withPartRecipe(compiled.document, normalized.recipe);
+  const projected = withPartRecipe(compiled.document, {
+    ...normalized.recipe,
+    parts: compiled.projectedParts
+  });
   const recipeChanged = projected !== compiled.document;
   return {
     ok: true,

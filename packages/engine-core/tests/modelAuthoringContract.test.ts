@@ -264,11 +264,11 @@ const eyeOnStandaloneMass = run(
     }
   }]
 );
-assert.equal(eyeOnStandaloneMass.ok, false);
-if (!eyeOnStandaloneMass.ok) {
-  assert.match(eyeOnStandaloneMass.error.message, /standalone face volume/i);
-  assert.match(eyeOnStandaloneMass.error.message, /detached mask/i);
-}
+assert.equal(
+  eyeOnStandaloneMass.ok,
+  true,
+  'an eye glyph may belong directly to one semantic volumetric host'
+);
 
 const eyeOnTokenSupport = run(
   emptyProject('authoring-eye-token-support'),
@@ -309,11 +309,11 @@ const eyeOnTokenSupport = run(
     }
   }]
 );
-assert.equal(eyeOnTokenSupport.ok, false);
-if (!eyeOnTokenSupport.ok) {
-  assert.match(eyeOnTokenSupport.error.message, /token support volume/i);
-  assert.match(eyeOnTokenSupport.error.message, /tiny anti-audit tab/i);
-}
+assert.equal(
+  eyeOnTokenSupport.ok,
+  true,
+  'eye validity is owned by the visible host surface, not a realistic support-volume heuristic'
+);
 
 const attachmentShiftedEye = run(
   emptyProject('authoring-eye-shifted-border'),
@@ -358,7 +358,7 @@ assert.equal(attachmentShiftedEye.ok, false);
 if (!attachmentShiftedEye.ok) {
   assert.match(
     attachmentShiftedEye.error.message,
-    /visible host anatomy on every side/i
+    /compact|half of that face/i
   );
 }
 
@@ -438,9 +438,22 @@ const flattenedEyeHost = run(
     }
   }]
 );
-assert.equal(flattenedEyeHost.ok, false);
-if (!flattenedEyeHost.ok) {
-  assert.match(flattenedEyeHost.error.message, /too shallow/i);
+assert.equal(
+  flattenedEyeHost.ok,
+  true,
+  'reshaping a host must reproject its glyph onto the nearest valid face'
+);
+if (flattenedEyeHost.ok) {
+  const flattenedRecipe = readPartRecipe(flattenedEyeHost.document);
+  assert.equal(flattenedRecipe.ok, true);
+  assert.deepEqual(
+    flattenedRecipe.ok
+      ? flattenedRecipe.recipe?.parts.find(
+          (part) => part.partId === 'face.marking'
+        )?.anchor
+      : null,
+    [0, 0, 1]
+  );
 }
 
 const fullFaceEye = run(
@@ -459,7 +472,7 @@ const fullFaceEye = run(
 );
 assert.equal(fullFaceEye.ok, false);
 if (!fullFaceEye.ok) {
-  assert.match(fullFaceEye.error.message, /painting the whole face is a mask/i);
+  assert.match(fullFaceEye.error.message, /compact|mask/i);
 }
 
 const inferred = succeed(rootOnly, 'authoring-infer-parent', [{

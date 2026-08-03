@@ -5,6 +5,7 @@ import {
   createProjectFromInput,
   executeCommandBatch,
   paintEyeMotifPixel,
+  paintFeatureMotifPixel,
   readCompiledParts,
   readPartRecipe,
   validateProjectDocument,
@@ -111,6 +112,10 @@ const eyeMarkings = composition.regions.flatMap(
   (region) => region.markings ?? []
 ).filter((marking) => marking.id === 'eye.left');
 assert.ok(eyeMarkings.length > 0);
+assert.ok(
+  eyeMarkings.every((marking) => marking.glyph === 'square'),
+  'new semantic eyes default to the square pixel glyph'
+);
 assert.equal(
   eyeMarkings.reduce(
     (area, marking) => area + marking.width * marking.height,
@@ -131,14 +136,221 @@ assert.equal(paintEyeMotifPixel(iris, 0, 0, 4, 3), null);
 assert.notDeepEqual(
   paintEyeMotifPixel(iris, 1, 1, 4, 3),
   paintEyeMotifPixel(iris, 2, 1, 4, 3),
-  'the derived eye must distinguish highlight and pupil pixels'
+  'the flat glyph must distinguish iris and pupil pixels'
 );
-const compactHighlight = paintEyeMotifPixel(iris, 1, 1, 4, 3);
-assert.ok(compactHighlight);
+const flatIris = paintEyeMotifPixel(iris, 1, 1, 4, 3);
+assert.ok(flatIris);
 assert.ok(
-  compactHighlight.r > compactHighlight.g &&
-    compactHighlight.g > compactHighlight.b,
-  'a compact eye highlight must preserve the authored iris hue'
+  flatIris.r > flatIris.g && flatIris.g > flatIris.b,
+  'the flat iris cluster must preserve the authored hue'
+);
+assert.deepEqual(
+  paintEyeMotifPixel(iris, 1, 1, 5, 4),
+  paintEyeMotifPixel(iris, 3, 1, 5, 4),
+  'matching iris roles must use one flat tone without a gloss highlight'
+);
+
+const snoutField = paintFeatureMotifPixel(
+  'nose',
+  { r: 214, g: 158, b: 112 },
+  1,
+  0,
+  4,
+  2,
+  'snout'
+);
+assert.ok(snoutField);
+assert.deepEqual(
+  snoutField,
+  paintFeatureMotifPixel(
+    'nose',
+    { r: 214, g: 158, b: 112 },
+    2,
+    0,
+    4,
+    2,
+    'snout'
+  ),
+  'a snout template must use one flat role color across symmetric pixels'
+);
+assert.notDeepEqual(
+  snoutField,
+  paintFeatureMotifPixel(
+    'nose',
+    { r: 214, g: 158, b: 112 },
+    1,
+    1,
+    4,
+    2,
+    'snout'
+  ),
+  'a snout template must reserve its centered nose role'
+);
+assert.deepEqual(
+  paintFeatureMotifPixel(
+    'mouth',
+    { r: 176, g: 70, b: 67 },
+    1,
+    1,
+    3,
+    2,
+    'fang'
+  ),
+  { r: 245, g: 239, b: 215 },
+  'the fang role must use one flat focal color'
+);
+assert.notDeepEqual(
+  paintFeatureMotifPixel(
+    'mouth',
+    { r: 224, g: 141, b: 48 },
+    1,
+    0,
+    3,
+    2,
+    'beak'
+  ),
+  paintFeatureMotifPixel(
+    'mouth',
+    { r: 224, g: 141, b: 48 },
+    0,
+    0,
+    3,
+    2,
+    'beak'
+  ),
+  'the beak template must derive a dark center division from role colors'
+);
+
+const focalFeatures = execute(
+  authored.document,
+  'surface-focal-features',
+  [{
+    name: 'model.parts.upsert',
+    payload: {
+      parts: [{
+        kind: 'feature',
+        partId: 'nose.center',
+        parentPartId: 'head',
+        materialId: 'nose.rose',
+        motif: 'nose',
+        glyph: 'snout',
+        face: 'south',
+        anchor: [0, -1, 5],
+        size: [4, 2]
+      }, {
+        kind: 'feature',
+        partId: 'mouth.center',
+        parentPartId: 'head',
+        materialId: 'mouth.rose',
+        motif: 'mouth',
+        glyph: 'fang',
+        face: 'south',
+        anchor: [0, -3, 5],
+        size: [3, 2]
+      }],
+      materials: [{
+        id: 'nose.rose',
+        baseColor: '#D69E70'
+      }, {
+        id: 'mouth.rose',
+        baseColor: '#B04643'
+      }]
+    }
+  }]
+);
+assert.equal(focalFeatures.ok, true);
+if (!focalFeatures.ok) throw new Error(focalFeatures.error.message);
+const focalTexture = Object.values(focalFeatures.document.textures).find(
+  (candidate) => candidate.atlasMode === 'generate'
+);
+assert.ok(focalTexture);
+const focalMarkings = composeTextureRaster(
+  focalFeatures.document,
+  focalTexture
+).regions.flatMap((region) => region.markings ?? []);
+assert.ok(focalMarkings.some(
+  (marking) => marking.motif === 'nose' && marking.glyph === 'snout'
+));
+assert.ok(focalMarkings.some(
+  (marking) => marking.motif === 'mouth' && marking.glyph === 'fang'
+));
+assert.deepEqual(
+  [...readCompiledParts(focalFeatures.document).parts.keys()],
+  ['cranium', 'head'],
+  'nose and mouth templates must remain zero-geometry surface features'
+);
+
+const patched = execute(
+  authored.document,
+  'surface-patch-author',
+  [{
+    name: 'model.parts.upsert',
+    payload: {
+      parts: [{
+        kind: 'feature',
+        partId: 'muzzle.patch',
+        parentPartId: 'head',
+        materialId: 'muzzle.cream',
+        motif: 'patch',
+        face: 'south',
+        anchor: [0, -1, 5],
+        size: [4, 2]
+      }],
+      materials: [{
+        id: 'muzzle.cream',
+        baseColor: '#E7C98D'
+      }]
+    }
+  }]
+);
+assert.equal(patched.ok, true);
+if (!patched.ok) throw new Error(patched.error.message);
+const patchedRecipe = readPartRecipe(patched.document);
+assert.equal(patchedRecipe.ok, true);
+if (!patchedRecipe.ok || patchedRecipe.recipe === null) {
+  throw new Error('Surface patch recipe is unavailable.');
+}
+const muzzlePatch = patchedRecipe.recipe.parts.find(
+  (part) => part.partId === 'muzzle.patch'
+);
+assert.equal(muzzlePatch?.kind, 'feature');
+if (muzzlePatch?.kind === 'feature') {
+  assert.equal(muzzlePatch.motif, 'patch');
+  assert.equal(muzzlePatch.glyph, undefined);
+}
+const patchedCompiled = readCompiledParts(patched.document);
+assert.equal(patchedCompiled.ok, true);
+if (!patchedCompiled.ok) throw new Error(patchedCompiled.issues[0]?.message);
+assert.deepEqual(
+  [...patchedCompiled.parts.keys()],
+  ['cranium', 'head'],
+  'a semantic surface patch must not add geometry'
+);
+const patchedTexture = Object.values(patched.document.textures).find(
+  (candidate) => candidate.atlasMode === 'generate'
+);
+assert.ok(patchedTexture);
+const patchedComposition = composeTextureRaster(
+  patched.document,
+  patchedTexture
+);
+const patchMarkings = patchedComposition.regions.flatMap(
+  (region) => region.markings ?? []
+).filter((marking) => marking.id === 'muzzle.patch');
+assert.ok(patchMarkings.length > 0);
+assert.ok(
+  patchMarkings.every(
+    (marking) =>
+      marking.motif === 'patch' && marking.glyph === undefined
+  )
+);
+assert.equal(
+  patchMarkings.reduce(
+    (area, marking) => area + marking.width * marking.height,
+    0
+  ),
+  8,
+  'the system must project the exact semantic patch region'
 );
 
 const protrudingLegacyPayload = execute(
@@ -171,11 +383,18 @@ const outsideParent = execute(
     }
   }]
 );
-assert.equal(outsideParent.ok, false);
-if (!outsideParent.ok) {
-  assert.match(
-    outsideParent.error.message,
-    /outside parent|leave at least 1 lattice cell/i
+assert.equal(outsideParent.ok, true);
+if (outsideParent.ok) {
+  const projectedRecipe = readPartRecipe(outsideParent.document);
+  assert.equal(projectedRecipe.ok, true);
+  assert.deepEqual(
+    projectedRecipe.ok
+      ? projectedRecipe.recipe?.parts.find(
+          (part) => part.partId === 'eye.left'
+        )?.anchor
+      : null,
+    [3, 3, 5],
+    'an out-of-bounds preferred anchor must project deterministically'
   );
 }
 

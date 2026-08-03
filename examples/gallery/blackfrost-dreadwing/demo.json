@@ -11,9 +11,9 @@
   "description": "A directly authored game-ready wyvern with deep semantic eye anatomy, consistently forward talons, articulated wing membranes and ice armor, two production animation clips, and a quantized Meshopt GLB compiled to one primitive.",
   "metrics": {
     "bones": 69,
-    "cubes": 2996,
+    "cubes": 233,
     "animations": 2,
-    "triangles": 14766,
+    "triangles": 2000,
     "glbPrimitives": 1,
     "semanticEyes": 2
   },

@@ -101,6 +101,12 @@ const profileSchema = {
   enum: ['soft', 'balanced', 'hard']
 } as const;
 
+const massProfileSchema = {
+  enum: ['block', 'soft', 'balanced', 'hard'],
+  description:
+    'Block is the iconic default and emits one primary cuboid before hidden seam ownership. Soft and balanced select a short stepped silhouette template; hard remains blocklike. Rounded profiles are reserved for silhouette-critical forms.'
+} as const;
+
 const axisSchema = {
   enum: ['x', 'y', 'z'],
   description:
@@ -118,7 +124,7 @@ export const modelPartSpecSchema = {
         kind: { enum: ['mass'] },
         center: vec3Schema,
         radii: extentVec3Schema,
-        profile: profileSchema
+        profile: massProfileSchema
       },
       required: [
         ...commonRequired,
@@ -215,7 +221,7 @@ export const modelPartSpecSchema = {
     {
       type: 'object',
       description:
-        'Feature. The only valid representation for a visible eye: a bounded zero-depth surface marking on the outer face of a deep mass or segment, itself connected to a meaningful second volumetric cranial, body, or display-housing part rather than a token support tab. The host needs at least four lattice cells of depth, a head-like depth ratio, and visible anatomy around every edge after its engine-derived attachment translation. New: parentPartId, materialId, motif, face, anchor, and size. Existing same-kind patch: only changed fields. It paints the generated surface and never creates a protruding cube; standalone face volumes, plates, radials, detached masks, billboards, and eye, iris, pupil, or glint geometry parts are rejected.',
+        'Feature. A bounded zero-depth semantic marking on the outer face of a mass or segment. New: parentPartId, materialId, motif, face, anchor, and size; focal motifs also accept glyph. Existing same-kind patch: only changed fields. It paints the generated surface and never creates protruding detail geometry.',
       properties: {
         ...commonProperties,
         joint: {
@@ -228,9 +234,22 @@ export const modelPartSpecSchema = {
         },
         kind: { enum: ['feature'] },
         motif: {
-          enum: ['eye'],
+          enum: ['eye', 'nose', 'mouth', 'patch'],
           description:
-            'Bounded deterministic surface motif. Eye derives its outline, iris, pupil, and highlight from materialId.'
+            'Eye, nose, and mouth derive compact deterministic focal glyphs. Patch fills the region with a deterministic, system-shaded material cluster.'
+        },
+        glyph: {
+          enum: [
+            'dot',
+            'square',
+            'slit',
+            'snout',
+            'neutral',
+            'fang',
+            'beak'
+          ],
+          description:
+            'Motif-specific pixel language: eye dot/square/slit; nose dot/snout; mouth neutral/fang/beak. Patch does not accept glyph.'
         },
         face: {
           enum: ['north', 'south', 'east', 'west', 'up', 'down']
@@ -242,7 +261,7 @@ export const modelPartSpecSchema = {
           minItems: 2,
           maxItems: 2,
           description:
-            'Face-local pixel width and height. Eye requires at least [4,3].'
+            'Face-local pixel width and height. Focal glyphs stay compact; patch may cover any valid parent-bound rectangle.'
         }
       },
       required: [
@@ -257,7 +276,7 @@ export const modelPartSpecSchema = {
 export const modelPartsUpsertSchema = {
   type: 'object',
   description:
-    'Create semantic parts or patch existing same-kind parts in project-space lattice coordinates. Every omitted field on an existing part is preserved. New fixed parts may omit parentPartId only when exactly one geometric parent is unambiguous; articulated joints and surface features require an explicit parent. ashfox derives anchors, pivots, and a deterministic snap of at most two lattice cells.',
+    'Create semantic parts or patch existing same-kind parts in project-space lattice coordinates. Every omitted field on an existing part is preserved. New fixed parts may omit parentPartId only when exactly one geometric parent is unambiguous; articulated joints and surface features require an explicit parent. ashfox derives model-scale contact, anchors, pivots, seam ownership, and the nearest valid surface-template placement.',
   properties: {
     parts: {
       type: 'array',
@@ -324,7 +343,7 @@ export const modelPartsDeleteSchema = {
 export const modelPartsMirrorSchema = {
   type: 'object',
   description:
-    'Copy one non-root canonical part subtree by exact lattice reflection, then normalize shallow joins to single-owner geometry. ashfox derives every target ID deterministically.',
+    'Copy one non-root canonical part subtree by exact lattice reflection, then rederive parent contact and deterministic single-owner semantic cuboids. ashfox derives every target ID deterministically.',
   properties: {
     rootPartId: {
       ...idSchema,
@@ -353,7 +372,7 @@ export const modelPartsMirrorSchema = {
 export const modelPartsTransformSchema = {
   type: 'object',
   description:
-    'Translate one canonical part subtree in asset lattice space, then normalize shallow joins to single-owner geometry. Descendants are resolved internally, so the operation is not limited to 64 parts.',
+    'Translate one canonical part subtree in asset lattice space, then rederive parent contact, surface templates, and single-owner semantic cuboids. Descendants are resolved internally, so the operation is not limited to 64 parts.',
   properties: {
     rootPartId: {
       ...idSchema,

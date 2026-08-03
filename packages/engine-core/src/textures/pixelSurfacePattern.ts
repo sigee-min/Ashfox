@@ -12,10 +12,10 @@ const DIRECTIONAL_TONE: Readonly<
 > = {
   up: 1.08,
   south: 1,
-  east: 0.96,
-  north: 0.92,
-  west: 0.88,
-  down: 0.8
+  east: 1,
+  north: 0.9,
+  west: 0.9,
+  down: 0.82
 };
 
 const clampChannel = (value: number): number =>

@@ -8,9 +8,7 @@ import {
   isExportModelPathValid,
   isExportNamespaceValid,
   normalizeExportModelPath,
-  SURFACE_PIXEL_DENSITIES,
-  type ProjectDocument,
-  type SurfacePixelDensity
+  type ProjectDocument
 } from '@ashfox/engine-core';
 
 import {
@@ -29,19 +27,6 @@ interface ProjectSettingsMenuProps {
   onSave: (input: ProjectSettingsInput) => void;
 }
 
-const pixelSizeLabel = (
-  density: SurfacePixelDensity
-): string => {
-  switch (density) {
-    case 1:
-      return '1 unit';
-    case 2:
-      return '½ unit';
-    case 4:
-      return '¼ unit';
-  }
-};
-
 const coordinateLabel = (document: ProjectDocument): string => {
   const coordinate = document.settings.coordinateSystem;
   return `${coordinate.up.toUpperCase()} up · ${coordinate.handedness} · ${coordinate.unit}`;
@@ -51,15 +36,7 @@ export function ProjectSettingsMenu({
   document,
   onSave
 }: ProjectSettingsMenuProps) {
-  const hasCompiledModel =
-    document.modeling?.authority === 'ashfox.part-compiler' ||
-    Object.values(document.scene.nodes).some(
-      (node) =>
-        node.generation?.authority === 'ashfox.part-compiler'
-    );
   const [name, setName] = useState(document.name);
-  const [surfacePixelDensity, setSurfacePixelDensity] =
-    useState(document.settings.surfacePixelDensity);
   const currentTarget = projectExportTargetFor(document);
   const currentEditableTarget = editableProjectTargetFor(document);
   const [target, setTarget] = useState(
@@ -76,9 +53,6 @@ export function ProjectSettingsMenu({
     const nextTarget = projectExportTargetFor(document);
     const nextEditableTarget = editableProjectTargetFor(document);
     setName(document.name);
-    setSurfacePixelDensity(
-      document.settings.surfacePixelDensity
-    );
     setTarget(nextEditableTarget?.target ?? null);
     setGameVersion(
       nextEditableTarget?.gameVersion ??
@@ -119,8 +93,6 @@ export function ProjectSettingsMenu({
     valid &&
     (
       trimmedName !== document.name ||
-      surfacePixelDensity !==
-        document.settings.surfacePixelDensity ||
       targetChanged
     );
 
@@ -129,7 +101,7 @@ export function ProjectSettingsMenu({
     if (!canSave) return;
     onSave({
       name: trimmedName,
-      surfacePixelDensity,
+      surfacePixelDensity: document.settings.surfacePixelDensity,
       exportTarget:
         targetChanged && target !== null
           ? {
@@ -177,33 +149,14 @@ export function ProjectSettingsMenu({
         onNamespaceChange={setNamespace}
         onModelPathChange={setModelPath}
       />
-      <fieldset className="surface-density-field">
-        <legend>Surface detail</legend>
-        <div className="surface-density-options">
-          {SURFACE_PIXEL_DENSITIES.map((density) => (
-            <label key={density}>
-              <input
-                type="radio"
-                name="surface-pixel-density"
-                value={density}
-                checked={surfacePixelDensity === density}
-                disabled={
-                  hasCompiledModel &&
-                  density !== document.settings.surfacePixelDensity
-                }
-                onChange={() => setSurfacePixelDensity(density)}
-              />
-              <strong>{density}×</strong>
-              <span>{pixelSizeLabel(density)} pixel</span>
-            </label>
-          ))}
-        </div>
-        <p>
-          {hasCompiledModel
-            ? 'Surface detail is fixed after modeling starts.'
-            : 'Smaller square pixels. Atlas size adjusts automatically.'}
-        </p>
-      </fieldset>
+      <div className="iconic-style-card" aria-label="Authoring style">
+        <strong>Iconic pixel · locked</strong>
+        <span>
+          {document.settings.surfacePixelDensity === 1
+            ? '1-unit form grid · compact semantic decomposition'
+            : `${document.settings.surfacePixelDensity}× legacy grid · rebuild at 1× for iconic authoring`}
+        </span>
+      </div>
       <div className="project-facts">
         <span>
           <small>Coordinates</small>

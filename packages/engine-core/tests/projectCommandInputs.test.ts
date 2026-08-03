@@ -40,7 +40,7 @@ const created = execute(base, 'minimal-project-create', [{
   payload: {
     name: 'Golden Truck',
     target: 'geckolib5',
-    density: 4
+    density: 1
   }
 }]);
 assert.equal(created.ok, true);
@@ -51,7 +51,7 @@ assert.match(
 );
 assert.equal(created.document.name, 'Golden Truck');
 assert.equal(created.document.createdAt, base.updatedAt);
-assert.equal(created.document.settings.surfacePixelDensity, 4);
+assert.equal(created.document.settings.surfacePixelDensity, 1);
 assert.equal(
   created.document.formatProfile.id,
   'minecraft.java.geckolib5'
@@ -75,7 +75,7 @@ const repeated = execute(base, 'repeat-minimal-project-create', [{
   payload: {
     name: 'Golden Truck',
     target: 'geckolib5',
-    density: 4
+    density: 1
   }
 }]);
 assert.equal(repeated.ok, true);

@@ -12,7 +12,7 @@ const inputSchema = {
     density: {
       enum: [1, 2, 4],
       description:
-        'Choose before creating model parts. The lattice density is immutable while parts exist.'
+        'Legacy/import compatibility control. New iconic projects remain at 1× through the public UX.'
     }
   },
   required: ['density'],
@@ -23,7 +23,7 @@ export const setSurfacePixelDensityCommand = defineCommand({
   name: 'textures.density.set',
   label: 'Set surface pixel density',
   purpose:
-    'Choose the project 1×, 2×, or 4× square-pixel lattice before model parts exist.',
+    'Maintain legacy 1×, 2×, or 4× project lattices before model parts exist.',
   inputSchema,
   apply: (document, payload) => {
     const densityChanged =

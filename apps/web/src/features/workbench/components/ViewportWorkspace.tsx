@@ -160,6 +160,7 @@ export function ViewportWorkspace({
 
         {activeOverlay === 'inspector' ? (
           <InspectorOverlay
+            document={document}
             node={selectedNode}
             report={report}
             onToggleVisibility={onToggleVisibility}

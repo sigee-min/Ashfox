@@ -130,7 +130,7 @@ const densityInput = JSON.stringify(authored);
 const densityChange = run(authored, 'density-after-model', [{
   name: 'textures.density.set',
   payload: { density: 2 }
-}]);
+}], 'system');
 assert.equal(densityChange.ok, false);
 if (!densityChange.ok) {
   assert.equal(densityChange.error.code, 'invalid_state');

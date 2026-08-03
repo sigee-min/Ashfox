@@ -105,11 +105,18 @@ assert.match(
   manifest.authoring.project,
   /name,target\?,gameVersion\?,density\?/
 );
-assert.match(manifest.authoring.coordinates, /1\/d model unit/);
+assert.match(manifest.authoring.coordinates, /one model unit/);
+assert.match(manifest.authoring.iconic, /formComposition is diagnostic/);
+assert.match(manifest.authoring.iconic, /system-generated surface clusters and noise/);
+assert.doesNotMatch(manifest.authoring.iconic, /maximum of 512/);
+assert.match(manifest.authoring.iconic, /no style escape hatch/i);
 assert.match(manifest.authoring.intent, /explicitly set forward/);
-assert.match(manifest.authoring.hierarchy, /derives .*snap/);
-assert.match(manifest.authoring.hierarchy, /UVs/);
+assert.match(manifest.authoring.hierarchy, /rederives model-scale parent contact/);
+assert.match(manifest.authoring.hierarchy, /direct semantic cuboids/);
+assert.match(manifest.authoring.hierarchy, /implementation detail/);
 assert.match(manifest.authoring.materials, /square surface pixels/);
+assert.match(manifest.authoring.materials, /clustered automatic noise/);
+assert.match(manifest.authoring.materials, /not individual pixels/);
 assert.match(manifest.authoring.hierarchy, /parentPartId:null/);
 assert.match(manifest.authoring.mutations, /rootPartId,by/);
 assert.deepEqual(
@@ -122,26 +129,26 @@ assert.match(manifest.animation.idle, /preserve them/);
 assert.match(manifest.animation.poses, /rotations/);
 assert.match(manifest.animation.spins, /continuous hinge/);
 assert.match(manifest.animation.patch, /removePartIds/);
-assert.match(manifest.quality.required, /never a quality target/);
+assert.match(manifest.quality.required, /No absolute cuboid count/);
+assert.match(manifest.quality.required, /least geometry/);
+assert.doesNotMatch(manifest.quality.required, /at most 512/);
 assert.match(manifest.quality.required, /may retain canonical clips/);
 assert.match(manifest.quality.fidelity, /generic humanoid/);
-assert.match(manifest.quality.fidelity, /foot to toe/);
+assert.match(manifest.quality.fidelity, /body plan/);
 assert.match(manifest.quality.fidelity, /Semantic eye count alone is not proof/);
-assert.match(manifest.quality.fidelity, /left\/right counterparts/);
-assert.match(manifest.quality.fidelity, /root-only eye host/);
-assert.match(manifest.quality.review, /side, top, and three-quarter/);
+assert.match(manifest.quality.fidelity, /defining cues/);
+assert.match(manifest.quality.fidelity, /Gloss, highlights/);
+assert.match(manifest.quality.review, /native gameplay-size/);
 assert.match(manifest.quality.review, /reversed feet/);
 assert.match(manifest.quality.review, /identity or appeal/);
-assert.match(manifest.authoring.parts.feature, /deep mass or segment/);
+assert.match(manifest.authoring.parts.feature, /exposed mass or segment face/);
 assert.match(manifest.authoring.parts.feature, /billboard/);
-assert.match(manifest.authoring.parts.feature, /second volumetric/);
-assert.match(manifest.authoring.parts.feature, /one lattice cell/);
-assert.match(manifest.authoring.parts.feature, /at least 10%/);
-assert.match(manifest.authoring.parts.feature, /token tab/);
-assert.match(manifest.authoring.parts.feature, /re-audits all existing eyes/);
-assert.match(manifest.authoring.parts.feature, /attachment placement/);
-assert.match(manifest.authoring.parts.feature, /75%/);
-assert.match(manifest.authoring.parts.feature, /pupil center unobstructed/);
+assert.match(manifest.authoring.parts.feature, /dot.*square.*slit/);
+assert.match(manifest.authoring.parts.feature, /nose.*snout/);
+assert.match(manifest.authoring.parts.feature, /mouth.*fang.*beak/);
+assert.match(manifest.authoring.parts.feature, /outline\/iris\/pupil/);
+assert.match(manifest.authoring.parts.feature, /motif:"patch"/);
+assert.match(manifest.authoring.parts.feature, /automatic noise/);
 
 const agentDefinitions = listAgentCommandDefinitions();
 for (const commandName of ['project.create', 'project.target.set']) {
@@ -157,6 +164,19 @@ for (const commandName of ['project.create', 'project.target.set']) {
     }
   }
   assert.match(schema, /java_block/);
+}
+const projectCreateDefinition = agentDefinitions.find(
+  (definition) => definition.name === 'project.create'
+);
+assert.ok(projectCreateDefinition);
+for (const variant of (
+  projectCreateDefinition?.inputSchema as {
+    anyOf: readonly {
+      properties: { density: { enum: readonly number[] } };
+    }[];
+  }
+).anyOf) {
+  assert.deepEqual(variant.properties.density.enum, [1]);
 }
 assert.equal(
   schemaHash({ properties: { b: 2, a: 1 } }),
@@ -184,7 +204,6 @@ for (const command of [
   'model.parts.upsert',
   'model.parts.material',
   'model.parts.delete',
-  'textures.density.set',
   'animation.motion.upsert'
 ]) {
   assert.ok(agentCommandNames.includes(command));
@@ -197,6 +216,7 @@ for (const rawCommand of [
   'scene.cubes.material',
   'scene.locators.create',
   'scene.locators.update',
+  'textures.density.set',
   'animation.clip.upsert',
   'animation.channels.upsert',
   'animation.triggers.upsert'
@@ -327,7 +347,7 @@ for (const step of manifest.workflow) {
   assert.ok(JSON.stringify(step).length <= 520);
 }
 assert.match(manifest.workflow[0].instruction, /project\.create/);
-assert.match(manifest.workflow[2].instruction, /root/);
+assert.match(manifest.workflow[2].instruction, /profile:"block"/);
 assert.match(manifest.workflow[3].instruction, /animation\.motion\.upsert/);
 assert.match(manifest.workflow[4].instruction, /capture/);
 assert.equal(manifest.artifact.requestedPath, 'workspace-relative directory');
@@ -355,6 +375,7 @@ if (result.ok) {
     };
     project: {
       surfacePixelDensity: number;
+      authoringStyle: string;
       textureResolution: {
         width: number;
         height: number;
@@ -377,6 +398,11 @@ if (result.ok) {
       triggers: number;
       idleClips: number;
       idleChannels: number;
+    };
+    formComposition: {
+      semanticParts: number;
+      compiledCuboids: number;
+      cellScaleCuboids: number;
     };
     workflow: {
       nextActions: readonly (
@@ -421,6 +447,12 @@ if (result.ok) {
     data.project.surfacePixelDensity,
     document.settings.surfacePixelDensity
   );
+  assert.equal(data.project.authoringStyle, 'iconic-pixel');
+  assert.deepEqual(data.formComposition, {
+    semanticParts: 0,
+    compiledCuboids: 0,
+    cellScaleCuboids: 0
+  });
   assert.deepEqual(
     data.project.textureResolution,
     document.settings.textureResolution

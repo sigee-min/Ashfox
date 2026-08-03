@@ -1,6 +1,6 @@
 import type { SurfacePixelDensity } from '../model';
 import { compareStableText } from '../stableOrder';
-import { isSixConnected } from './connectivity';
+import { findSixConnectedComponents } from './connectivity';
 import {
   comparePoints,
   createOccupancyGrid,
@@ -15,10 +15,8 @@ import {
   canonicalPartOrder,
   PART_OCCUPANCY_POLICY
 } from './partOccupancyCanonicalization';
-import {
-  partTranslation,
-  rasterizePart
-} from './partPrimitiveAdapter';
+import { partTranslation } from './partTranslation';
+import { validationOccupancyForPart } from './semanticCuboidGrammar';
 import {
   resolveAttachmentAnchor
 } from './partQualityMetrics';
@@ -76,10 +74,12 @@ const compareOffsets = (
   translationDistance(left) - translationDistance(right) ||
   comparePoints(left, right);
 
-const automaticSnapOffsets = (): readonly LatticePoint[] => {
+const automaticSnapOffsets = (
+  density: SurfacePixelDensity
+): readonly LatticePoint[] => {
   const offsets: LatticePoint[] = [];
   const maximum =
-    PART_OCCUPANCY_POLICY.maximumTrimDepthCells;
+    PART_OCCUPANCY_POLICY.maximumAttachmentSnapDistanceBlocks * density;
   for (let x = -maximum; x <= maximum; x += 1) {
     for (let y = -maximum; y <= maximum; y += 1) {
       for (let z = -maximum; z <= maximum; z += 1) {
@@ -93,7 +93,20 @@ const automaticSnapOffsets = (): readonly LatticePoint[] => {
   return offsets.sort(compareOffsets);
 };
 
-const AUTOMATIC_SNAP_OFFSETS = automaticSnapOffsets();
+const AUTOMATIC_SNAP_OFFSETS = new Map<
+  SurfacePixelDensity,
+  readonly LatticePoint[]
+>();
+
+const snapOffsetsForDensity = (
+  density: SurfacePixelDensity
+): readonly LatticePoint[] => {
+  const existing = AUTOMATIC_SNAP_OFFSETS.get(density);
+  if (existing) return existing;
+  const created = automaticSnapOffsets(density);
+  AUTOMATIC_SNAP_OFFSETS.set(density, created);
+  return created;
+};
 
 const translatedGrid = (
   grid: OccupancyGrid,
@@ -158,9 +171,20 @@ const attachmentCandidate = (
 ): AttachmentCandidate | null => {
   const moved = translatedGrid(authored, offset);
   const retained = withoutParentCells(moved, parentOccupancy);
-  if (retained.cells.size === 0 || !isSixConnected(retained)) {
+  if (retained.cells.size === 0) {
     return null;
   }
+  const detached = findSixConnectedComponents(retained).some(
+    (component) =>
+      resolveAttachmentAnchor(
+        part.partId,
+        parent.partId,
+        createOccupancyGrid(retained.density, component),
+        parentOccupancy,
+        centerOfGrid(retained)
+      ) === null
+  );
+  if (detached) return null;
   const resolved = resolveAttachmentAnchor(
     part.partId,
     parent.partId,
@@ -188,7 +212,7 @@ const bestAttachmentCandidate = (
   );
   const candidateOffsets = intersectsParent
     ? [ZERO_OFFSET]
-    : AUTOMATIC_SNAP_OFFSETS;
+    : snapOffsetsForDensity(authored.density);
   return candidateOffsets
     .map((offset) =>
       attachmentCandidate(
@@ -242,7 +266,7 @@ export const inferFixedPartParents = (
   const occupancyById = new Map(
     parts.filter(isGeometryPartSpec).map((part) => [
       part.partId,
-      rasterizePart(density, part)
+      validationOccupancyForPart(part, density)
     ])
   );
   const explicitRoots = parts.filter(
@@ -282,7 +306,7 @@ export const inferFixedPartParents = (
         ok: false,
         partId: part.partId,
         message:
-          `Part "${part.partId}" cannot be rasterized for parent inference.`
+          `Part "${part.partId}" has no validation occupancy for parent inference.`
       };
     }
     const candidates = parts
@@ -418,7 +442,7 @@ export const derivePartAttachments = (
       resolvedById.set(part.partId, part);
       occupancyById.set(
         part.partId,
-        rasterizePart(density, part)
+        validationOccupancyForPart(part, density)
       );
       continue;
     }
@@ -434,7 +458,7 @@ export const derivePartAttachments = (
           `Parent part "${part.parentPartId}" does not exist in the complete recipe.`
       };
     }
-    const authored = rasterizePart(density, part);
+    const authored = validationOccupancyForPart(part, density);
     const intersectsParent = [...authored.cells].some(
       (key) => parentOccupancy.cells.has(key)
     );
@@ -454,7 +478,7 @@ export const derivePartAttachments = (
               'after overlap with its parent. Keep a visible volume outside ' +
               'the parent surface.'
             : `Part "${part.partId}" has no shared parent face within ` +
-              `${PART_OCCUPANCY_POLICY.maximumTrimDepthCells} lattice cells. ` +
+              `${PART_OCCUPANCY_POLICY.maximumAttachmentSnapDistanceBlocks} model blocks. ` +
               'Place it touching or just beside its parent.'
       };
     }
@@ -462,7 +486,7 @@ export const derivePartAttachments = (
     resolvedById.set(part.partId, resolved);
     occupancyById.set(
       part.partId,
-      rasterizePart(density, resolved)
+      validationOccupancyForPart(resolved, density)
     );
   }
 

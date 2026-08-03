@@ -23,9 +23,10 @@ blob-copy entries. Self-contained GLB export instead accepts an injected async
 blob resolver and returns exactly one binary model. Directory/ZIP
 materialization belongs to the application layer.
 
-The constrained modeling authority, algorithms, invariants, and proof boundary
-are specified in
-[Constrained Modeling Kernel](../../docs/architecture/constrained-modeling-kernel.md).
+The modeling transition is recorded in
+[Legacy Occupancy Modeling](../../docs/architecture/legacy-occupancy-modeling.md).
+The normative direction for new authoring is
+[Iconic Hardcut Modeling](../../docs/architecture/iconic-hardcut-modeling.md).
 
 The runtime dependency direction, ownership map, and extension paths are in
 [Codebase map](../../docs/architecture/codebase.md).

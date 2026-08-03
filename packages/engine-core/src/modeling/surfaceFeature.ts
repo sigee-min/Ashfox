@@ -2,7 +2,8 @@ import type {
   ModelPartFace
 } from '../model';
 import {
-  cellKey
+  cellKey,
+  parseCellKey
 } from './lattice';
 import type {
   FeaturePartSpec
@@ -198,4 +199,63 @@ export const validateSurfaceFeaturePlacement = (
     }
   }
   return null;
+};
+
+const anchorDistance = (
+  left: readonly [number, number, number],
+  right: readonly [number, number, number]
+): number =>
+  Math.abs(left[0] - right[0]) +
+  Math.abs(left[1] - right[1]) +
+  Math.abs(left[2] - right[2]);
+
+const compareAnchor = (
+  left: readonly [number, number, number],
+  right: readonly [number, number, number]
+): number =>
+  left[0] - right[0] ||
+  left[1] - right[1] ||
+  left[2] - right[2];
+
+/**
+ * Treats the public anchor as a placement preference and projects the whole
+ * deterministic motif rectangle onto the nearest uncovered parent surface.
+ */
+export const projectSurfaceFeaturePlacement = (
+  feature: FeaturePartSpec,
+  parent: OccupancyGrid,
+  environment: ReadonlySet<CellKey>
+): FeaturePartSpec | null => {
+  if (!validateSurfaceFeaturePlacement(feature, parent, environment)) {
+    return feature;
+  }
+  const axes = surfaceFeatureAxes(feature.face);
+  const normalIndex = AXIS_INDEX[axes.normal];
+  const uIndex = AXIS_INDEX[axes.u];
+  const vIndex = AXIS_INDEX[axes.v];
+  const halfU = Math.floor(feature.size[0] / 2);
+  const halfV = Math.floor(feature.size[1] / 2);
+  const candidates = new Map<string, FeaturePartSpec>();
+  for (const key of parent.cells) {
+    const cell = parseCellKey(key);
+    const neighbor = { ...cell };
+    neighbor[axes.normal] += axes.positive ? 1 : -1;
+    if (environment.has(cellKey(neighbor))) continue;
+    const anchor: [number, number, number] = [0, 0, 0];
+    anchor[normalIndex] = axes.positive
+      ? cell[axes.normal] + 1
+      : cell[axes.normal];
+    anchor[uIndex] = cell[axes.u] + halfU;
+    anchor[vIndex] = cell[axes.v] + halfV;
+    const candidate: FeaturePartSpec = { ...feature, anchor };
+    if (validateSurfaceFeaturePlacement(candidate, parent, environment)) {
+      continue;
+    }
+    candidates.set(anchor.join(','), candidate);
+  }
+  return [...candidates.values()].sort((left, right) =>
+    anchorDistance(left.anchor, feature.anchor) -
+      anchorDistance(right.anchor, feature.anchor) ||
+    compareAnchor(left.anchor, right.anchor)
+  )[0] ?? null;
 };

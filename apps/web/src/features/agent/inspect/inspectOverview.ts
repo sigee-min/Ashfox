@@ -2,6 +2,7 @@ import {
   CANONICAL_IDLE_CLIP_ID,
   evaluateProductionReadiness,
   isSceneNodeEffectivelyVisible,
+  measureDocumentFormComposition,
   type ProjectDocument,
   type ValidationReport
 } from '@ashfox/engine-core';
@@ -50,6 +51,7 @@ export const inspectOverview = (
   const idleClip = document.animations[CANONICAL_IDLE_CLIP_ID];
   const exportTarget = projectExportTargetFor(document);
   const compatibility = exportCompatibilitySummary(document);
+  const formComposition = measureDocumentFormComposition(document);
   return boundedSuccess(
     document.revision,
     {
@@ -84,6 +86,7 @@ export const inspectOverview = (
           readiness.semanticReviewRequired,
         surfacePixelDensity:
           document.settings.surfacePixelDensity,
+        authoringStyle: 'iconic-pixel',
         textureResolution:
           document.settings.textureResolution
       },
@@ -123,6 +126,11 @@ export const inspectOverview = (
         idleClips: idleClip ? 1 : 0,
         idleChannels:
           idleClip ? Object.keys(idleClip.channels).length : 0
+      },
+      formComposition: {
+        semanticParts: formComposition.semanticParts,
+        compiledCuboids: formComposition.compiledCuboids,
+        cellScaleCuboids: formComposition.cellScaleCuboids
       },
       workflow
     },

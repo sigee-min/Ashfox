@@ -503,6 +503,26 @@ kbd {
   line-height: 1.45;
 }
 
+.iconic-style-card {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #805d30;
+  border-radius: 6px;
+  background: #2a241b;
+}
+
+.iconic-style-card strong {
+  color: #edb45f;
+  font-size: 10px;
+}
+
+.iconic-style-card span {
+  color: #9ca5ad;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
 .popover-primary {
   height: 30px;
   border: 1px solid #805d30;
@@ -1206,6 +1226,55 @@ kbd {
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.tree-count {
+  flex: 0 0 auto;
+  color: #66717a;
+  font-family: var(--font-mono);
+  font-size: 8px;
+}
+
+.kind-feature {
+  color: #9ecb72;
+}
+
+.tree-row.is-derived-feature {
+  cursor: default;
+  color: #8f9a91;
+}
+
+.tree-row.is-geometry-summary {
+  cursor: default;
+  color: #7c868e;
+}
+
+.form-composition-summary {
+  display: grid;
+  gap: 6px;
+  margin: 0 10px 8px;
+  padding: 9px;
+  border: 1px solid #343b42;
+  border-radius: 5px;
+  background: #1e2328;
+}
+
+.form-composition-summary > span {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.form-composition-summary strong {
+  color: #abb4bc;
+  font-size: 9px;
+}
+
+.form-composition-summary small {
+  color: #6f7982;
+  font-family: var(--font-mono);
+  font-size: 8px;
 }
 
 .visibility-toggle {

@@ -169,7 +169,15 @@ export type ModelPartFace =
   | 'up'
   | 'down';
 export type ModelPartProfile = 'soft' | 'balanced' | 'hard';
-export type ModelFeatureMotif = 'eye';
+export type ModelMassProfile = 'block' | ModelPartProfile;
+export type ModelFeatureMotif = 'eye' | 'nose' | 'mouth' | 'patch';
+export type ModelEyeGlyph = 'dot' | 'square' | 'slit';
+export type ModelNoseGlyph = 'dot' | 'snout';
+export type ModelMouthGlyph = 'neutral' | 'fang' | 'beak';
+export type ModelFeatureGlyph =
+  | ModelEyeGlyph
+  | ModelNoseGlyph
+  | ModelMouthGlyph;
 
 export interface ModelPartAttachment {
   parentAnchor: ModelPartLatticeVec3;
@@ -188,7 +196,7 @@ export interface ModelMassPartSpec extends ModelPartSpecBase {
   kind: 'mass';
   center: ModelPartLatticeVec3;
   radii: ModelPartLatticeVec3;
-  profile: ModelPartProfile;
+  profile: ModelMassProfile;
 }
 
 export interface ModelSegmentPartSpec extends ModelPartSpecBase {
@@ -221,6 +229,7 @@ export interface ModelFeaturePartSpec
   joint: { kind: 'fixed' };
   attachment: null;
   motif: ModelFeatureMotif;
+  glyph?: ModelFeatureGlyph;
   face: ModelPartFace;
   anchor: ModelPartLatticeVec3;
   size: ModelPartLatticeVec2;

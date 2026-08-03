@@ -17,7 +17,7 @@ const roundTripParts = (): readonly PartAuthoringSpec[] => [{
   materialId: 'stone',
   center: [0, 0, 0],
   radii: [4, 4, 4],
-  profile: 'hard'
+  profile: 'block'
 }, {
   kind: 'mass',
   partId: 'mass.detail',
@@ -25,7 +25,7 @@ const roundTripParts = (): readonly PartAuthoringSpec[] => [{
   materialId: 'stone',
   center: [7, 0, 0],
   radii: [3, 3, 3],
-  profile: 'balanced'
+  profile: 'block'
 }, {
   kind: 'segment',
   partId: 'segment.detail',
@@ -119,7 +119,7 @@ for (const density of [1, 2, 4] as const) {
               payload: { density }
             }]
           },
-          { source: 'agent' }
+          { source: 'system' }
         );
   assert.equal(densityResult.ok, true);
   if (!densityResult.ok) {
@@ -144,7 +144,11 @@ for (const density of [1, 2, 4] as const) {
     },
     { source: 'agent' }
   );
-  assert.equal(authored.ok, true);
+  assert.equal(
+    authored.ok,
+    true,
+    authored.ok ? undefined : authored.error.message
+  );
   if (!authored.ok) {
     throw new Error(
       `Round-trip fixture failed at density ${density}: ` +

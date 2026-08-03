@@ -77,34 +77,20 @@ views; mirroring left to right must never reverse the forward axis.
 
 ## Review textures and UVs
 
-- Ask the agent to choose Surface detail before the first geometry: 1× for
-  one-unit pixels, 2× for half-unit pixels, or 4× for quarter-unit pixels.
-  Changing it later requires deleting every compiled part first.
+- Use the fixed iconic form scale. Do not increase geometric density to create
+  smaller decorative details.
 - Check that material regions use deliberate, reusable base colors.
 - Make sure each visible face belongs to the generated atlas.
 - Look for stretched pixels, seams, empty faces, and mismatched material color.
 - Confirm that one square pixel has exactly the same size on every face.
 - Keep important accents visible at the distance where the asset will be used.
-- Use one zero-depth eye feature per visible eye. Its iris base color, face,
-  anchor, and pixel size are authored once; ashfox derives the outline, pupil,
-  highlight, UV projection, and atlas pixels. Its direct parent must be a deep
-  face mass or segment attached to a second volumetric cranium, body, or
-  display housing. The eye belongs on that host's outermost surface and must
-  leave at least one lattice cell of visible anatomy around every edge. A
-  valid host has at least four lattice cells of depth and at least half as much
-  depth as its smaller face span. Its support must have at least 10% of the
-  host's bounding volume and a smallest span at least half the host depth; a
-  token tab does not establish anatomy. A root-only face volume, shallow host,
-  full-face marking, plate, radial, detached mask, billboard, or thin overlay
-  made only to host or count eyes is invalid. Do not stack eye cubes. Any later
-  part edit rechecks the complete eye assembly, including edits that flatten
-  or detach the host. These bounds are evaluated after ashfox derives the
-  host's final attachment placement, not against the unplaced request. For a
-  registered demo, the delivered rest pose must also paint the full motif on
-  compiled geometry, keep its pupil center unobstructed, leave at least 75% of
-  the motif visible, and use an iris color that clearly contrasts with the
-  host. Teeth, brows, masks, and ornaments are blockers regardless of how they
-  are named.
+- Use zero-depth semantic features for focal face marks and color-only regions.
+  The agent chooses the host face, placement, extent, motif, and material role;
+  Ashfox chooses the deterministic role pixels, UV projection, and atlas
+  result. Keep these features on exposed volumetric surfaces and do not replace
+  them with sockets, pupils, highlights, masks, billboards, or overlay cubes.
+  Review the compiled rest pose to ensure each focal glyph remains visible and
+  contrasts with its host.
 - Let ashfox derive the tonal pixel surface pattern from each base color.
   Coplanar generated surfaces share world-lattice pattern coordinates, so a
   cuboid split does not restart the pattern.

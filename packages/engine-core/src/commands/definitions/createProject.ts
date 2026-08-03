@@ -35,7 +35,9 @@ const inputSchema: CommandInputSchema = {
             }
           }),
       density: {
-        enum: [1, 2, 4]
+        enum: [1],
+        description:
+          'Iconic projects use the fixed 1-unit form grid. Surface character comes from flat texture clusters, not smaller geometry cells.'
       }
     },
     required:

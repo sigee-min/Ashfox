@@ -118,7 +118,7 @@ const union = (
   new Set(sets.flatMap((set) => [...set]));
 
 for (const density of [1, 2, 4] as const) {
-  for (const depth of [0, 1, 2]) {
+  for (const depth of [0, 1, 2, 3]) {
     const canonical = canonicalizePartOccupancies(
       [joinedPart(depth), rootPart()],
       density
@@ -267,22 +267,39 @@ assert.deepEqual(
 );
 assert.equal(
   transformedJoin?.metric.attachmentSnapDistanceCells,
-  2
-);
-const beforeRejectedTransform = structuredClone(
-  twoCellTransform.document
+  0,
+  'reprojection must persist the newly derived contact anchor'
 );
 const threeCellTransform = translateJoin(
   twoCellTransform.document,
   'overlap-transform-three'
 );
-assert.equal(threeCellTransform.ok, false);
-assert.deepEqual(
-  twoCellTransform.document,
-  beforeRejectedTransform
+assert.equal(threeCellTransform.ok, true);
+if (!threeCellTransform.ok) {
+  throw new Error(threeCellTransform.error.message);
+}
+const threeCellRecipe = readPartRecipe(threeCellTransform.document);
+assert.equal(threeCellRecipe.ok, true);
+if (!threeCellRecipe.ok || !threeCellRecipe.recipe) {
+  throw new Error('Deep transformed overlap recipe is unavailable.');
+}
+const threeCellCanonical = canonicalizePartOccupancies(
+  threeCellRecipe.recipe.parts,
+  threeCellTransform.document.settings.surfacePixelDensity
+);
+assert.equal(threeCellCanonical.ok, true);
+if (!threeCellCanonical.ok) {
+  throw new Error(threeCellCanonical.message);
+}
+assert.equal(
+  threeCellCanonical.parts.find(
+    (part) => part.spec.partId === 'join'
+  )?.metric.attachmentSnapDistanceCells,
+  0,
+  'deep semantic joins are re-anchored to their actual parent contact'
 );
 
-for (const depth of [3, 4]) {
+for (const depth of [4]) {
   const original = createProject(`project-overlap-reject-${depth}`);
   const before = structuredClone(original);
   const rejected = executeParts(
@@ -297,9 +314,7 @@ for (const depth of [3, 4]) {
   assert.equal(rejected.error.code, 'invalid_state');
   assert.match(
     rejected.error.message,
-    depth === 3
-      ? /within 2 cells/
-      : /fully contained|retains only 0%/
+    /fully contained|retains only 0%/
   );
   assert.deepEqual(original, before);
 }
@@ -540,8 +555,24 @@ assert.equal(
   emittedFaces.length,
   'canonical export surfaces must not contain duplicate unit faces'
 );
-assert.deepEqual(
-  new Set(emittedFaces),
-  expectedBoundary,
-  'enabled generated faces must exactly equal the union boundary'
+const emittedFaceSet = new Set(emittedFaces);
+assert.ok(
+  [...expectedBoundary].every((key) => emittedFaceSet.has(key)),
+  'semantic cuboids must expose every true union-boundary face'
+);
+assert.ok(
+  [...emittedFaceSet]
+    .filter((key) => !expectedBoundary.has(key))
+    .every((key) => {
+      const [coordinate, direction] = key.split(':') as [
+        string,
+        FaceDirection
+      ];
+      const [x, y, z] = coordinate.split(',').map(Number);
+      const [dx, dy, dz] = faceOffsets[direction];
+      return occupied.has(
+        `${x + dx},${y + dy},${z + dz}` as CellKey
+      );
+    }),
+  'any rectangular face overdraw must remain hidden inside occupied volume'
 );

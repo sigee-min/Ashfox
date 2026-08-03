@@ -1,6 +1,8 @@
 import { compareStableText } from '../../stableOrder';
-import { isSixConnected } from '../connectivity';
+import { findSixConnectedComponents } from '../connectivity';
+import { createOccupancyGrid } from '../lattice';
 import {
+  attachmentContactMetric,
   attachmentContactMetrics,
   orthographicContributionMetrics
 } from '../partQualityMetrics';
@@ -21,11 +23,12 @@ export const validatePartOccupancy = (
   for (const part of [...parts.values()].sort((left, right) =>
     compareStableText(left.partId, right.partId)
   )) {
-    if (!isSixConnected(part.occupancy)) {
+    const components = findSixConnectedComponents(part.occupancy);
+    if (part.parentPartId === null && components.length !== 1) {
       issues.push({
         code: 'connectivity',
         path: `scene.parts.${part.partId}`,
-        message: 'Each compiled part must be one 6-connected volume.',
+        message: 'A root part must be one connected semantic form.',
         entityIds: part.cubes.map((cube) => cube.id)
       });
     }
@@ -53,6 +56,26 @@ export const validatePartOccupancy = (
           code: 'attachment',
           path: `scene.parts.${part.partId}`,
           message: 'A child part must share a full lattice face with its parent.',
+          entityIds: [part.bone.id, parent.bone.id]
+        });
+      }
+      if (
+        parent &&
+        components.some((component) =>
+          attachmentContactMetric(
+            part.partId,
+            parent.partId,
+            createOccupancyGrid(part.occupancy.density, component),
+            parent.occupancy,
+            { x: 0, y: 0, z: 0 }
+          ).latticeFaceCount === 0
+        )
+      ) {
+        issues.push({
+          code: 'connectivity',
+          path: `scene.parts.${part.partId}`,
+          message:
+            'Every disconnected cuboid group in a child part must contact its semantic parent.',
           entityIds: [part.bone.id, parent.bone.id]
         });
       }

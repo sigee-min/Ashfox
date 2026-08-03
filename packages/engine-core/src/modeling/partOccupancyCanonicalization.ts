@@ -1,5 +1,8 @@
 import { compareStableText } from '../stableOrder';
-import { isSixConnected } from './connectivity';
+import {
+  findSixConnectedComponents,
+  isSixConnected
+} from './connectivity';
 import {
   createOccupancyGrid,
   parseCellKey
@@ -9,26 +12,31 @@ import {
   type GeometryPartSpec,
   type PartSpec
 } from './partContract';
-import { rasterizePart } from './partPrimitiveAdapter';
+import {
+  compileSemanticPartCuboids,
+  occupancyForCuboids,
+  subtractCuboidsForSeamOwnership
+} from './semanticCuboidGrammar';
 import {
   orthographicContributionMetrics,
   resolveAttachmentAnchor
 } from './partQualityMetrics';
 import {
+  projectSurfaceFeaturePlacement,
   surfaceFeaturePixels,
-  validateSurfaceFeaturePlacement
 } from './surfaceFeature';
 import type {
   CellKey,
   LatticePoint,
   OccupancyGrid,
-  SurfacePixelDensity
+  SurfacePixelDensity,
+  Cuboid
 } from './types';
 
 export const PART_OCCUPANCY_POLICY = {
   minimumRetainedNumerator: 1,
   minimumRetainedDenominator: 5,
-  maximumTrimDepthCells: 2
+  maximumAttachmentSnapDistanceBlocks: 2
 } as const;
 
 export interface PartOccupancyCanonicalizationMetric {
@@ -47,6 +55,10 @@ export interface PartOccupancyCanonicalizationMetric {
 
 export interface CanonicalPartOccupancy {
   spec: GeometryPartSpec;
+  /** Compiler-selected form before cross-part seam ownership. */
+  authoredCuboids: readonly Cuboid[];
+  /** Final emitted form after bounded parent/seam adjustment. */
+  cuboids: readonly Cuboid[];
   authored: OccupancyGrid;
   canonical: OccupancyGrid;
   canonicalAttachmentAnchor: LatticePoint | null;
@@ -54,7 +66,11 @@ export interface CanonicalPartOccupancy {
 }
 
 export type CanonicalizePartOccupanciesResult =
-  | { ok: true; parts: readonly CanonicalPartOccupancy[] }
+  | {
+      ok: true;
+      parts: readonly CanonicalPartOccupancy[];
+      features: readonly Extract<PartSpec, { kind: 'feature' }>[];
+    }
   | { ok: false; path: string; message: string };
 
 type CanonicalizationFailure = Extract<
@@ -138,9 +154,11 @@ const maximumTrimDepth = (
 const canonicalizeGeometryPart = (
   spec: GeometryPartSpec,
   density: SurfacePixelDensity,
-  ownerByCell: Map<CellKey, string>
+  ownerByCell: Map<CellKey, string>,
+  ownedCuboids: Cuboid[]
 ): CanonicalPartOccupancy | CanonicalizationFailure => {
-  const authored = rasterizePart(density, spec);
+  const authoredCuboids = compileSemanticPartCuboids(spec);
+  const authored = occupancyForCuboids(authoredCuboids, density);
   if (authored.cells.size === 0) {
     return {
       ok: false,
@@ -175,27 +193,36 @@ const canonicalizeGeometryPart = (
     retainedKeys,
     trimmedKeys
   );
-  if (trimDepth > PART_OCCUPANCY_POLICY.maximumTrimDepthCells) {
+  const cuboids = subtractCuboidsForSeamOwnership(
+    authoredCuboids,
+    ownedCuboids
+  );
+  const canonical = occupancyForCuboids(cuboids, density);
+  if (
+    canonical.cells.size !== retainedKeys.length ||
+    retainedKeys.some((key) => !canonical.cells.has(key))
+  ) {
     return {
       ok: false,
       path: `parts.${spec.partId}`,
-      message: `Part "${spec.partId}" penetrates ${trimDepth} surface cells into earlier geometry. Keep authored seam overlap within ${PART_OCCUPANCY_POLICY.maximumTrimDepthCells} cells.`
+      message:
+        `Part "${spec.partId}" seam adjustment did not preserve exact ` +
+        'single-owner template occupancy.'
     };
   }
-  const canonical = createOccupancyGrid(
-    density,
-    retainedKeys.map(parseCellKey)
-  );
-  if (!isSixConnected(canonical)) {
+  if (spec.parentPartId === null && !isSixConnected(canonical)) {
     return {
       ok: false,
       path: `parts.${spec.partId}`,
-      message: `Canonical seam ownership disconnects part "${spec.partId}". Move or resize the join so the retained cells remain one volume.`
+      message: `Root part "${spec.partId}" must remain one connected semantic form.`
     };
   }
   for (const key of canonical.cells) ownerByCell.set(key, spec.partId);
+  ownedCuboids.push(...cuboids);
   return {
     spec,
+    authoredCuboids,
+    cuboids,
     authored,
     canonical,
     canonicalAttachmentAnchor: null,
@@ -218,9 +245,15 @@ const canonicalizeGeometry = (
   density: SurfacePixelDensity
 ): readonly CanonicalPartOccupancy[] | CanonicalizationFailure => {
   const ownerByCell = new Map<CellKey, string>();
+  const ownedCuboids: Cuboid[] = [];
   const canonical: CanonicalPartOccupancy[] = [];
   for (const spec of ordered.filter(isGeometryPartSpec)) {
-    const result = canonicalizeGeometryPart(spec, density, ownerByCell);
+    const result = canonicalizeGeometryPart(
+      spec,
+      density,
+      ownerByCell,
+      ownedCuboids
+    );
     if ('ok' in result) return result;
     canonical.push(result);
   }
@@ -260,14 +293,35 @@ const resolveAttachments = (
         z: attachment.parentAnchor[2]
       }
     );
-    if (
-      !anchor ||
-      anchor.distanceCells > PART_OCCUPANCY_POLICY.maximumTrimDepthCells
-    ) {
+    if (!anchor) {
       return {
         ok: false,
         path: `parts.${part.spec.partId}.attachment`,
-        message: `Part "${part.spec.partId}" has no parent contact within ${PART_OCCUPANCY_POLICY.maximumTrimDepthCells} surface cells of its requested attachment anchor.`
+        message: `Part "${part.spec.partId}" has no face contact with its parent after semantic seam ownership.`
+      };
+    }
+    const detachedComponent = findSixConnectedComponents(
+      part.canonical
+    ).find((component) =>
+      resolveAttachmentAnchor(
+        part.spec.partId,
+        parentPartId,
+        createOccupancyGrid(part.canonical.density, component),
+        parent.canonical,
+        {
+          x: attachment.parentAnchor[0],
+          y: attachment.parentAnchor[1],
+          z: attachment.parentAnchor[2]
+        }
+      ) === null
+    );
+    if (detachedComponent) {
+      return {
+        ok: false,
+        path: `parts.${part.spec.partId}.attachment`,
+        message:
+          `Every cuboid group in child part "${part.spec.partId}" ` +
+          'must contact its semantic parent.'
       };
     }
     const canonicalAttachmentAnchor = { ...anchor.anchor };
@@ -315,17 +369,26 @@ const validateSilhouette = (
     : null;
 };
 
-const validateFeatures = (
+const projectAndValidateFeatures = (
   ordered: readonly PartSpec[],
   geometry: readonly CanonicalPartOccupancy[]
-): CanonicalizationFailure | null => {
+):
+  | {
+      ok: true;
+      features: readonly Extract<PartSpec, { kind: 'feature' }>[];
+    }
+  | CanonicalizationFailure => {
   const byPart = new Map(
     geometry.map((part) => [part.spec.partId, part])
   );
   const environment = new Set<CellKey>(
     geometry.flatMap((part) => [...part.canonical.cells])
   );
-  const featurePixelOwners = new Map<string, string>();
+  const featurePixelOwners = new Map<
+    string,
+    Extract<PartSpec, { kind: 'feature' }>[]
+  >();
+  const projectedFeatures: Extract<PartSpec, { kind: 'feature' }>[] = [];
   for (const feature of ordered.filter(
     (part): part is Extract<PartSpec, { kind: 'feature' }> =>
       part.kind === 'feature'
@@ -341,29 +404,46 @@ const validateFeatures = (
         message: `Surface feature "${feature.partId}" requires a geometric parent.`
       };
     }
-    const issue = validateSurfaceFeaturePlacement(
+    const projected = projectSurfaceFeaturePlacement(
       feature,
       parent.canonical,
       environment
     );
-    if (issue) {
-      return { ok: false, path: issue.path, message: issue.message };
+    if (!projected) {
+      return {
+        ok: false,
+        path: `parts.${feature.partId}.anchor`,
+        message:
+          `Surface feature "${feature.partId}" does not fit on an ` +
+          `uncovered ${feature.face} face of parent ` +
+          `"${feature.parentPartId}" at size ` +
+          `${feature.size[0]}×${feature.size[1]}.`
+      };
     }
-    for (const pixel of surfaceFeaturePixels(feature)) {
-      const owner = featurePixelOwners.get(pixel.key);
-      if (owner) {
+    for (const pixel of surfaceFeaturePixels(projected)) {
+      const owners = featurePixelOwners.get(pixel.key) ?? [];
+      const conflict = owners.find(
+        (owner) =>
+          !(
+            (owner.motif === 'patch') !==
+            (projected.motif === 'patch')
+          )
+      );
+      if (conflict) {
         return {
           ok: false,
-          path: `parts.${feature.partId}.anchor`,
+          path: `parts.${projected.partId}.anchor`,
           message:
-            `Surface features "${owner}" and "${feature.partId}" ` +
-            'overlap on the same generated surface pixels.'
+            `Surface features "${conflict.partId}" and ` +
+            `"${projected.partId}" overlap on the same generated surface ` +
+            'pixels. Only one broad patch may sit beneath a focal glyph.'
         };
       }
-      featurePixelOwners.set(pixel.key, feature.partId);
+      featurePixelOwners.set(pixel.key, [...owners, projected]);
     }
+    projectedFeatures.push(projected);
   }
-  return null;
+  return { ok: true, features: projectedFeatures };
 };
 
 export const canonicalizePartOccupancies = (
@@ -384,6 +464,8 @@ export const canonicalizePartOccupancies = (
   if ('ok' in resolved) return resolved;
   const silhouetteIssue = validateSilhouette(resolved);
   if (silhouetteIssue) return silhouetteIssue;
-  const featureIssue = validateFeatures(ordered, resolved);
-  return featureIssue ?? { ok: true, parts: resolved };
+  const features = projectAndValidateFeatures(ordered, resolved);
+  return features.ok
+    ? { ok: true, parts: resolved, features: features.features }
+    : features;
 };

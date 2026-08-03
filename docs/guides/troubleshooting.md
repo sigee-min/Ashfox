@@ -25,8 +25,7 @@ Ask the agent to:
 
 1. render the asset in Studio lighting;
 2. identify untextured faces and their material base colors;
-3. confirm surface detail was chosen before modeling and generated bounds are
-   aligned to that lattice;
+3. confirm generated bounds are aligned to the fixed iconic lattice;
 4. confirm the automatically derived atlas uses identical square-pixel size
    on every face;
 5. validate the texture paths before exporting.
@@ -43,14 +42,11 @@ Move them slightly higher and outward without changing the head silhouette.
 ```
 
 Move or resize the eye's single surface feature on the existing volumetric
-face host, or change its iris material. The host must have head-like depth,
-attach to a second cranial or housing volume, expose the eye on its outermost
-surface, and leave visible anatomy around every edge. Do not add socket,
-pupil, or highlight cubes, and do not add a separate root volume, plate, mask,
-billboard, or thin overlay just to carry the eye. Check the compiled rest pose,
-not only the part recipe: the pupil center must be clear, at least 75% of the
-motif must remain visible, and the iris must contrast with the host. Move or
-remove any tooth, brow, ornament, or anonymously named cube that covers it.
+face host, or change its material role. Keep it on an exposed outer face and
+use the deterministic face template instead of socket, pupil, highlight, mask,
+billboard, or overlay cubes. Check the compiled rest pose, not only the part
+recipe: the focal glyph must remain visible and contrast with its host. Move
+or remove any tooth, brow, or ornament that covers it.
 
 ## Feet or toes point backward
 

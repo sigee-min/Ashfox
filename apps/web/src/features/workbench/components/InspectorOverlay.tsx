@@ -1,8 +1,13 @@
 import type {
+  ProjectDocument,
   SceneNode,
   Transform,
   ValidationReport,
   Vec3
+} from '@ashfox/engine-core';
+import {
+  measureDocumentFormComposition,
+  readPartRecipe
 } from '@ashfox/engine-core';
 
 import { Icon } from '../Icon';
@@ -14,6 +19,7 @@ import {
 import { VectorEditor } from './VectorEditor';
 
 interface InspectorOverlayProps {
+  document: ProjectDocument;
   node: SceneNode | undefined;
   report: ValidationReport;
   onToggleVisibility: (nodeId: string) => void;
@@ -54,6 +60,7 @@ function CubeGeometrySummary({
 }
 
 export function InspectorOverlay({
+  document,
   node,
   report,
   onToggleVisibility,
@@ -72,6 +79,18 @@ export function InspectorOverlay({
   }
   const compilerOwned =
     node.generation?.authority === 'ashfox.part-compiler';
+  const recipe = compilerOwned ? readPartRecipe(document) : null;
+  const semanticPart =
+    recipe?.ok && recipe.recipe && node.generation
+      ? recipe.recipe.parts.find(
+          (part) => part.partId === node.generation?.partId
+        )
+      : undefined;
+  const partComposition = node.generation
+    ? measureDocumentFormComposition(document).parts.find(
+        (part) => part.partId === node.generation?.partId
+      )
+    : undefined;
 
   return (
     <aside className="floating-panel inspector-overlay">
@@ -81,7 +100,12 @@ export function InspectorOverlay({
         </span>
         <span>
           <strong>{node.name}</strong>
-          <small>{nodeKindLabel(node.kind)} · {node.id}</small>
+          <small>
+            {semanticPart
+              ? `Semantic ${semanticPart.kind}`
+              : nodeKindLabel(node.kind)}
+            {' · '}{node.id}
+          </small>
         </span>
         <button
           type="button"
@@ -98,6 +122,32 @@ export function InspectorOverlay({
         <span>{compilerOwned ? 'Compiler owned' : 'Live document'}</span>
       </div>
       <div className="inspector-scroll">
+        {semanticPart ? (
+          <section className="property-section">
+            <div className="property-heading">
+              <span>Semantic part</span>
+              <span className="space-label">Iconic</span>
+            </div>
+            <div className="property-grid">
+              <span>Primitive</span>
+              <strong>{semanticPart.kind}</strong>
+              <span>Material</span>
+              <strong>{semanticPart.materialId}</strong>
+              <span>Parent</span>
+              <strong>{semanticPart.parentPartId ?? 'root'}</strong>
+              <span>Compiled cuboids</span>
+              <strong>{partComposition?.compiledCuboids ?? 0}</strong>
+              <span>Cell-scale cuboids</span>
+              <strong>{partComposition?.cellScaleCuboids ?? 0}</strong>
+              {semanticPart.kind === 'mass' ? (
+                <>
+                  <span>Profile</span>
+                  <strong>{semanticPart.profile}</strong>
+                </>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
         <section className="property-section">
           <div className="property-heading">
             <span>Transform</span>

@@ -92,7 +92,7 @@ const registrations: Readonly<Record<CommandName, CommandRegistration>> = {
   'scene.cubes.material': registration(setCubeMaterialCommand, false),
   'textures.density.set': registration(
     setSurfacePixelDensityCommand,
-    true
+    false
   ),
   'animation.clip.upsert': registration(upsertAnimationClipCommand, false),
   'animation.motion.upsert': registration(

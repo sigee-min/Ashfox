@@ -1,6 +1,6 @@
 import {
   composeTextureRaster,
-  paintEyeMotifPixel,
+  paintFeatureMotifPixel,
   paintDirectionalSurfacePixel,
   paintSurfacePixel,
   stableTextureSeed,
@@ -40,6 +40,7 @@ const markedSurfacePixel = (
   x: number,
   y: number
 ): RgbColor => {
+  let markedBase = base;
   for (const marking of region.markings ?? []) {
     if (
       x < marking.x ||
@@ -49,16 +50,47 @@ const markedSurfacePixel = (
     ) {
       continue;
     }
-    const motifPixel = paintEyeMotifPixel(
+    if (marking.motif === 'patch') {
+      const color = rgbColor(marking.color);
+      const pattern = region.pattern;
+      if (pattern) {
+        markedBase = paintDirectionalSurfacePixel(
+          color,
+          region.face,
+          pattern.origin[0] + x - pattern.bounds.x,
+          pattern.origin[1] + y - pattern.bounds.y,
+          pattern.bounds.width,
+          pattern.bounds.height,
+          stableTextureSeed(
+            `${pattern.seedKey}:marking:${marking.id}`,
+            0x41534846
+          )
+        );
+        continue;
+      }
+      markedBase = paintDirectionalSurfacePixel(
+        color,
+        region.face,
+        marking.motifX + x - marking.x,
+        marking.motifY + y - marking.y,
+        marking.motifWidth,
+        marking.motifHeight,
+        stableTextureSeed(marking.id, 0x41534846)
+      );
+      continue;
+    }
+    const motifPixel = paintFeatureMotifPixel(
+      marking.motif,
       rgbColor(marking.color),
       marking.motifX + x - marking.x,
       marking.motifY + y - marking.y,
       marking.motifWidth,
-      marking.motifHeight
+      marking.motifHeight,
+      marking.glyph
     );
     if (motifPixel) return motifPixel;
   }
-  return base;
+  return markedBase;
 };
 
 export const generatedSurfacePixel = (

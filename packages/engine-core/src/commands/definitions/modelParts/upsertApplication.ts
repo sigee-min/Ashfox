@@ -191,7 +191,7 @@ const validateEyeAnatomy = (
         ? 'payload.parts'
         : `payload.parts[${index}].${issue.field}`,
       expected:
-        'a bounded semantic eye on the outer face of a deep, connected volumetric head or display housing'
+        'a compact semantic eye on a supported mass or segment face; ashfox projects its preferred anchor onto the nearest valid surface'
     }
   };
 };
@@ -227,19 +227,21 @@ const compileParts = (
       error: {
         code: 'invalid_state',
         message: compiled.message,
-        path:
-          compiled.pathScope === 'document'
+        path: compiled.pathScope === 'document'
             ? compiled.path
             : `payload.${compiled.path}`,
-        pathScope:
-          compiled.pathScope === 'document'
+        pathScope: compiled.pathScope === 'document'
             ? 'document'
             : 'operation',
-        expected: 'connected, visible lattice parts whose shallow seam intersections preserve each part and its attachment'
+        expected:
+          'visible semantic cuboid forms whose retained groups contact their declared parent'
       }
     };
   }
-  const projected = withPartRecipe(compiled.document, nextRecipe.recipe);
+  const projected = withPartRecipe(compiled.document, {
+    ...nextRecipe.recipe,
+    parts: compiled.projectedParts
+  });
   const recipeChanged = projected !== compiled.document;
   return {
     ok: true,
@@ -333,7 +335,7 @@ export const applyUpsertModelParts = (
         message: derived.message,
         path: `payload.${derived.path}`,
         pathScope: 'operation',
-        expected: 'project-space child geometry touching, shallowly intersecting, or within two lattice cells of its parent'
+        expected: 'project-space child geometry touching, intersecting, or within two model blocks of its parent'
       }
     };
   }

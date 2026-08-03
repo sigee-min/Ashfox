@@ -12,6 +12,11 @@ export {
   type CubeFace,
   type CubeFaces,
   type CubeNode,
+  type ModelEyeGlyph,
+  type ModelFeatureGlyph,
+  type ModelFeatureMotif,
+  type ModelMouthGlyph,
+  type ModelNoseGlyph,
   type ProjectDocument,
   type ProjectForwardDirection,
   type SceneNode,
@@ -115,7 +120,6 @@ export {
 } from './modeling/partOccupancyCanonicalization';
 export {
   auditEyeAnatomy,
-  EYE_ANATOMY_POLICY,
   type EyeAnatomyAuditOptions,
   type EyeAnatomyIssue,
   type EyeAnatomyIssueCode
@@ -131,12 +135,18 @@ export {
   orthographicContributionMetrics
 } from './modeling/partQualityMetrics';
 export {
+  measureDocumentFormComposition,
+  measureFormComposition,
+  type FormComposition,
+  type FormPartComposition
+} from './modeling/formComposition';
+export {
   normalizePartRecipe,
   readPartRecipe
 } from './modeling/partRecipe';
 export {
   partTranslation
-} from './modeling/partPrimitiveAdapter';
+} from './modeling/partTranslation';
 export {
   worldCubeBounds,
   worldBoundsOverlap,
@@ -165,6 +175,7 @@ export {
   type RgbColor
 } from './textures/pixelRectShade';
 export { paintEyeMotifPixel } from './textures/eyeMotif';
+export { paintFeatureMotifPixel } from './textures/featureMotif';
 export {
   composeTextureRaster,
   staleGeneratedTextureIds,
