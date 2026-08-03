@@ -85,7 +85,7 @@ export const createCaptureSurface = (
   };
 };
 
-const CAPTURE_FRAME_DISTANCE_SCALE = 1.08;
+const CAPTURE_FRAME_DISTANCE_SCALE = 0.82;
 
 export const frameCaptureObject = (
   surface: CaptureSurface,

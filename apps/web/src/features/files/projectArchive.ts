@@ -17,7 +17,7 @@ import {
 const ARCHIVE_FORMAT = 'ashfox.project';
 const MANIFEST_PATH = 'manifest.json';
 const PROJECT_PATH = 'project.json';
-const MAX_PROJECT_JSON_BYTES = 8 * 1024 * 1024;
+const MAX_PROJECT_JSON_BYTES = 32 * 1024 * 1024;
 const MAX_TEXTURE_BYTES = 32 * 1024 * 1024;
 
 interface ArchiveAssetEntry {
@@ -180,7 +180,7 @@ export const createProjectArchive = async (
   };
   const projectBytes = encodeJson(archivedDocument);
   if (projectBytes.length > MAX_PROJECT_JSON_BYTES) {
-    throw new Error('ashfox project JSON exceeds the 8 MB limit.');
+    throw new Error('ashfox project JSON exceeds the 32 MB limit.');
   }
   const manifest: ArchiveManifest = {
     format: ARCHIVE_FORMAT,
@@ -222,7 +222,7 @@ export const readProjectArchive = async (
   const manifest = parseManifest(requiredEntry(byPath, MANIFEST_PATH));
   const projectBytes = requiredEntry(byPath, manifest.project);
   if (projectBytes.length > MAX_PROJECT_JSON_BYTES) {
-    throw new Error('ashfox project JSON exceeds the 8 MB limit.');
+    throw new Error('ashfox project JSON exceeds the 32 MB limit.');
   }
 
   let rawDocument: unknown;
