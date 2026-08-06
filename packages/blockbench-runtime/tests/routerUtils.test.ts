@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 
-import { toCallToolResult } from '../src/transport/mcp/routerUtils';
+import { supportsSse, toCallToolResult } from '../src/transport/mcp/routerUtils';
 import type { ToolResponse } from '../src/types';
+
+assert.equal(supportsSse('text/event-stream'), true);
+assert.equal(supportsSse('application/json, text/event-stream; q=0.8'), true);
+assert.equal(supportsSse('text/*'), true);
+assert.equal(supportsSse('text/event-stream; q=0'), false);
+assert.equal(supportsSse('text/event-streaming'), false);
+assert.equal(supportsSse('application/text/event-stream'), false);
 
 {
   const okWithContent: ToolResponse<unknown> = {
@@ -81,4 +88,3 @@ import type { ToolResponse } from '../src/types';
     }
   });
 }
-

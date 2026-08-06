@@ -6,8 +6,16 @@ import {
   ENSURE_PROJECT_ON_MISSING,
   FORMAT_KINDS,
   PROJECT_STATE_DETAILS,
+  TOOL_ERROR_CODES,
   TOOL_NAMES
 } from '../mcpSchemas/constants';
+import {
+  hasExactContractKeys,
+  isClosedContractRecord,
+  isDenseContractArray,
+  isFiniteJsonValue,
+  isNonEmptyContractText
+} from '@ashfox/internal-contracts';
 
 export type FormatKind = typeof FORMAT_KINDS[number];
 export type ProjectStateDetail = typeof PROJECT_STATE_DETAILS[number];
@@ -26,6 +34,7 @@ export {
   ENSURE_PROJECT_ON_MISSING,
   FORMAT_KINDS,
   PROJECT_STATE_DETAILS,
+  TOOL_ERROR_CODES,
   TOOL_NAMES
 };
 
@@ -42,15 +51,7 @@ export interface IfRevisionOption {
   ifRevision?: string;
 }
 
-export type ToolErrorCode =
-  | 'unsupported_format'
-  | 'not_implemented'
-  | 'invalid_state'
-  | 'invalid_state_revision_mismatch'
-  | 'invalid_payload'
-  | 'no_change'
-  | 'io_error'
-  | 'unknown';
+export type ToolErrorCode = typeof TOOL_ERROR_CODES[number];
 
 export interface ToolError {
   code: ToolErrorCode;
@@ -58,6 +59,32 @@ export interface ToolError {
   fix?: string;
   details?: Record<string, unknown>;
 }
+
+const TOOL_ERROR_KEYS = new Set(['code', 'message', 'fix', 'details']);
+const TOOL_ERROR_CODE_SET = new Set<string>(TOOL_ERROR_CODES);
+const owns = (
+  value: Readonly<Record<string, unknown>>,
+  key: string
+): boolean => Object.prototype.hasOwnProperty.call(value, key);
+
+export const isToolErrorContract = (value: unknown): value is ToolError => {
+  if (
+    !isClosedContractRecord(value) ||
+    !Object.keys(value).every((key) => TOOL_ERROR_KEYS.has(key)) ||
+    !owns(value, 'code') ||
+    !owns(value, 'message') ||
+    typeof value.code !== 'string' ||
+    !TOOL_ERROR_CODE_SET.has(value.code) ||
+    !isNonEmptyContractText(value.message)
+  ) {
+    return false;
+  }
+  if (owns(value, 'fix') && !isNonEmptyContractText(value.fix)) return false;
+  return !owns(value, 'details') || (
+    isClosedContractRecord(value.details) &&
+    isFiniteJsonValue(value.details)
+  );
+};
 
 export type NextActionRef =
   | {
@@ -114,6 +141,151 @@ export type McpTextContent = { type: 'text'; text: string };
 export type McpImageContent = { type: 'image'; data: string; mimeType: string };
 
 export type McpContentBlock = McpTextContent | McpImageContent;
+
+export const TOOL_RESPONSE_EXTENSION_LIMITS = Object.freeze({
+  contentBlocks: 256,
+  nextActions: 64,
+  finiteJsonEnvelopeDepth: 3
+});
+
+const hasOnlyKeys = (
+  value: Readonly<Record<string, unknown>>,
+  allowed: ReadonlySet<string>,
+  required: readonly string[]
+): boolean =>
+  Object.keys(value).every((key) => allowed.has(key)) &&
+  required.every((key) => Object.prototype.hasOwnProperty.call(value, key));
+
+export const isMcpContentBlockContract = (
+  value: unknown
+): value is McpContentBlock => {
+  if (!isClosedContractRecord(value)) return false;
+  if (value.type === 'text') {
+    return hasExactContractKeys(value, new Set(['type', 'text'])) &&
+      typeof value.text === 'string';
+  }
+  if (value.type === 'image') {
+    return hasExactContractKeys(
+      value,
+      new Set(['type', 'data', 'mimeType'])
+    ) &&
+      isNonEmptyContractText(value.data) &&
+      isNonEmptyContractText(value.mimeType);
+  }
+  return false;
+};
+
+const isNextActionRefContract = (value: unknown): value is NextActionRef => {
+  if (!isClosedContractRecord(value)) return false;
+  if (value.kind === 'tool') {
+    return hasOnlyKeys(
+      value,
+      new Set(['kind', 'tool', 'pointer', 'note']),
+      ['kind', 'tool', 'pointer']
+    ) &&
+      isNonEmptyContractText(value.tool) &&
+      isNonEmptyContractText(value.pointer) &&
+      (!owns(value, 'note') || isNonEmptyContractText(value.note));
+  }
+  if (value.kind === 'user') {
+    return hasExactContractKeys(value, new Set(['kind', 'hint'])) &&
+      isNonEmptyContractText(value.hint);
+  }
+  return false;
+};
+
+const isNextActionArgValueSemanticContract = (
+  value: unknown
+): value is NextActionArgValue => {
+  if (
+    value === null ||
+    typeof value === 'string' ||
+    typeof value === 'boolean'
+  ) {
+    return true;
+  }
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (isDenseContractArray(value)) {
+    return value.every((entry) =>
+      isNextActionArgValueSemanticContract(entry)
+    );
+  }
+  if (!isClosedContractRecord(value)) return false;
+  if (owns(value, '$ref')) {
+    return hasExactContractKeys(value, new Set(['$ref'])) &&
+      isNextActionRefContract(value.$ref);
+  }
+  return Object.values(value).every((entry) =>
+    isNextActionArgValueSemanticContract(entry)
+  );
+};
+
+const isNextActionArgValueContract = (
+  value: unknown
+): value is NextActionArgValue =>
+  isNextActionArgValueSemanticContract(value);
+
+const hasOptionalFinitePriority = (
+  value: Readonly<Record<string, unknown>>
+): boolean => !owns(value, 'priority') || (
+  typeof value.priority === 'number' && Number.isFinite(value.priority)
+);
+
+const isNextActionContractUnchecked = (
+  value: unknown
+): value is NextAction => {
+  if (!isClosedContractRecord(value) || !hasOptionalFinitePriority(value)) {
+    return false;
+  }
+  if (value.type === 'call_tool') {
+    return hasOnlyKeys(
+      value,
+      new Set(['type', 'tool', 'arguments', 'reason', 'priority']),
+      ['type', 'tool', 'arguments', 'reason']
+    ) &&
+      isNonEmptyContractText(value.tool) &&
+      isClosedContractRecord(value.arguments) &&
+      isFiniteJsonValue(value.arguments) &&
+      Object.values(value.arguments).every(isNextActionArgValueContract) &&
+      isNonEmptyContractText(value.reason);
+  }
+  if (value.type === 'read_resource') {
+    return hasOnlyKeys(
+      value,
+      new Set(['type', 'uri', 'reason', 'priority']),
+      ['type', 'uri', 'reason']
+    ) &&
+      isNonEmptyContractText(value.uri) &&
+      isNonEmptyContractText(value.reason);
+  }
+  if (value.type === 'ask_user') {
+    return hasOnlyKeys(
+      value,
+      new Set(['type', 'question', 'reason', 'priority']),
+      ['type', 'question', 'reason']
+    ) &&
+      isNonEmptyContractText(value.question) &&
+      isNonEmptyContractText(value.reason);
+  }
+  if (value.type === 'noop') {
+    return hasOnlyKeys(
+      value,
+      new Set(['type', 'reason', 'priority']),
+      ['type', 'reason']
+    ) && isNonEmptyContractText(value.reason);
+  }
+  return false;
+};
+
+export const isNextActionContract = (
+  value: unknown
+): value is NextAction => {
+  try {
+    return isNextActionContractUnchecked(value);
+  } catch (_error) {
+    return false;
+  }
+};
 
 export type ToolResponse<T> =
   | { ok: true; data: T; content?: McpContentBlock[]; structuredContent?: unknown; nextActions?: NextAction[] }

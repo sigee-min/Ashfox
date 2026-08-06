@@ -5,9 +5,10 @@ import {
 } from '@ashfox/engine-core';
 
 import {
-  visualReviewsForRevision,
+  deliveryVisualReviewsForRevision,
+  visualReviewPlanItem,
   type VisualReviewReceipt
-} from './presentationReview';
+} from '../../application/visualReviewReceipt';
 
 /*
  * Reviews follow the configured delivery profile, while the document remains
@@ -70,19 +71,19 @@ const completedVisualReviewKeys = (
   receipts: readonly VisualReviewReceipt[]
 ): ReadonlySet<string> =>
   new Set(
-    visualReviewsForRevision(
+    deliveryVisualReviewsForRevision(
       receipts,
       document.id,
       document.revision
     ).flatMap((receipt) => {
-      if (receipt.verdict !== 'accepted') return [];
+      if (receipt.decision.verdict !== 'accepted') return [];
       if (
-        receipt.mode === 'cycle' &&
-        receipt.completedCycles < 1
+        receipt.observation.data.mode === 'cycle' &&
+        receipt.observation.data.completedCycles < 1
       ) {
         return [];
       }
-      return [visualReviewKey(receipt)];
+      return [visualReviewKey(visualReviewPlanItem(receipt))];
     })
   );
 

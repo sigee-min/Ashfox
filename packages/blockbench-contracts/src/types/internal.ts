@@ -1,6 +1,7 @@
 export * from './shared';
 export * from './capabilities';
 export * from './project';
+export * from './projectContract';
 export * from './preview';
 export * from './texture';
 export * from './textureUsage';

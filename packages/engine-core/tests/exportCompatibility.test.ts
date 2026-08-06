@@ -8,7 +8,8 @@ import {
   animationSupportForFormatProfile,
   createProjectFromInput,
   evaluateProductionReadiness,
-  executeCommandBatch,
+  executeAgentCommandBatch,
+  executeSystemCommandBatch,
   exportCompatibilityFor,
   exportCompatibilityOptions,
   exportPresetForFormatProfile,
@@ -28,7 +29,7 @@ import {
   createJavaProject
 } from './helpers';
 
-assert.equal(PROJECT_DOCUMENT_SCHEMA_VERSION, 4);
+assert.equal(PROJECT_DOCUMENT_SCHEMA_VERSION, 1);
 assert.deepEqual(EXPORT_PRESETS, [
   'geckolib5',
   'java_block',
@@ -235,15 +236,14 @@ const execute = (
   batchId: string,
   operations: CommandBatch['operations']
 ): ProjectDocument => {
-  const result = executeCommandBatch(
+  const result = executeAgentCommandBatch(
     document,
     {
       batchId,
       baseProjectId: document.id,
       baseRevision: document.revision,
       operations
-    },
-    { source: 'agent' }
+    }
   );
   if (!result.ok) {
     throw new Error(
@@ -362,7 +362,7 @@ assert.equal(changedJavaVersion.formatProfile.parent, 'minecraft:block/cube_all'
 assert.equal(changedJavaVersion.formatProfile.ambientOcclusion, false);
 assert.equal(changedJavaVersion.formatProfile.guiLight, 'front');
 
-const relocatedJavaResult = executeCommandBatch(
+const relocatedJavaResult = executeSystemCommandBatch(
   changedJavaVersion,
   {
     batchId: 'resource-java-preserve-version',
@@ -375,8 +375,7 @@ const relocatedJavaResult = executeCommandBatch(
       modelPath: 'compatibility/relocated'
     }
     }]
-  },
-  { source: 'system' }
+  }
 );
 assert.equal(relocatedJavaResult.ok, true);
 if (!relocatedJavaResult.ok) {
@@ -485,7 +484,7 @@ assert.equal(
 const animatedSource = createGltfProject('glb', 'embedded');
 const authoredScene = structuredClone(animatedSource.scene);
 const authoredAnimations = structuredClone(animatedSource.animations);
-const staticResult = executeCommandBatch(
+const staticResult = executeAgentCommandBatch(
   animatedSource,
   {
     batchId: 'target-java-preserves-authoring',
@@ -498,8 +497,7 @@ const staticResult = executeCommandBatch(
         gameVersion: '26.2'
       }
     }]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(staticResult.ok, true);
 if (!staticResult.ok) throw new Error(staticResult.error.message);
@@ -508,7 +506,7 @@ assert.deepEqual(staticResult.document.animations, authoredAnimations);
 assert.deepEqual(staticResult.effects.removedEntityIds, []);
 assert.equal(staticResult.effects.invalidated.includes('scene'), false);
 
-const actorResult = executeCommandBatch(
+const actorResult = executeAgentCommandBatch(
   animatedSource,
   {
     batchId: 'target-bedrock-preserves-authoring',
@@ -521,8 +519,7 @@ const actorResult = executeCommandBatch(
         gameVersion: '1.26.30'
       }
     }]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(actorResult.ok, true);
 if (!actorResult.ok) throw new Error(actorResult.error.message);

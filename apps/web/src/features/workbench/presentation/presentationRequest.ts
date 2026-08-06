@@ -97,6 +97,9 @@ export const createPresentationSession = (
   nonce,
   projectId: document.id,
   sourceRevision: document.revision,
+  review: request.review,
+  purpose: request.purpose,
+  milestone: request.milestone,
   mode: request.mode,
   camera: request.camera,
   clipId: resolved.clip?.id ?? null,
@@ -109,7 +112,8 @@ export const createPresentationSession = (
         )
       : null,
   phase: 'observing',
-  previewIssues: resolved.previewIssues
+  previewIssues: resolved.previewIssues,
+  reviewChecks: request.reviewChecks
 });
 
 export const presentationTimeoutMs = (

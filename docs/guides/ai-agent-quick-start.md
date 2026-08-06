@@ -24,7 +24,8 @@ helps ashfox catch incompatible geometry or animation early.
 Fetch and follow https://ashfox.io/workbench/agent-manifest.json using a direct HTTP request such as curl.
 ```
 
-The manifest tells the agent how to open ashfox, inspect the project, make
+The manifest tells the agent how to open ashfox, record reference observations,
+route the request through one archetype and focused specialists, inspect the project, make
 changes, review the viewport, and prepare files. When the agent asks what you
 want to create, answer naturally. Paste the instruction once per working
 session.
@@ -35,15 +36,21 @@ Include the subject, visual style, export format, important features, and
 motion in one request.
 
 ```text
-Create a Minecraft-style arcane field tractor for GeckoLib 5.
-Give it a readable cab, large rear wheels, an articulated drivetrain,
-restrained iron-green-brass material colors, and a slow mechanical idle
-animation.
+Create a Minecraft-style clockwork hound for GeckoLib 5 using the attached
+front and side references. Preserve its low horizontal trunk, four grounded
+legs, sensor head, and exposed shoulder drives. Use a restrained iron-green
+and brass palette, plus idle and walk loops.
 ```
 
-Every finished asset includes an idle clip. For an otherwise static prop, that
-clip may hold one valid pose. Name any additional clips you expect, such as
-`walk` or `attack`.
+Animation-capable authority profiles bind selected motion specialists to
+canonical clip roles. Name every additional clip you expect. Static export
+targets do not create an empty ceremonial animation clip.
+
+The current archetypes cover compact upright figures, arm-free stalkers,
+quadrupeds, and compact functional constructs. Focused specialists can add one
+grounded role, surface, silhouette, or motion contribution. The agent will
+identify the selected authorities, evidence criteria, and claims before it
+authors coordinates.
 
 ## Watch the result
 

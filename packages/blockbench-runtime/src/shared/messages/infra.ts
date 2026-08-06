@@ -1,4 +1,6 @@
 export const CONFIG_HOST_REQUIRED = 'host is required';
+export const CONFIG_NON_LOOPBACK_TOKEN_REQUIRED =
+  'non-loopback MCP hosts require an explicit authentication token';
 export const CONFIG_PORT_RANGE = 'port must be between 1 and 65535';
 export const CONFIG_PATH_REQUIRED = 'path is required';
 export const CONFIG_PATH_SLASH_REQUIRED = 'path must start with /';
@@ -82,5 +84,4 @@ export const ADAPTER_PLUGINS_DEVRELOAD_UNAVAILABLE = 'Plugins.devReload not avai
 export const PLUGIN_RELOAD_CONFIRM_REQUIRED = 'confirm=true is required to reload plugins.';
 export const PLUGIN_RELOAD_CONFIRM_REQUIRED_FIX = 'Set confirm=true to proceed.';
 export const PLUGIN_RELOAD_UNAVAILABLE = 'Plugin reload is not available in this host.';
-
 

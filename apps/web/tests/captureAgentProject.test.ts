@@ -7,9 +7,6 @@ import {
 } from '@ashfox/engine-core';
 
 import {
-  createGltfProject
-} from '../../../packages/engine-core/tests/helpers';
-import {
   createOperationLease,
   type OperationLeaseToken
 } from '../src/application/operationLease';
@@ -18,7 +15,7 @@ import {
 } from '../src/features/agent/captureAgentProject';
 import type {
   VisualReviewReceipt
-} from '../src/features/agent/presentationReview';
+} from '../src/application/visualReviewReceipt';
 import {
   requiredVisualReviews
 } from '../src/features/agent/visualReviewPlan';
@@ -37,49 +34,23 @@ import type {
 import type {
   FileOperationRunResult
 } from '../src/features/files/useFileOperation';
+import {
+  createAuthoringProject
+} from './fixtures/authoringProject';
+import {
+  createVisualReviewReceiptFixture
+} from './fixtures/visualReviewReceipt';
 
-const document = structuredClone(
-  createGltfProject('glb', 'embedded')
-);
-document.intent = {
-  subject: 'Crate',
-  forward: 'north',
-  grounding: 'free',
-  features: ['Confirm the crate silhouette.']
-};
-const sourceIdle = document.animations['clip-idle'];
-const idleChannel = sourceIdle.channels['channel-root-rotation'];
-document.animations = {
-  idle: {
-    ...sourceIdle,
-    id: 'idle',
-    name: 'idle',
-    channels: {
-      ...sourceIdle.channels,
-      'channel-root-rotation': {
-        ...idleChannel,
-        keys: idleChannel.keys.map((key, index) =>
-          index === idleChannel.keys.length - 1
-            ? { ...key, value: idleChannel.keys[0].value }
-            : key
-        )
-      }
-    }
-  }
-};
+const document = createAuthoringProject();
 
 const reviews: readonly VisualReviewReceipt[] =
-  requiredVisualReviews(document).map((review, index) => ({
-    projectId: document.id,
-    revision: document.revision,
+  requiredVisualReviews(document).map((review, index) =>
+    createVisualReviewReceiptFixture(document, {
     mode: review.mode,
     camera: review.camera,
     clipId: review.clipId,
-    observedTimeSeconds: 0,
     completedCycles: review.mode === 'cycle' ? 1 : 0,
-    frameNonce: index + 1,
-    verdict: 'accepted',
-    issues: []
+    frameNonce: index + 1
   }));
 
 const captureArtifact = (

@@ -1,26 +1,32 @@
 import type { BlockbenchGlobals } from '../types/blockbench';
+import type { ServerConfig, ServerConfigValidationReason } from '../serverConfig';
 
 export type ReadGlobals = () => BlockbenchGlobals;
 
-export type EndpointConfig = {
-  host: string;
-  port: number;
-  path: string;
-};
+export type EndpointConfig = ServerConfig;
 
-export type RuntimeServerMode = 'inline' | 'sidecar' | 'stopped';
+export type PublicEndpointConfig = Pick<ServerConfig, 'host' | 'port' | 'path'>;
+
+export const toPublicEndpointConfig = (config: PublicEndpointConfig): PublicEndpointConfig => ({
+  host: config.host,
+  port: config.port,
+  path: config.path
+});
+
+export type RuntimeServerMode = 'starting' | 'inline' | 'sidecar' | 'stopped';
 
 export type RuntimeServerStatusReason =
   | 'running'
+  | 'starting'
   | 'inline_unavailable'
+  | 'inline_start_failed'
   | 'sidecar_start_failed'
   | 'web_mode'
-  | 'dispatcher_missing';
+  | 'dispatcher_missing'
+  | ServerConfigValidationReason;
 
 export type RuntimeServerStatus = {
   mode: RuntimeServerMode;
-  endpoint: EndpointConfig;
+  endpoint: PublicEndpointConfig;
   reason: RuntimeServerStatusReason;
 };
-
-

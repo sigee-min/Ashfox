@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ashfox/engine-core": "^0.0.0",
+    "@ashfox/internal-contracts": "^0.0.0",
     "fflate": "^0.8.3",
     "gifenc": "^1.0.3",
     "react": "^19.1.1",

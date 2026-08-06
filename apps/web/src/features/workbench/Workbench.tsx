@@ -78,6 +78,8 @@ export function Workbench() {
     projectGeneration: project.storage.generation,
     assets: project.assets,
     activity: project.history.activity,
+    visualReviews: project.visualReviews,
+    onRecordVisualReview: project.recordVisualReview,
     commandOutcomes: project.history.commandOutcomes,
     selectedNodeId: view.selectedNodeId,
     report: project.report,

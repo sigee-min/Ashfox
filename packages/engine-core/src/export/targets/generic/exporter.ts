@@ -1,4 +1,7 @@
-import type { ProjectDocument } from '../../../model';
+import {
+  ASHFOX_GENERIC_FORMAT_VERSION,
+  type ProjectDocument
+} from '../../../model';
 import { createJsonExportFile } from '../../json';
 import { createExportBundle } from '../../pipeline/createBundle';
 import { validateExportTarget } from '../../pipeline/validateTarget';
@@ -16,7 +19,7 @@ export const exportGenericProject = (
   return createExportBundle(document, validation.findings, {
     target: {
       id: 'ashfox.generic',
-      version: '1'
+      version: ASHFOX_GENERIC_FORMAT_VERSION
     },
     rootPath: 'ashfox-project',
     entrypoints: [path],

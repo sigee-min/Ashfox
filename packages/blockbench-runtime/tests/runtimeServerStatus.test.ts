@@ -1,16 +1,19 @@
 import assert from 'node:assert/strict';
 
 import { createRuntimeServerState, restartServer, type RuntimeServerState } from '../src/plugin/runtimeServer';
-import { noopLog } from './helpers';
+import { noopLog, registerAsync } from './helpers';
 
 const endpoint = { host: '127.0.0.1', port: 8787, path: '/mcp' };
 
-{
+registerAsync((async () => {
   let inlineStopped = false;
   let prevInlineStopped = false;
   const state: RuntimeServerState = createRuntimeServerState(endpoint);
-  state.inlineServerStop = () => {
-    prevInlineStopped = true;
+  state.inlineServer = {
+    ready: Promise.resolve(),
+    stop: () => {
+      prevInlineStopped = true;
+    }
   };
 
   const next = restartServer({
@@ -21,23 +24,63 @@ const endpoint = { host: '127.0.0.1', port: 8787, path: '/mcp' };
     toolRegistry: { hash: 'h', count: 0, list: () => [], get: () => null } as never,
     state,
     readGlobals: () => ({ Blockbench: { isWeb: false } }),
-    startInlineServer: () => () => {
-      inlineStopped = true;
-    },
+    startInlineServer: () => ({
+      ready: Promise.resolve(),
+      stop: () => {
+        inlineStopped = true;
+      }
+    }),
     createSidecar: () => {
       throw new Error('sidecar should not be created when inline server starts');
     }
   });
 
   assert.equal(prevInlineStopped, true);
-  assert.equal(typeof next.inlineServerStop, 'function');
+  assert.notEqual(next.inlineServer, null);
   assert.equal(next.sidecar, null);
+  assert.equal(next.status.mode, 'starting');
+  await Promise.resolve();
   assert.equal(next.status.mode, 'inline');
   assert.equal(next.status.endpoint.port, 8787);
 
-  next.inlineServerStop?.();
+  next.inlineServer?.stop();
   assert.equal(inlineStopped, true);
-}
+})());
+
+registerAsync((async () => {
+  const state: RuntimeServerState = createRuntimeServerState(endpoint);
+  let stopped = false;
+  let rejectReady: ((err: Error) => void) | null = null;
+  const next = restartServer({
+    endpointConfig: endpoint,
+    dispatcher: { handle: async () => ({ ok: true, data: {} }) } as never,
+    logLevel: 'info',
+    resourceStore: { list: () => [], get: () => null, put: () => undefined, delete: () => undefined } as never,
+    toolRegistry: { hash: 'h', count: 0, list: () => [], get: () => null } as never,
+    state,
+    readGlobals: () => ({ Blockbench: { isWeb: false } }),
+    startInlineServer: () => ({
+      ready: new Promise<void>((_resolve, reject) => {
+        rejectReady = reject;
+      }),
+      stop: () => {
+        stopped = true;
+      }
+    }),
+    createSidecar: () => {
+      throw new Error('async listen failure must not report a running sidecar');
+    },
+    loggerFactory: () => noopLog
+  });
+  assert.equal(next.status.mode, 'starting');
+  rejectReady?.(new Error('EADDRINUSE'));
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(stopped, true);
+  assert.equal(next.inlineServer, null);
+  assert.equal(next.status.mode, 'stopped');
+  assert.equal(next.status.reason, 'inline_start_failed');
+})());
 
 {
   const created: Array<{ started: boolean; stopped: boolean }> = [];
@@ -119,4 +162,79 @@ const endpoint = { host: '127.0.0.1', port: 8787, path: '/mcp' };
 
   assert.equal(next.status.mode, 'stopped');
   assert.equal(next.status.reason, 'dispatcher_missing');
+}
+
+{
+  const remoteEndpoint = { host: '0.0.0.0', port: 8787, path: '/mcp' };
+  const state: RuntimeServerState = createRuntimeServerState(remoteEndpoint);
+  let inlineStarted = false;
+  let sidecarCreated = false;
+
+  const next = restartServer({
+    endpointConfig: remoteEndpoint,
+    dispatcher: { handle: async () => ({ ok: true, data: {} }) } as never,
+    logLevel: 'info',
+    resourceStore: { list: () => [], get: () => null, put: () => undefined, delete: () => undefined } as never,
+    toolRegistry: { hash: 'h', count: 0, list: () => [], get: () => null } as never,
+    state,
+    readGlobals: () => ({ Blockbench: { isWeb: false } }),
+    startInlineServer: () => {
+      inlineStarted = true;
+      return null;
+    },
+    createSidecar: () => {
+      sidecarCreated = true;
+      return { start: () => true, stop: () => undefined };
+    },
+    loggerFactory: () => noopLog
+  });
+
+  assert.equal(inlineStarted, false);
+  assert.equal(sidecarCreated, false);
+  assert.equal(next.status.mode, 'stopped');
+  assert.equal(next.status.reason, 'non_loopback_token_required');
+  assert.equal('token' in next.status.endpoint, false);
+}
+
+{
+  const remoteEndpoint = {
+    host: ' 0.0.0.0 ',
+    port: 8787,
+    path: 'mcp/',
+    token: ' explicit-secret '
+  };
+  const state: RuntimeServerState = createRuntimeServerState(remoteEndpoint);
+  let inlineConfig: typeof remoteEndpoint | null = null;
+  let sidecarConfig: typeof remoteEndpoint | null = null;
+
+  const next = restartServer({
+    endpointConfig: remoteEndpoint,
+    dispatcher: { handle: async () => ({ ok: true, data: {} }) } as never,
+    logLevel: 'info',
+    resourceStore: { list: () => [], get: () => null, put: () => undefined, delete: () => undefined } as never,
+    toolRegistry: { hash: 'h', count: 0, list: () => [], get: () => null } as never,
+    state,
+    readGlobals: () => ({ Blockbench: { isWeb: false } }),
+    startInlineServer: (config) => {
+      inlineConfig = config;
+      return null;
+    },
+    createSidecar: (config) => {
+      sidecarConfig = config;
+      return { start: () => true, stop: () => undefined };
+    },
+    loggerFactory: () => noopLog
+  });
+
+  assert.deepEqual(inlineConfig, {
+    host: '0.0.0.0',
+    port: 8787,
+    path: '/mcp',
+    token: 'explicit-secret'
+  });
+  assert.deepEqual(sidecarConfig, inlineConfig);
+  assert.equal(next.status.mode, 'sidecar');
+  assert.equal(next.status.reason, 'inline_unavailable');
+  assert.deepEqual(next.status.endpoint, { host: '0.0.0.0', port: 8787, path: '/mcp' });
+  assert.equal('token' in next.status.endpoint, false);
 }

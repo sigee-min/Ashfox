@@ -62,10 +62,9 @@ const updateGeneratedFaces = (
     (current, nodeId) =>
       updateSceneNode(current, nodeId, (node) => {
         if (node.kind !== 'cube') return node;
-        return {
+        const updated: CubeNode = {
           ...node,
           boxUv: false,
-          uvOffset: undefined,
           faces: Object.fromEntries(
             CUBE_FACE_DIRECTIONS.map((direction) => {
               const uv = assignment.get(`${nodeId}:${direction}`);
@@ -85,6 +84,8 @@ const updateGeneratedFaces = (
             })
           ) as typeof node.faces
         };
+        delete updated.uvOffset;
+        return updated;
       }),
     document
   );

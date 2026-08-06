@@ -1,20 +1,17 @@
 import assert from 'node:assert/strict';
 
 import {
-  executeCommandBatch,
+  executeAgentCommandBatch,
   validateProjectDocument,
   type ProjectDocument
 } from '@ashfox/engine-core';
 
 import {
-  createGltfProject
-} from '../../../packages/engine-core/tests/helpers';
-import {
   deliverAgentProject
 } from '../src/features/agent/deliverAgentProject';
 import type {
   VisualReviewReceipt
-} from '../src/features/agent/presentationReview';
+} from '../src/application/visualReviewReceipt';
 import {
   requiredVisualReviews
 } from '../src/features/agent/visualReviewPlan';
@@ -24,50 +21,23 @@ import type {
 import type {
   FileOperationRunResult
 } from '../src/features/files/useFileOperation';
+import {
+  createAuthoringProject,
+  authoringSelectionFor
+} from './fixtures/authoringProject';
+import {
+  createVisualReviewReceiptFixture
+} from './fixtures/visualReviewReceipt';
 
-const document = structuredClone(
-  createGltfProject('glb', 'embedded')
-);
-document.intent = {
-  subject: 'Crate',
-  forward: 'north',
-  grounding: 'free',
-  features: ['Confirm the crate silhouette.']
-};
-const idle = document.animations['clip-idle'];
-const idleChannel = idle.channels['channel-root-rotation'];
-document.animations = {
-  idle: {
-    ...idle,
-    id: 'idle',
-    channels: {
-      ...idle.channels,
-      'channel-root-rotation': {
-        ...idleChannel,
-        keys: idleChannel.keys.map((key, index) =>
-          index === idleChannel.keys.length - 1
-            ? {
-                ...key,
-                value: idleChannel.keys[0].value
-              }
-            : key
-        )
-      }
-    }
-  }
-};
+const document = createAuthoringProject();
 const reviews: readonly VisualReviewReceipt[] =
-  requiredVisualReviews(document).map((review, index) => ({
-    projectId: document.id,
-    revision: document.revision,
+  requiredVisualReviews(document).map((review, index) =>
+    createVisualReviewReceiptFixture(document, {
     mode: review.mode,
     camera: review.camera,
     clipId: review.clipId,
-    observedTimeSeconds: 0,
     completedCycles: review.mode === 'cycle' ? 1 : 0,
-    frameNonce: index + 1,
-    verdict: 'accepted',
-    issues: []
+    frameNonce: index + 1
   }));
 const artifact: TargetArtifactFile = {
   kind: 'target',
@@ -193,7 +163,7 @@ export const test = (async (): Promise<void> => {
 }
 
 {
-  const converted = executeCommandBatch(
+  const converted = executeAgentCommandBatch(
     document,
     {
       batchId: 'deliver-geckolib-version',
@@ -205,25 +175,23 @@ export const test = (async (): Promise<void> => {
           target: 'geckolib5',
           gameVersion: '1.21.5'
         }
+      }, {
+        name: 'project.authoring.configure',
+        payload: authoringSelectionFor(document)
       }]
-    },
-    { source: 'agent' }
+    }
   );
   assert.equal(converted.ok, true);
   if (!converted.ok) throw new Error(converted.error.message);
   const geckoDocument = converted.document;
   const geckoReviews: readonly VisualReviewReceipt[] =
-    requiredVisualReviews(geckoDocument).map((review, index) => ({
-      projectId: geckoDocument.id,
-      revision: geckoDocument.revision,
+    requiredVisualReviews(geckoDocument).map((review, index) =>
+      createVisualReviewReceiptFixture(geckoDocument, {
       mode: review.mode,
       camera: review.camera,
       clipId: review.clipId,
-      observedTimeSeconds: 0,
       completedCycles: review.mode === 'cycle' ? 1 : 0,
-      frameNonce: index + 1,
-      verdict: 'accepted',
-      issues: []
+      frameNonce: index + 1
     }));
   const geckoArtifact: TargetArtifactFile = {
     ...artifact,

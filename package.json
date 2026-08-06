@@ -10,7 +10,8 @@
     "packages/blockbench-contracts",
     "packages/blockbench-runtime",
     "packages/blockbench-conformance",
-    "packages/engine-core"
+    "packages/engine-core",
+    "packages/internal-contracts"
   ],
   "scripts": {
     "build": "npm run build:public && npm run build:blockbench",

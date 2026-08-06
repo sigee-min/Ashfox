@@ -4,6 +4,10 @@ export const MCP_METHOD_NOT_ALLOWED = 'method not allowed';
 export const MCP_ACCEPT_SSE_REQUIRED = 'accept text/event-stream required';
 export const MCP_SESSION_ID_REQUIRED = 'Mcp-Session-Id required';
 export const MCP_TOO_MANY_SSE = 'too many SSE connections';
+export const MCP_SESSION_CAPACITY_REACHED = 'MCP session capacity reached';
+export const MCP_HOST_REQUIRED = 'Host header required';
+export const MCP_HOST_NOT_ALLOWED = 'Host header is not allowed for this endpoint';
+export const MCP_ORIGIN_NOT_ALLOWED = 'Origin is not allowed for this endpoint';
 export const MCP_CONTENT_TYPE_REQUIRED = 'content-type must be application/json';
 export const MCP_JSONRPC_PARSE_ERROR = 'Parse error';
 export const MCP_JSONRPC_INVALID_REQUEST = 'Invalid Request';
@@ -26,5 +30,6 @@ export const MCP_REQUEST_CLOSED = 'request closed';
 export const MCP_REQUEST_TIMEOUT = 'request timeout';
 export const MCP_INVALID_REQUEST_LINE = 'invalid request line';
 export const MCP_INVALID_CONTENT_LENGTH = 'invalid content-length';
-
-
+export const MCP_INVALID_HEADER = 'invalid request header';
+export const MCP_TRANSFER_ENCODING_UNSUPPORTED =
+  'transfer-encoding is unsupported';

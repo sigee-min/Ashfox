@@ -5,6 +5,7 @@ import { toolError } from '../../shared/tooling/toolResponse';
 import { normalizeToolResponse } from '../../shared/tooling/toolResponseGuard';
 import { TOOL_ERROR_GENERIC } from '../../shared/messages';
 import { normalizePath as normalizeMcpPath } from '../../shared/endpoint';
+import { acceptsEventStream } from './mediaTypes';
 
 export const DEFAULT_PROTOCOL_VERSION = '2025-06-18';
 export const DEFAULT_SUPPORTED_PROTOCOLS = ['2025-11-25', '2025-06-18', '2024-11-05'];
@@ -39,7 +40,34 @@ export const jsonRpcResult = (id: JsonRpcResponse['id'], result: unknown): JsonR
 export const isJsonRpcMessage = (value: unknown): value is JsonRpcMessage => {
   if (typeof value !== 'object' || value === null) return false;
   const obj = value as Record<string, unknown>;
-  return obj.jsonrpc === '2.0' && typeof obj.method === 'string';
+  const keys = Object.keys(obj);
+  if (keys.some((key) => !['jsonrpc', 'method', 'params', 'id'].includes(key))) {
+    return false;
+  }
+  if (
+    obj.jsonrpc !== '2.0' ||
+    typeof obj.method !== 'string' ||
+    obj.method.trim().length === 0
+  ) {
+    return false;
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(obj, 'id') &&
+    obj.id !== null &&
+    typeof obj.id !== 'string' &&
+    !(typeof obj.id === 'number' && Number.isFinite(obj.id))
+  ) {
+    return false;
+  }
+  if (Object.prototype.hasOwnProperty.call(obj, 'params')) {
+    const params = obj.params;
+    if (typeof params !== 'object' || params === null) return false;
+    if (!Array.isArray(params)) {
+      const prototype = Object.getPrototypeOf(params);
+      if (prototype !== Object.prototype && prototype !== null) return false;
+    }
+  }
+  return true;
 };
 
 export const normalizePath = (value: string) => normalizeMcpPath(value);
@@ -54,7 +82,7 @@ export const matchesPath = (url: string, basePath: string) => {
 };
 
 export const supportsSse = (acceptHeader: string | undefined) =>
-  typeof acceptHeader === 'string' && acceptHeader.toLowerCase().includes('text/event-stream');
+  acceptsEventStream(acceptHeader);
 
 export const makeTextContent = (text: string) => [{ type: 'text', text }];
 
@@ -109,7 +137,6 @@ export const randomId = () => {
   }
   return Math.random().toString(16).slice(2) + Date.now().toString(16);
 };
-
 
 
 

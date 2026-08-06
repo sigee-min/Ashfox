@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   canonicalizePartOccupancies,
   createProjectFromInput,
-  executeCommandBatch,
+  executeSystemCommandBatch,
   parseProjectDocument,
   readCompiledParts,
   readPartRecipe,
@@ -93,7 +93,7 @@ const executeParts = (
   batchId: string,
   parts: readonly PartSpec[]
 ) =>
-  executeCommandBatch(
+  executeSystemCommandBatch(
     document,
     {
       batchId,
@@ -108,8 +108,7 @@ const executeParts = (
           materials: materialDefinitions
         }
       }]
-    },
-    { source: 'agent' }
+    }
   );
 
 const union = (
@@ -213,7 +212,7 @@ const translateJoin = (
   document: ProjectDocument,
   batchId: string
 ) =>
-  executeCommandBatch(
+  executeSystemCommandBatch(
     document,
     {
       batchId,
@@ -226,8 +225,7 @@ const translateJoin = (
           by: [-1, 0, 0]
         }
       }]
-    },
-    { source: 'agent' }
+    }
   );
 const oneCellTransform = translateJoin(
   exactJoin.document,
@@ -389,7 +387,7 @@ assert.equal(
   false,
   'the stable earlier sibling must own the authored seam before deletion'
 );
-const ownerDeletion = executeCommandBatch(
+const ownerDeletion = executeSystemCommandBatch(
   beforeOwnerDeletion.document,
   {
     batchId: 'overlap-delete-owner',
@@ -399,8 +397,7 @@ const ownerDeletion = executeCommandBatch(
       name: 'model.parts.delete',
       payload: { partIds: ['alpha'] }
     }]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(ownerDeletion.ok, true);
 if (!ownerDeletion.ok) {

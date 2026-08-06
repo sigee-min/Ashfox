@@ -7,7 +7,7 @@ import {
   auditEyeAnatomy,
   auditEyeVisibility,
   evaluateProductionReadiness,
-  executeCommandBatch,
+  executeSystemCommandBatch,
   exportProductionProjectResolved,
   readPartRecipe,
   validateProjectDocument,
@@ -31,7 +31,7 @@ const projectForGlb = (
     document.formatProfile.id === 'gltf.2' &&
     document.formatProfile.container === 'glb'
   ) return document;
-  const result = executeCommandBatch(document, {
+  const result = executeSystemCommandBatch(document, {
     batchId: `gallery-${demoId}-validate-glb`,
     baseProjectId: document.id,
     baseRevision: document.revision,
@@ -39,7 +39,7 @@ const projectForGlb = (
       name: 'project.target.set',
       payload: { target: 'glb' }
     }]
-  }, { source: 'system' });
+  });
   if (!result.ok) throw new Error(result.error.message);
   return result.document;
 };
@@ -207,10 +207,29 @@ export const test = (async (): Promise<void> => {
     }
 
     const glbProject = projectForGlb(archive.document, manifest.id);
+    const readiness = evaluateProductionReadiness(glbProject);
+    if (
+      !glbProject.authoringProfile &&
+      (glbProject.intent?.references?.length ?? 0) > 0
+    ) {
+      assert.equal(
+        readiness.mechanicallyReady,
+        false,
+        `${manifest.id} referenced source must stop before authoring authority configuration`
+      );
+      assert.ok(
+        readiness.findings.some(
+          (finding) =>
+            finding.code === 'production.authoring_profile_missing'
+        ),
+        `${manifest.id} must require current authoring authority`
+      );
+      continue;
+    }
     assert.equal(
-      evaluateProductionReadiness(glbProject).mechanicallyReady,
+      readiness.mechanicallyReady,
       true,
-      `${manifest.id} finished archive must be production ready for GLB`
+      `${manifest.id} eligible gallery source must be production ready`
     );
     const bundle = await exportProductionProjectResolved(glbProject, {
       resolveBlob: async (source) => {

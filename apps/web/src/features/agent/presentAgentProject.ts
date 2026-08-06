@@ -6,12 +6,16 @@ import {
 
 import type {
   VisualReviewReceipt
-} from './presentationReview';
+} from '../../application/visualReviewReceipt';
 import type {
   PresentRequest,
   PresentResult,
+  VisualReviewDecisionRequest,
   ViewPresentationRequest
 } from './types';
+import {
+  presentedReviewChecks
+} from '../../application/visualReviewContract';
 import {
   nextVisualReview
 } from './visualReviewPlan';
@@ -22,12 +26,18 @@ interface PresentAgentProjectInput {
   report: ValidationReport;
   visualReviews: readonly VisualReviewReceipt[];
   review: (
-    request: Exclude<PresentRequest, { review: 'next' }>
+    request: VisualReviewDecisionRequest
   ) => Promise<PresentResult>;
   present: (
     request: ViewPresentationRequest
   ) => Promise<PresentResult>;
 }
+
+const previewCamera = (
+  request: Extract<PresentRequest, { review: 'preview' }>
+): ViewPresentationRequest['camera'] =>
+  request.camera ??
+    (request.milestone === 'specialists' ? 'front' : 'perspective');
 
 export const presentAgentProject = ({
   request,
@@ -37,8 +47,52 @@ export const presentAgentProject = ({
   review,
   present
 }: PresentAgentProjectInput): Promise<PresentResult> => {
-  if (request.review !== 'next') return review(request);
+  if (request.review === 'accept' || request.review === 'reject') {
+    return review(request);
+  }
   const readiness = evaluateProductionReadiness(document, report);
+  if (request.review === 'preview') {
+    if (!document.authoringProfile) {
+      return Promise.resolve({
+        ok: false,
+        revision: document.revision,
+        error: {
+          code: 'invalid_state',
+          path: 'authoringProfile',
+          expected: 'a configured archetype and specialist profile before preview'
+        }
+      });
+    }
+    if (readiness.counts.visibleGeometry === 0) {
+      return Promise.resolve({
+        ok: false,
+        revision: document.revision,
+        error: {
+          code: 'invalid_state',
+          path: 'model',
+          expected: 'visible milestone geometry before preview'
+        }
+      });
+    }
+    const milestone = request.milestone ?? null;
+    const camera = previewCamera(request);
+    return present({
+      review: 'preview',
+      purpose: 'preview',
+      milestone,
+      mode: 'frame',
+      camera,
+      clipId: null,
+      timeSeconds: 0,
+      reviewChecks: presentedReviewChecks(
+        document,
+        camera,
+        false,
+        null,
+        milestone
+      )
+    });
+  }
   if (!readiness.mechanicallyReady) {
     return Promise.resolve({
       ok: false,
@@ -53,7 +107,9 @@ export const presentAgentProject = ({
     });
   }
   const rejected = visualReviews.find(
-    (receipt) => receipt.verdict === 'rejected'
+    (receipt) =>
+      receipt.observation.data.purpose === 'delivery' &&
+      receipt.decision.verdict === 'rejected'
   );
   if (rejected) {
     return Promise.resolve({
@@ -63,7 +119,7 @@ export const presentAgentProject = ({
         code: 'invalid_state',
         path: 'review',
         expected:
-          `revise rejected visual issues: ${rejected.issues.join(', ')}`
+          `revise rejected visual issues: ${rejected.decision.issues.join(', ')}`
       }
     });
   }
@@ -85,7 +141,17 @@ export const presentAgentProject = ({
     });
   }
   return present({
+    review: 'next',
+    purpose: 'delivery',
+    milestone: null,
     ...nextReview,
-    timeSeconds: 0
+    timeSeconds: 0,
+    reviewChecks: presentedReviewChecks(
+      document,
+      nextReview.camera,
+      nextReview.mode === 'cycle',
+      nextReview.clipId,
+      null
+    )
   });
 };

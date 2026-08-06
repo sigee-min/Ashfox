@@ -7,6 +7,7 @@ import {
 import { evaluateAnimationReadiness } from './animationReadiness';
 import { evaluateGeometryReadiness } from './geometryReadiness';
 import { evaluateIntentReadiness } from './intentReadiness';
+import { evaluateAuthoringReadiness } from './authoringReadiness';
 import type {
   ProductionReadinessReport
 } from './types';
@@ -37,10 +38,12 @@ export const evaluateProductionReadiness = (
     geometry.visibleNodeIds
   );
   const intent = evaluateIntentReadiness(document);
+  const authoring = evaluateAuthoringReadiness(document);
   const findings = [
     ...geometry.findings,
     ...animation.findings,
-    ...intent.findings
+    ...intent.findings,
+    ...authoring.findings
   ];
   const blockers = structuralBlockers(validationReport);
   return {

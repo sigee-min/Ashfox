@@ -65,10 +65,14 @@ export const classifyWorkflowFindings = (
     findings,
     (finding) =>
       finding.code === 'document.invalid_intent' ||
+      finding.code === 'document.invalid_authoring_profile' ||
       findingHasCode(
         finding,
         'production.intent_missing',
-        'production.intent_invalid'
+        'production.intent_invalid',
+        'production.authoring_profile_',
+        'production.authoring_routing_',
+        'production.authoring_compatibility_'
       )
   ),
   geometry: firstMatching(
@@ -91,6 +95,9 @@ export const classifyWorkflowFindings = (
         'production.texture_',
         'production.intent_grounding_',
         'production.intent_evaluation_',
+        'production.authoring_slot_',
+        'production.authoring_attachment_',
+        'production.authoring_part_unassigned',
         'format.unbaked_',
         'format.coordinate_',
         'format.rotation_',
@@ -106,7 +113,8 @@ export const classifyWorkflowFindings = (
         finding,
         'animation.',
         'production.idle_',
-        'production.animation_'
+        'production.animation_',
+        'production.authoring_motion_'
       )
   )
 });

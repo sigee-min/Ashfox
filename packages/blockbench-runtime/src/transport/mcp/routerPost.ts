@@ -6,13 +6,14 @@ import {
 } from '../../shared/messages';
 import type { JsonRpcMessage, JsonRpcResponse } from './types';
 import { isJsonRpcMessage, jsonRpcError } from './routerUtils';
+import { isJsonMediaType } from './mediaTypes';
 
 export type ParsedPostMessage =
   | { ok: true; message: JsonRpcMessage; id: JsonRpcResponse['id'] }
   | { ok: false; error: JsonRpcResponse };
 
 export const isJsonContentType = (contentType: string | undefined): boolean =>
-  typeof contentType === 'string' && contentType.toLowerCase().includes('application/json');
+  isJsonMediaType(contentType);
 
 export const parsePostMessage = (rawBody: string, log: Logger): ParsedPostMessage => {
   let parsed: unknown;

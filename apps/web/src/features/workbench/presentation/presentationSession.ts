@@ -7,7 +7,10 @@ import {
   type CycleObservation
 } from '../../agent/cycleObservation';
 import type {
+  PresentSuccess,
+  PresentedReviewCheck,
   PresentResult,
+  VisualReviewMilestone,
   ViewPresentationRequest
 } from '../../agent/types';
 import type {
@@ -23,6 +26,9 @@ export interface PresentationSession {
   nonce: number;
   projectId: string;
   sourceRevision: string;
+  review: ViewPresentationRequest['review'];
+  purpose: ViewPresentationRequest['purpose'];
+  milestone: VisualReviewMilestone | null;
   mode: ViewPresentationRequest['mode'];
   camera: CameraMode;
   clipId: string | null;
@@ -30,6 +36,7 @@ export interface PresentationSession {
   cycle: CycleObservation | null;
   phase: 'observing' | 'closing';
   previewIssues: readonly AnimationPreviewIssue[];
+  reviewChecks: readonly PresentedReviewCheck[];
 }
 
 export type PresentationPlaybackEffect =
@@ -43,6 +50,10 @@ export interface PresentationTransition {
   result: PresentResult | null;
   playbackEffect: PresentationPlaybackEffect;
 }
+
+export const snapshotPresentationObservation = (
+  result: PresentSuccess
+): PresentSuccess => structuredClone(result);
 
 const pending = (
   session: PresentationSession,
@@ -78,9 +89,13 @@ const success = (
     ok: true,
     revision: frame.revision,
     data: {
-      review: 'next',
+      review: session.review,
+      purpose: session.purpose,
+      milestone: session.milestone,
       verdict: 'pending',
       issues: [],
+      acknowledgedCheckIds: [],
+      failedCheckIds: [],
       frameNonce: frame.frameNonce,
       mode: session.mode,
       camera: frame.camera,
@@ -89,7 +104,8 @@ const success = (
       playing: frame.playing,
       observedTimeSeconds: frame.timeSeconds,
       completedCycles,
-      previewIssues: session.previewIssues
+      previewIssues: session.previewIssues,
+      reviewChecks: session.reviewChecks
     }
   },
   playbackEffect: 'none'

@@ -27,6 +27,9 @@ import type {
 import {
   useAgentCommandPort
 } from '../../agent/useAgentCommandPort';
+import type {
+  VisualReviewReceipt
+} from '../../../application/visualReviewReceipt';
 import {
   useAgentPresentation
 } from '../hooks/useAgentPresentation';
@@ -51,6 +54,8 @@ interface UseWorkbenchAgentControllerInput {
   projectGeneration: number;
   assets: ProjectAssets;
   activity: readonly CommandReceipt[];
+  visualReviews: readonly VisualReviewReceipt[];
+  onRecordVisualReview: (receipt: VisualReviewReceipt) => void;
   commandOutcomes: readonly CommandOutcome[];
   selectedNodeId: string | null;
   report: ValidationReport;
@@ -78,6 +83,8 @@ export const useWorkbenchAgentController = ({
   projectGeneration,
   assets,
   activity,
+  visualReviews,
+  onRecordVisualReview,
   commandOutcomes,
   selectedNodeId,
   report,
@@ -99,6 +106,8 @@ export const useWorkbenchAgentController = ({
     getVisualReviews
   } = useAgentPresentation({
     document,
+    visualReviews,
+    onRecordVisualReview,
     prepareView,
     setPlayhead,
     setPlaying

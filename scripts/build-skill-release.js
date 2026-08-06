@@ -2,6 +2,12 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { zipSync } = require('fflate');
+const {
+  INTERNAL_CONTRACT_VERSIONS
+} = require('@ashfox/internal-contracts');
+
+const SKILL_RELEASE_DESCRIPTOR_SCHEMA_VERSION =
+  INTERNAL_CONTRACT_VERSIONS.skillReleaseDescriptor;
 
 const repoRoot = path.resolve(__dirname, '..');
 const skillRoot = path.join(repoRoot, 'skills', 'ashfox');
@@ -123,7 +129,7 @@ const buildSkillRelease = (publicOutput) => {
   fs.writeFileSync(skillPackageTarget, archive);
   fs.writeFileSync(claudePackageTarget, archive);
   const descriptor = {
-    schemaVersion: 1,
+    schemaVersion: SKILL_RELEASE_DESCRIPTOR_SCHEMA_VERSION,
     name: 'ashfox',
     release: packageJson.version,
     specificationUrl: 'https://agentskills.io/specification',
@@ -186,6 +192,7 @@ const buildSkillRelease = (publicOutput) => {
 };
 
 module.exports = {
+  SKILL_RELEASE_DESCRIPTOR_SCHEMA_VERSION,
   buildSkillRelease,
   portableFiles,
   releaseFiles,

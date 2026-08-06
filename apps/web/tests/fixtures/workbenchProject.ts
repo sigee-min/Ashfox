@@ -1,6 +1,6 @@
 import {
   createProjectFromInput,
-  executeCommandBatch,
+  executeSystemCommandBatch,
   type ProjectDocument
 } from '@ashfox/engine-core';
 
@@ -16,7 +16,7 @@ const createUnitFixture = (): ProjectDocument => {
     modelPath: 'workbench_unit_fixture',
     createdAt: '2026-07-29T00:00:00.000Z'
   }, 'local-0001');
-  const result = executeCommandBatch(empty, {
+  const result = executeSystemCommandBatch(empty, {
     batchId: 'workbench-unit-fixture-content',
     baseProjectId: empty.id,
     baseRevision: empty.revision,
@@ -69,7 +69,7 @@ const createUnitFixture = (): ProjectDocument => {
         }]
       }
     }]
-  }, { source: 'system' });
+  });
   if (!result.ok) {
     throw new Error(
       `Could not create the workbench unit fixture: ${result.error.message}`

@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "dependencies": {
+    "@ashfox/internal-contracts": "^0.0.0"
+  },
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "node scripts/build.mjs && node scripts/check.mjs"

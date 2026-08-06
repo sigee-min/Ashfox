@@ -40,10 +40,9 @@ export const baseToolSchemas: Record<string, JsonSchema> = {
     required: ['confirm'],
     additionalProperties: false,
     properties: {
-      confirm: { type: 'boolean' },
+      confirm: { type: 'boolean', enum: [true] },
       delayMs: { type: 'number' }
     }
   }
 };
-
 

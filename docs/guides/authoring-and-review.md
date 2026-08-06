@@ -29,6 +29,23 @@ and add calm idle and alert animation clips.
 Avoid starting with a long list of individual cubes. The agent can establish a
 better hierarchy when it understands the final silhouette and motion first.
 
+## Select authoring authorities
+
+For a new agent-authored asset, ashfox selects one broad archetype and focused
+specialists from request and reference provenance before modeling. The
+archetype owns the body slots and every attachment port. Specialists contribute
+role, surface, silhouette, or motion policies without replacing that topology.
+The resulting plan covers parts such as head, torso, paired limbs, body column,
+four-foot stance, functional core, and grounded specialist contributions.
+
+Ask the agent to report the selected archetype, specialists, and claims when
+the request crosses body plans. If no archetype provides the required body
+plan or attachment ports, the agent must report that the route is unsupported.
+
+Every optional slot must justify its geometry through silhouette, articulation,
+recognition, or target-format correctness. Color-only belts, panels, fur patches,
+runes, and face marks belong in semantic surface features.
+
 ## Correct one visible problem
 
 Name what you see and what the result should become.
@@ -60,14 +77,15 @@ bones, or UV coordinates:
 - “Close the idle loop without changing its duration.”
 
 ashfox applies related edits together, so Activity and Undo represent the whole
-correction rather than dozens of disconnected field changes. The semantic part
-recipe remains the authoring authority; generated cubes and UV coordinates are
-derived output.
+correction rather than dozens of disconnected field changes. The canonical
+semantic part graph remains the modeled asset authority; generated cubes and UV
+coordinates are derived output. Catalog recipes are discovery examples only.
 
 ## Review the model
 
-Ask the agent to render front, side, and three-quarter views in Studio
-lighting, then check Day, Evening, and Night when lighting readability matters.
+Ask the agent for required-slot and specialist preview milestones before final
+review. Then render front, side, and three-quarter views in Studio lighting,
+and check Day, Evening, and Night when lighting readability matters.
 Have it verify that large forms read before decoration, focal details remain
 visible, and moving parts have useful pivots without resting intersections.
 For directional creatures, also render the top view. Trace shoulder or hip,
@@ -103,6 +121,7 @@ parts for sliding or clipping. Request a correction only when the visible
 problem can be named.
 
 Stop refining when the silhouette, focal details, surface treatment, and motion
-are readable and export validation has no blocking issue.
+are readable, the final frame receipt acknowledges every returned authority
+review check, and export validation has no blocking issue.
 
 Next: [Export a finished asset](save-and-export.md).

@@ -1,7 +1,31 @@
 import type { TextureFrameOrderType, TextureMeta, TexturePbrChannel, TextureRenderMode, TextureRenderSides } from './texture';
 import type { CubeFaceDirection, FormatKind, ProjectStateDetail } from './shared';
+import type {
+  TextureUsageCube,
+  TextureUsageEntry,
+  TextureUsageResult,
+  TextureUsageUnresolved
+} from './textureUsage';
 
-export type MeshSymmetryAxis = 'none' | 'x' | 'y' | 'z';
+export const MESH_SYMMETRY_AXES = ['none', 'x', 'y', 'z'] as const;
+export type MeshSymmetryAxis = typeof MESH_SYMMETRY_AXES[number];
+export const TRACKED_ANIMATION_CHANNELS = ['rot', 'pos', 'scale'] as const;
+export type TrackedAnimationChannelName =
+  typeof TRACKED_ANIMATION_CHANNELS[number];
+export const TRACKED_ANIMATION_INTERPOLATIONS = [
+  'linear',
+  'step',
+  'catmullrom'
+] as const;
+export type TrackedAnimationInterpolation =
+  typeof TRACKED_ANIMATION_INTERPOLATIONS[number];
+export const TRACKED_ANIMATION_TRIGGER_TYPES = [
+  'sound',
+  'particle',
+  'timeline'
+] as const;
+export type TrackedAnimationTriggerType =
+  typeof TRACKED_ANIMATION_TRIGGER_TYPES[number];
 
 export type MeshUvPolicy = {
   symmetryAxis?: MeshSymmetryAxis;
@@ -103,12 +127,16 @@ export interface TrackedTexture {
 
 export interface TrackedAnimationChannel {
   bone: string;
-  channel: 'rot' | 'pos' | 'scale';
-  keys: { time: number; value: [number, number, number]; interp?: 'linear' | 'step' | 'catmullrom' }[];
+  channel: TrackedAnimationChannelName;
+  keys: {
+    time: number;
+    value: [number, number, number];
+    interp?: TrackedAnimationInterpolation;
+  }[];
 }
 
 export interface TrackedAnimationTrigger {
-  type: 'sound' | 'particle' | 'timeline';
+  type: TrackedAnimationTriggerType;
   keys: { time: number; value: string | string[] | Record<string, unknown> }[];
 }
 
@@ -192,36 +220,11 @@ export interface ProjectState {
   animations?: TrackedAnimation[];
 }
 
-export type ProjectTextureUsageFace = {
-  face: CubeFaceDirection;
-  uv?: [number, number, number, number];
-};
-
-export type ProjectTextureUsageCube = {
-  id?: string;
-  name: string;
-  faces: ProjectTextureUsageFace[];
-};
-
-export type ProjectTextureUsageEntry = {
-  id?: string;
-  name: string;
-  cubeCount: number;
-  faceCount: number;
-  cubes: ProjectTextureUsageCube[];
-};
-
-export type ProjectTextureUsageUnresolved = {
-  textureRef: string;
-  cubeId?: string;
-  cubeName: string;
-  face: CubeFaceDirection;
-};
-
-export type ProjectTextureUsage = {
-  textures: ProjectTextureUsageEntry[];
-  unresolved?: ProjectTextureUsageUnresolved[];
-};
+export type ProjectTextureUsageFace = TextureUsageCube['faces'][number];
+export type ProjectTextureUsageCube = TextureUsageCube;
+export type ProjectTextureUsageEntry = TextureUsageEntry;
+export type ProjectTextureUsageUnresolved = TextureUsageUnresolved;
+export type ProjectTextureUsage = TextureUsageResult;
 
 export interface ProjectInfo {
   id: string;

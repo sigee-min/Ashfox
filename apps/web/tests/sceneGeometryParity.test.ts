@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import {
   buildGltf,
   createProjectFromInput,
-  executeCommandBatch,
+  executeSystemCommandBatch,
   type ProjectDocument
 } from '@ashfox/engine-core';
 
@@ -21,7 +21,7 @@ const blank = createProjectFromInput({
   modelPath: 'scene_geometry_parity',
   createdAt: '2026-07-31T00:00:00.000Z'
 }, 'local-0001');
-const created = executeCommandBatch(blank, {
+const created = executeSystemCommandBatch(blank, {
   batchId: 'batch-scene-geometry-parity',
   baseProjectId: blank.id,
   baseRevision: blank.revision,
@@ -48,7 +48,7 @@ const created = executeCommandBatch(blank, {
       }]
     }
   }]
-}, { source: 'system' });
+});
 if (!created.ok) throw new Error(created.error.message);
 const cube = created.document.scene.nodes['cube-parity'];
 if (cube.kind !== 'cube') throw new Error('Cube fixture is unavailable.');

@@ -68,7 +68,7 @@ export const test = (async (): Promise<void> => {
             ...entry,
             bytes: new TextEncoder().encode(JSON.stringify({
               ...document,
-              schemaVersion: document.schemaVersion - 1
+              schemaVersion: 2
             }))
           }
         : entry

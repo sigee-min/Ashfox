@@ -1,6 +1,14 @@
 import { errorMessage, Logger } from '../../logging';
-import { createLineDecoder, encodeMessage } from '../../transport/codec';
-import type { SidecarMessage } from '../../transport/protocol';
+import {
+  SIDECAR_IPC_MAX_FRAME_BYTES,
+  createLineDecoder,
+  encodeMessage
+} from '../../transport/codec';
+import { utf8ContractByteLength } from '@ashfox/internal-contracts';
+import {
+  normalizeSidecarMessage,
+  type SidecarMessage
+} from '../../transport/protocol';
 
 export type IpcReadable = {
   on(event: 'data', handler: (chunk: string | Uint8Array) => void): void;
@@ -42,12 +50,26 @@ export const detachIpcReadable = (readable: IpcReadable, onData: (chunk: string 
   }
 };
 
-export const sendIpcMessage = (writable: IpcWritable, message: SidecarMessage, log: Logger) => {
+export const sendIpcMessage = (
+  writable: IpcWritable,
+  message: SidecarMessage,
+  log: Logger
+): boolean => {
+  const normalized = normalizeSidecarMessage(message);
+  if (!normalized) {
+    log.error('sidecar ipc outbound contract rejected');
+    return false;
+  }
   try {
-    writable.write(encodeMessage(message));
+    const encoded = encodeMessage(normalized);
+    if (utf8ContractByteLength(encoded) > SIDECAR_IPC_MAX_FRAME_BYTES) {
+      log.error('sidecar ipc outbound frame exceeds byte limit');
+      return false;
+    }
+    writable.write(encoded);
+    return true;
   } catch (err) {
     log.error('sidecar ipc send failed', { message: errorMessage(err) });
+    return false;
   }
 };
-
-

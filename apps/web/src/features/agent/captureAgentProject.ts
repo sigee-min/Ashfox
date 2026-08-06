@@ -17,7 +17,9 @@ import type {
   AgentCaptureRequest,
   CaptureResult
 } from './types';
-import type { VisualReviewReceipt } from './presentationReview';
+import type {
+  VisualReviewReceipt
+} from '../../application/visualReviewReceipt';
 import { nextVisualReview } from './visualReviewPlan';
 
 interface CaptureAgentProjectInput {

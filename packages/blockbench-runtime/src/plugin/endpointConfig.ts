@@ -7,7 +7,8 @@ const readEnvConfig = (): Partial<EndpointConfig> => {
   return {
     host: normalizeHost(env.ASHFOX_HOST) ?? undefined,
     port: normalizePort(env.ASHFOX_PORT) ?? undefined,
-    path: env.ASHFOX_PATH ? normalizePath(env.ASHFOX_PATH) : undefined
+    path: env.ASHFOX_PATH ? normalizePath(env.ASHFOX_PATH) : undefined,
+    token: env.ASHFOX_TOKEN
   };
 };
 
@@ -21,7 +22,7 @@ export const resolveEndpointConfig = (): EndpointConfig => {
   return {
     host: fromEnv.host ?? defaults.host,
     port: fromEnv.port ?? defaults.port,
-    path: fromEnv.path ?? defaults.path
+    path: fromEnv.path ?? defaults.path,
+    token: fromEnv.token
   };
 };
-

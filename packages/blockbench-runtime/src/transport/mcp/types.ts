@@ -35,6 +35,7 @@ export type ResponsePlan =
       events: string[];
       close: boolean;
       onOpen?: (conn: SseConnection) => void | (() => void);
+      onCancel?: () => void;
     }
   | {
       kind: 'empty';
@@ -65,11 +66,10 @@ export type JsonRpcResponse = {
 export type McpServerConfig = {
   path: string;
   token?: string;
+  endpoint?: { host: string; port: number };
   serverInfo?: { name: string; version: string };
   instructions?: string;
   supportedProtocols?: string[];
   sessionTtlMs?: number;
 };
-
-
 

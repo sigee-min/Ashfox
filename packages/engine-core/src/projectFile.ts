@@ -6,6 +6,7 @@ import {
   ProjectInvariantError,
   validateProjectDocument
 } from './validation';
+import { validateProjectDocumentContract } from './validation/projectDocumentContract';
 
 export class ProjectFileError extends Error {
   constructor(message: string) {
@@ -19,8 +20,6 @@ const isRecord = (
 ): value is Readonly<Record<string, unknown>> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const validatedShape = <T>(value: unknown): T => value as T;
-
 export const parseProjectDocument = (
   value: unknown
 ): ProjectDocument => {
@@ -28,15 +27,12 @@ export const parseProjectDocument = (
     throw new ProjectFileError('Project file must contain a JSON object.');
   }
 
-  const document = validatedShape<ProjectDocument>(value);
-  let report;
-  try {
-    report = validateProjectDocument(document);
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    throw new ProjectFileError(`Project structure is incomplete: ${reason}`);
-  }
+  const report = validateProjectDocument(value);
   if (!report.valid) throw new ProjectInvariantError(report);
+  if (!validateProjectDocumentContract(value, () => undefined)) {
+    throw new ProjectInvariantError(report);
+  }
+  const document: ProjectDocument = value;
   const derived = deriveGeneratedTextures(document);
   if (!derived.ok) {
     throw new ProjectFileError(

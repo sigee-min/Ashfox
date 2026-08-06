@@ -5,6 +5,16 @@ export const MCP_VALIDATION_MIN_ITEMS_MESSAGE = (path: string, minItems: number)
   `${path} must have at least ${minItems} items`;
 export const MCP_VALIDATION_MAX_ITEMS_MESSAGE = (path: string, maxItems: number) =>
   `${path} must have at most ${maxItems} items`;
+export const MCP_VALIDATION_MINIMUM_MESSAGE = (path: string, minimum: number) =>
+  `${path} must be at least ${minimum}`;
+export const MCP_VALIDATION_MAXIMUM_MESSAGE = (path: string, maximum: number) =>
+  `${path} must be at most ${maximum}`;
+export const MCP_VALIDATION_PATTERN_MESSAGE = (path: string, pattern: string) =>
+  `${path} must match ${pattern}`;
+export const MCP_VALIDATION_MIN_PROPERTIES_MESSAGE = (
+  path: string,
+  minimum: number
+) => `${path} must have at least ${minimum} properties`;
 export const MCP_VALIDATION_REQUIRED_MESSAGE = (path: string, key: string) => `${path}.${key} is required`;
 export const MCP_VALIDATION_NOT_ALLOWED_MESSAGE = (path: string, key: string) => `${path}.${key} is not allowed`;
 export const MCP_VALIDATION_ANY_OF_MESSAGE = (path: string, candidates?: string[]) =>

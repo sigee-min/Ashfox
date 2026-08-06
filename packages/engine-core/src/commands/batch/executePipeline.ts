@@ -3,7 +3,8 @@ import type { ProjectDocument } from '../../model';
 import { validateProjectDocument } from '../../validation';
 import type {
   CommandBatch,
-  CommandBatchResult
+  CommandBatchResult,
+  CommandSource
 } from '../types';
 import {
   applyCommandOperation,
@@ -15,18 +16,17 @@ import {
   mergeCommandEffects
 } from './effects';
 import { commandBatchFailure } from './failure';
-import type { ExecuteCommandBatchOptions } from './types';
 import { validateCommandBatch } from './validateBatch';
 
 export const executeCommandBatchPipeline = (
   document: ProjectDocument,
   batch: CommandBatch,
-  options: ExecuteCommandBatchOptions
+  source: CommandSource
 ): CommandBatchResult => {
   const batchFailure = validateCommandBatch(
     document,
     batch,
-    options.source
+    source
   );
   if (batchFailure) return batchFailure;
 
@@ -36,7 +36,12 @@ export const executeCommandBatchPipeline = (
   const summaries: string[] = [];
   for (let index = 0; index < batch.operations.length; index += 1) {
     const beforeOperation = workingDocument;
-    const applied = applyCommandOperation(workingDocument, batch, index);
+    const applied = applyCommandOperation(
+      workingDocument,
+      batch,
+      index,
+      source
+    );
     if ('ok' in applied) return applied;
     motionKeyCount += changedMotionKeyCount(
       beforeOperation,

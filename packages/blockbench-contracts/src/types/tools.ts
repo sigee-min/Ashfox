@@ -16,6 +16,8 @@ import type {
   ExportPayload,
   ExportTraceLogMode,
   ExportTraceLogPayload,
+  FillRectShadeLike,
+  FillShadeDirection,
   GetProjectStatePayload,
   PaintFacesPayload,
   PaintMeshFacePayload,
@@ -27,6 +29,7 @@ import type {
   SetFramePosePayload,
   SetProjectTextureResolutionPayload,
   SetTriggerKeyframesPayload,
+  TextureOpLike,
   UpdateAnimationClipPayload,
   UpdateBonePayload,
   UpdateCubePayload,
@@ -75,6 +78,8 @@ export type {
 };
 
 export type { UvPaintMapping, UvPaintScope, UvPaintSource, UvPaintSpec, UvPaintTarget };
+
+export type { FillRectShadeLike, FillShadeDirection, TextureOpLike };
 
 export type {
   AddBonePayload,

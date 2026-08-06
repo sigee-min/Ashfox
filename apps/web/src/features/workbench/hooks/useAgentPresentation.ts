@@ -6,10 +6,10 @@ import type {
 
 import type {
   VisualReviewReceipt
-} from '../../agent/presentationReview';
+} from '../../../application/visualReviewReceipt';
 import type {
-  PresentRequest,
   PresentResult,
+  VisualReviewDecisionRequest,
   ViewPresentationRequest
 } from '../../agent/types';
 import {
@@ -29,6 +29,8 @@ interface PresentationViewRequest {
 
 interface UseAgentPresentationInput {
   document: ProjectDocument;
+  visualReviews: readonly VisualReviewReceipt[];
+  onRecordVisualReview: (receipt: VisualReviewReceipt) => void;
   prepareView: (request: PresentationViewRequest) => void;
   setPlayhead: (timeSeconds: number) => void;
   setPlaying: (playing: boolean) => void;
@@ -38,7 +40,7 @@ interface AgentPresentationController {
   presentationNonce: number;
   present: (request: ViewPresentationRequest) => Promise<PresentResult>;
   review: (
-    request: Exclude<PresentRequest, { review: 'next' }>
+    request: VisualReviewDecisionRequest
   ) => Promise<PresentResult>;
   onPresented: (frame: ViewportPresentationFrame) => void;
   getVisualReviews: (
@@ -49,6 +51,8 @@ interface AgentPresentationController {
 
 export const useAgentPresentation = ({
   document,
+  visualReviews,
+  onRecordVisualReview,
   prepareView,
   setPlayhead,
   setPlaying
@@ -60,9 +64,10 @@ export const useAgentPresentation = ({
     setPlaying
   });
   const reviews = useVisualReviewController({
-    projectId: document.id,
-    revision: document.revision,
-    observations: session.observations
+    document,
+    visualReviews,
+    observations: session.observations,
+    onRecordVisualReview
   });
 
   return {

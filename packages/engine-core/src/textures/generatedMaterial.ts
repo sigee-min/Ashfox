@@ -68,19 +68,22 @@ export const applyGeneratedCubeMaterial = (
   cube: CubeNode,
   textureId: string,
   baseColor: string
-): CubeNode => ({
-  ...cube,
-  baseColor,
-  boxUv: false,
-  uvOffset: undefined,
-  faces: Object.fromEntries(
-    CUBE_FACE_DIRECTIONS.map((direction) => [
-      direction,
-      {
-        ...cube.faces[direction],
-        textureId,
-        rotation: 0
-      }
-    ])
-  ) as CubeFaces
-});
+): CubeNode => {
+  const updated: CubeNode = {
+    ...cube,
+    baseColor,
+    boxUv: false,
+    faces: Object.fromEntries(
+      CUBE_FACE_DIRECTIONS.map((direction) => [
+        direction,
+        {
+          ...cube.faces[direction],
+          textureId,
+          rotation: 0
+        }
+      ])
+    ) as CubeFaces
+  };
+  delete updated.uvOffset;
+  return updated;
+};

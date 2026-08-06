@@ -23,10 +23,11 @@ blob-copy entries. Self-contained GLB export instead accepts an injected async
 blob resolver and returns exactly one binary model. Directory/ZIP
 materialization belongs to the application layer.
 
-The modeling transition is recorded in
-[Legacy Occupancy Modeling](../../docs/architecture/legacy-occupancy-modeling.md).
-The normative direction for new authoring is
+The normative authoring compiler is defined in
 [Iconic Hardcut Modeling](../../docs/architecture/iconic-hardcut-modeling.md).
+The strict archetype/specialist authority boundary, provenance model, and
+non-authoritative recipe boundary are defined in
+[Authoring Authority Harness](../../docs/architecture/authoring-authority-harness.md).
 
 The runtime dependency direction, ownership map, and extension paths are in
 [Codebase map](../../docs/architecture/codebase.md).

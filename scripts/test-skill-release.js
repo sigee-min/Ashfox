@@ -5,6 +5,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const {
+  SKILL_RELEASE_DESCRIPTOR_SCHEMA_VERSION,
   buildSkillRelease,
   portableFiles,
   releaseFiles,
@@ -18,7 +19,10 @@ const secondOutput = fs.mkdtempSync(
 );
 try {
   const descriptor = buildSkillRelease(output);
-  assert.equal(descriptor.schemaVersion, 1);
+  assert.equal(
+    descriptor.schemaVersion,
+    SKILL_RELEASE_DESCRIPTOR_SCHEMA_VERSION
+  );
   assert.equal(descriptor.name, 'ashfox');
   assert.deepEqual(
     descriptor.files.map((entry) => entry.path),

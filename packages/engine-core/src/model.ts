@@ -1,4 +1,15 @@
-export const PROJECT_DOCUMENT_SCHEMA_VERSION = 4 as const;
+import { INTERNAL_CONTRACT_VERSIONS } from '@ashfox/internal-contracts';
+
+import type {
+  AuthoringProfile
+} from './authoring/authoringTypes';
+
+export const PROJECT_DOCUMENT_SCHEMA_VERSION =
+  INTERNAL_CONTRACT_VERSIONS.projectDocument;
+
+// Delivery-target compatibility version for exported ashfox.generic assets.
+// It is intentionally independent from internal persistence contracts.
+export const ASHFOX_GENERIC_FORMAT_VERSION = '1' as const;
 
 export type ProjectId = string;
 export type EntityId = string;
@@ -30,7 +41,7 @@ export interface MinecraftResourceLocation {
 
 export interface GenericFormatProfile {
   id: 'ashfox.generic';
-  version: '1';
+  version: typeof ASHFOX_GENERIC_FORMAT_VERSION;
 }
 
 export interface MinecraftJavaBlockFormatProfile {
@@ -122,12 +133,24 @@ export type ProjectGrounding =
   | 'airborne'
   | 'free';
 
+export type ProjectReferenceKind = 'image' | 'text' | 'model';
+
+export interface ProjectReferenceObservation {
+  id: string;
+  kind: ProjectReferenceKind;
+  description: string;
+  cues: readonly string[];
+  contentHash?: string;
+}
+
 export interface ProjectIntent {
   subject: string;
   forward: ProjectForwardDirection;
   grounding: ProjectGrounding;
   /** Human/agent review criteria. Their meaning is not machine-validated. */
   features: readonly string[];
+  /** Auditable observations used to route and review authoring authorities. */
+  references?: readonly ProjectReferenceObservation[];
 }
 
 export interface Transform {
@@ -500,6 +523,7 @@ export interface ProjectDocument {
   formatProfile: ProjectFormatProfile;
   settings: ProjectSettings;
   intent?: ProjectIntent;
+  authoringProfile?: AuthoringProfile;
   modeling?: ConstrainedModelRecipe;
   scene: SceneGraph;
   textures: Readonly<Record<AssetId, TextureAsset>>;

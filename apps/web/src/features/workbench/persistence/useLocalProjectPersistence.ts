@@ -15,6 +15,9 @@ import type {
 import type {
   ProjectAssets
 } from '../../../application/projectAssets';
+import type {
+  VisualReviewReceipt
+} from '../../../application/visualReviewReceipt';
 import {
   createPersistenceSessionState,
   isPersistenceSession,
@@ -41,6 +44,7 @@ interface UseLocalProjectPersistenceInput {
   document: ProjectDocument;
   assets: ProjectAssets;
   activity: readonly CommandReceipt[];
+  visualReviews: readonly VisualReviewReceipt[];
   onHydrate: (record: LocalProjectRecord) => void;
   onExternal: (record: LocalProjectRecord) => void;
 }
@@ -58,6 +62,7 @@ export const useLocalProjectPersistence = ({
   document,
   assets,
   activity,
+  visualReviews,
   onHydrate,
   onExternal
 }: UseLocalProjectPersistenceInput): LocalProjectPersistenceState => {
@@ -73,7 +78,8 @@ export const useLocalProjectPersistence = ({
   const lifecycle = usePersistenceLifecycle(
     document,
     assets,
-    activity
+    activity,
+    visualReviews
   );
 
   useLocalProjectRestore({
@@ -96,6 +102,7 @@ export const useLocalProjectPersistence = ({
     document,
     assets,
     activity,
+    visualReviews,
     lifecycle,
     dispatch,
     onHydrate,

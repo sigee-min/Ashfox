@@ -51,11 +51,11 @@ import {
 } from './port/useAgentCommandSubmission';
 import type {
   VisualReviewReceipt
-} from './presentationReview';
+} from '../../application/visualReviewReceipt';
 import type {
   AgentCaptureRequest,
-  PresentRequest,
   PresentResult,
+  VisualReviewDecisionRequest,
   ViewPresentationRequest
 } from './types';
 import {
@@ -79,7 +79,7 @@ interface UseAgentCommandPortInput {
     request: ViewPresentationRequest
   ) => Promise<PresentResult>;
   onReview: (
-    request: Exclude<PresentRequest, { review: 'next' }>
+    request: VisualReviewDecisionRequest
   ) => Promise<PresentResult>;
   onDeliver: (lease: OperationLeaseToken) => Promise<
     FileOperationRunResult<TargetArtifactFile>
@@ -160,7 +160,7 @@ export const useAgentCommandPort = ({
         currentRevision: () => documentRef.current.revision,
         submit,
         operationLease,
-        present: (request: PresentRequest) => {
+        present: (request) => {
           const current = documentRef.current;
           return presentAgentProject({
             request,

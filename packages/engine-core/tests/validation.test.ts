@@ -145,7 +145,7 @@ const clone = <T>(value: T): T => structuredClone(value);
   const project = clone(createJavaProject()) as ProjectDocument;
   const cube = project.scene.nodes['cube-body'];
   if (cube.kind !== 'cube') throw new Error('fixture cube missing');
-  (cube.faces.up as { uv?: undefined }).uv = undefined;
+  delete (cube.faces.up as { uv?: readonly number[] }).uv;
   const report = validateProjectDocument(project);
   assert.equal(report.valid, false);
   assert.ok(report.findings.some((finding) => finding.code === 'format.uv_missing'));
@@ -209,7 +209,10 @@ const clone = <T>(value: T): T => structuredClone(value);
   (cube.faces.north as { rotation: number }).rotation = 45;
   const report = validateProjectDocument(project);
   assert.equal(report.valid, false);
-  assert.ok(report.findings.some((finding) => finding.code === 'cube.invalid_face'));
+  assert.ok(report.findings.some((finding) =>
+    finding.code === 'document.required_value' &&
+    finding.path.endsWith('.faces.north.rotation')
+  ));
 }
 
 {

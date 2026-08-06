@@ -1,59 +1,126 @@
-import type { McpContentBlock, NextAction, ToolError, ToolResponse } from '@ashfox/blockbench-contracts/types/internal';
+import {
+  isMcpContentBlockContract,
+  isNextActionContract,
+  isToolErrorContract,
+  TOOL_RESPONSE_EXTENSION_LIMITS,
+  type McpContentBlock,
+  type NextAction,
+  type ToolResponse
+} from '@ashfox/blockbench-contracts/types/internal';
+import {
+  createFiniteJsonSnapshot,
+  isClosedContractRecord,
+  isDenseContractArray
+} from '@ashfox/internal-contracts';
 import { errFromDomain, normalizeToolError, toolError } from './toolResponse';
-import { isRecord } from '../../domain/guards';
 import { TOOL_ERROR_GENERIC, TOOL_RESPONSE_MALFORMED } from '../../shared/messages';
 
 type GuardContext = { source?: string };
 
-const isToolError = (value: unknown): value is ToolError => {
-  if (!isRecord(value)) return false;
-  return typeof value.code === 'string' && typeof value.message === 'string';
-};
-
 const normalizeActions = (value: unknown): NextAction[] | undefined => {
-  if (!Array.isArray(value)) return undefined;
-  return value.filter((entry) => isRecord(entry)) as NextAction[];
+  if (
+    !isDenseContractArray(value) ||
+    value.length > TOOL_RESPONSE_EXTENSION_LIMITS.nextActions
+  ) {
+    return undefined;
+  }
+  return value.filter(isNextActionContract);
 };
 
 const normalizeContent = (value: unknown): McpContentBlock[] | undefined => {
-  if (!Array.isArray(value)) return undefined;
-  return value.filter((entry) => isRecord(entry)) as McpContentBlock[];
+  if (
+    !isDenseContractArray(value) ||
+    value.length > TOOL_RESPONSE_EXTENSION_LIMITS.contentBlocks
+  ) {
+    return undefined;
+  }
+  return value.filter(isMcpContentBlockContract);
 };
 
+const SUCCESS_KEYS = new Set([
+  'ok',
+  'data',
+  'content',
+  'structuredContent',
+  'nextActions'
+]);
+const FAILURE_KEYS = new Set([
+  'ok',
+  'error',
+  'content',
+  'structuredContent',
+  'nextActions'
+]);
+const owns = (
+  value: Readonly<Record<string, unknown>>,
+  key: string
+): boolean => Object.prototype.hasOwnProperty.call(value, key);
+
+const hasClosedResponseShape = (
+  value: Readonly<Record<string, unknown>>,
+  allowed: ReadonlySet<string>,
+  required: string
+): boolean =>
+  owns(value, 'ok') &&
+  owns(value, required) &&
+  Object.keys(value).every((key) => allowed.has(key));
+
+const malformedResponse = (context: GuardContext): ToolResponse<unknown> => ({
+  ok: false,
+  error: toolError('unknown', TOOL_RESPONSE_MALFORMED, {
+    reason: 'malformed_tool_response',
+    source: context.source ?? 'unknown'
+  })
+});
+
 export const normalizeToolResponseShape = (value: unknown, context: GuardContext = {}): ToolResponse<unknown> => {
-  if (!isRecord(value) || typeof value.ok !== 'boolean') {
-    return {
-      ok: false,
-      error: toolError('unknown', TOOL_RESPONSE_MALFORMED, {
-        reason: 'malformed_tool_response',
-        source: context.source ?? 'unknown'
-      })
-    };
+  const snapshot = createFiniteJsonSnapshot(value, {
+    depthAllowance: TOOL_RESPONSE_EXTENSION_LIMITS.finiteJsonEnvelopeDepth,
+    omitUndefinedObjectProperties: true,
+    objectPrototype: 'standard'
+  });
+  if (
+    !snapshot.ok ||
+    !isClosedContractRecord(snapshot.value) ||
+    typeof snapshot.value.ok !== 'boolean'
+  ) {
+    return malformedResponse(context);
   }
-  if (value.ok) {
-    const content = normalizeContent(value.content);
-    const nextActions = normalizeActions(value.nextActions);
+  const normalizedValue = snapshot.value;
+  if (normalizedValue.ok) {
+    if (!hasClosedResponseShape(normalizedValue, SUCCESS_KEYS, 'data')) {
+      return malformedResponse(context);
+    }
+    const content = normalizeContent(normalizedValue.content);
+    const nextActions = normalizeActions(normalizedValue.nextActions);
     return {
       ok: true,
-      data: 'data' in value ? (value as { data?: unknown }).data : undefined,
+      data: normalizedValue.data,
       ...(content ? { content } : {}),
-      ...('structuredContent' in value ? { structuredContent: value.structuredContent } : {}),
+      ...(owns(normalizedValue, 'structuredContent')
+        ? { structuredContent: normalizedValue.structuredContent }
+        : {}),
       ...(nextActions ? { nextActions } : {})
     };
   }
-  const error = isToolError(value.error)
-    ? value.error
+  if (!hasClosedResponseShape(normalizedValue, FAILURE_KEYS, 'error')) {
+    return malformedResponse(context);
+  }
+  const error = isToolErrorContract(normalizedValue.error)
+    ? normalizedValue.error
     : toolError('unknown', TOOL_ERROR_GENERIC, {
         reason: 'malformed_tool_error',
         source: context.source ?? 'unknown'
       });
-  const content = normalizeContent(value.content);
-  const nextActions = normalizeActions(value.nextActions);
+  const content = normalizeContent(normalizedValue.content);
+  const nextActions = normalizeActions(normalizedValue.nextActions);
   return {
     ok: false,
     error,
     ...(content ? { content } : {}),
-    ...('structuredContent' in value ? { structuredContent: value.structuredContent } : {}),
+    ...(owns(normalizedValue, 'structuredContent')
+      ? { structuredContent: normalizedValue.structuredContent }
+      : {}),
     ...(nextActions ? { nextActions } : {})
   };
 };
@@ -70,7 +137,3 @@ export const normalizeToolResponse = (
   }
   return errFromDomain(error);
 };
-
-
-
-

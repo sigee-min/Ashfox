@@ -4,6 +4,7 @@ import type {
   CommandSource,
   InvariantFinding
 } from '@ashfox/engine-core';
+import { COMMAND_RECEIPT_SCHEMA_VERSION } from '@ashfox/engine-core';
 
 export interface CreateCommandReceiptInput {
   commandId: string;
@@ -22,7 +23,7 @@ export interface CreateCommandReceiptInput {
 export const createCommandReceipt = (
   input: CreateCommandReceiptInput
 ): CommandReceipt => ({
-  schemaVersion: 1,
+  schemaVersion: COMMAND_RECEIPT_SCHEMA_VERSION,
   commandId: input.commandId,
   projectId: input.projectId,
   actorId: input.actorId,

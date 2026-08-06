@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 
-import { sanitizeTraceValue } from '../src/trace/traceLogFormat';
+import {
+  normalizeTraceContractValue,
+  sanitizeTraceValue
+} from '../src/trace/traceLogFormat';
 
 {
   const input = {
@@ -34,3 +37,37 @@ import { sanitizeTraceValue } from '../src/trace/traceLogFormat';
   assert.equal('k100' in sanitized, false);
 }
 
+{
+  const sparse = new Array(2);
+  sparse[1] = undefined;
+  const sanitized = sanitizeTraceValue({
+    omitted: undefined,
+    nested: { omitted: undefined, kept: true },
+    sparse,
+    nonFinite: Number.NaN
+  });
+  assert.deepEqual(sanitized, {
+    nested: { kept: true },
+    sparse: [null, null],
+    nonFinite: null
+  });
+}
+
+{
+  const input = JSON.parse(
+    '{"__proto__":{"safe":true},"nested":{"__proto__":"kept"}}'
+  ) as Record<string, unknown>;
+  for (const sanitized of [
+    sanitizeTraceValue(input),
+    normalizeTraceContractValue(input)
+  ]) {
+    assert.ok(sanitized && typeof sanitized === 'object');
+    const record = sanitized as Record<string, unknown>;
+    assert.equal(Object.getPrototypeOf(record), Object.prototype);
+    assert.equal(Object.prototype.hasOwnProperty.call(record, '__proto__'), true);
+    assert.deepEqual(record.__proto__, { safe: true });
+    const nested = record.nested as Record<string, unknown>;
+    assert.equal(Object.prototype.hasOwnProperty.call(nested, '__proto__'), true);
+    assert.equal(nested.__proto__, 'kept');
+  }
+}

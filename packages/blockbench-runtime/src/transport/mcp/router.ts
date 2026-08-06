@@ -27,6 +27,7 @@ import {
   supportsSse
 } from './routerUtils';
 import { isJsonContentType, parsePostMessage, validateProtocolHeader } from './routerPost';
+import { validateIngressSecurity } from './ingressSecurity';
 
 export class McpRouter {
   private readonly config: McpServerConfig;
@@ -61,6 +62,16 @@ export class McpRouter {
     const url = req.url || '/';
     if (!matchesPath(url, this.config.path)) {
       return this.jsonResponse(404, { error: { code: 'not_found', message: MCP_ROUTE_NOT_FOUND } });
+    }
+
+    const ingressFailure = validateIngressSecurity(req, this.config);
+    if (ingressFailure) {
+      return this.jsonResponse(403, {
+        error: {
+          code: ingressFailure.code,
+          message: ingressFailure.message
+        }
+      });
     }
 
     const authFailure = this.authorize(req);
@@ -198,6 +209,5 @@ export class McpRouter {
     return { kind: 'empty', status, headers };
   }
 }
-
 
 

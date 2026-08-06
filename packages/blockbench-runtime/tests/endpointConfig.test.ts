@@ -24,7 +24,8 @@ withEnv(
   {
     ASHFOX_HOST: undefined,
     ASHFOX_PORT: undefined,
-    ASHFOX_PATH: undefined
+    ASHFOX_PATH: undefined,
+    ASHFOX_TOKEN: undefined
   },
   () => {
     const config = resolveEndpointConfig();
@@ -38,7 +39,8 @@ withEnv(
   {
     ASHFOX_HOST: '127.0.0.1',
     ASHFOX_PORT: '9999',
-    ASHFOX_PATH: 'mcp-api'
+    ASHFOX_PATH: 'mcp-api',
+    ASHFOX_TOKEN: undefined
   },
   () => {
     const config = resolveEndpointConfig();
@@ -52,7 +54,8 @@ withEnv(
   {
     ASHFOX_HOST: ' ',
     ASHFOX_PORT: '70000',
-    ASHFOX_PATH: ' '
+    ASHFOX_PATH: ' ',
+    ASHFOX_TOKEN: undefined
   },
   () => {
     const config = resolveEndpointConfig();
@@ -62,3 +65,16 @@ withEnv(
   }
 );
 
+withEnv(
+  {
+    ASHFOX_HOST: '0.0.0.0',
+    ASHFOX_PORT: undefined,
+    ASHFOX_PATH: undefined,
+    ASHFOX_TOKEN: 'secret-from-environment'
+  },
+  () => {
+    const config = resolveEndpointConfig();
+    assert.equal(config.host, '0.0.0.0');
+    assert.equal(config.token, 'secret-from-environment');
+  }
+);

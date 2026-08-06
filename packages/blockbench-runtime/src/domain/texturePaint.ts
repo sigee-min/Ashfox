@@ -1,15 +1,22 @@
-import type { FillRectShadeLike, TextureOpLike } from './textureOps';
+import { TEXTURE_HEX_COLOR_PATTERN } from '@ashfox/blockbench-contracts/mcpSchemas/schemas/texture';
+import {
+  clipTextureLineToCanvas,
+  createTextureRasterPlan,
+  type FillRectShadeLike,
+  type TextureOpLike,
+  type TextureRasterFailureReason
+} from './textureOps';
 import { clamp } from './math';
 import { applyShadedFillRect, resolveFillRectShade } from './textureFillShade';
 
 export type Rgba = { r: number; g: number; b: number; a: number };
 
-const HEX_COLOR_PATTERN = /^(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+const HEX_COLOR_PATTERN = new RegExp(TEXTURE_HEX_COLOR_PATTERN);
 
 export const parseHexColor = (value: string): Rgba | null => {
   const raw = String(value ?? '').trim();
-  const hex = raw.startsWith('#') ? raw.slice(1) : raw;
-  if (!HEX_COLOR_PATTERN.test(hex)) return null;
+  if (!HEX_COLOR_PATTERN.test(raw)) return null;
+  const hex = raw.slice(1);
   const n = Number.parseInt(hex, 16);
   if (!Number.isFinite(n)) return null;
   if (hex.length === 6) {
@@ -38,11 +45,17 @@ export const applyTextureOps = (
   data: Uint8ClampedArray,
   width: number,
   height: number,
-  ops: TextureOpLike[],
+  ops: readonly unknown[],
   resolveColor: (value: string) => Rgba | null
-): { ok: true } | { ok: false; opIndex: number; reason: 'invalid_color' | 'invalid_line_width' | 'invalid_op' } => {
-  for (let i = 0; i < ops.length; i += 1) {
-    const op = ops[i];
+): { ok: true } | {
+  ok: false;
+  opIndex: number;
+  reason: 'invalid_color' | 'invalid_line_width' | TextureRasterFailureReason;
+} => {
+  const plan = createTextureRasterPlan(ops, width, height);
+  if (!plan.ok) return plan;
+  for (let i = 0; i < plan.ops.length; i += 1) {
+    const op = plan.ops[i];
     const color = resolveColor(op.color);
     if (!color) return { ok: false, opIndex: i, reason: 'invalid_color' };
     switch (op.op) {
@@ -65,7 +78,7 @@ export const applyTextureOps = (
         if (!Number.isFinite(lineWidth) || lineWidth <= 0) {
           return { ok: false, opIndex: i, reason: 'invalid_line_width' };
         }
-        drawLine(data, width, height, op.x1, op.y1, op.x2, op.y2, lineWidth, color);
+        drawLine(data, width, height, op, lineWidth, color);
         break;
       }
       default:
@@ -141,17 +154,16 @@ const drawLine = (
   data: Uint8ClampedArray,
   width: number,
   height: number,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
+  op: Extract<TextureOpLike, { op: 'draw_line' }>,
   lineWidth: number,
   color: Rgba
 ) => {
-  let x = Math.round(x1);
-  let y = Math.round(y1);
-  const xEnd = Math.round(x2);
-  const yEnd = Math.round(y2);
+  const clipped = clipTextureLineToCanvas(op, width, height);
+  if (!clipped) return;
+  let x = Math.round(clipped.x1);
+  let y = Math.round(clipped.y1);
+  const xEnd = Math.round(clipped.x2);
+  const yEnd = Math.round(clipped.y2);
   const dx = Math.abs(xEnd - x);
   const dy = Math.abs(yEnd - y);
   const sx = x < xEnd ? 1 : -1;
@@ -186,8 +198,12 @@ const drawBrush = (
     setPixel(data, width, height, x, y, color);
     return;
   }
-  for (let yy = y - radius; yy <= y + radius; yy += 1) {
-    for (let xx = x - radius; xx <= x + radius; xx += 1) {
+  const yStart = Math.max(0, y - radius);
+  const yEnd = Math.min(height - 1, y + radius);
+  const xStart = Math.max(0, x - radius);
+  const xEnd = Math.min(width - 1, x + radius);
+  for (let yy = yStart; yy <= yEnd; yy += 1) {
+    for (let xx = xStart; xx <= xEnd; xx += 1) {
       setPixel(data, width, height, xx, yy, color);
     }
   }

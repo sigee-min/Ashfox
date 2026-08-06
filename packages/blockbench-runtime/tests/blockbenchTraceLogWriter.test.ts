@@ -270,4 +270,3 @@ const withGlobals = (overrides: Record<string, unknown>, fn: () => void) => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 }
-

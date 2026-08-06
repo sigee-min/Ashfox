@@ -121,8 +121,12 @@ const assertTrackDependencies = () => {
     ...(sitePackage.dependencies ?? {}),
     ...(sitePackage.devDependencies ?? {})
   });
+  const allowedSiteDependencies = new Set([
+    '@ashfox/internal-contracts',
+    'marked'
+  ]);
   const forbiddenSiteDependency = siteDependencies.find(
-    (dependency) => dependency !== 'marked'
+    (dependency) => !allowedSiteDependencies.has(dependency)
   );
   if (forbiddenSiteDependency) {
     throw new Error(
@@ -136,6 +140,9 @@ const assertTrackDependencies = () => {
   for (const filePath of siteSourceFiles) {
     const crossesProductBoundary = readModuleSpecifiers(readText(filePath)).some(
       (specifier) => {
+        if (specifier === '@ashfox/internal-contracts') {
+          return false;
+        }
         if (
           specifier.startsWith('@ashfox/') ||
           /^(?:react|three)(?:\/|$)/.test(specifier)

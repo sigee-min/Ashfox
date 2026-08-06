@@ -12,10 +12,20 @@ export const recordTrace = <T>(
 ): void => {
   if (!traceRecorder) return;
   try {
-    traceRecorder.record(tool, payload, response as ToolResponse<unknown>);
+    const error = traceRecorder.record(
+      tool,
+      payload,
+      response as ToolResponse<unknown>
+    );
+    if (error) {
+      log.warn('trace log record failed', {
+        tool,
+        code: error.code,
+        message: error.message
+      });
+    }
   } catch (err) {
     const message = errorMessage(err, 'trace log record failed');
     log.warn('trace log record failed', { tool, message });
   }
 };
-

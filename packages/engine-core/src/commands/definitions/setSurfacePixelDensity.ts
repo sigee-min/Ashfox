@@ -12,7 +12,7 @@ const inputSchema = {
     density: {
       enum: [1, 2, 4],
       description:
-        'Legacy/import compatibility control. New iconic projects remain at 1× through the public UX.'
+        'Canonical lattice and generated-surface resolution. New iconic projects use 1× through the public UX.'
     }
   },
   required: ['density'],
@@ -23,7 +23,7 @@ export const setSurfacePixelDensityCommand = defineCommand({
   name: 'textures.density.set',
   label: 'Set surface pixel density',
   purpose:
-    'Maintain legacy 1×, 2×, or 4× project lattices before model parts exist.',
+    'Set the canonical 1×, 2×, or 4× project lattice before model parts exist.',
   inputSchema,
   apply: (document, payload) => {
     const densityChanged =

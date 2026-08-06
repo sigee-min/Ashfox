@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 
+import * as engineCore from '../src';
+
 import {
   CUBE_FACE_DIRECTIONS,
   composeTextureRaster,
   createProjectFromInput,
-  executeCommandBatch,
+  executeSystemCommandBatch,
   getCommandDefinition,
   listAgentCommandDefinitions,
   listCommandDefinitions,
@@ -23,6 +25,7 @@ assert.deepEqual(commandNames, [
   'project.target.set',
   'project.resource.set',
   'project.intent.set',
+  'project.authoring.configure',
   'model.parts.upsert',
   'model.parts.mirror',
   'model.parts.transform',
@@ -63,6 +66,7 @@ assert.deepEqual(
     'project.rename',
     'project.target.set',
     'project.intent.set',
+    'project.authoring.configure',
     'model.parts.upsert',
     'model.parts.mirror',
     'model.parts.transform',
@@ -96,12 +100,12 @@ const execute = (
   batchId: string,
   operations: CommandBatch['operations']
 ): ProjectDocument => {
-  const result = executeCommandBatch(document, {
+  const result = executeSystemCommandBatch(document, {
     batchId,
     baseProjectId: document.id,
     baseRevision: document.revision,
     operations
-  }, { source: 'system' });
+  });
   if (!result.ok) {
     throw new Error(
       `${result.error.code}: ${result.error.message} at ` +
@@ -119,7 +123,46 @@ assert.deepEqual(empty.settings.textureResolution, {
 assert.equal(empty.settings.surfacePixelDensity, 1);
 assert.deepEqual(empty.textures, {});
 
-const wrongProject = executeCommandBatch(empty, {
+const sourceBoundaryBatch = (batchId: string): CommandBatch => ({
+  batchId,
+  baseProjectId: empty.id,
+  baseRevision: empty.revision,
+  operations: [{
+    name: 'project.resource.set',
+    payload: {
+      namespace: 'trusted_boundary',
+      modelPath: 'fixed_source_executor'
+    }
+  }]
+});
+const rejectedAgentSource = engineCore.executeAgentCommandBatch(
+  empty,
+  {
+    ...sourceBoundaryBatch('batch-fixed-agent-source'),
+    source: 'system'
+  } as CommandBatch
+);
+assert.equal(rejectedAgentSource.ok, false);
+if (!rejectedAgentSource.ok) {
+  assert.match(rejectedAgentSource.error.message, /not available to agent/);
+}
+for (const [source, executor] of [
+  ['web', engineCore.executeWebCommandBatch],
+  ['import', engineCore.executeImportCommandBatch],
+  ['system', engineCore.executeSystemCommandBatch]
+] as const) {
+  const result = executor(
+    empty,
+    sourceBoundaryBatch(`batch-fixed-${source}-source`)
+  );
+  assert.equal(
+    result.ok,
+    true,
+    result.ok ? undefined : `${source}: ${result.error.message}`
+  );
+}
+
+const wrongProject = executeSystemCommandBatch(empty, {
   batchId: 'batch-wrong-project',
   baseProjectId: 'stale-project',
   baseRevision: empty.revision,
@@ -127,7 +170,7 @@ const wrongProject = executeCommandBatch(empty, {
     name: 'project.rename',
     payload: { name: 'Must not apply' }
   }]
-}, { source: 'system' });
+});
 assert.equal(wrongProject.ok, false);
 if (!wrongProject.ok) {
   assert.equal(wrongProject.error.code, 'project_mismatch');
@@ -281,7 +324,7 @@ assert.equal(
   2,
   'the first atlas row must reserve exactly one derived gutter'
 );
-const unchangedDensity = executeCommandBatch(detailed, {
+const unchangedDensity = executeSystemCommandBatch(detailed, {
   batchId: 'batch-density-unchanged',
   baseProjectId: detailed.id,
   baseRevision: detailed.revision,
@@ -289,12 +332,12 @@ const unchangedDensity = executeCommandBatch(detailed, {
     name: 'textures.density.set',
     payload: { density: 2 }
   }]
-}, { source: 'system' });
+});
 assert.equal(unchangedDensity.ok, false);
 if (!unchangedDensity.ok) {
   assert.equal(unchangedDensity.error.code, 'no_change');
 }
-const invalidDensity = executeCommandBatch(detailed, {
+const invalidDensity = executeSystemCommandBatch(detailed, {
   batchId: 'batch-density-invalid',
   baseProjectId: detailed.id,
   baseRevision: detailed.revision,
@@ -304,7 +347,7 @@ const invalidDensity = executeCommandBatch(detailed, {
       density: 3
     } as { density: 1 }
   }]
-}, { source: 'system' });
+});
 assert.equal(invalidDensity.ok, false);
 if (!invalidDensity.ok) {
   assert.equal(invalidDensity.error.code, 'invalid_payload');
@@ -381,7 +424,7 @@ const scalable = execute(recolored, 'batch-scale-target', [{
     modelPath: 'command_contract'
   }
 }]);
-const scaled = executeCommandBatch(scalable, {
+const scaled = executeSystemCommandBatch(scalable, {
   batchId: 'batch-scale-derived-texture',
   baseProjectId: scalable.id,
   baseRevision: scalable.revision,
@@ -394,7 +437,7 @@ const scaled = executeCommandBatch(scalable, {
       }
     }
   }]
-}, { source: 'system' });
+});
 assert.equal(scaled.ok, true);
 if (!scaled.ok) {
   throw new Error('Scale must derive generated surfaces automatically.');
@@ -409,7 +452,7 @@ assert.equal(
   12
 );
 
-const invalidScale = executeCommandBatch(scalable, {
+const invalidScale = executeSystemCommandBatch(scalable, {
   batchId: 'batch-invalid-scale-grid',
   baseProjectId: scalable.id,
   baseRevision: scalable.revision,
@@ -422,7 +465,7 @@ const invalidScale = executeCommandBatch(scalable, {
       }
     }
   }]
-}, { source: 'system' });
+});
 assert.equal(invalidScale.ok, false);
 if (invalidScale.ok) {
   throw new Error('Off-grid scale must be rejected atomically.');
@@ -430,7 +473,7 @@ if (invalidScale.ok) {
 assert.equal(invalidScale.error.code, 'invalid_state');
 assert.match(invalidScale.error.message, /square-pixel grid/);
 
-const halfUnitBatch = executeCommandBatch(recolored, {
+const halfUnitBatch = executeSystemCommandBatch(recolored, {
   batchId: 'batch-half-unit-grid',
   baseProjectId: recolored.id,
   baseRevision: recolored.revision,
@@ -448,13 +491,13 @@ const halfUnitBatch = executeCommandBatch(recolored, {
       }
     }
   ]
-}, { source: 'system' });
+});
 assert.equal(halfUnitBatch.ok, true);
 if (!halfUnitBatch.ok) {
   throw new Error('2× density must accept half-unit geometry');
 }
 
-const invalidQuarterBatch = executeCommandBatch(recolored, {
+const invalidQuarterBatch = executeSystemCommandBatch(recolored, {
   batchId: 'batch-invalid-quarter-grid',
   baseProjectId: recolored.id,
   baseRevision: recolored.revision,
@@ -472,7 +515,7 @@ const invalidQuarterBatch = executeCommandBatch(recolored, {
       }
     }
   ]
-}, { source: 'system' });
+});
 assert.equal(invalidQuarterBatch.ok, false);
 if (invalidQuarterBatch.ok) {
   throw new Error('Off-grid geometry must be rejected');
@@ -700,7 +743,7 @@ assert.equal(
 );
 assert.ok(!withoutLocator.scene.roots.includes('locator-muzzle'));
 
-const invalidColor = executeCommandBatch(renamed, {
+const invalidColor = executeSystemCommandBatch(renamed, {
   batchId: 'batch-invalid-color',
   baseProjectId: renamed.id,
   baseRevision: renamed.revision,
@@ -711,26 +754,12 @@ const invalidColor = executeCommandBatch(renamed, {
       baseColor: 'green'
     }
   }]
-}, { source: 'system' });
+});
 assert.equal(invalidColor.ok, false);
-
-const missingSource = executeCommandBatch(
-  renamed,
-  {
-    batchId: 'batch-missing-source',
-    baseProjectId: renamed.id,
-    baseRevision: renamed.revision,
-    operations: [{
-      name: 'project.rename',
-      payload: { name: 'Must not apply' }
-    }]
-  },
-  undefined as never
+assert.equal(
+  'executeCommandBatch' in engineCore,
+  false,
+  'the generic source-selecting executor must not be public'
 );
-assert.equal(missingSource.ok, false);
-if (!missingSource.ok) {
-  assert.equal(missingSource.error.code, 'invalid_batch');
-  assert.equal(missingSource.error.path, 'source');
-}
 if (invalidColor.ok) throw new Error('Invalid color must fail');
 assert.equal(invalidColor.error.code, 'invalid_payload');

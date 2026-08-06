@@ -1,5 +1,10 @@
+import { INTERNAL_CONTRACT_VERSIONS } from '@ashfox/internal-contracts';
+
 import type { BlobRef, JsonValue, ProjectId, Revision } from '../model';
 import type { InvariantFinding } from '../validation';
+
+export const EXPORT_BUNDLE_SCHEMA_VERSION =
+  INTERNAL_CONTRACT_VERSIONS.exportBundle;
 
 export type ExportTargetId =
   | 'ashfox.generic'
@@ -63,7 +68,7 @@ export interface ExportAdaptationReceipt {
 }
 
 export interface ExportBundle {
-  schemaVersion: 1;
+  schemaVersion: typeof EXPORT_BUNDLE_SCHEMA_VERSION;
   projectId: ProjectId;
   revision: Revision;
   target: {

@@ -12,6 +12,9 @@ import type {
 import type {
   ProjectAssets
 } from '../../../application/projectAssets';
+import type {
+  VisualReviewReceipt
+} from '../../../application/visualReviewReceipt';
 import {
   useLatestValue
 } from '../../../hooks/useLatestValue';
@@ -19,17 +22,20 @@ import {
 export const usePersistenceLifecycle = (
   document: ProjectDocument,
   assets: ProjectAssets,
-  activity: readonly CommandReceipt[]
+  activity: readonly CommandReceipt[],
+  visualReviews: readonly VisualReviewReceipt[]
 ) => {
   const currentDocument = useLatestValue(document);
   const currentAssets = useLatestValue(assets);
   const currentActivity = useLatestValue(activity);
+  const currentVisualReviews = useLatestValue(visualReviews);
   const session = useRef(0);
   const saveRequest = useRef(0);
   return {
     currentDocument,
     currentAssets,
     currentActivity,
+    currentVisualReviews,
     session,
     saveRequest
   };

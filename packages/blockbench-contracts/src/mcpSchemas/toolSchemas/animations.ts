@@ -88,7 +88,13 @@ export const animationToolSchemas: Record<string, JsonSchema> = {
           additionalProperties: false,
           properties: {
             time: { type: 'number' },
-            value: {}
+            value: {
+              anyOf: [
+                { type: 'string' },
+                { type: 'array', items: { type: 'string' } },
+                { type: 'object' }
+              ]
+            }
           }
         }
       },
@@ -97,5 +103,4 @@ export const animationToolSchemas: Record<string, JsonSchema> = {
     }
   }
 };
-
 

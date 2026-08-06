@@ -1,24 +1,18 @@
 import {
-  parseProjectDocument
-} from '@ashfox/engine-core';
-import {
-  areLocalProjectRecordsEqual,
+  areLocalProjectPayloadsEqual,
   compareProjectRevisions,
   isValidLocalProjectRecord,
+  parseLocalProjectRecord,
   type LocalProjectRecord
 } from '../../../application/localProjectRecord';
+import {
+  areVisualReviewLedgersEqual,
+  mergeVisualReviewLedgers
+} from '../../../application/visualReviewReceipt';
 
 const DATABASE_NAME = 'ashfox';
 const DATABASE_VERSION = 1;
 const PROJECT_STORE = 'projects';
-
-const normalizeStoredRecord = (
-  record: LocalProjectRecord
-): LocalProjectRecord => ({
-  ...record,
-  document: parseProjectDocument(record.document),
-  assets: record.assets ?? {}
-});
 
 const requestResult = <T>(request: IDBRequest<T>): Promise<T> =>
   new Promise<T>((resolve, reject) => {
@@ -83,8 +77,9 @@ export const loadLocalProject = async (
       transaction.objectStore(PROJECT_STORE).get(projectId)
     );
     await transactionComplete(transaction);
-    const record = result as LocalProjectRecord | undefined;
-    return record ? normalizeStoredRecord(record) : null;
+    return result === undefined
+      ? null
+      : parseLocalProjectRecord(result, projectId);
   } finally {
     database.close();
   }
@@ -118,21 +113,19 @@ export type SaveLocalProjectResult =
       current: LocalProjectRecord;
     };
 
-const sameProjectSnapshot = (
-  left: LocalProjectRecord,
-  right: LocalProjectRecord
-): boolean => areLocalProjectRecordsEqual(left, right);
-
 export const decideProjectWrite = (
   existing: LocalProjectRecord | undefined,
   candidate: LocalProjectRecord
 ): SaveLocalProjectResult => {
+  if (!isValidLocalProjectRecord(candidate, candidate.projectId)) {
+    return { status: 'blocked', current: candidate };
+  }
   if (!existing) {
     return { status: 'stored', current: candidate };
   }
   let current = existing;
   try {
-    current = normalizeStoredRecord(existing);
+    current = parseLocalProjectRecord(existing, candidate.projectId);
   } catch {
     return { status: 'blocked', current: existing };
   }
@@ -149,10 +142,33 @@ export const decideProjectWrite = (
   }
   if (
     revisionOrder === 0 &&
-    candidate.revision === current.revision &&
-    sameProjectSnapshot(candidate, current)
+    candidate.revision === current.revision
   ) {
-    return { status: 'unchanged', current };
+    if (!areLocalProjectPayloadsEqual(candidate, current)) {
+      return { status: 'conflict', current };
+    }
+    const visualReviews = mergeVisualReviewLedgers(
+      current.visualReviews,
+      candidate.visualReviews
+    );
+    if (
+      areVisualReviewLedgersEqual(
+        visualReviews,
+        current.visualReviews
+      )
+    ) {
+      return { status: 'unchanged', current };
+    }
+    return {
+      status: 'stored',
+      current: {
+        ...candidate,
+        visualReviews,
+        savedAt: candidate.savedAt.localeCompare(current.savedAt) >= 0
+          ? candidate.savedAt
+          : current.savedAt
+      }
+    };
   }
   return { status: 'conflict', current };
 };
@@ -172,7 +188,7 @@ const writeNewestProjectRecord = (
         readRequest.result as LocalProjectRecord | undefined,
         record
       );
-      if (result.status === 'stored') store.put(record);
+      if (result.status === 'stored') store.put(result.current);
     });
     readRequest.addEventListener('error', () => {
       transaction.abort();

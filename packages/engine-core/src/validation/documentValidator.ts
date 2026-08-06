@@ -1,21 +1,20 @@
 import {
-  PROJECT_DOCUMENT_SCHEMA_VERSION,
+  isCurrentInternalContractVersion
+} from '@ashfox/internal-contracts';
+
+import {
+  ASHFOX_GENERIC_FORMAT_VERSION,
   isSurfacePixelDensity,
   type ProjectDocument
 } from '../model';
+import {
+  readAuthoringProfile
+} from '../authoring/authoringProfile';
 import { readProjectIntent } from '../project/projectIntent';
 import { isNonEmptyString } from './shared/value';
 import type { FindingSink } from './types';
 
-const FORMAT_PROFILE_IDS = new Set<string>([
-  'ashfox.generic',
-  'minecraft.java_block',
-  'minecraft.bedrock',
-  'minecraft.java.geckolib5',
-  'gltf.2'
-]);
-
-const validateIdentityAndTime = (
+const validateIdentity = (
   document: ProjectDocument,
   add: FindingSink
 ): void => {
@@ -29,19 +28,6 @@ const validateIdentityAndTime = (
         code: 'document.required_value',
         severity: 'error',
         message: `${path} must be a non-empty string.`,
-        path
-      });
-    }
-  }
-  for (const [path, value] of [
-    ['createdAt', document.createdAt],
-    ['updatedAt', document.updatedAt]
-  ] as const) {
-    if (!isNonEmptyString(value) || Number.isNaN(Date.parse(value))) {
-      add({
-        code: 'document.invalid_timestamp',
-        severity: 'error',
-        message: `${path} must be an ISO-compatible timestamp.`,
         path
       });
     }
@@ -61,6 +47,28 @@ const validateIntent = (
       message: issue.message,
       path: issue.path === 'intent' ? issue.path : `intent.${issue.path}`,
       fix: 'Set a normalized intent through project.intent.set.'
+    });
+  }
+};
+
+const validateAuthoringProfile = (
+  document: ProjectDocument,
+  add: FindingSink
+): void => {
+  const result = readAuthoringProfile(document);
+  if (result.ok) return;
+  for (const issue of result.issues) {
+    add({
+      code: 'document.invalid_authoring_profile',
+      severity: 'error',
+      message: issue.message,
+      path:
+        issue.path === 'authoringProfile' ||
+        issue.path.startsWith('authoringProfile.')
+          ? issue.path
+          : `authoringProfile.${issue.path}`,
+      fix:
+        'Replace the profile through project.authoring.configure using current explicit v1 authority references and bindings.'
     });
   }
 };
@@ -112,7 +120,10 @@ export const validateDocument = (
   document: ProjectDocument,
   add: FindingSink
 ): void => {
-  if (document.schemaVersion !== PROJECT_DOCUMENT_SCHEMA_VERSION) {
+  if (!isCurrentInternalContractVersion(
+    'projectDocument',
+    document.schemaVersion
+  )) {
     add({
       code: 'document.schema_version',
       severity: 'error',
@@ -120,25 +131,20 @@ export const validateDocument = (
       path: 'schemaVersion'
     });
   }
-  if (!FORMAT_PROFILE_IDS.has(document.formatProfile.id)) {
-    add({
-      code: 'format.unsupported_data',
-      severity: 'error',
-      message: `Unsupported format profile "${String(document.formatProfile.id)}".`,
-      path: 'formatProfile.id'
-    });
-  } else if (
+  if (
     document.formatProfile.id === 'ashfox.generic' &&
-    document.formatProfile.version !== '1'
+    document.formatProfile.version !== ASHFOX_GENERIC_FORMAT_VERSION
   ) {
     add({
       code: 'format.unsupported_data',
       severity: 'error',
-      message: 'Generic ashfox profile version must be 1.',
+      message:
+        `Generic ashfox profile version must be ${ASHFOX_GENERIC_FORMAT_VERSION}.`,
       path: 'formatProfile.version'
     });
   }
-  validateIdentityAndTime(document, add);
+  validateIdentity(document, add);
   validateIntent(document, add);
+  validateAuthoringProfile(document, add);
   validateSettings(document, add);
 };

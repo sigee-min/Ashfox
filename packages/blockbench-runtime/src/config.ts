@@ -7,7 +7,7 @@ import { TOOL_SCHEMA_VERSION as CONTRACT_TOOL_SCHEMA_VERSION } from '@ashfox/blo
 export const PLUGIN_ID = 'ashfox';
 export const PLUGIN_VERSION = '0.0.5'; // x-release-please-version
 export const TOOL_SCHEMA_VERSION = CONTRACT_TOOL_SCHEMA_VERSION;
-export const DEFAULT_SERVER_HOST = '0.0.0.0';
+export const DEFAULT_SERVER_HOST = '127.0.0.1';
 export const DEFAULT_SERVER_PORT = 8787;
 export const DEFAULT_SERVER_PATH = '/mcp';
 
@@ -98,6 +98,5 @@ export function computeCapabilities(
     guidance: CAPABILITIES_GUIDANCE
   };
 }
-
 
 

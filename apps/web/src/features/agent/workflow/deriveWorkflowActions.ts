@@ -10,7 +10,7 @@ import {
 
 import type {
   VisualReviewReceipt
-} from '../presentationReview';
+} from '../../../application/visualReviewReceipt';
 import {
   findingHasCode
 } from './classifyWorkflowFinding';
@@ -172,7 +172,17 @@ const commandNamesFor = (
         ? ['project.target.set']
         : ['project.create'];
   }
-  if (stage === 'plan') return ['project.intent.set'];
+  if (stage === 'plan') {
+    return findingHasCode(
+      blocker ?? { code },
+      'document.invalid_authoring_profile',
+      'production.authoring_profile_',
+      'production.authoring_routing_',
+      'production.authoring_compatibility_'
+    )
+      ? ['project.authoring.configure']
+      : ['project.intent.set'];
+  }
   if (code === 'production.intent_grounding_mismatch') {
     return ['model.parts.transform'];
   }
@@ -184,6 +194,21 @@ const commandNamesFor = (
     code === 'production.intent_evaluation_unavailable'
   ) {
     return ['model.parts.upsert'];
+  }
+  if (
+    findingHasCode(
+      blocker ?? { code },
+      'production.authoring_slot_',
+      'production.authoring_attachment_'
+    )
+  ) {
+    return ['model.parts.upsert'];
+  }
+  if (findingHasCode(
+    blocker ?? { code },
+    'production.authoring_part_unassigned'
+  )) {
+    return ['project.authoring.configure', 'model.parts.delete'];
   }
   if (
     findingHasCode(
@@ -203,7 +228,8 @@ const commandNamesFor = (
       blocker ?? { code },
       'animation.',
       'production.idle_',
-      'production.animation_'
+      'production.animation_',
+      'production.authoring_motion_'
     )
   ) {
     return ['animation.motion.upsert'];
@@ -215,7 +241,7 @@ const commandNamesFor = (
 const commandsForRejectedReview = (
   receipt: VisualReviewReceipt
 ): readonly string[] => {
-  const issues = new Set(receipt.issues);
+  const issues = new Set(receipt.decision.issues);
   if (issues.has('motion') || issues.has('pivot')) {
     return ['animation.motion.upsert', 'model.parts.upsert'];
   }

@@ -1,3 +1,5 @@
+import { INTERNAL_CONTRACT_VERSIONS } from '@ashfox/internal-contracts';
+
 import type {
   AnimationEffect,
   AnimationLoopMode,
@@ -7,6 +9,7 @@ import type {
   ProjectDocument,
   ProjectForwardDirection,
   ProjectGrounding,
+  ProjectReferenceObservation,
   ProjectId,
   Revision,
   SurfacePixelDensity,
@@ -23,13 +26,25 @@ import type {
   ExportPreset,
   MinecraftGameVersion
 } from '../export/compatibility';
+import type {
+  AuthoringSelectionInput
+} from '../authoring/authoringTypes';
 
 export type {
   ExportPreset,
   MinecraftGameVersion
 } from '../export/compatibility';
 
-export type CommandSource = 'web' | 'agent' | 'import' | 'system';
+export const COMMAND_RECEIPT_SCHEMA_VERSION =
+  INTERNAL_CONTRACT_VERSIONS.commandReceipt;
+
+export const COMMAND_SOURCES = [
+  'web',
+  'agent',
+  'import',
+  'system'
+] as const;
+export type CommandSource = (typeof COMMAND_SOURCES)[number];
 export type SceneAxis = 'x' | 'y' | 'z';
 export type AlignmentMode = 'minimum' | 'center' | 'maximum';
 export interface ProjectCreateInput {
@@ -60,6 +75,7 @@ export interface ProjectIntentInput {
   forward?: ProjectForwardDirection;
   grounding?: ProjectGrounding;
   features?: readonly string[];
+  references?: readonly ProjectReferenceObservation[];
 }
 
 export interface BoneCreateInput {
@@ -185,6 +201,7 @@ export interface CommandPayloadMap {
     modelPath: string;
   };
   'project.intent.set': ProjectIntentInput;
+  'project.authoring.configure': AuthoringSelectionInput;
   'model.parts.upsert': {
     parts: readonly PartAuthoringSpec[];
     materials?: readonly PartMaterialDefinition[];
@@ -355,13 +372,16 @@ export interface CommandBatch {
   operations: readonly ProjectCommandOperation[];
 }
 
+export const COMMAND_INVALIDATED_AREAS = [
+  'scene',
+  'textures',
+  'uv',
+  'animations',
+  'validation',
+  'preview'
+] as const;
 export type InvalidatedArea =
-  | 'scene'
-  | 'textures'
-  | 'uv'
-  | 'animations'
-  | 'validation'
-  | 'preview';
+  (typeof COMMAND_INVALIDATED_AREAS)[number];
 
 export interface CommandEffects {
   createdEntityIds: readonly EntityId[];
@@ -371,7 +391,7 @@ export interface CommandEffects {
 }
 
 export interface CommandReceipt {
-  schemaVersion: 1;
+  schemaVersion: typeof COMMAND_RECEIPT_SCHEMA_VERSION;
   commandId: string;
   projectId: ProjectId;
   actorId: string;

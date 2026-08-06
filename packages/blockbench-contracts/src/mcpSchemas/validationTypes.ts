@@ -3,6 +3,10 @@ export type ValidationReason =
   | 'enum'
   | 'minItems'
   | 'maxItems'
+  | 'minimum'
+  | 'maximum'
+  | 'pattern'
+  | 'minProperties'
   | 'required'
   | 'additionalProperties'
   | 'anyOf';

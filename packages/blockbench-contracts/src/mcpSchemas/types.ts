@@ -6,6 +6,7 @@ export type JsonSchema = {
   default?: unknown;
   minimum?: number;
   maximum?: number;
+  pattern?: string;
   properties?: Record<string, JsonSchema>;
   items?: JsonSchema;
   required?: string[];

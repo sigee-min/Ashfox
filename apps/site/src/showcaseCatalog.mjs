@@ -6,6 +6,16 @@ import {
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import internalContracts from '@ashfox/internal-contracts';
+
+export const GALLERY_CATALOG_SCHEMA_VERSION =
+  internalContracts.INTERNAL_CONTRACT_VERSIONS.galleryCatalog;
+export const isCurrentGalleryCatalogVersion = (value) =>
+  internalContracts.isCurrentInternalContractVersion(
+    'galleryCatalog',
+    value
+  );
+
 const sourceDirectory = path.dirname(fileURLToPath(import.meta.url));
 
 export const gallerySourceRoot = path.resolve(
@@ -66,8 +76,13 @@ const loadDemo = async (directoryName) => {
       `Cannot read gallery manifest ${manifestPath}: ${error.message}`
     );
   }
-  if (!isRecord(manifest) || manifest.schemaVersion !== 1) {
-    throw new Error(`${manifestPath} must use gallery schemaVersion 1.`);
+  if (
+    !isRecord(manifest) ||
+    !isCurrentGalleryCatalogVersion(manifest.schemaVersion)
+  ) {
+    throw new Error(
+      `${manifestPath} must use gallery schemaVersion ${GALLERY_CATALOG_SCHEMA_VERSION}.`
+    );
   }
 
   const id = requiredString(manifest.id, `${manifestPath} id`);
@@ -168,7 +183,7 @@ const loadDemo = async (directoryName) => {
   ].join(' · ');
 
   return {
-    schemaVersion: 1,
+    schemaVersion: GALLERY_CATALOG_SCHEMA_VERSION,
     id,
     name: requiredString(manifest.name, `${manifestPath} name`),
     category: requiredString(manifest.category, `${manifestPath} category`),

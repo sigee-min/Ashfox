@@ -4,7 +4,8 @@ import {
   PROTOCOL_VERSION,
   SidecarMessage,
   SidecarRequestMessage,
-  SidecarResponseMessage
+  SidecarResponseMessage,
+  normalizeSidecarMessage
 } from '../../transport/protocol';
 import { toolError } from '../../shared/tooling/toolResponse';
 import { attachIpcReadable, createIpcDecoder, detachIpcReadable, IpcReadable, IpcWritable, sendIpcMessage } from './ipc';
@@ -18,6 +19,7 @@ export class SidecarHost {
   private readonly dispatcher: Dispatcher;
   private readonly log: Logger;
   private readonly onData: (chunk: string | Uint8Array) => void;
+  private negotiated = false;
 
   constructor(readable: IpcReadable, writable: IpcWritable, dispatcher: Dispatcher, log: Logger) {
     this.readable = readable;
@@ -32,8 +34,8 @@ export class SidecarHost {
     });
   }
 
-  send(message: SidecarMessage) {
-    sendIpcMessage(this.writable, message, this.log);
+  send(message: SidecarMessage): boolean {
+    return sendIpcMessage(this.writable, message, this.log);
   }
 
   dispose() {
@@ -42,10 +44,28 @@ export class SidecarHost {
 
   private handleMessage(message: SidecarMessage) {
     if (message.type === 'hello') {
+      if (message.role !== 'sidecar') {
+        this.send({
+          type: 'error',
+          ts: Date.now(),
+          message: 'Sidecar host expected a sidecar peer role.',
+          details: { reason: 'sidecar_peer_role_invalid' }
+        });
+        return;
+      }
+      this.negotiated = true;
       this.send({ type: 'ready', version: PROTOCOL_VERSION, ts: Date.now() });
       return;
     }
     if (message.type !== 'request') return;
+    if (!this.negotiated) {
+      this.sendContractFailure(
+        message.id,
+        'sidecar_handshake_required',
+        'Sidecar v1 handshake is required before tool requests.'
+      );
+      return;
+    }
     void this.handleRequest(message);
   }
 
@@ -73,21 +93,63 @@ export class SidecarHost {
       return;
     }
 
+    const extensions = {
+      ...(result.content ? { content: result.content } : {}),
+      ...(result.structuredContent !== undefined
+        ? { structuredContent: result.structuredContent }
+        : {}),
+      ...(result.nextActions ? { nextActions: result.nextActions } : {})
+    };
+    const candidate: unknown = result.ok
+      ? {
+          type: 'response',
+          id: message.id,
+          ts: Date.now(),
+          ok: true,
+          data: result.data,
+          ...extensions
+        }
+      : {
+          type: 'response',
+          id: message.id,
+          ts: Date.now(),
+          ok: false,
+          error: result.error,
+          ...extensions
+        };
+    const response = normalizeSidecarMessage(candidate);
+    if (!response || response.type !== 'response') {
+      this.log.warn('sidecar dispatcher returned an invalid v1 response', {
+        tool: message.tool
+      });
+      this.sendContractFailure(
+        message.id,
+        'sidecar_response_contract_invalid',
+        'Sidecar dispatcher returned data outside the closed v1 contract.'
+      );
+      return;
+    }
+    if (!this.send(response)) {
+      this.sendContractFailure(
+        message.id,
+        'sidecar_response_send_failed',
+        'Sidecar response could not be sent within the v1 transport contract.'
+      );
+    }
+  }
+
+  private sendContractFailure(
+    id: string,
+    reason: string,
+    message: string
+  ): void {
     const response: SidecarResponseMessage = {
       type: 'response',
-      id: message.id,
+      id,
       ts: Date.now(),
-      ok: result.ok,
-      data: result.ok ? result.data : undefined,
-      error: result.ok ? undefined : result.error,
-      content: result.content,
-      structuredContent: result.structuredContent,
-      nextActions: result.nextActions
+      ok: false,
+      error: toolError('invalid_state', message, { reason })
     };
     this.send(response);
   }
 }
-
-
-
-

@@ -6,66 +6,82 @@ import { McpRouter } from './transport/mcp/router';
 import { LocalToolExecutor } from './transport/mcp/executor';
 import { createMcpHttpServer } from './transport/mcp/httpServer';
 import { startMcpNetServer } from './transport/mcp/netServer';
-import { normalizePath } from './transport/mcp/routerUtils';
 import { ResourceStore } from './ports/resources';
 import type { ToolRegistry } from './transport/mcp/tools';
 import {
-  CONFIG_HOST_REQUIRED,
-  CONFIG_PATH_REQUIRED,
-  CONFIG_PORT_RANGE,
   SERVER_HTTP_PERMISSION_MESSAGE,
   SERVER_NET_PERMISSION_DETAIL,
   SERVER_NET_PERMISSION_MESSAGE,
   SERVER_NO_TRANSPORT
 } from './shared/messages';
 import { loadNativeModule } from './shared/nativeModules';
+import { validateServerConfig } from './serverConfig';
+import type { ServerConfig } from './serverConfig';
 import type { IncomingMessage, Server as HttpServer, ServerResponse } from 'http';
 import type { Server as NetServer, Socket } from 'net';
+import type { TransportServerHandle } from './transport/serverLifecycle';
 
-export interface ServerConfig {
-  host: string;
-  port: number;
-  path: string;
-  token?: string;
-}
-
-type StopFn = () => void;
-
-const validateConfig = (config: ServerConfig): { ok: true } | { ok: false; message: string } => {
-  if (!config.host || typeof config.host !== 'string') {
-    return { ok: false, message: CONFIG_HOST_REQUIRED };
-  }
-  const port = Number(config.port);
-  if (!Number.isFinite(port) || port < 1 || port > 65535) {
-    return { ok: false, message: CONFIG_PORT_RANGE };
-  }
-  if (!config.path || typeof config.path !== 'string') {
-    return { ok: false, message: CONFIG_PATH_REQUIRED };
-  }
-  return { ok: true };
-};
+export { isLoopbackHost, validateServerConfig } from './serverConfig';
+export type {
+  ServerConfig,
+  ServerConfigInput,
+  ServerConfigValidationReason,
+  ServerConfigValidationResult
+} from './serverConfig';
 
 type HttpModule = {
-  createServer: (handler: (req: IncomingMessage, res: ServerResponse) => void) => HttpServer;
+  createServer: (
+    options: { maxHeaderSize: number },
+    handler: (req: IncomingMessage, res: ServerResponse) => void
+  ) => HttpServer;
 };
 
 type NetModule = {
   createServer: (handler: (socket: Socket) => void) => NetServer;
 };
 
-const startHttpServer = (http: HttpModule, config: ServerConfig, router: McpRouter, log: Logger): StopFn | null => {
+const startHttpServer = (
+  http: HttpModule,
+  config: ServerConfig,
+  router: McpRouter,
+  log: Logger
+): TransportServerHandle | null => {
   const server = createMcpHttpServer(http, router, log);
+  let startSettled = false;
+  let resolveReady: () => void = () => undefined;
+  let rejectReady: (err: unknown) => void = () => undefined;
+  const ready = new Promise<void>((resolve, reject) => {
+    resolveReady = resolve;
+    rejectReady = reject;
+  });
+  server.on('error', (err: unknown) => {
+    if (startSettled) return;
+    startSettled = true;
+    rejectReady(err);
+  });
   try {
     server.listen(config.port, config.host, () => {
+      if (!startSettled) {
+        startSettled = true;
+        resolveReady();
+      }
       log.info('MCP server started (http)', { host: config.host, port: config.port, path: config.path });
     });
   } catch (err) {
     log.error('MCP server failed to start (http)', { message: errorMessage(err) });
+    startSettled = true;
+    resolveReady();
     return null;
   }
-  return () => {
-    server.close();
-    log.info('MCP server stopped (http)');
+  let stopped = false;
+  return {
+    ready,
+    stop: () => {
+      if (stopped) return;
+      stopped = true;
+      server.close();
+      log.info('MCP server stopped (http)');
+    }
   };
 };
 
@@ -75,19 +91,23 @@ export function startServer(
   log: Logger,
   resources?: ResourceStore,
   toolRegistry?: ToolRegistry
-): StopFn | null {
-  const validation = validateConfig(rawConfig);
+): TransportServerHandle | null {
+  const validation = validateServerConfig(rawConfig);
   if (!validation.ok) {
-    log.error('MCP server config invalid', { message: validation.message });
+    log.error('MCP server config invalid', {
+      reason: validation.reason,
+      message: validation.message
+    });
     return null;
   }
 
-  const config: ServerConfig = { ...rawConfig, path: normalizePath(rawConfig.path) };
+  const config = validation.config;
   const executor = new LocalToolExecutor(dispatcher);
   const router = new McpRouter(
     {
       path: config.path,
       token: config.token,
+      endpoint: { host: config.host, port: config.port },
       serverInfo: { name: PLUGIN_ID, version: PLUGIN_VERSION },
       instructions: SERVER_TOOL_INSTRUCTIONS
     },
@@ -112,13 +132,15 @@ export function startServer(
     optional: false
   });
   if (net && typeof net.createServer === 'function') {
-    return startMcpNetServer(net, { host: config.host, port: config.port }, router, log);
+    try {
+      return startMcpNetServer(net, { host: config.host, port: config.port }, router, log);
+    } catch (err) {
+      log.error('MCP server failed to start (net)', {
+        message: errorMessage(err)
+      });
+    }
   }
 
   log.warn(SERVER_NO_TRANSPORT);
   return null;
 }
-
-
-
-

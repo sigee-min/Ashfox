@@ -7,8 +7,26 @@ import { MCP_UNSUPPORTED_PROTOCOL } from '../src/shared/messages';
 {
   assert.equal(isJsonContentType('application/json'), true);
   assert.equal(isJsonContentType('APPLICATION/JSON; charset=utf-8'), true);
+  assert.equal(isJsonContentType('application/jsonp'), false);
+  assert.equal(isJsonContentType('xapplication/json'), false);
+  assert.equal(isJsonContentType('application/json, text/plain'), false);
   assert.equal(isJsonContentType('text/plain'), false);
   assert.equal(isJsonContentType(undefined), false);
+}
+
+for (const invalid of [
+  { jsonrpc: '2.0', method: '', id: 1 },
+  { jsonrpc: '2.0', method: 'ping', id: true },
+  { jsonrpc: '2.0', method: 'ping', id: {} },
+  { jsonrpc: '2.0', method: 'ping', params: 'invalid' },
+  { jsonrpc: '2.0', method: 'ping', unexpected: true }
+]) {
+  const parsed = parsePostMessage(JSON.stringify(invalid), noopLog);
+  assert.equal(parsed.ok, false);
+  if (!parsed.ok) {
+    assert.equal(parsed.error.id, null);
+    assert.equal(parsed.error.error?.code, -32600);
+  }
 }
 
 {

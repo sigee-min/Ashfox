@@ -1,43 +1,76 @@
-import type { ToolError, ToolName, ToolPayloadMap } from '@ashfox/blockbench-contracts/types/internal';
-import { isRecord } from '../domain/guards';
-import type { McpContentBlock, NextAction } from '@ashfox/blockbench-contracts/types/shared';
+import {
+  createFiniteJsonSnapshot,
+  hasExactContractKeys,
+  INTERNAL_CONTRACT_VERSIONS,
+  isClosedContractRecord,
+  isCurrentInternalContractVersion,
+  isDenseContractArray,
+  isFiniteJsonValue,
+  isNonEmptyContractText
+} from '@ashfox/internal-contracts';
 
-export const PROTOCOL_VERSION = 1 as const;
+import {
+  TOOL_NAMES,
+  TOOL_RESPONSE_EXTENSION_LIMITS,
+  isMcpContentBlockContract,
+  isNextActionContract,
+  isToolErrorContract,
+  type McpContentBlock,
+  type NextAction,
+  type ToolError,
+  type ToolName,
+  type ToolPayloadMap
+} from '@ashfox/blockbench-contracts/types/internal';
+import { toolSchemas } from '@ashfox/blockbench-contracts/mcpSchemas/toolSchemas';
+import { validateSchema } from '@ashfox/blockbench-contracts/mcpSchemas/validation';
+
+export const PROTOCOL_VERSION =
+  INTERNAL_CONTRACT_VERSIONS.sidecarIpc;
 
 export type SidecarRole = 'plugin' | 'sidecar';
 
 export type SidecarHelloMessage = {
   type: 'hello';
-  version: number;
+  version: typeof PROTOCOL_VERSION;
   role: SidecarRole;
   ts: number;
 };
 
 export type SidecarReadyMessage = {
   type: 'ready';
-  version: number;
+  version: typeof PROTOCOL_VERSION;
   ts: number;
 };
 
 export type SidecarRequestMessage = {
-  type: 'request';
-  id: string;
-  ts: number;
-  tool: ToolName;
-  payload: ToolPayloadMap[ToolName] | unknown;
-};
+  [TName in ToolName]: {
+    type: 'request';
+    id: string;
+    ts: number;
+    tool: TName;
+    payload: ToolPayloadMap[TName];
+  };
+}[ToolName];
 
-export type SidecarResponseMessage = {
+type SidecarResponseBase = {
   type: 'response';
   id: string;
   ts: number;
-  ok: boolean;
-  data?: unknown;
-  error?: ToolError;
   content?: McpContentBlock[];
   structuredContent?: unknown;
   nextActions?: NextAction[];
 };
+
+export type SidecarResponseMessage = SidecarResponseBase & (
+  | {
+      ok: true;
+      data: unknown;
+    }
+  | {
+      ok: false;
+      error: ToolError;
+    }
+);
 
 export type SidecarErrorMessage = {
   type: 'error';
@@ -54,52 +87,157 @@ export type SidecarMessage =
   | SidecarResponseMessage
   | SidecarErrorMessage;
 
-const isToolError = (value: unknown): value is ToolError => {
-  if (!isRecord(value)) return false;
-  if (typeof value.code !== 'string') return false;
-  if (typeof value.message !== 'string') return false;
-  if ('fix' in value && typeof value.fix !== 'string' && typeof value.fix !== 'undefined') return false;
-  if ('details' in value && !isRecord(value.details) && typeof value.details !== 'undefined') return false;
-  return true;
+export const normalizeSidecarMessage = (
+  value: unknown
+): SidecarMessage | null => {
+  try {
+    const normalized = createFiniteJsonSnapshot(value, {
+      depthAllowance: 2,
+      omitUndefinedObjectProperties: true
+    });
+    return normalized.ok && isSidecarMessage(normalized.value)
+      ? normalized.value
+      : null;
+  } catch (_error) {
+    return null;
+  }
 };
 
-export const isSidecarMessage = (value: unknown): value is SidecarMessage => {
-  if (!isRecord(value)) return false;
+const HELLO_KEYS = new Set(['type', 'version', 'role', 'ts']);
+const READY_KEYS = new Set(['type', 'version', 'ts']);
+const REQUEST_KEYS = new Set(['type', 'id', 'ts', 'tool', 'payload']);
+const RESPONSE_SUCCESS_KEYS = new Set([
+  'type',
+  'id',
+  'ts',
+  'ok',
+  'data',
+  'content',
+  'structuredContent',
+  'nextActions'
+]);
+const RESPONSE_FAILURE_KEYS = new Set([
+  'type',
+  'id',
+  'ts',
+  'ok',
+  'error',
+  'content',
+  'structuredContent',
+  'nextActions'
+]);
+const ERROR_MESSAGE_KEYS = new Set([
+  'type',
+  'ts',
+  'id',
+  'message',
+  'details'
+]);
+const TOOL_NAME_SET = new Set<string>(TOOL_NAMES);
+const owns = (
+  value: Readonly<Record<string, unknown>>,
+  key: string
+): boolean => Object.prototype.hasOwnProperty.call(value, key);
+
+const hasOnlyKeys = (
+  value: Readonly<Record<string, unknown>>,
+  allowed: ReadonlySet<string>,
+  required: readonly string[]
+): boolean =>
+  Object.keys(value).every((key) => allowed.has(key)) &&
+  required.every((key) => Object.prototype.hasOwnProperty.call(value, key));
+
+const isTimestamp = (value: unknown): value is number =>
+  typeof value === 'number' &&
+  Number.isSafeInteger(value) &&
+  value >= 0;
+
+const hasValidResponseExtensions = (
+  value: Readonly<Record<string, unknown>>
+): boolean =>
+  (!owns(value, 'content') || (
+    isDenseContractArray(value.content) &&
+    value.content.length <= TOOL_RESPONSE_EXTENSION_LIMITS.contentBlocks &&
+    value.content.every(isMcpContentBlockContract)
+  )) &&
+  (!owns(value, 'structuredContent') || isFiniteJsonValue(value.structuredContent)) &&
+  (!owns(value, 'nextActions') || (
+    isDenseContractArray(value.nextActions) &&
+    value.nextActions.length <= TOOL_RESPONSE_EXTENSION_LIMITS.nextActions &&
+    isFiniteJsonValue(value.nextActions) &&
+    value.nextActions.every(isNextActionContract)
+  ));
+
+const isSidecarMessageUnchecked = (value: unknown): value is SidecarMessage => {
+  if (!isClosedContractRecord(value)) return false;
   const type = value.type;
   if (typeof type !== 'string') return false;
 
-  const ts = value.ts;
-  if (typeof ts !== 'number' || !Number.isFinite(ts)) return false;
+  if (!isTimestamp(value.ts)) return false;
 
   if (type === 'hello') {
-    if (typeof value.version !== 'number' || !Number.isFinite(value.version)) return false;
-    return value.role === 'plugin' || value.role === 'sidecar';
+    return hasExactContractKeys(value, HELLO_KEYS) &&
+      isCurrentInternalContractVersion('sidecarIpc', value.version) &&
+      (value.role === 'plugin' || value.role === 'sidecar');
   }
   if (type === 'ready') {
-    return typeof value.version === 'number' && Number.isFinite(value.version);
+    return hasExactContractKeys(value, READY_KEYS) &&
+      isCurrentInternalContractVersion('sidecarIpc', value.version);
   }
   if (type === 'request') {
-    if (typeof value.id !== 'string' || !value.id) return false;
-    if (typeof value.tool !== 'string') return false;
-    return true;
+    const schema = typeof value.tool === 'string'
+      ? toolSchemas[value.tool]
+      : undefined;
+    return hasExactContractKeys(value, REQUEST_KEYS) &&
+      isNonEmptyContractText(value.id) &&
+      typeof value.tool === 'string' &&
+      TOOL_NAME_SET.has(value.tool) &&
+      schema !== undefined &&
+      isFiniteJsonValue(value.payload) &&
+      validateSchema(schema, value.payload).ok;
   }
   if (type === 'response') {
-    if (typeof value.id !== 'string' || !value.id) return false;
-    if (typeof value.ok !== 'boolean') return false;
-    if (!value.ok) {
-      if (typeof value.error === 'undefined') return true;
-      return isToolError(value.error);
+    if (!isNonEmptyContractText(value.id) || !hasValidResponseExtensions(value)) {
+      return false;
     }
-    return true;
+    if (value.ok === true) {
+      return hasOnlyKeys(
+        value,
+        RESPONSE_SUCCESS_KEYS,
+        ['type', 'id', 'ts', 'ok', 'data']
+      ) && isFiniteJsonValue(value.data);
+    }
+    if (value.ok === false) {
+      return hasOnlyKeys(
+        value,
+        RESPONSE_FAILURE_KEYS,
+        ['type', 'id', 'ts', 'ok', 'error']
+      ) && isToolErrorContract(value.error);
+    }
+    return false;
   }
   if (type === 'error') {
-    if (typeof value.message !== 'string') return false;
-    if ('id' in value && typeof value.id !== 'string' && typeof value.id !== 'undefined') return false;
-    if ('details' in value && !isRecord(value.details) && typeof value.details !== 'undefined') return false;
-    return true;
+    return hasOnlyKeys(
+      value,
+      ERROR_MESSAGE_KEYS,
+      ['type', 'ts', 'message']
+    ) &&
+      isNonEmptyContractText(value.message) &&
+      (!owns(value, 'id') || isNonEmptyContractText(value.id)) &&
+      (!owns(value, 'details') || (
+        isClosedContractRecord(value.details) &&
+        isFiniteJsonValue(value.details)
+      ));
   }
   return false;
 };
 
-
-
+export const isSidecarMessage = (
+  value: unknown
+): value is SidecarMessage => {
+  try {
+    return isSidecarMessageUnchecked(value);
+  } catch (_error) {
+    return false;
+  }
+};

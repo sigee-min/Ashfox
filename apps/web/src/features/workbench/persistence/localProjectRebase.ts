@@ -15,6 +15,10 @@ import {
   areProjectAssetsEqual,
   type ProjectAssets
 } from '../../../application/projectAssets';
+import {
+  areVisualReviewLedgersEqual,
+  type VisualReviewReceipt
+} from '../../../application/visualReviewReceipt';
 
 export const rebaseLocalProject = (
   document: ProjectDocument,
@@ -36,6 +40,7 @@ export const rebaseLocalProject = (
     },
     assets,
     activity,
+    visualReviews: [],
     savedAt
   });
 };
@@ -43,6 +48,7 @@ export const rebaseLocalProject = (
 export const requiresAuthoritativeRebase = (
   document: ProjectDocument,
   assets: ProjectAssets,
+  visualReviews: readonly VisualReviewReceipt[],
   existing: LocalProjectRecord
 ): boolean => {
   const order = compareProjectRevisions(
@@ -54,7 +60,11 @@ export const requiresAuthoritativeRebase = (
     (
       document.revision !== existing.revision ||
       !areProjectDocumentsEqual(document, existing.document) ||
-      !areProjectAssetsEqual(assets, existing.assets)
+      !areProjectAssetsEqual(assets, existing.assets) ||
+      !areVisualReviewLedgersEqual(
+        visualReviews,
+        existing.visualReviews
+      )
     )
   );
 };

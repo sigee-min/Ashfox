@@ -2,15 +2,16 @@
 
 Status: accepted and implemented on `feature/iconic`
 
-This is the normative modeling direction for new Ashfox authoring. The
-[legacy occupancy kernel](legacy-occupancy-modeling.md) is retained only as
-history and archive context.
+This is the one normative modeling direction for Ashfox authoring.
 
 ## Decision
 
 Ashfox keeps its UX, semantic authoring API, canonical document, generated
-texture system, review workflow, and exporters. It replaces the internal form
-compiler with a deterministic iconic cuboid grammar.
+texture system, review workflow, and exporters. The
+[authoring authority harness](authoring-authority-harness.md) supplies bounded
+semantic plans through one archetype and unclassified specialists, while this
+hardcut replaces the internal form compiler with one deterministic iconic
+cuboid grammar.
 
 The hardcut is defined by five rules:
 
@@ -30,23 +31,18 @@ few cuboids because of its form grammar, not because a numeric gate forces it.
 Additional cuboids are valid when they carry real silhouette, depth,
 articulation, or identity.
 
-## Stable external boundary
+## Compatibility boundary
 
-The following product surfaces remain stable:
+Only delivered target artifacts are compatibility promises. Java resource
+packs, Bedrock geometry and animations, GeckoLib 5 assets, and glTF 2.0 output
+must continue to satisfy the selected external game or tool contract.
 
-- workbench layout, scene tree, inspection, review, capture, and delivery;
-- `project.create`, project intent, and `model.parts.*` command workflows;
-- semantic `mass`, `segment`, `plate`, `radial`, and `feature` part objects;
-- `ProjectDocument`, semantic hierarchy, joints, and material references;
-- generated `BoneNode` and `CubeNode` scene output;
-- generated texture, UV-atlas, viewport, and export consumers.
-
-The feature object remains the common zero-depth surface API. Extending its
-`motif` vocabulary is additive; it does not introduce a bitmap or raw-pixel
-endpoint.
-
-Generated cubes remain implementation artifacts. The scene tree presents
-semantic parts and surface features, not a raw cube-editing workflow.
+Ashfox is pre-release. Its project document, commands, semantic recipes,
+generated scene, and compiler caches are one internal v1 authority, with no
+migration reader or alternate compiler. A breaking internal improvement
+replaces v1 in place until the first release. Generated cubes remain
+implementation artifacts; semantic parts and surface features remain the only
+authoring authority.
 
 ## Replaced internal boundary
 
@@ -69,7 +65,7 @@ restricted to already occupied model volume.
 
 ```mermaid
 flowchart LR
-  A["Intent and semantic recipe"] --> B["Iconic form planner"]
+  A["Intent and selected archetype/specialists"] --> B["Semantic slot plan"]
   B --> C["Curated cuboid grammar"]
   C --> D["Contact and surface validation"]
   A --> E["Material roles and feature motifs"]
@@ -227,8 +223,8 @@ parts, and details that exist only when zoomed in.
 
 ## Hard-cut projection policy
 
-There is one active modeling compiler and no legacy style selector,
-compatibility branch, or migration mode.
+There is one active modeling compiler and no style selector, compatibility
+branch, or migration mode.
 
 - Every semantic recipe projects through the current iconic grammar.
 - A project file whose materialized scene does not match that projection is
@@ -265,4 +261,4 @@ The hardcut is complete only when tests prove:
 - No numeric cube budget presented as artistic quality.
 - No realistic iris, skin, or material renderer.
 - No subject-specific hardcoding hidden behind part names.
-- No legacy compiler switch or dual projection path.
+- No compiler switch or dual projection path.

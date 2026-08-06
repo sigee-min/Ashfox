@@ -9,5 +9,8 @@
     "./mcpSchemas/*": "./src/mcpSchemas/*.ts",
     "./mcpSchemas/schemas/*": "./src/mcpSchemas/schemas/*.ts",
     "./mcpSchemas/toolSchemas/*": "./src/mcpSchemas/toolSchemas/*.ts"
+  },
+  "dependencies": {
+    "@ashfox/internal-contracts": "^0.0.0"
   }
 }

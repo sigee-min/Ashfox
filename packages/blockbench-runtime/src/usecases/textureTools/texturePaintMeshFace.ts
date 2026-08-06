@@ -4,7 +4,11 @@ import type {
 } from '@ashfox/blockbench-contracts/types/internal';
 import type { ToolError } from '@ashfox/blockbench-contracts/types/internal';
 import { checkDimensions, mapDimensionError } from '../../domain/dimensions';
-import { isTextureOp, type TextureOpLike } from '../../domain/textureOps';
+import {
+  isTextureOp,
+  type TextureOpLike,
+  type TextureRasterFailureReason
+} from '../../domain/textureOps';
 import { applyTextureOps, parseHexColor } from '../../domain/texturePaint';
 import { applyUvPaintPixels } from '../../domain/uv/paintPixels';
 import {
@@ -328,7 +332,11 @@ const normalizePaintMeshInput = (
     if (!payload.op || typeof payload.op !== 'object') {
       return fail({ code: 'invalid_payload', message: TEXTURE_MESH_FACE_OP_REQUIRED });
     }
-    return fail({ code: 'invalid_payload', message: TEXTURE_OP_INVALID('paint_mesh_face') });
+    return fail({
+      code: 'invalid_payload',
+      message: TEXTURE_OP_INVALID('paint_mesh_face'),
+      details: { opIndex: 0, reason: 'invalid_op' }
+    });
   }
 
   const coordSpace = payload.coordSpace ?? 'face';
@@ -780,19 +788,24 @@ const applySingleTextureOp = (
   const res = applyTextureOps(pixels, width, height, [op], parseHexColor);
   if (!res.ok) {
     const reason = mapTextureOpFailureReason(res.reason, textureLabel);
-    return fail({ code: 'invalid_payload', message: reason, details: { opIndex: res.opIndex } });
+    return fail({
+      code: 'invalid_payload',
+      message: reason,
+      details: { opIndex: res.opIndex, reason: res.reason }
+    });
   }
   return ok(undefined);
 };
 
 const mapTextureOpFailureReason = (
-  reason: 'invalid_color' | 'invalid_line_width' | 'invalid_op',
+  reason: 'invalid_color' | 'invalid_line_width' | TextureRasterFailureReason,
   textureLabel: string
 ): string => {
   switch (reason) {
     case 'invalid_line_width':
       return TEXTURE_OP_LINEWIDTH_INVALID(textureLabel);
     case 'invalid_op':
+    case 'raster_work_exceeded':
       return TEXTURE_OP_INVALID(textureLabel);
     default:
       return TEXTURE_OP_COLOR_INVALID(textureLabel);

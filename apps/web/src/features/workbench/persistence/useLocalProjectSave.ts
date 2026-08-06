@@ -13,12 +13,16 @@ import type {
 import {
   compareProjectRevisions,
   createLocalProjectRecord,
+  areLocalProjectRecordsEqual,
   isValidLocalProjectRecord,
   type LocalProjectRecord
 } from '../../../application/localProjectRecord';
 import type {
   ProjectAssets
 } from '../../../application/projectAssets';
+import type {
+  VisualReviewReceipt
+} from '../../../application/visualReviewReceipt';
 import {
   saveLocalProject
 } from './indexedDbProjectRepository';
@@ -46,6 +50,7 @@ interface UseLocalProjectSaveInput {
   document: ProjectDocument;
   assets: ProjectAssets;
   activity: readonly CommandReceipt[];
+  visualReviews: readonly VisualReviewReceipt[];
   lifecycle: PersistenceLifecycle;
   dispatch: Dispatch<PersistenceSessionAction>;
   onHydrate: (record: LocalProjectRecord) => void;
@@ -61,6 +66,7 @@ export const useLocalProjectSave = ({
   document,
   assets,
   activity,
+  visualReviews,
   lifecycle,
   dispatch,
   onHydrate,
@@ -96,6 +102,7 @@ export const useLocalProjectSave = ({
         document,
         assets,
         activity,
+        visualReviews,
         savedAt
       });
 
@@ -151,6 +158,9 @@ export const useLocalProjectSave = ({
             session,
             lastSavedAt: result.current.savedAt
           });
+          if (!areLocalProjectRecordsEqual(result.current, record)) {
+            onExternal(result.current);
+          }
           if (result.status === 'stored') {
             publishLocalRevision({
               projectId,
@@ -185,6 +195,7 @@ export const useLocalProjectSave = ({
     persistence.authoritative,
     persistence.ready,
     projectGeneration,
-    projectId
+    projectId,
+    visualReviews
   ]);
 };

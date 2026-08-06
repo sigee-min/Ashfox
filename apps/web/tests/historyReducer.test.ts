@@ -247,7 +247,7 @@ const partCommitted = historyReducer(partInitial, {
     }]
   },
   actorId: 'test',
-  source: 'agent',
+  source: 'web',
   committedAt: '2026-01-01T00:00:02.000Z'
 });
 assert.equal(partCommitted.lastCommandOutcome?.status, 'committed');

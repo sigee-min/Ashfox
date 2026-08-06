@@ -1,13 +1,21 @@
 import type { EntityId } from '../model';
 
-export type InvariantSeverity = 'error' | 'warning' | 'info';
+export const INVARIANT_SEVERITIES = [
+  'error',
+  'warning',
+  'info'
+] as const;
+export type InvariantSeverity =
+  (typeof INVARIANT_SEVERITIES)[number];
 
 export type InvariantCode =
   | 'document.schema_version'
+  | 'document.unknown_property'
   | 'document.required_value'
   | 'document.invalid_timestamp'
   | 'document.invalid_setting'
   | 'document.invalid_intent'
+  | 'document.invalid_authoring_profile'
   | 'identity.key_mismatch'
   | 'identity.duplicate'
   | 'scene.root_duplicate'

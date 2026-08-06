@@ -27,8 +27,18 @@ const record = (seq: number) => ({
   ts: new Date(1_700_000_100_000 + seq).toISOString(),
   route: 'tool' as const,
   op: `flush_${seq}`,
-  response: { ok: true as const }
+  response: { ok: true as const, data: { seq } }
 });
+
+const header = () => ({
+  kind: 'header' as const,
+  schemaVersion: 1 as const,
+  createdAt: '2026-08-06T00:00:00.000Z'
+});
+
+const appendHeader = (store: TraceLogStore): void => {
+  assert.equal(store.append(header()).error, undefined);
+};
 
 const createLogger = () => {
   const warnEntries: Array<{ message: string; meta?: Record<string, unknown> }> = [];
@@ -46,6 +56,7 @@ const createLogger = () => {
 {
   let now = 0;
   const store = new TraceLogStore({ autoFlush: false, maxEntries: 10 });
+  appendHeader(store);
   const writer = new QueueWriter();
   const scheduler = new TraceLogFlushScheduler({
     store,
@@ -84,6 +95,8 @@ const createLogger = () => {
 {
   const storeA = new TraceLogStore({ autoFlush: false, maxEntries: 10 });
   const storeB = new TraceLogStore({ autoFlush: false, maxEntries: 10 });
+  appendHeader(storeA);
+  appendHeader(storeB);
   const writerA = new QueueWriter();
   const writerB = new QueueWriter();
   const scheduler = new TraceLogFlushScheduler({
@@ -112,6 +125,7 @@ const createLogger = () => {
   const errA: ToolError = { code: 'unknown', message: 'same' };
   const errB: ToolError = { code: 'unknown', message: 'different' };
   const store = new TraceLogStore({ autoFlush: false, maxEntries: 10 });
+  appendHeader(store);
   const writer = new QueueWriter([errA, errA, errB, null, errB]);
   const { logger, warnEntries } = createLogger();
   const scheduler = new TraceLogFlushScheduler({
@@ -136,6 +150,7 @@ const createLogger = () => {
 // null writer path is a no-op.
 {
   const store = new TraceLogStore({ autoFlush: false, maxEntries: 10 });
+  appendHeader(store);
   const scheduler = new TraceLogFlushScheduler({
     store,
     writer: null,
@@ -146,6 +161,5 @@ const createLogger = () => {
   scheduler.recorded();
   scheduler.flushNow();
   scheduler.flushNow(true);
-  assert.equal(store.size(), 1);
+  assert.equal(store.size(), 2);
 }
-

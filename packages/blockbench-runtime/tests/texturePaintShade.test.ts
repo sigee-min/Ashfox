@@ -20,6 +20,89 @@ const collectColors = (data: Uint8ClampedArray): Set<string> => {
   assert.equal(parseHexColor('#ff00zz'), null);
   assert.equal(parseHexColor('#12'), null);
   assert.equal(parseHexColor('##112233'), null);
+  assert.equal(parseHexColor('112233'), null);
+  assert.equal(isTextureOp({
+    op: 'set_pixel',
+    x: 0,
+    y: 0,
+    color: '#fff'
+  }), false);
+  assert.equal(isTextureOp({
+    op: 'set_pixel',
+    x: 0,
+    y: 0,
+    color: '#11223344'
+  }), true);
+}
+
+{
+  const unsafeLine = {
+    op: 'draw_line',
+    x1: -1e12,
+    y1: 0,
+    x2: 1e12,
+    y2: 0,
+    lineWidth: 1,
+    color: '#ffffff'
+  };
+  const unsafeBrush = {
+    ...unsafeLine,
+    x1: 0,
+    x2: 1,
+    lineWidth: 1e12
+  };
+  assert.equal(isTextureOp(unsafeLine), false);
+  assert.equal(isTextureOp(unsafeBrush), false);
+  const data = new Uint8ClampedArray(16 * 16 * 4);
+  const lineResult = applyTextureOps(
+    data,
+    16,
+    16,
+    [unsafeLine],
+    parseHexColor
+  );
+  assert.equal(lineResult.ok, false);
+  if (!lineResult.ok) assert.equal(lineResult.reason, 'invalid_op');
+
+  const clippedLine = {
+    op: 'draw_line',
+    x1: -65_536,
+    y1: 0,
+    x2: 65_536,
+    y2: 0,
+    lineWidth: 1,
+    color: '#ffffff'
+  } as const;
+  assert.equal(isTextureOp(clippedLine), true);
+  assert.equal(
+    applyTextureOps(data, 16, 16, [clippedLine], parseHexColor).ok,
+    true
+  );
+  assert.equal(data[3], 255);
+}
+
+{
+  const data = new Uint8ClampedArray(16 * 16 * 4);
+  const fullCanvasOp = {
+    op: 'fill_rect',
+    x: 0,
+    y: 0,
+    width: 16,
+    height: 16,
+    color: '#112233'
+  } as const;
+  const result = applyTextureOps(
+    data,
+    16,
+    16,
+    Array.from({ length: 1025 }, () => fullCanvasOp),
+    parseHexColor
+  );
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.reason, 'raster_work_exceeded');
+    assert.equal(result.opIndex, 1024);
+  }
 }
 
 {

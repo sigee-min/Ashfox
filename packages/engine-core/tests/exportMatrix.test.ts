@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 
 import {
-  executeCommandBatch,
+  executeSystemCommandBatch,
   exportProductionProject,
   exportProductionProjectResolved,
   ProductionExportError,
@@ -108,12 +108,12 @@ const authorProject = (target: ExportPreset): ProjectDocument => {
       }
     }
   ];
-  const result = executeCommandBatch(base, {
+  const result = executeSystemCommandBatch(base, {
     batchId: `batch-export-${target}`,
     baseProjectId: base.id,
     baseRevision: base.revision,
     operations
-  }, { source: 'system' });
+  });
   if (!result.ok) throw new Error(result.error.message);
   const report = validateProjectDocument(result.document);
   assert.equal(report.valid, true);

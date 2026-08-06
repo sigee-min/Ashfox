@@ -5,10 +5,6 @@ import { SidecarLaunchConfig } from './types';
 import { PLUGIN_ID } from '../config';
 import { resolveRegisteredPluginPath } from '../adapters/blockbench/pluginRegistry';
 import {
-  CONFIG_HOST_REQUIRED,
-  CONFIG_PATH_REQUIRED,
-  CONFIG_PATH_SLASH_REQUIRED,
-  CONFIG_PORT_RANGE,
   SIDECAR_CHILD_PROCESS_UNAVAILABLE,
   SIDECAR_ENTRY_NOT_FOUND,
   SIDECAR_EXECPATH_UNAVAILABLE,
@@ -18,6 +14,7 @@ import {
   SIDECAR_STDIO_UNAVAILABLE
 } from '../shared/messages';
 import { loadNativeModule } from '../shared/nativeModules';
+import { validateServerConfig } from '../serverConfig';
 
 type PathModule = {
   basename?: (path: string) => string;
@@ -29,9 +26,17 @@ type ChildProcessModule = {
   spawn: (
     command: string,
     args: string[],
-    options: { stdio: ['pipe', 'pipe', 'pipe']; windowsHide: boolean }
+    options: {
+      stdio: ['pipe', 'pipe', 'pipe'];
+      windowsHide: boolean;
+      env: Record<string, string | undefined>;
+    }
   ) => ChildProcessHandle;
-  spawnSync?: (command: string, args: string[], options: { windowsHide: boolean }) => { status?: number | null };
+};
+
+type ProcessModule = {
+  execPath?: string;
+  env?: Record<string, string | undefined>;
 };
 
 type StdioReadable = {
@@ -56,6 +61,19 @@ type ChildProcessHandle = {
 
 const RESTART_INITIAL_DELAY_MS = 500;
 const RESTART_MAX_DELAY_MS = 30_000;
+const RESTART_STABLE_UPTIME_MS = 30_000;
+
+type SidecarProcessClock = {
+  setTimeout: (handler: () => void, delayMs: number) => ReturnType<typeof setTimeout>;
+  clearTimeout: (handle: ReturnType<typeof setTimeout>) => void;
+  random: () => number;
+};
+
+const SYSTEM_CLOCK: SidecarProcessClock = {
+  setTimeout: (handler, delayMs) => setTimeout(handler, delayMs),
+  clearTimeout: (handle) => clearTimeout(handle),
+  random: () => Math.random()
+};
 
 export class SidecarProcess {
   private readonly config: SidecarLaunchConfig;
@@ -66,22 +84,35 @@ export class SidecarProcess {
   private stopRequested = false;
   private restartDelayMs = RESTART_INITIAL_DELAY_MS;
   private disableRunAsNode = false;
+  private restartTimer: ReturnType<typeof setTimeout> | null = null;
+  private stabilityTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly clock: SidecarProcessClock;
 
-  constructor(config: SidecarLaunchConfig, dispatcher: Dispatcher, log: Logger) {
+  constructor(
+    config: SidecarLaunchConfig,
+    dispatcher: Dispatcher,
+    log: Logger,
+    clock: SidecarProcessClock = SYSTEM_CLOCK
+  ) {
     this.config = config;
     this.dispatcher = dispatcher;
     this.log = log;
+    this.clock = clock;
   }
 
   start(): boolean {
+    this.clearRestartTimer();
     if (this.child) return true;
     this.stopRequested = false;
-    this.restartDelayMs = RESTART_INITIAL_DELAY_MS;
-    const validation = this.validateConfig();
+    const validation = validateServerConfig(this.config);
     if (!validation.ok) {
-      this.log.error('sidecar config invalid', { message: validation.message });
+      this.log.error('sidecar config invalid', {
+        reason: validation.reason,
+        message: validation.message
+      });
       return false;
     }
+    const serverConfig = validation.config;
 
     const childProcess = loadNativeModule<ChildProcessModule>('child_process', {
       message: SIDECAR_PERMISSION_MESSAGE,
@@ -103,7 +134,11 @@ export class SidecarProcess {
       this.log.error(SIDECAR_ENTRY_NOT_FOUND);
       return false;
     }
-    const execPath = this.resolveExecPath(childProcess);
+    const processModule = loadNativeModule<ProcessModule>('process', {
+      message: SIDECAR_PERMISSION_MESSAGE,
+      optional: true
+    });
+    const execPath = this.resolveExecPath(processModule);
     if (!execPath) {
       this.log.error(SIDECAR_EXECPATH_UNAVAILABLE);
       return false;
@@ -115,18 +150,23 @@ export class SidecarProcess {
       ...(useRunAsNode ? ['--run-as-node'] : []),
       sidecarPath,
       '--host',
-      this.config.host,
+      serverConfig.host,
       '--port',
-      String(this.config.port),
+      String(serverConfig.port),
       '--path',
-      this.config.path
+      serverConfig.path
     ];
+    const env: Record<string, string | undefined> = {
+      ...(processModule?.env ?? {})
+    };
+    if (serverConfig.token) env.ASHFOX_TOKEN = serverConfig.token;
 
     let child: ChildProcessHandle;
     try {
       child = childProcess.spawn(execPath, args, {
         stdio: ['pipe', 'pipe', 'pipe'],
-        windowsHide: true
+        windowsHide: true,
+        env
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -155,16 +195,21 @@ export class SidecarProcess {
       }
     });
     child.on('exit', (code: number | null, signal: string | null) => {
-      if (this.child !== current) return;
-      this.cleanup();
-      this.log.warn('sidecar exited', { code, signal });
-      if (!this.stopRequested) {
-        this.scheduleRestart();
-      }
+      this.handleTermination(current, 'exit', { code, signal });
     });
     child.on('error', (err: Error) => {
-      this.log.error('sidecar process error', { message: errorMessage(err) });
+      this.handleTermination(current, 'error', {
+        message: errorMessage(err)
+      });
     });
+
+    this.clearStabilityTimer();
+    this.stabilityTimer = this.clock.setTimeout(() => {
+      this.stabilityTimer = null;
+      if (this.child === current && !this.stopRequested) {
+        this.restartDelayMs = RESTART_INITIAL_DELAY_MS;
+      }
+    }, RESTART_STABLE_UPTIME_MS);
 
     this.log.info('sidecar process spawned', { pid: child.pid });
     return true;
@@ -172,45 +217,62 @@ export class SidecarProcess {
 
   stop() {
     this.stopRequested = true;
+    this.clearRestartTimer();
+    this.clearStabilityTimer();
     if (this.child?.kill) {
       this.child.kill();
     }
     this.cleanup();
+    this.restartDelayMs = RESTART_INITIAL_DELAY_MS;
   }
 
   private cleanup() {
+    this.clearStabilityTimer();
     this.host?.dispose();
     this.host = null;
     this.child = null;
   }
 
   private scheduleRestart() {
+    if (this.restartTimer || this.stopRequested) return;
     const delay = this.restartDelayMs;
     this.restartDelayMs = Math.min(this.restartDelayMs * 2, RESTART_MAX_DELAY_MS);
-    const jitter = Math.round(delay * 0.2 * Math.random());
+    const jitter = Math.round(delay * 0.2 * this.clock.random());
     const nextDelay = delay + jitter;
-    setTimeout(() => {
-      if (!this.stopRequested) {
-        this.start();
+    this.restartTimer = this.clock.setTimeout(() => {
+      this.restartTimer = null;
+      if (!this.stopRequested && !this.start()) {
+        this.scheduleRestart();
       }
     }, nextDelay);
   }
 
-  private validateConfig(): { ok: true } | { ok: false; message: string } {
-    if (!this.config.host || typeof this.config.host !== 'string') {
-      return { ok: false, message: CONFIG_HOST_REQUIRED };
+  private handleTermination(
+    child: ChildProcessHandle,
+    kind: 'error' | 'exit',
+    meta: Record<string, unknown>
+  ): void {
+    if (this.child !== child) return;
+    this.cleanup();
+    if (kind === 'error') {
+      this.log.error('sidecar process error', meta);
+      child.kill?.();
+    } else {
+      this.log.warn('sidecar exited', meta);
     }
-    const port = Number(this.config.port);
-    if (!Number.isFinite(port) || port < 1 || port > 65535) {
-      return { ok: false, message: CONFIG_PORT_RANGE };
-    }
-    if (!this.config.path || typeof this.config.path !== 'string') {
-      return { ok: false, message: CONFIG_PATH_REQUIRED };
-    }
-    if (!this.config.path.startsWith('/')) {
-      return { ok: false, message: CONFIG_PATH_SLASH_REQUIRED };
-    }
-    return { ok: true };
+    this.scheduleRestart();
+  }
+
+  private clearRestartTimer(): void {
+    if (!this.restartTimer) return;
+    this.clock.clearTimeout(this.restartTimer);
+    this.restartTimer = null;
+  }
+
+  private clearStabilityTimer(): void {
+    if (!this.stabilityTimer) return;
+    this.clock.clearTimeout(this.stabilityTimer);
+    this.stabilityTimer = null;
   }
 
   private resolveSidecarPath(pathModule: PathModule): string | null {
@@ -219,23 +281,13 @@ export class SidecarProcess {
     return pathModule.join(pathModule.dirname(pluginPath), 'ashfox-sidecar.js');
   }
 
-  private resolveExecPath(childProcess: ChildProcessModule): string | null {
+  private resolveExecPath(processModule: ProcessModule | null): string | null {
     const override = this.config.execPath?.trim();
     if (override) return override;
-    try {
-      if (typeof process !== 'undefined' && process?.execPath) {
-        return process.execPath as string;
-      }
-    } catch (err) {
-      /* ignore */
-    }
-    if (childProcess?.spawnSync) {
-      const probe = childProcess.spawnSync('node', ['-v'], { windowsHide: true });
-      if (probe?.status === 0) {
-        return 'node';
-      }
-    }
-    return null;
+    const execPath = processModule?.execPath;
+    return typeof execPath === 'string' && execPath.trim().length > 0
+      ? execPath.trim()
+      : null;
   }
 }
 
@@ -249,6 +301,3 @@ function isPathModule(value: unknown): value is PathModule {
   const mod = value as { join?: unknown; dirname?: unknown };
   return typeof mod.join === 'function' && typeof mod.dirname === 'function';
 }
-
-
-

@@ -1,7 +1,18 @@
 import type { ProjectDiff, ProjectState, ProjectStateDetail, ToolError, ToolResponse } from '@ashfox/blockbench-contracts/types/internal';
-import type { TraceLogEntry, TraceLogHeader } from '@ashfox/blockbench-contracts/types/traceLog';
+import {
+  TRACE_LOG_SCHEMA_VERSION,
+  type TraceLogEntry,
+  type TraceLogHeader
+} from '@ashfox/blockbench-contracts/types/traceLog';
 import type { UsecaseResult } from '../usecases/result';
-import { summarizeProjectDiff, summarizeProjectState, sanitizeTraceValue, sanitizeToolResponse } from './traceLogFormat';
+import {
+  normalizeTraceContractValue,
+  sanitizeToolError,
+  sanitizeToolResponse,
+  sanitizeTraceValue,
+  summarizeProjectDiff,
+  summarizeProjectState
+} from './traceLogFormat';
 import { TraceLogStore } from './traceLogStore';
 import type { TraceLogWriter } from '../ports/traceLog';
 
@@ -77,21 +88,37 @@ export class TraceRecorder {
     if (options.onRecord !== undefined) this.onRecord = options.onRecord;
   }
 
-  record(op: string, payload: unknown, response: ToolResponse<unknown>): void {
-    if (!this.enabled) return;
+  record(
+    op: string,
+    payload: unknown,
+    response: ToolResponse<unknown>
+  ): ToolError | null {
+    if (!this.enabled) return null;
+    let writeError: ToolError | null = null;
     if (!this.headerWritten) {
       const header = this.buildHeader();
-      this.store.append(header);
+      const appended = this.store.append(header);
+      if (!appended.text) {
+        return appended.error ?? {
+          code: 'invalid_state',
+          message: 'Trace log header was not accepted.'
+        };
+      }
       this.headerWritten = true;
+      writeError = appended.error ?? null;
     }
 
+    const sanitizedPayload = sanitizeTraceValue(payload);
+    const nextSeq = this.seq + 1;
     const entry: TraceLogEntry = {
       kind: 'step',
-      seq: ++this.seq,
+      seq: nextSeq,
       ts: new Date().toISOString(),
       route: 'tool',
       op,
-      payload: sanitizeTraceValue(payload),
+      ...(sanitizedPayload !== undefined
+        ? { payload: sanitizedPayload }
+        : {}),
       response: sanitizeToolResponse(response)
     };
 
@@ -103,33 +130,55 @@ export class TraceRecorder {
     const includeUsage = detail.includeUsage ?? this.includeUsage;
 
     const previousRevision = this.lastRevision;
+    let nextRevision = previousRevision;
     const stateResult = includeState ? this.readState(stateDetail, includeUsage) : null;
     if (stateResult?.ok) {
-      entry.state = stateDetail === 'full' ? stateResult.state : summarizeProjectState(stateResult.state);
-      this.lastRevision = stateResult.state.revision;
+      entry.state = stateDetail === 'full'
+        ? normalizeTraceContractValue(stateResult.state)
+        : summarizeProjectState(stateResult.state);
+      nextRevision = stateResult.state.revision;
     } else if (stateResult && !stateResult.ok) {
-      entry.stateError = stateResult.error;
+      entry.stateError = sanitizeToolError(stateResult.error);
     }
 
     if (includeDiff && previousRevision && stateResult?.ok && previousRevision !== stateResult.state.revision) {
       const diffResult = this.readDiff(previousRevision, diffDetail);
       if (diffResult.ok) {
-        entry.diff = diffDetail === 'full' ? diffResult.diff : summarizeProjectDiff(diffResult.diff);
+        if (diffResult.diff.currentRevision === stateResult.state.revision) {
+          entry.diff = diffDetail === 'full'
+            ? normalizeTraceContractValue(diffResult.diff)
+            : summarizeProjectDiff(diffResult.diff);
+        } else {
+          entry.diffError = {
+            code: 'invalid_state',
+            message: 'Project changed while collecting trace observations.',
+            details: { reason: 'trace_log_observation_revision_changed' }
+          };
+        }
       } else {
-        entry.diffError = diffResult.error;
+        entry.diffError = sanitizeToolError(diffResult.error);
       }
     }
 
-    this.store.append(entry);
+    const appended = this.store.append(entry);
+    if (!appended.text) {
+      return appended.error ?? {
+        code: 'invalid_state',
+        message: 'Trace log step was not accepted.'
+      };
+    }
+    this.seq = nextSeq;
+    this.lastRevision = nextRevision;
     this.onRecord?.();
+    return appended.error ?? writeError;
   }
 
-  flush(): void {
-    this.store.flush();
+  flush(): ToolError | null {
+    return this.store.flush();
   }
 
-  flushTo(writer?: TraceLogWriter | null): void {
-    this.store.flush(writer ?? null);
+  flushTo(writer?: TraceLogWriter | null): ToolError | null {
+    return this.store.flush(writer ?? null);
   }
 
   getText(): string {
@@ -158,7 +207,7 @@ export class TraceRecorder {
     const detailUsage = this.detailRules.some((rule) => rule.includeUsage === true);
     return {
       kind: 'header',
-      schemaVersion: 1,
+      schemaVersion: TRACE_LOG_SCHEMA_VERSION,
       createdAt: new Date().toISOString(),
       ...(this.pluginVersion ? { pluginVersion: this.pluginVersion } : {}),
       ...(this.blockbenchVersion ? { blockbenchVersion: this.blockbenchVersion } : {}),
@@ -173,8 +222,3 @@ export class TraceRecorder {
     return {};
   }
 }
-
-
-
-
-

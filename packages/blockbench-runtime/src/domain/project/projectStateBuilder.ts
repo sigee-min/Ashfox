@@ -69,9 +69,11 @@ export class ProjectStateBuilder {
       name: snapshot.name ?? null,
       format: snapshot.format ?? null,
       formatId: snapshot.formatId ?? null,
-      dirty: snapshot.dirty,
       revision,
-      uvPixelsPerBlock: snapshot.uvPixelsPerBlock,
+      ...(snapshot.dirty !== undefined ? { dirty: snapshot.dirty } : {}),
+      ...(snapshot.uvPixelsPerBlock !== undefined
+        ? { uvPixelsPerBlock: snapshot.uvPixelsPerBlock }
+        : {}),
       counts
     };
     if (snapshot.textures.length > 0) {
@@ -80,7 +82,7 @@ export class ProjectStateBuilder {
     if (detail === 'full') {
       project.bones = snapshot.bones;
       project.cubes = snapshot.cubes;
-      project.meshes = snapshot.meshes;
+      if (snapshot.meshes !== undefined) project.meshes = snapshot.meshes;
       project.animations = snapshot.animations;
     }
     return project;
@@ -95,7 +97,6 @@ export class ProjectStateBuilder {
     return match ? match[0] : null;
   }
 }
-
 
 
 

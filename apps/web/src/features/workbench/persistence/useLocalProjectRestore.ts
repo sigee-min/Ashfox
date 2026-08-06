@@ -55,6 +55,7 @@ export const useLocalProjectRestore = ({
     currentDocument,
     currentAssets,
     currentActivity,
+    currentVisualReviews,
     session: sessionRef,
     saveRequest
   } = lifecycle;
@@ -94,6 +95,7 @@ export const useLocalProjectRestore = ({
               requiresAuthoritativeRebase(
                 document,
                 currentAssets.current,
+                currentVisualReviews.current,
                 record
               )
             ) {
@@ -138,7 +140,7 @@ export const useLocalProjectRestore = ({
         compareProjectRevisions(
           record.revision,
           currentDocument.current.revision
-        ) <= 0
+        ) < 0
       ) {
         return;
       }

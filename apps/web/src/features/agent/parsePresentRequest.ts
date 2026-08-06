@@ -1,8 +1,16 @@
-import type {
-  PresentFailure,
-  PresentRequest,
-  VisualReviewIssue
+import {
+  VISUAL_REVIEW_CAMERAS,
+  VISUAL_REVIEW_ISSUES,
+  VISUAL_REVIEW_MILESTONES,
+  type PresentFailure,
+  type PresentRequest,
+  type VisualReviewCamera,
+  type VisualReviewMilestone,
+  type VisualReviewIssue
 } from './types';
+import {
+  isClosedContractRecord
+} from '@ashfox/internal-contracts';
 
 interface ParsePresentRequestSuccess {
   ok: true;
@@ -18,11 +26,6 @@ export type ParsePresentRequestResult =
   | ParsePresentRequestSuccess
   | ParsePresentRequestFailure;
 
-const isRecord = (
-  value: unknown
-): value is Readonly<Record<string, unknown>> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
 const failure = (
   path: string,
   expected: string
@@ -37,31 +40,50 @@ const failure = (
 
 const PRESENT_KEYS = new Set([
   'review',
+  'milestone',
+  'camera',
   'frameNonce',
-  'issues'
+  'issues',
+  'checkIds',
+  'failedCheckIds'
+]);
+
+const REVIEW_MILESTONES = new Set<VisualReviewMilestone>([
+  ...VISUAL_REVIEW_MILESTONES
+]);
+
+const REVIEW_CAMERAS = new Set<VisualReviewCamera>([
+  ...VISUAL_REVIEW_CAMERAS
 ]);
 
 const REVIEW_ISSUES =
-  new Set<VisualReviewIssue>([
-    'silhouette',
-    'proportion',
-    'connection',
-    'clipping',
-    'focal_detail',
-    'material',
-    'pivot',
-    'motion',
-    'other'
-  ]);
+  new Set<VisualReviewIssue>(VISUAL_REVIEW_ISSUES);
+
+const CHECK_ID_PATTERN = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
+const MAX_CHECK_IDS = 64;
+
+const validCheckIds = (
+  value: unknown
+): value is readonly string[] =>
+  Array.isArray(value) &&
+  value.length <= MAX_CHECK_IDS &&
+  value.every(
+    (id) =>
+      typeof id === 'string' &&
+      id.length <= 128 &&
+      CHECK_ID_PATTERN.test(id)
+  ) &&
+  new Set(value).size === value.length;
 
 export const parsePresentRequest = (
   value: unknown
 ): ParsePresentRequestResult => {
-  if (!isRecord(value)) {
+  if (!isClosedContractRecord(value)) {
     return failure(
       '$',
-      '{review:"next"} | {review:"accept",frameNonce} | ' +
-      '{review:"reject",frameNonce,issues}'
+      '{review:"next"} | {review:"preview",milestone?,camera?} | ' +
+      '{review:"accept",frameNonce,checkIds} | ' +
+      '{review:"reject",frameNonce,issues,failedCheckIds}'
     );
   }
   const unknownProperty = Object.keys(value).find(
@@ -84,11 +106,63 @@ export const parsePresentRequest = (
       }
     };
   }
+  if (value.review === 'preview') {
+    const invalidPreviewProperty = Object.keys(value).find(
+      (key) =>
+        key !== 'review' &&
+        key !== 'milestone' &&
+        key !== 'camera'
+    );
+    if (invalidPreviewProperty) {
+      return failure(
+        invalidPreviewProperty,
+        'no additional properties for preview'
+      );
+    }
+    if (
+      'milestone' in value &&
+      (
+        typeof value.milestone !== 'string' ||
+        !REVIEW_MILESTONES.has(
+          value.milestone as VisualReviewMilestone
+        )
+      )
+    ) {
+      return failure(
+        'milestone',
+        'archetype | specialists'
+      );
+    }
+    if (
+      'camera' in value &&
+      (
+        typeof value.camera !== 'string' ||
+        !REVIEW_CAMERAS.has(value.camera as VisualReviewCamera)
+      )
+    ) {
+      return failure(
+        'camera',
+        'perspective | native | front | side | top'
+      );
+    }
+    return {
+      ok: true,
+      request: {
+        review: 'preview',
+        ...('milestone' in value
+          ? { milestone: value.milestone as VisualReviewMilestone }
+          : {}),
+        ...('camera' in value
+          ? { camera: value.camera as VisualReviewCamera }
+          : {})
+      }
+    };
+  }
   if (
     value.review !== 'accept' &&
     value.review !== 'reject'
   ) {
-    return failure('review', 'next | accept | reject');
+    return failure('review', 'next | preview | accept | reject');
   }
   if (
     typeof value.frameNonce !== 'number' ||
@@ -99,21 +173,34 @@ export const parsePresentRequest = (
   }
   if (value.review === 'accept') {
     if (
-      Object.keys(value).length !== 2 ||
-      'issues' in value
+      Object.keys(value).length !== 3 ||
+      !('checkIds' in value)
     ) {
       return failure(
         '$',
-        '{review:"accept",frameNonce}'
+        '{review:"accept",frameNonce,checkIds}'
+      );
+    }
+    if (!validCheckIds(value.checkIds)) {
+      return failure(
+        'checkIds',
+        '0-64 unique canonical review check IDs'
       );
     }
     return {
       ok: true,
       request: {
         review: 'accept',
-        frameNonce: value.frameNonce
+        frameNonce: value.frameNonce,
+        checkIds: [...value.checkIds]
       }
     };
+  }
+  if (Object.keys(value).length !== 4) {
+    return failure(
+      '$',
+      '{review:"reject",frameNonce,issues,failedCheckIds}'
+    );
   }
   if (
     !Array.isArray(value.issues) ||
@@ -131,6 +218,12 @@ export const parsePresentRequest = (
       '1-9 unique visual review issue codes'
     );
   }
+  if (!validCheckIds(value.failedCheckIds)) {
+    return failure(
+      'failedCheckIds',
+      '0-64 unique canonical review check IDs'
+    );
+  }
   return {
     ok: true,
     request: {
@@ -138,7 +231,8 @@ export const parsePresentRequest = (
       frameNonce: value.frameNonce,
       issues: [
         ...value.issues
-      ] as readonly VisualReviewIssue[]
+      ] as readonly VisualReviewIssue[],
+      failedCheckIds: [...value.failedCheckIds]
     }
   };
 };

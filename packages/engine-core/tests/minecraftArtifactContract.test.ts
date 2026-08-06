@@ -124,7 +124,7 @@ const assertJavaTextureReferencesResolve = (
 
 {
   const modern = createJavaProject();
-  const legacy: ProjectDocument = {
+  const olderPackFormatProject: ProjectDocument = {
     ...modern,
     formatProfile: {
       ...modern.formatProfile,
@@ -133,7 +133,7 @@ const assertJavaTextureReferencesResolve = (
       resourcePackFormat: 55
     }
   };
-  const bundle = exportMinecraftJavaBlock(legacy);
+  const bundle = exportMinecraftJavaBlock(olderPackFormatProject);
   assertPortableBundle(bundle);
   assert.equal(bundle.target.version, '1.21.5');
   const metadata = jsonFileAt(bundle, 'pack.mcmeta').data as {

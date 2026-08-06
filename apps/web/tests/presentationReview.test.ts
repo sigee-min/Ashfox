@@ -1,26 +1,26 @@
 import assert from 'node:assert/strict';
 
 import {
+  deliveryVisualReviewsForRevision,
+  mergeVisualReviewLedgers,
   recordVisualReview,
   visualReviewsForRevision,
   type VisualReviewReceipt
-} from '../src/features/agent/presentationReview';
+} from '../src/application/visualReviewReceipt';
+import { createWorkbenchProject } from './fixtures/workbenchProject';
+import {
+  createVisualReviewReceiptFixture
+} from './fixtures/visualReviewReceipt';
 
+const document = createWorkbenchProject();
 const receipt = (
   revision: string,
-  camera: VisualReviewReceipt['camera'],
+  camera: VisualReviewReceipt['observation']['data']['camera'],
   frameNonce: number
-): VisualReviewReceipt => ({
-  projectId: 'project-test',
+): VisualReviewReceipt => createVisualReviewReceiptFixture(document, {
   revision,
-  mode: 'frame',
   camera,
-  clipId: null,
-  observedTimeSeconds: 0,
-  completedCycles: 0,
-  frameNonce,
-  verdict: 'accepted',
-  issues: []
+  frameNonce
 });
 
 let reviews: readonly VisualReviewReceipt[] = [];
@@ -40,26 +40,36 @@ reviews = recordVisualReview(
 );
 assert.equal(reviews.length, 2);
 assert.equal(
-  reviews.find((review) => review.camera === 'front')?.frameNonce,
-  3
+  reviews.find(
+    (review) => review.observation.data.camera === 'front'
+  )?.observation.data.frameNonce,
+  3,
+  'a later observation replaces only the same review slot'
 );
 
 assert.equal(
   visualReviewsForRevision(
     reviews,
-    'project-test',
+    document.id,
     'local-0002'
   ).length,
   0
 );
 
-reviews = recordVisualReview(reviews, {
-  ...receipt('local-0001', 'side', 5),
-  verdict: 'rejected',
-  issues: ['connection']
-});
+reviews = recordVisualReview(
+  reviews,
+  createVisualReviewReceiptFixture(document, {
+    revision: 'local-0001',
+    camera: 'side',
+    frameNonce: 5,
+    verdict: 'rejected',
+    issues: ['connection']
+  })
+);
 assert.equal(
-  reviews.find((review) => review.camera === 'side')?.verdict,
+  reviews.find(
+    (review) => review.observation.data.camera === 'side'
+  )?.decision.verdict,
   'rejected'
 );
 
@@ -70,16 +80,77 @@ reviews = recordVisualReview(
 assert.deepEqual(
   visualReviewsForRevision(
     reviews,
-    'project-test',
+    document.id,
     'local-0002'
-  ).map((review) => review.camera),
+  ).map((review) => review.observation.data.camera),
   ['top']
 );
 assert.equal(
   visualReviewsForRevision(
     reviews,
-    'project-test',
+    document.id,
     'local-0001'
   ).length,
-  0
+  0,
+  'recording a new revision replaces the active ledger'
+);
+
+reviews = recordVisualReview(
+  reviews,
+  createVisualReviewReceiptFixture(document, {
+    revision: 'local-0002',
+    purpose: 'preview',
+    milestone: 'archetype',
+    camera: 'front',
+    frameNonce: 6
+  })
+);
+assert.equal(
+  visualReviewsForRevision(
+    reviews,
+    document.id,
+    'local-0002'
+  ).length,
+  2,
+  'milestone evidence remains revision-bound and queryable'
+);
+assert.deepEqual(
+  deliveryVisualReviewsForRevision(
+    reviews,
+    document.id,
+    'local-0002'
+  ).map((review) => review.observation.data.camera),
+  ['top'],
+  'milestone evidence must not enter the delivery ledger'
+);
+
+const concurrent = mergeVisualReviewLedgers(
+  [receipt('local-0002', 'front', 7)],
+  [receipt('local-0002', 'side', 8)]
+);
+assert.deepEqual(
+  concurrent.map((review) => review.observation.data.camera).sort(),
+  ['front', 'side'],
+  'same-revision storage writes append distinct evidence slots'
+);
+
+const tiedTimestamp = '2026-08-06T00:00:01.000Z';
+const tieResolved = recordVisualReview(
+  [createVisualReviewReceiptFixture(document, {
+    revision: 'local-0002',
+    camera: 'front',
+    frameNonce: 10,
+    recordedAt: tiedTimestamp
+  })],
+  createVisualReviewReceiptFixture(document, {
+    revision: 'local-0002',
+    camera: 'front',
+    frameNonce: 11,
+    recordedAt: tiedTimestamp
+  })
+);
+assert.equal(
+  tieResolved[0].observation.data.frameNonce,
+  11,
+  'frame sequence deterministically breaks equal recordedAt ties'
 );

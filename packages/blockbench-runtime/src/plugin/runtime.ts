@@ -14,7 +14,12 @@ import { GUIDE_RESOURCE_TEMPLATES, GUIDE_RESOURCES } from '../shared/resources/g
 import { InMemoryResourceStore } from '../adapters/resources/resourceStore';
 import { readGlobals } from '../adapters/blockbench/blockbenchUtils';
 import { cleanupBridge, claimSingleton, exposeBridge, releaseSingleton } from './runtimeBridge';
-import type { EndpointConfig, RuntimeServerStatus } from './types';
+import {
+  toPublicEndpointConfig,
+  type EndpointConfig,
+  type PublicEndpointConfig,
+  type RuntimeServerStatus
+} from './types';
 import { resolveEndpointConfig } from './endpointConfig';
 import { registerPluginSettings } from './pluginSettings';
 import { resolveTraceLogDestPath } from './traceLogPath';
@@ -38,8 +43,8 @@ import { PLUGIN_ICON_DATA_URL } from './pluginIcon';
 type PluginBridge = {
   invoke: Dispatcher['handle'];
   capabilities: Capabilities;
-  serverConfig: () => EndpointConfig;
-  settings: () => EndpointConfig;
+  serverConfig: () => PublicEndpointConfig;
+  settings: () => PublicEndpointConfig;
   serverStatus: () => RuntimeServerStatus;
 };
 
@@ -65,9 +70,10 @@ let globalTraceLogWriter: TraceLogWriter | null = null;
 let globalTraceLogFlushScheduler: TraceLogFlushScheduler | null = null;
 const toolRegistry = DEFAULT_TOOL_REGISTRY;
 
-const formatEndpoint = (config: EndpointConfig): string => `${config.host}:${config.port}${config.path}`;
+const formatEndpoint = (config: PublicEndpointConfig): string => `${config.host}:${config.port}${config.path}`;
 
 const toServerModeLabel = (status: RuntimeServerStatus): string => {
+  if (status.mode === 'starting') return 'starting';
   if (status.mode === 'inline') return 'inline';
   if (status.mode === 'sidecar') return 'sidecar';
   if (status.reason === 'web_mode') return 'stopped(web)';
@@ -76,25 +82,32 @@ const toServerModeLabel = (status: RuntimeServerStatus): string => {
   return 'stopped';
 };
 
+const warnTraceFlushFailure = (message: string): void => {
+  try {
+    new ConsoleLogger(PLUGIN_ID, () => logLevel).warn(
+      'trace log flush failed',
+      { message }
+    );
+  } catch (_logError) {
+    // Cleanup must continue even if the host logger is unavailable.
+  }
+};
+
 const cleanupRuntime = () => {
   if (globalTraceLogFlushScheduler) {
     globalTraceLogFlushScheduler.flushNow();
   }
   if (globalTraceRecorder && globalTraceLogWriter) {
     try {
-      globalTraceRecorder.flushTo(globalTraceLogWriter);
+      const error = globalTraceRecorder.flushTo(globalTraceLogWriter);
+      if (error) warnTraceFlushFailure(error.message);
     } catch (err) {
-      const message = errorMessage(err, 'trace log flush failed');
-      try {
-        new ConsoleLogger(PLUGIN_ID, () => logLevel).warn('trace log flush failed', { message });
-      } catch (logErr) {
-        // Swallow logging errors during cleanup.
-      }
+      warnTraceFlushFailure(errorMessage(err, 'trace log flush failed'));
     }
   }
-  if (serverState.inlineServerStop) {
-    serverState.inlineServerStop();
-    serverState.inlineServerStop = null;
+  if (serverState.inlineServer) {
+    serverState.inlineServer.stop();
+    serverState.inlineServer = null;
   }
   if (serverState.sidecar) {
     serverState.sidecar.stop();
@@ -157,7 +170,7 @@ export const registerPlugin = () => {
     description: 'Blockbench MCP bridge scaffold (Java Block/Item default, GeckoLib optional). Latest Blockbench desktop only.',
     creation_date: '2024-01-04',
     version: PLUGIN_VERSION,
-    native_modules: ['child_process'],
+    native_modules: ['child_process', 'fs', 'net', 'os', 'path', 'process'],
     tags: ['mcp', 'automation', 'ai'],
     about: `### ashfox (MCP Bridge for Blockbench)
 
@@ -172,7 +185,7 @@ ashfox exposes a clean MCP-facing tool surface for AI/agents:
 - UVs are fully internal: assign_texture -> paint_faces (no manual UV tools).
 - Deterministic low-level tools only; no high-level pipelines.
   - Formats: Java Block/Item enabled by default; GeckoLib/Animated Java gated by capability flags.
-- MCP endpoint: set in Settings (ashfox: Server) or ASHFOX_HOST/PORT/PATH env vars (default 0.0.0.0:8787/mcp).
+- MCP endpoint: set in Settings (ashfox: Server) or ASHFOX_HOST/PORT/PATH env vars (default 127.0.0.1:8787/mcp).
 - Server starts automatically and restarts on endpoint changes.
 
 Recommended flow:
@@ -245,8 +258,8 @@ Notes:
       exposeBridgeWithVersion({
         invoke: dispatcher.handle.bind(dispatcher),
         capabilities,
-        serverConfig: () => ({ ...endpointConfig }),
-        settings: () => ({ ...endpointConfig }),
+        serverConfig: () => toPublicEndpointConfig(endpointConfig),
+        settings: () => toPublicEndpointConfig(endpointConfig),
         serverStatus: () => ({ ...serverState.status, endpoint: { ...serverState.status.endpoint } })
       });
 
@@ -260,11 +273,6 @@ Notes:
     }
   });
 };
-
-
-
-
-
 
 
 

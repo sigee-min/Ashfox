@@ -3,12 +3,17 @@ import {
   PROTOCOL_VERSION,
   SidecarMessage,
   SidecarRequestMessage,
-  SidecarResponseMessage
+  SidecarResponseMessage,
+  isSidecarMessage
 } from '../../transport/protocol';
-import { ToolError, ToolResponse, ToolName } from '@ashfox/blockbench-contracts/types/internal';
-import { toolError } from '../../shared/tooling/toolResponse';
+import {
+  ToolPayloadMap,
+  ToolResponse,
+  ToolName
+} from '@ashfox/blockbench-contracts/types/internal';
 import { normalizeToolResponse } from '../../shared/tooling/toolResponseGuard';
-import { SIDECAR_INFLIGHT_LIMIT_REACHED, SIDECAR_TOOL_ERROR } from '../../shared/messages';
+import { toolError } from '../../shared/tooling/toolResponse';
+import { SIDECAR_INFLIGHT_LIMIT_REACHED } from '../../shared/messages';
 import { attachIpcReadable, createIpcDecoder, IpcReadable, IpcWritable, sendIpcMessage } from './ipc';
 
 type Pending = {
@@ -26,7 +31,7 @@ export type SidecarClientStatus = {
   ready: boolean;
   inFlight: number;
   maxInFlight: number;
-  protocolVersion: number | null;
+  protocolVersion: typeof PROTOCOL_VERSION | null;
 };
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -40,8 +45,8 @@ export class SidecarClient {
   private readonly maxInFlight: number;
   private readonly pending = new Map<string, Pending>();
   private counter = 0;
-  private ready = false;
-  private protocolVersion: number | null = null;
+  private phase: 'idle' | 'hello-sent' | 'ready' = 'idle';
+  private protocolVersion: typeof PROTOCOL_VERSION | null = null;
 
   constructor(readable: IpcReadable, writable: IpcWritable, log: Logger, options: ClientOptions = {}) {
     this.readable = readable;
@@ -55,25 +60,55 @@ export class SidecarClient {
   }
 
   start() {
-    this.ready = false;
+    if (this.phase !== 'idle') {
+      this.log.warn('sidecar ipc start ignored outside idle phase');
+      return;
+    }
+    this.phase = 'hello-sent';
     this.protocolVersion = null;
-    this.send({ type: 'hello', version: PROTOCOL_VERSION, role: 'sidecar', ts: Date.now() });
+    const sent = this.send({
+      type: 'hello',
+      version: PROTOCOL_VERSION,
+      role: 'sidecar',
+      ts: Date.now()
+    });
+    if (!sent && this.phase === 'hello-sent') this.phase = 'idle';
   }
 
   canAccept(): boolean {
-    return this.pending.size < this.maxInFlight;
+    return this.phase === 'ready' && this.pending.size < this.maxInFlight;
   }
 
   getStatus(): SidecarClientStatus {
     return {
-      ready: this.ready,
+      ready: this.phase === 'ready',
       inFlight: this.pending.size,
       maxInFlight: this.maxInFlight,
       protocolVersion: this.protocolVersion
     };
   }
 
-  request(tool: ToolName, payload: unknown): Promise<ToolResponse<unknown>> {
+  request<TName extends ToolName>(
+    tool: TName,
+    payload: ToolPayloadMap[TName]
+  ): Promise<ToolResponse<unknown>> {
+    return this.requestValidated(tool, payload);
+  }
+
+  requestValidated(
+    tool: unknown,
+    payload: unknown
+  ): Promise<ToolResponse<unknown>> {
+    if (this.phase !== 'ready') {
+      return Promise.resolve({
+        ok: false,
+        error: toolError(
+          'invalid_state',
+          'Sidecar v1 handshake is not ready.',
+          { reason: 'sidecar_handshake_not_ready' }
+        )
+      });
+    }
     if (!this.canAccept()) {
       return Promise.resolve({
         ok: false,
@@ -82,13 +117,24 @@ export class SidecarClient {
     }
 
     const id = this.nextId();
-    const message: SidecarRequestMessage = {
+    const candidate: unknown = {
       type: 'request',
       id,
       ts: Date.now(),
       tool,
       payload
     };
+    if (!isSidecarMessage(candidate) || candidate.type !== 'request') {
+      return Promise.resolve({
+        ok: false,
+        error: toolError(
+          'invalid_payload',
+          'Sidecar request does not match the closed v1 tool contract.',
+          { reason: 'sidecar_request_contract_invalid' }
+        )
+      });
+    }
+    const message: SidecarRequestMessage = candidate;
 
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
@@ -96,7 +142,18 @@ export class SidecarClient {
         reject(new Error('sidecar request timeout'));
       }, this.timeoutMs);
       this.pending.set(id, { resolve, reject, timeoutId });
-      this.send(message);
+      if (!this.send(message) && this.pending.has(id)) {
+        clearTimeout(timeoutId);
+        this.pending.delete(id);
+        resolve({
+          ok: false,
+          error: toolError(
+            'io_error',
+            'Sidecar request could not be written.',
+            { reason: 'sidecar_request_send_failed' }
+          )
+        });
+      }
     });
   }
 
@@ -105,13 +162,17 @@ export class SidecarClient {
     return `${Date.now()}_${this.counter}`;
   }
 
-  private send(message: SidecarMessage) {
-    sendIpcMessage(this.writable, message, this.log);
+  private send(message: SidecarMessage): boolean {
+    return sendIpcMessage(this.writable, message, this.log);
   }
 
   private handleMessage(message: SidecarMessage) {
     if (message.type === 'ready') {
-      this.ready = true;
+      if (this.phase !== 'hello-sent') {
+        this.log.warn('unsolicited sidecar ready message ignored');
+        return;
+      }
+      this.phase = 'ready';
       this.protocolVersion = message.version ?? null;
       this.log.info('sidecar ipc ready', { version: message.version });
       return;
@@ -143,11 +204,9 @@ export class SidecarClient {
       pending.resolve(normalizeToolResponse(response, { source: 'sidecar_client', ensureReason: true }));
       return;
     }
-    const error: ToolError =
-      message.error ?? toolError('unknown', SIDECAR_TOOL_ERROR, { reason: 'sidecar_missing_error' });
     const response = {
       ok: false,
-      error,
+      error: message.error,
       ...(message.content ? { content: message.content } : {}),
       ...(message.structuredContent !== undefined ? { structuredContent: message.structuredContent } : {}),
       ...(message.nextActions ? { nextActions: message.nextActions } : {})
@@ -155,7 +214,3 @@ export class SidecarClient {
     pending.resolve(normalizeToolResponse(response, { source: 'sidecar_client', ensureReason: true }));
   }
 }
-
-
-
-

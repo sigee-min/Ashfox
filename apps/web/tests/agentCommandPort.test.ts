@@ -174,6 +174,14 @@ export const test = (async (): Promise<void> => {
       revision: 'local-0001',
       data: {
         review: request.review,
+        purpose:
+          request.review === 'preview'
+            ? 'preview'
+            : 'delivery',
+        milestone:
+          request.review === 'preview'
+            ? request.milestone ?? null
+            : null,
         verdict:
           request.review === 'accept'
             ? 'accepted'
@@ -182,6 +190,12 @@ export const test = (async (): Promise<void> => {
               : 'pending',
         issues:
           request.review === 'reject' ? request.issues : [],
+        acknowledgedCheckIds:
+          request.review === 'accept' ? request.checkIds : [],
+        failedCheckIds:
+          request.review === 'reject'
+            ? request.failedCheckIds
+            : [],
         frameNonce: 42,
         mode: 'frame',
         camera: 'front',
@@ -190,7 +204,8 @@ export const test = (async (): Promise<void> => {
         playing: false,
         observedTimeSeconds: 0,
         completedCycles: 0,
-        previewIssues: []
+        previewIssues: [],
+        reviewChecks: []
       }
     }),
     onStatusChange: (status) => statuses.push(status)
@@ -248,8 +263,12 @@ export const test = (async (): Promise<void> => {
       revision: 'local-0001',
       data: {
         review: 'next',
+        purpose: 'delivery',
+        milestone: null,
         verdict: 'pending',
         issues: [],
+        acknowledgedCheckIds: [],
+        failedCheckIds: [],
         frameNonce: 42,
         mode: 'frame',
         camera: 'front',
@@ -258,13 +277,15 @@ export const test = (async (): Promise<void> => {
         playing: false,
         observedTimeSeconds: 0,
         completedCycles: 0,
-        previewIssues: []
+        previewIssues: [],
+        reviewChecks: []
       }
     }
   );
   const acceptedFrame = await port.present({
     review: 'accept',
-    frameNonce: 42
+    frameNonce: 42,
+    checkIds: []
   });
   assert.equal(acceptedFrame.ok, true);
   if (acceptedFrame.ok) {
@@ -274,7 +295,8 @@ export const test = (async (): Promise<void> => {
   const rejectedFrame = await port.present({
     review: 'reject',
     frameNonce: 42,
-    issues: ['connection', 'material']
+    issues: ['connection', 'material'],
+    failedCheckIds: []
   });
   assert.equal(rejectedFrame.ok, true);
   if (rejectedFrame.ok) {
@@ -287,11 +309,30 @@ export const test = (async (): Promise<void> => {
   const emptyRejection = await port.present({
     review: 'reject',
     frameNonce: 42,
-    issues: []
+    issues: [],
+    failedCheckIds: []
   });
   assert.equal(emptyRejection.ok, false);
   if (!emptyRejection.ok) {
     assert.equal(emptyRejection.error.path, 'issues');
+  }
+  const milestonePreview = await port.present({
+    review: 'preview',
+    milestone: 'specialists',
+    camera: 'front'
+  });
+  assert.equal(milestonePreview.ok, true);
+  if (milestonePreview.ok) {
+    assert.equal(milestonePreview.data.purpose, 'preview');
+    assert.equal(milestonePreview.data.milestone, 'specialists');
+  }
+  const invalidMilestone = await port.present({
+    review: 'preview',
+    milestone: 'texture'
+  } as unknown as PresentRequest);
+  assert.equal(invalidMilestone.ok, false);
+  if (!invalidMilestone.ok) {
+    assert.equal(invalidMilestone.error.path, 'milestone');
   }
   const invalidPresent = await port.present({
     review: 'all'
@@ -323,6 +364,8 @@ export const test = (async (): Promise<void> => {
     operations: runRequest().operations
   });
   assert.deepEqual(statuses, [
+    'working',
+    'connected',
     'working',
     'connected',
     'working',
@@ -718,8 +761,12 @@ for (const failure of [
     revision: 'local-0001',
     data: {
       review: 'next',
+      purpose: 'delivery',
+      milestone: null,
       verdict: 'pending',
       issues: [],
+      acknowledgedCheckIds: [],
+      failedCheckIds: [],
       frameNonce: 1,
       mode: 'frame',
       camera: 'front',
@@ -728,7 +775,8 @@ for (const failure of [
       playing: false,
       observedTimeSeconds: 0,
       completedCycles: 0,
-      previewIssues: []
+      previewIssues: [],
+      reviewChecks: []
     }
   });
   await new Promise<void>((resolve) => setImmediate(resolve));
@@ -960,8 +1008,12 @@ for (const failure of [
     revision: 'local-0001',
     data: {
       review: 'next',
+      purpose: 'delivery',
+      milestone: null,
       verdict: 'pending',
       issues: [],
+      acknowledgedCheckIds: [],
+      failedCheckIds: [],
       frameNonce: 1,
       mode: 'frame',
       camera: 'front',
@@ -970,7 +1022,8 @@ for (const failure of [
       playing: false,
       observedTimeSeconds: 0,
       completedCycles: 0,
-      previewIssues: []
+      previewIssues: [],
+      reviewChecks: []
     }
   });
   await new Promise<void>((resolve) => setImmediate(resolve));

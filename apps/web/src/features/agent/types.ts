@@ -1,14 +1,36 @@
+import { COMMAND_RECEIPT_SCHEMA_VERSION } from '@ashfox/engine-core';
 import type {
-  AnimationPreviewIssue,
   CommandSource,
   ExportAdaptationReceipt,
   InvariantFinding,
   MinecraftGameVersion,
   ProjectCommandOperation
 } from '@ashfox/engine-core';
+import {
+  VISUAL_REVIEW_CAMERAS,
+  VISUAL_REVIEW_ISSUES,
+  VISUAL_REVIEW_MILESTONES,
+  type PresentedReviewCheck,
+  type VisualReviewCamera,
+  type VisualReviewIssue,
+  type VisualReviewMilestone,
+  type VisualReviewObservation
+} from '../../application/visualReviewContract';
 import type {
   CameraMode
 } from '../../rendering/cameraPresets';
+
+export {
+  VISUAL_REVIEW_CAMERAS,
+  VISUAL_REVIEW_ISSUES,
+  VISUAL_REVIEW_MILESTONES
+};
+export type {
+  PresentedReviewCheck,
+  VisualReviewCamera,
+  VisualReviewIssue,
+  VisualReviewMilestone
+};
 
 export type InspectRequest =
   | { kind: 'command'; name: string }
@@ -25,6 +47,7 @@ export type InspectRequest =
     }
   | { kind: 'activity'; cursor?: string; limit?: number }
   | { kind: 'target' }
+  | { kind: 'authoring'; id?: string }
   | { kind: 'finding'; path: string };
 
 export interface InspectSuccess {
@@ -53,7 +76,7 @@ export interface AgentReceiptEntityIds {
 }
 
 export interface AgentCommandReceipt {
-  schemaVersion: 1;
+  schemaVersion: typeof COMMAND_RECEIPT_SCHEMA_VERSION;
   commandId: string;
   projectId: string;
   actorId: string;
@@ -99,56 +122,53 @@ export interface AgentRunRequest {
   operations: readonly ProjectCommandOperation[];
 }
 
-export type VisualReviewIssue =
-  | 'silhouette'
-  | 'proportion'
-  | 'connection'
-  | 'clipping'
-  | 'focal_detail'
-  | 'material'
-  | 'pivot'
-  | 'motion'
-  | 'other';
-
 export type PresentRequest =
   | {
       review: 'next';
     }
   | {
+      review: 'preview';
+      milestone?: VisualReviewMilestone;
+      camera?: VisualReviewCamera;
+    }
+  | {
       review: 'accept';
       frameNonce: number;
+      checkIds: readonly string[];
     }
   | {
       review: 'reject';
       frameNonce: number;
       issues: readonly VisualReviewIssue[];
+      failedCheckIds: readonly string[];
     };
 
-export interface ViewPresentationRequest {
+interface ViewPresentationRequestBase {
   mode: 'frame' | 'cycle';
   camera: CameraMode;
   clipId: string | null;
   timeSeconds: number;
+  reviewChecks: readonly PresentedReviewCheck[];
 }
 
-export interface PresentSuccess {
-  ok: true;
-  revision: string;
-  data: {
-    review: PresentRequest['review'];
-    verdict: 'pending' | 'accepted' | 'rejected';
-    issues: readonly VisualReviewIssue[];
-    frameNonce: number;
-    mode: ViewPresentationRequest['mode'];
-    camera: CameraMode;
-    cameraMatrix: readonly number[];
-    clipId: string | null;
-    playing: boolean;
-    observedTimeSeconds: number;
-    completedCycles: number;
-    previewIssues: readonly AnimationPreviewIssue[];
-  };
-}
+export type ViewPresentationRequest =
+  | (ViewPresentationRequestBase & {
+      review: 'next';
+      purpose: 'delivery';
+      milestone: null;
+    })
+  | (ViewPresentationRequestBase & {
+      review: 'preview';
+      purpose: 'preview';
+      milestone: VisualReviewMilestone | null;
+    });
+
+export type VisualReviewDecisionRequest = Extract<
+  PresentRequest,
+  { review: 'accept' | 'reject' }
+>;
+
+export type PresentSuccess = VisualReviewObservation;
 
 export interface PresentFailure {
   ok: false;

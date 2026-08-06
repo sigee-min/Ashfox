@@ -13,7 +13,7 @@ export interface MinecraftJavaBlockState {
   };
 }
 
-interface MinecraftJavaLegacyPackMetadata {
+interface MinecraftJavaPackFormatMetadata {
   pack: {
     pack_format: number;
     supported_formats: number;
@@ -21,7 +21,7 @@ interface MinecraftJavaLegacyPackMetadata {
   };
 }
 
-interface MinecraftJavaModernPackMetadata {
+interface MinecraftJavaFormatRangeMetadata {
   pack: {
     min_format: readonly [number, 0];
     max_format: readonly [number, 0];
@@ -30,8 +30,8 @@ interface MinecraftJavaModernPackMetadata {
 }
 
 export type MinecraftJavaPackMetadata =
-  | MinecraftJavaLegacyPackMetadata
-  | MinecraftJavaModernPackMetadata;
+  | MinecraftJavaPackFormatMetadata
+  | MinecraftJavaFormatRangeMetadata;
 
 const javaProfile = (
   document: ProjectDocument

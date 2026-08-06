@@ -168,7 +168,11 @@ const resolvePaintFacesUvTarget = (
   usage: ReturnType<typeof toDomainTextureUsage>
 ): UsecaseResult<PaintFacesUvTarget> => {
   if (!isTextureOp(params.payload.op)) {
-    return fail({ code: 'invalid_payload', message: TEXTURE_OP_INVALID(params.resolvedTexture.name) });
+    return fail({
+      code: 'invalid_payload',
+      message: TEXTURE_OP_INVALID(params.resolvedTexture.name),
+      details: { opIndex: 0, reason: 'invalid_op' }
+    });
   }
   const mapping = params.payload.mapping ?? 'stretch';
   const uvPaintTarget: UvPaintSpec = {

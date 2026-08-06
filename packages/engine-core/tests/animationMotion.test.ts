@@ -4,7 +4,8 @@ import {
   commandAllowedForSource,
   createProjectFromInput,
   evaluateProductionReadiness,
-  executeCommandBatch,
+  executeAgentCommandBatch,
+  executeSystemCommandBatch,
   getAgentCommandDefinition,
   validateProjectDocument,
   type CommandBatch,
@@ -64,18 +65,21 @@ const execute = (
   document: ProjectDocument,
   batchId: string,
   operations: CommandBatch['operations'],
-  source: 'agent' | 'system' = 'agent'
-) =>
-  executeCommandBatch(
+  source: 'agent' | 'system' = 'system'
+) => {
+  const executeBatch = source === 'agent'
+    ? executeAgentCommandBatch
+    : executeSystemCommandBatch;
+  return executeBatch(
     document,
     {
       batchId,
       baseProjectId: document.id,
       baseRevision: document.revision,
       operations
-    },
-    { source }
+    }
   );
+};
 
 const base = createProjectFromInput(
   {
@@ -177,20 +181,20 @@ if (!inheritedIdleWinding.ok) {
   );
 }
 
-const legacyIdleDocument = structuredClone(staticIdle.document);
-const legacyIdleClip = legacyIdleDocument.animations.idle;
-legacyIdleDocument.animations = {
-  legacy_idle: {
-    ...legacyIdleClip,
-    id: 'legacy_idle'
+const noncanonicalIdleDocument = structuredClone(staticIdle.document);
+const sourceIdleClip = noncanonicalIdleDocument.animations.idle;
+noncanonicalIdleDocument.animations = {
+  alternate_idle: {
+    ...sourceIdleClip,
+    id: 'alternate_idle'
   }
 };
 const recoveredCanonicalIdle = execute(
-  legacyIdleDocument,
+  noncanonicalIdleDocument,
   'recover-canonical-idle',
   [{
     name: 'animation.clip.delete',
-    payload: { clipId: 'legacy_idle' }
+    payload: { clipId: 'alternate_idle' }
   }, {
     name: 'animation.motion.upsert',
     payload: {

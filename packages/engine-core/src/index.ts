@@ -1,4 +1,18 @@
 export {
+  hasExactContractKeys,
+  INTERNAL_CONTRACT_VERSIONS,
+  isCanonicalIsoDate,
+  isClosedContractRecord,
+  isCurrentInternalContractVersion,
+  isNonEmptyContractText,
+  isUniqueContractTextArray,
+  type InternalContractName,
+  type InternalContractVersion,
+  type InternalContractVersions
+} from '@ashfox/internal-contracts';
+
+export {
+  ASHFOX_GENERIC_FORMAT_VERSION,
   CUBE_FACE_DIRECTIONS,
   IDENTITY_TRANSFORM,
   PROJECT_DOCUMENT_SCHEMA_VERSION,
@@ -19,6 +33,9 @@ export {
   type ModelNoseGlyph,
   type ProjectDocument,
   type ProjectForwardDirection,
+  type ProjectIntent,
+  type ProjectReferenceKind,
+  type ProjectReferenceObservation,
   type SceneNode,
   type SurfacePixelDensity,
   type TextureAsset,
@@ -26,6 +43,95 @@ export {
   type TransformChannel,
   type Vec3
 } from './model';
+
+export {
+  ARCHETYPE_IDS,
+  ATTACHMENT_PORT_TYPES,
+  AUTHORING_CAPABILITIES,
+  AUTHORING_FACETS,
+  AUTHORING_PART_KINDS,
+  AUTHORING_PROFILE_SCHEMA_VERSION,
+  AUTHORING_REVIEW_CAMERAS,
+  AUTHORING_REVIEW_ISSUES,
+  AUTHORING_ROUTING_CONTRACT_VERSION,
+  AUTHORING_SPATIAL_RELATIONS,
+  SPECIALIST_IDS,
+  type AppliedAuthoringReviewCheck,
+  type ArchetypeDefinition,
+  type ArchetypeId,
+  type ArchetypeReference,
+  type AttachmentPortDefinition,
+  type AttachmentPortType,
+  type AttachmentRequirement,
+  type AuthoringAttachmentBinding,
+  type AuthoringAuthorityClaim,
+  type AuthoringAuthorityId,
+  type AuthoringAuthorityReference,
+  type AuthoringBinding,
+  type AuthoringCapability,
+  type AuthoringClaimBasis,
+  type AuthoringCompatibilityIssue,
+  type AuthoringCompatibilityResult,
+  type AuthoringFacet,
+  type AuthoringMotionBinding,
+  type AuthoringMotionRole,
+  type AuthoringPartKind,
+  type AuthoringProfile,
+  type AuthoringRecipe,
+  type AuthoringRecipeSummary,
+  type AuthoringReviewCamera,
+  type AuthoringReviewCheck,
+  type AuthoringReviewIssue,
+  type AuthoringRoutingSnapshot,
+  type AuthoringSelectionInput,
+  type AuthoringSlotAssignment,
+  type AuthoringSpatialRelation,
+  type CompatibilityClause,
+  type ComposedAuthoringSlotDefinition,
+  type EvidenceCriterionDefinition,
+  type SemanticSlotDefinition,
+  type SpecialistBindingRequirement,
+  type SpecialistContributionDefinition,
+  type SpecialistDefinition,
+  type SpecialistId,
+  type SpecialistReference
+} from './authoring/authoringTypes';
+export {
+  authoringAuthorityLabel,
+  authoringReviewChecks,
+  getArchetype,
+  getSpecialist,
+  listArchetypes,
+  listSpecialists,
+  resolveArchetypeReference,
+  resolveSpecialistReference
+} from './authoring/authoringRegistry';
+export {
+  AUTHORING_PROFILE_LIMITS,
+  createAuthoringProfile,
+  normalizeAuthoringProfile,
+  readAuthoringProfile,
+  type AuthoringProfileIssue,
+  type NormalizeAuthoringProfileResult,
+  type ReadAuthoringProfileResult
+} from './authoring/authoringProfile';
+export {
+  composeAuthoringSlots,
+  evaluateAuthoringPlan,
+  type AuthoringPlanEvaluation,
+  type AuthoringPlanIssue,
+  type AuthoringSlotState,
+  type AuthoringSlotStatus
+} from './authoring/authoringPlan';
+export {
+  evaluateAuthoringCompatibility,
+  validateAuthoringCatalog,
+  type AuthoringCatalogIssue
+} from './authoring/compatibilityEvaluator';
+export {
+  getAuthoringRecipe,
+  listAuthoringRecipes
+} from './authoring/authoringRecipes';
 
 export { canonicalJsonString } from './canonicalJson';
 export {
@@ -39,6 +145,7 @@ export {
 
 export { createProjectDocument } from './project/createProjectDocument';
 export {
+  PROJECT_REFERENCE_ID_PATTERN_SOURCE,
   normalizeProjectIntent,
   readProjectIntent
 } from './project/projectIntent';
@@ -48,11 +155,17 @@ export {
 } from './project/projectIntentEvaluation';
 
 export {
+  COMMAND_RECEIPT_SCHEMA_VERSION,
   commandAllowedForSource,
   createProjectFromInput,
-  executeCommandBatch,
+  executeAgentCommandBatch,
+  executeImportCommandBatch,
+  executeSystemCommandBatch,
+  executeWebCommandBatch,
   getAgentCommandDefinition,
   getCommandDefinition,
+  isValidCommandReceipt,
+  isValidCommandReceiptLedger,
   listAgentCommandDefinitions,
   listCommandDefinitions,
   type AnimationTriggerInput,
@@ -62,6 +175,7 @@ export {
   type CommandEffects,
   type CommandError,
   type CommandReceipt,
+  type CommandReceiptLedgerOptions,
   type CommandSource,
   type CubeCreateInput,
   type ProjectCommandOperation,
@@ -185,6 +299,7 @@ export {
 
 export {
   BlobResolutionError,
+  EXPORT_BUNDLE_SCHEMA_VERSION,
   ExportMaterializationRequiredError,
   type ExportAdaptationReceipt,
   type ExportBundle,
@@ -197,6 +312,7 @@ export {
   EXPORT_PRESETS,
   MINECRAFT_GAME_VERSIONS,
   animationSupportForFormatProfile,
+  formatProfileSupportsAnimation,
   exportCompatibilityFor,
   exportCompatibilityOptions,
   exportPresetForFormatProfile,

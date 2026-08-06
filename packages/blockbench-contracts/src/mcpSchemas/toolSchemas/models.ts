@@ -1,4 +1,5 @@
 import type { JsonSchema } from '../types';
+import { MESH_UV_POLICY_LIMITS } from '../constants';
 import { metaProps, numberArray, revisionProp, stateProps } from '../schemas/common';
 
 const meshVertexSchema: JsonSchema = {
@@ -27,8 +28,16 @@ const meshUvPolicySchema: JsonSchema = {
   additionalProperties: false,
   properties: {
     symmetryAxis: { type: 'string', enum: ['none', 'x', 'y', 'z'] },
-    texelDensity: { type: 'number', minimum: 0.25, maximum: 64 },
-    padding: { type: 'number', minimum: 0, maximum: 16 }
+    texelDensity: {
+      type: 'number',
+      minimum: MESH_UV_POLICY_LIMITS.minTexelDensity,
+      maximum: MESH_UV_POLICY_LIMITS.maxTexelDensity
+    },
+    padding: {
+      type: 'number',
+      minimum: MESH_UV_POLICY_LIMITS.minPadding,
+      maximum: MESH_UV_POLICY_LIMITS.maxPadding
+    }
   }
 };
 
@@ -224,5 +233,4 @@ export const modelToolSchemas: Record<string, JsonSchema> = {
     }
   }
 };
-
 

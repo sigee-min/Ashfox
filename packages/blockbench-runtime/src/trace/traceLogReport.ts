@@ -1,5 +1,9 @@
 import type { ProjectDiffCounts, ProjectDiffCountsByKind } from '../types/project';
-import type { TraceLogEntry, TraceLogRecord, TraceLogReport } from '@ashfox/blockbench-contracts/types/traceLog';
+import {
+  isTraceLogEntry,
+  TRACE_LOG_SCHEMA_VERSION,
+  type TraceLogReport
+} from '@ashfox/blockbench-contracts/types/traceLog';
 import { parseTraceLogText } from './traceLogReplay';
 
 const emptyCounts = (): ProjectDiffCounts => ({ added: 0, removed: 0, changed: 0 });
@@ -7,31 +11,78 @@ const emptyCounts = (): ProjectDiffCounts => ({ added: 0, removed: 0, changed: 0
 const emptyCountsByKind = (): ProjectDiffCountsByKind => ({
   bones: emptyCounts(),
   cubes: emptyCounts(),
+  meshes: emptyCounts(),
   textures: emptyCounts(),
   animations: emptyCounts()
 });
 
-const addCounts = (target: ProjectDiffCounts, value: ProjectDiffCounts): ProjectDiffCounts => ({
-  added: target.added + value.added,
-  removed: target.removed + value.removed,
-  changed: target.changed + value.changed
+const safeCountSum = (
+  left: number,
+  right: number,
+  path: string,
+  warnings: Set<string>
+): number => {
+  if (left <= Number.MAX_SAFE_INTEGER - right) return left + right;
+  warnings.add(
+    `Diff count overflow at ${path}; clamped to Number.MAX_SAFE_INTEGER.`
+  );
+  return Number.MAX_SAFE_INTEGER;
+};
+
+const addCounts = (
+  target: ProjectDiffCounts,
+  value: ProjectDiffCounts,
+  path: string,
+  warnings: Set<string>
+): ProjectDiffCounts => ({
+  added: safeCountSum(target.added, value.added, `${path}.added`, warnings),
+  removed: safeCountSum(
+    target.removed,
+    value.removed,
+    `${path}.removed`,
+    warnings
+  ),
+  changed: safeCountSum(
+    target.changed,
+    value.changed,
+    `${path}.changed`,
+    warnings
+  )
 });
 
-const addCountsByKind = (target: ProjectDiffCountsByKind, value: ProjectDiffCountsByKind): ProjectDiffCountsByKind => ({
-  bones: addCounts(target.bones, value.bones),
-  cubes: addCounts(target.cubes, value.cubes),
-  textures: addCounts(target.textures, value.textures),
-  animations: addCounts(target.animations, value.animations)
+const addCountsByKind = (
+  target: ProjectDiffCountsByKind,
+  value: ProjectDiffCountsByKind,
+  warnings: Set<string>
+): ProjectDiffCountsByKind => ({
+  bones: addCounts(target.bones, value.bones, 'bones', warnings),
+  cubes: addCounts(target.cubes, value.cubes, 'cubes', warnings),
+  meshes: addCounts(
+    target.meshes ?? emptyCounts(),
+    value.meshes ?? emptyCounts(),
+    'meshes',
+    warnings
+  ),
+  textures: addCounts(
+    target.textures,
+    value.textures,
+    'textures',
+    warnings
+  ),
+  animations: addCounts(
+    target.animations,
+    value.animations,
+    'animations',
+    warnings
+  )
 });
-
-const isTraceLogEntry = (record: TraceLogRecord): record is TraceLogEntry => record.kind === 'step';
 
 export const buildTraceLogReport = (text: string): TraceLogReport => {
   const parsed = parseTraceLogText(text);
   const generatedAt = new Date().toISOString();
   if (!parsed.ok) {
     return {
-      schemaVersion: 1,
+      schemaVersion: TRACE_LOG_SCHEMA_VERSION,
       generatedAt,
       steps: 0,
       errors: 1,
@@ -48,8 +99,10 @@ export const buildTraceLogReport = (text: string): TraceLogReport => {
   }
 
   const steps = parsed.records.filter(isTraceLogEntry);
+  const warnings = new Set(parsed.warnings ?? []);
+  const opSummaries = new Map<string, { count: number; errors: number }>();
   const report: TraceLogReport = {
-    schemaVersion: 1,
+    schemaVersion: TRACE_LOG_SCHEMA_VERSION,
     generatedAt,
     steps: steps.length,
     errors: 0,
@@ -60,7 +113,7 @@ export const buildTraceLogReport = (text: string): TraceLogReport => {
 
   steps.forEach((entry) => {
     report.routes.tool += 1;
-    const opSummary = report.ops[entry.op] ?? { count: 0, errors: 0 };
+    const opSummary = opSummaries.get(entry.op) ?? { count: 0, errors: 0 };
     opSummary.count += 1;
     if (!entry.response.ok) {
       opSummary.errors += 1;
@@ -68,22 +121,24 @@ export const buildTraceLogReport = (text: string): TraceLogReport => {
       report.lastError = {
         seq: entry.seq,
         op: entry.op,
-        code: entry.response.error?.code ?? 'unknown',
-        message: entry.response.error?.message ?? 'unknown error'
+        code: entry.response.error.code,
+        message: entry.response.error.message
       };
     }
-    report.ops[entry.op] = opSummary;
+    opSummaries.set(entry.op, opSummary);
     if (entry.diff && report.diffCounts) {
-      report.diffCounts = addCountsByKind(report.diffCounts, entry.diff.counts);
+      report.diffCounts = addCountsByKind(
+        report.diffCounts,
+        entry.diff.counts,
+        warnings
+      );
     }
     if (!report.firstTs || entry.ts < report.firstTs) report.firstTs = entry.ts;
     if (!report.lastTs || entry.ts > report.lastTs) report.lastTs = entry.ts;
   });
 
-  if (parsed.warnings?.length) report.warnings = parsed.warnings;
+  report.ops = Object.fromEntries(opSummaries);
+
+  if (warnings.size > 0) report.warnings = [...warnings];
   return report;
 };
-
-
-
-

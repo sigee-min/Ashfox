@@ -1,8 +1,9 @@
 # ashfox Docs
 
-ashfox turns a model request into an editable low-poly asset you can watch,
-correct, review, and export in the browser. There is nothing to install and no
-account to create.
+ashfox routes a model request through a broad body-plan archetype and focused
+specialists, then turns the grounded semantic plan into an editable low-poly
+asset you can watch, correct, review, and export in the browser. There is
+nothing to install and no account to create.
 
 Blockbench is optional. The quickest path uses only ashfox and an AI agent with
 browser access.
@@ -22,7 +23,10 @@ Undo to review complete changes.
 
 ## What you can make
 
-- articulated low-poly creatures, vehicles, props, and blocks;
+- upright figures, arm-free stalkers, quadrupeds, and compact functional
+  constructs through explicit archetypes;
+- focused role, surface, silhouette, and motion specialists selected from
+  request and reference provenance;
 - pixel textures with consistent UV scale;
 - bones, pivots, and reusable animation clips;
 - Java block, GeckoLib 5, Bedrock, GLB, and glTF exports.

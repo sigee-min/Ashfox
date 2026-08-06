@@ -15,10 +15,10 @@ const withCanonicalIdle = (
   project: ReturnType<typeof createGltfProject>
 ) => {
   const document = structuredClone(project);
-  const legacyIdle = document.animations['clip-idle'];
+  const sourceIdle = document.animations['clip-idle'];
   document.animations = {
     idle: {
-      ...legacyIdle,
+      ...sourceIdle,
       id: 'idle'
     }
   };

@@ -1,5 +1,7 @@
 import {
   evaluateProductionReadiness,
+  evaluateAuthoringCompatibility,
+  evaluateAuthoringPlan,
   type ProjectDocument,
   type ValidationReport
 } from '@ashfox/engine-core';
@@ -21,7 +23,7 @@ import {
 } from '../inspectWorkflow';
 import type {
   VisualReviewReceipt
-} from '../presentationReview';
+} from '../../../application/visualReviewReceipt';
 import type {
   InspectResult
 } from '../types';
@@ -31,6 +33,10 @@ import {
 import {
   DETAIL_INSPECT_LIMIT
 } from './inspectResult';
+import {
+  authoringPlanProjection,
+  authoringProfileProjection
+} from './authoringPlanProjection';
 
 const MATERIALIZATION_ISSUE_LIMIT = 20;
 
@@ -53,6 +59,11 @@ export const inspectTarget = (
   );
   const exportTarget = projectExportTargetFor(document);
   const compatibility = exportCompatibilitySummary(document);
+  const authoringPlan = evaluateAuthoringPlan(document);
+  const authoringProfile = document.authoringProfile ?? null;
+  const authoringCompatibility = authoringProfile
+    ? evaluateAuthoringCompatibility(authoringProfile)
+    : null;
   return boundedSuccess(
     document.revision,
     {
@@ -80,6 +91,18 @@ export const inspectTarget = (
           materialization.issues.length > MATERIALIZATION_ISSUE_LIMIT
       },
       intent: document.intent ?? null,
+      authoringAuthority: {
+        profile: authoringProfileProjection(authoringProfile),
+        evidence: authoringProfile?.claims.map((claim) => ({
+          authority: claim.authority,
+          criterionId: claim.criterionId,
+          basis: claim.basis,
+          referenceIds: claim.referenceIds,
+          rationale: claim.rationale
+        })) ?? [],
+        compatibility: authoringCompatibility,
+        plan: authoringPlanProjection(authoringPlan)
+      },
       counts: {
         errors: readiness.counts.structuralErrors,
         warnings: readiness.counts.structuralWarnings,

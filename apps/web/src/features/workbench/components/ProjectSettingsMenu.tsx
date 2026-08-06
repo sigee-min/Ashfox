@@ -5,6 +5,8 @@ import {
 } from 'react';
 
 import {
+  getArchetype,
+  getSpecialist,
   isExportModelPathValid,
   isExportNamespaceValid,
   normalizeExportModelPath,
@@ -95,6 +97,15 @@ export function ProjectSettingsMenu({
       trimmedName !== document.name ||
       targetChanged
     );
+  const authoringProfile = document.authoringProfile;
+  const archetype = authoringProfile
+    ? getArchetype(authoringProfile.archetype.id)
+    : undefined;
+  const specialistLabels = authoringProfile
+    ? authoringProfile.specialists.map((reference) =>
+        getSpecialist(reference.id)?.label ?? reference.id
+      )
+    : [];
 
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
@@ -154,7 +165,21 @@ export function ProjectSettingsMenu({
         <span>
           {document.settings.surfacePixelDensity === 1
             ? '1-unit form grid · compact semantic decomposition'
-            : `${document.settings.surfacePixelDensity}× legacy grid · rebuild at 1× for iconic authoring`}
+            : `${document.settings.surfacePixelDensity}× density is not authorable · rebuild at 1×`}
+        </span>
+      </div>
+      <div className="iconic-style-card" aria-label="Authoring authority">
+        <strong>
+          {authoringProfile
+            ? archetype?.label ?? authoringProfile.archetype.id
+            : 'Archetype · not configured'}
+        </strong>
+        <span>
+          {authoringProfile
+            ? specialistLabels.length > 0
+              ? `Specialists: ${specialistLabels.join(' · ')}`
+              : 'No specialist contributions configured.'
+            : 'Configure one broad archetype before modeling.'}
         </span>
       </div>
       <div className="project-facts">

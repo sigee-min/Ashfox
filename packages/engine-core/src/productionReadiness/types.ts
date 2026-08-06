@@ -14,7 +14,21 @@ export type ProductionReadinessCode =
   | 'production.intent_grounding_mismatch'
   | 'production.intent_grounding_unstable'
   | 'production.intent_grounding_unverifiable'
-  | 'production.intent_evaluation_unavailable';
+  | 'production.intent_evaluation_unavailable'
+  | 'production.authoring_profile_missing'
+  | 'production.authoring_profile_invalid'
+  | 'production.authoring_routing_stale'
+  | 'production.authoring_compatibility_invalid'
+  | 'production.authoring_slot_incomplete'
+  | 'production.authoring_attachment_incomplete'
+  | 'production.authoring_slot_kind_invalid'
+  | 'production.authoring_slot_hierarchy_invalid'
+  | 'production.authoring_slot_spatial_invalid'
+  | 'production.authoring_slot_facing_invalid'
+  | 'production.authoring_part_unassigned'
+  | 'production.authoring_motion_clip_missing'
+  | 'production.authoring_motion_role_invalid'
+  | 'production.authoring_motion_static';
 
 export interface ProductionReadinessFinding {
   code: ProductionReadinessCode;

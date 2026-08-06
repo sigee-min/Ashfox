@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   composeTextureRaster,
   createProjectFromInput,
-  executeCommandBatch,
+  executeSystemCommandBatch,
   paintEyeMotifPixel,
   paintFeatureMotifPixel,
   readCompiledParts,
@@ -17,15 +17,14 @@ const execute = (
   document: ProjectDocument,
   batchId: string,
   operations: CommandBatch['operations']
-) => executeCommandBatch(
+) => executeSystemCommandBatch(
   document,
   {
     batchId,
     baseProjectId: document.id,
     baseRevision: document.revision,
     operations
-  },
-  { source: 'agent' }
+  }
 );
 
 const empty = createProjectFromInput(
@@ -353,7 +352,7 @@ assert.equal(
   'the system must project the exact semantic patch region'
 );
 
-const protrudingLegacyPayload = execute(
+const protrudingFeaturePayload = execute(
   authored.document,
   'surface-eye-relief-rejected',
   [{
@@ -367,7 +366,7 @@ const protrudingLegacyPayload = execute(
     }
   }]
 );
-assert.equal(protrudingLegacyPayload.ok, false);
+assert.equal(protrudingFeaturePayload.ok, false);
 
 const outsideParent = execute(
   authored.document,

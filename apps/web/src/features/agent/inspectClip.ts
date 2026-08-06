@@ -5,7 +5,7 @@ import {
   type ProjectDocument
 } from '@ashfox/engine-core';
 
-import { schemaHash } from './schemaHash';
+import { canonicalFingerprint } from '../../application/canonicalFingerprint';
 
 export const CLIP_INSPECT_MAX_LIMIT = 25;
 
@@ -151,7 +151,7 @@ export const inspectClipAuthoring = (
   cursor: string | undefined,
   limit = DEFAULT_LIMIT
 ): unknown | null => {
-  const scope = schemaHash({
+  const scope = canonicalFingerprint({
     projectId: document.id,
     revision: document.revision,
     clipId: clip.id,

@@ -28,6 +28,10 @@ export const textureToolSchemas: Record<string, JsonSchema> = {
       target: {
         type: 'object',
         additionalProperties: false,
+        anyOf: [
+          { required: ['cubeId'] },
+          { required: ['cubeName'] }
+        ],
         properties: {
           cubeId: { type: 'string' },
           cubeName: { type: 'string' },
@@ -72,6 +76,10 @@ export const textureToolSchemas: Record<string, JsonSchema> = {
       target: {
         type: 'object',
         additionalProperties: false,
+        anyOf: [
+          { required: ['meshId'] },
+          { required: ['meshName'] }
+        ],
         properties: {
           meshId: { type: 'string' },
           meshName: { type: 'string' },
@@ -119,4 +127,3 @@ export const textureToolSchemas: Record<string, JsonSchema> = {
     }
   }
 };
-

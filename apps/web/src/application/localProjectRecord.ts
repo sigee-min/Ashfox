@@ -1,15 +1,31 @@
 import {
+  INTERNAL_CONTRACT_VERSIONS,
+  isCurrentInternalContractVersion,
+  isValidCommandReceiptLedger,
+  parseProjectDocument,
   validateProjectDocument,
   type CommandReceipt,
   type ProjectDocument
 } from '@ashfox/engine-core';
+import {
+  hasExactContractKeys,
+  isCanonicalIsoDate,
+  isClosedContractRecord
+} from '@ashfox/internal-contracts';
+import {
+  areVisualReviewLedgersEqual,
+  isValidVisualReviewLedger,
+  type VisualReviewReceipt
+} from './visualReviewReceipt';
 import {
   areProjectAssetsEqual,
   isProjectAssets,
   type ProjectAssets
 } from './projectAssets';
 
-export const LOCAL_PROJECT_SCHEMA_VERSION = 3;
+export const LOCAL_PROJECT_SCHEMA_VERSION =
+  INTERNAL_CONTRACT_VERSIONS.localProjectRecord;
+const LOCAL_PROJECT_ACTIVITY_LIMIT = 100;
 
 export interface LocalProjectRecord {
   schemaVersion: typeof LOCAL_PROJECT_SCHEMA_VERSION;
@@ -18,13 +34,26 @@ export interface LocalProjectRecord {
   document: ProjectDocument;
   assets: ProjectAssets;
   activity: readonly CommandReceipt[];
+  visualReviews: readonly VisualReviewReceipt[];
   savedAt: string;
 }
+
+const LOCAL_PROJECT_RECORD_KEYS = new Set([
+  'schemaVersion',
+  'projectId',
+  'revision',
+  'document',
+  'assets',
+  'activity',
+  'visualReviews',
+  'savedAt'
+]);
 
 interface CreateLocalProjectRecordInput {
   document: ProjectDocument;
   assets: ProjectAssets;
   activity: readonly CommandReceipt[];
+  visualReviews: readonly VisualReviewReceipt[];
   savedAt: string;
 }
 
@@ -32,6 +61,7 @@ export const createLocalProjectRecord = ({
   document,
   assets,
   activity,
+  visualReviews,
   savedAt
 }: CreateLocalProjectRecordInput): LocalProjectRecord => ({
   schemaVersion: LOCAL_PROJECT_SCHEMA_VERSION,
@@ -40,6 +70,7 @@ export const createLocalProjectRecord = ({
   document,
   assets,
   activity,
+  visualReviews,
   savedAt
 });
 
@@ -78,18 +109,68 @@ export const compareProjectRevisions = (
   return projectRevisionSerial(left) - projectRevisionSerial(right);
 };
 
+const hasClosedRecordShape = (
+  record: Readonly<Record<string, unknown>>
+): boolean => hasExactContractKeys(record, LOCAL_PROJECT_RECORD_KEYS);
+
 export const isValidLocalProjectRecord = (
-  record: LocalProjectRecord,
+  value: unknown,
   projectId: string
-): boolean =>
-  record.schemaVersion === LOCAL_PROJECT_SCHEMA_VERSION &&
-  record.projectId === projectId &&
-  record.document.id === projectId &&
-  record.revision === record.document.revision &&
-  isProjectAssets(record.assets) &&
-  Array.isArray(record.activity) &&
-  Number.isFinite(Date.parse(record.savedAt)) &&
-  validateProjectDocument(record.document).valid;
+): value is LocalProjectRecord => {
+  if (!isClosedContractRecord(value) || !hasClosedRecordShape(value)) {
+    return false;
+  }
+  if (
+    !isCurrentInternalContractVersion(
+      'localProjectRecord',
+      value.schemaVersion
+    ) ||
+    value.projectId !== projectId ||
+    typeof value.revision !== 'string' ||
+    !isClosedContractRecord(value.document) ||
+    value.document.id !== projectId ||
+    value.revision !== value.document.revision ||
+    !isProjectAssets(value.assets) ||
+    !isValidCommandReceiptLedger(value.activity, {
+      projectId,
+      maxEntries: LOCAL_PROJECT_ACTIVITY_LIMIT
+    }) ||
+    !isCanonicalIsoDate(value.savedAt)
+  ) {
+    return false;
+  }
+  try {
+    const document = parseProjectDocument(value.document);
+    return validateProjectDocument(document).valid &&
+      isValidVisualReviewLedger(value.visualReviews, document);
+  } catch {
+    return false;
+  }
+};
+
+export const parseLocalProjectRecord = (
+  value: unknown,
+  projectId: string
+): LocalProjectRecord => {
+  if (!isClosedContractRecord(value) || !hasClosedRecordShape(value)) {
+    throw new Error('Stored local project does not match the closed v1 schema.');
+  }
+  const document = parseProjectDocument(value.document);
+  const record = {
+    schemaVersion: value.schemaVersion,
+    projectId: value.projectId,
+    revision: value.revision,
+    document,
+    assets: value.assets,
+    activity: value.activity,
+    visualReviews: value.visualReviews,
+    savedAt: value.savedAt
+  };
+  if (!isValidLocalProjectRecord(record, projectId)) {
+    throw new Error('Stored local project failed closed v1 validation.');
+  }
+  return record;
+};
 
 export const areProjectDocumentsEqual = (
   left: ProjectDocument,
@@ -98,6 +179,15 @@ export const areProjectDocumentsEqual = (
   left === right || JSON.stringify(left) === JSON.stringify(right);
 
 export const areLocalProjectRecordsEqual = (
+  left: LocalProjectRecord,
+  right: LocalProjectRecord
+): boolean =>
+  areProjectDocumentsEqual(left.document, right.document) &&
+  areProjectAssetsEqual(left.assets, right.assets) &&
+  JSON.stringify(left.activity) === JSON.stringify(right.activity) &&
+  areVisualReviewLedgersEqual(left.visualReviews, right.visualReviews);
+
+export const areLocalProjectPayloadsEqual = (
   left: LocalProjectRecord,
   right: LocalProjectRecord
 ): boolean =>

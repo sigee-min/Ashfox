@@ -4,7 +4,9 @@ import {
   validateAnyOfRule,
   validateArrayRule,
   validateEnumRule,
+  validateNumberRule,
   validateObjectRule,
+  validateStringRule,
   validateTypeRule
 } from './validationRules';
 
@@ -14,6 +16,8 @@ export const validateSchema = (schema: JsonSchema, value: unknown, path = '$'): 
   const validators = [
     () => validateTypeRule(schema, value, path),
     () => validateEnumRule(schema, value, path),
+    () => validateNumberRule(schema, value, path),
+    () => validateStringRule(schema, value, path),
     () => validateAnyOfRule(schema, value, path, applyNested),
     () => validateArrayRule(schema, value, path, applyNested),
     () => validateObjectRule(schema, value, path, applyNested)
@@ -25,6 +29,4 @@ export const validateSchema = (schema: JsonSchema, value: unknown, path = '$'): 
 
   return { ok: true };
 };
-
-
 

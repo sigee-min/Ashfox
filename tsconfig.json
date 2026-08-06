@@ -8,6 +8,7 @@
       "@ashfox/blockbench-runtime/*": ["packages/blockbench-runtime/src/*"],
       "@ashfox/engine-core": ["packages/engine-core/src/index.ts"],
       "@ashfox/engine-core/*": ["packages/engine-core/src/*"],
+      "@ashfox/internal-contracts": ["packages/internal-contracts/src/index.d.ts"],
       "@ashfox/blockbench-contracts/types": ["packages/blockbench-contracts/src/types/index.ts"],
       "@ashfox/blockbench-contracts/types/*": ["packages/blockbench-contracts/src/types/*"],
       "@ashfox/blockbench-contracts/mcpSchemas/*": ["packages/blockbench-contracts/src/mcpSchemas/*"],
@@ -30,6 +31,7 @@
     "packages/blockbench-runtime/src/**/*",
     "packages/engine-core/src/**/*",
     "packages/blockbench-contracts/src/**/*",
+    "packages/internal-contracts/src/**/*",
     "apps/blockbench-plugin/src/**/*",
     "apps/blockbench-mcp-sidecar/src/**/*"
   ]

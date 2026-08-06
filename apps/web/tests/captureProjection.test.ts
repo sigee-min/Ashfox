@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 import {
   createProjectFromInput,
-  executeCommandBatch
+  executeSystemCommandBatch
 } from '@ashfox/engine-core';
 
 import {
@@ -23,7 +23,7 @@ const empty = createProjectFromInput(
   },
   'local-0001'
 );
-const created = executeCommandBatch(empty, {
+const created = executeSystemCommandBatch(empty, {
   batchId: 'capture-fixture-bone',
   baseProjectId: empty.id,
   baseRevision: empty.revision,
@@ -40,7 +40,7 @@ const created = executeCommandBatch(empty, {
       }]
     }
   }]
-}, { source: 'system' });
+});
 assert.equal(created.ok, true);
 if (!created.ok) throw new Error(created.error.message);
 

@@ -22,7 +22,10 @@ import {
   TEXTURE_OP_LINEWIDTH_INVALID,
   TEXTURE_RENDERER_NO_IMAGE
 } from '../../shared/messages';
-import type { TextureOpLike } from '../../domain/textureOps';
+import type {
+  TextureOpLike,
+  TextureRasterFailureReason
+} from '../../domain/textureOps';
 
 type PaintFacesExecution = {
   pixels: Uint8ClampedArray;
@@ -188,19 +191,24 @@ const applySingleTextureOp = (
   const res = applyTextureOps(pixels, width, height, [op], parseHexColor);
   if (!res.ok) {
     const reason = mapTextureOpFailureReason(res.reason, textureLabel);
-    return fail({ code: 'invalid_payload', message: reason, details: { opIndex: res.opIndex } });
+    return fail({
+      code: 'invalid_payload',
+      message: reason,
+      details: { opIndex: res.opIndex, reason: res.reason }
+    });
   }
   return ok(undefined);
 };
 
 const mapTextureOpFailureReason = (
-  reason: 'invalid_color' | 'invalid_line_width' | 'invalid_op',
+  reason: 'invalid_color' | 'invalid_line_width' | TextureRasterFailureReason,
   textureLabel: string
 ): string => {
   switch (reason) {
     case 'invalid_line_width':
       return TEXTURE_OP_LINEWIDTH_INVALID(textureLabel);
     case 'invalid_op':
+    case 'raster_work_exceeded':
       return TEXTURE_OP_INVALID(textureLabel);
     default:
       return TEXTURE_OP_COLOR_INVALID(textureLabel);

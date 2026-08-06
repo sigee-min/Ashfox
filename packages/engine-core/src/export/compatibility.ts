@@ -6,6 +6,7 @@ export {
   EXPORT_PRESETS,
   MINECRAFT_GAME_VERSIONS,
   animationSupportForFormatProfile,
+  formatProfileSupportsAnimation,
   exportCompatibilityFor,
   exportCompatibilityOptions,
   exportPresetForFormatProfile,

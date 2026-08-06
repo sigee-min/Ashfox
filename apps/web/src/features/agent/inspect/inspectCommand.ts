@@ -7,8 +7,8 @@ import {
   boundedSuccess
 } from '../boundedResult';
 import {
-  schemaHash
-} from '../schemaHash';
+  canonicalFingerprint
+} from '../../../application/canonicalFingerprint';
 import type {
   InspectResult
 } from '../types';
@@ -38,7 +38,7 @@ export const inspectCommand = (
       name: definition.name,
       label: definition.label,
       purpose: definition.purpose,
-      schemaHash: schemaHash(definition.inputSchema),
+      schemaHash: canonicalFingerprint(definition.inputSchema),
       inputSchema: definition.inputSchema
     },
     DETAIL_INSPECT_LIMIT

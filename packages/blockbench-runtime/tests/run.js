@@ -11,6 +11,9 @@ register({
   }
 });
 
+const originalNativeModuleLoader = globalThis.requireNativeModule;
+globalThis.requireNativeModule = (name) => require(name);
+
 globalThis.__ashfox_test_promises = [];
 
 const discoverTests = () =>
@@ -39,6 +42,11 @@ const selectedTests = testFilter ? tests.filter((test) => test.includes(testFilt
 })().catch((err) => {
   console.error(err);
   process.exitCode = 1;
+}).finally(() => {
+  if (originalNativeModuleLoader === undefined) {
+    delete globalThis.requireNativeModule;
+  } else {
+    globalThis.requireNativeModule = originalNativeModuleLoader;
+  }
 });
-
 

@@ -1,17 +1,23 @@
 import type { ProjectDocument } from '../../model';
+import {
+  validateAgentAuthoringMutation,
+  validateAgentAuthoringResult
+} from '../authoringEnforcement';
 import { validateCompiledPartOperation } from '../compiledPartPolicy';
 import type { CommandApplication } from '../definition';
 import { getCommandDefinition } from '../registry';
 import type {
   CommandBatch,
-  CommandBatchFailure
+  CommandBatchFailure,
+  CommandSource
 } from '../types';
 import { commandBatchFailure } from './failure';
 
 export const applyCommandOperation = (
   document: ProjectDocument,
   batch: CommandBatch,
-  index: number
+  index: number,
+  source: CommandSource
 ): CommandApplication | CommandBatchFailure => {
   const operation = batch.operations[index];
   const definition = getCommandDefinition(operation.name);
@@ -31,8 +37,30 @@ export const applyCommandOperation = (
       expected: 'model.parts command for generated geometry'
     });
   }
+  const authoringIssue = source === 'agent'
+    ? validateAgentAuthoringMutation(document, operation)
+    : null;
+  if (authoringIssue) {
+    return commandBatchFailure(document, {
+      code: 'invalid_state',
+      ...authoringIssue,
+      path: `operations[${index}].${authoringIssue.path}`
+    });
+  }
   const result = definition.apply(document, operation.payload);
-  if (result.ok) return result.value;
+  if (result.ok) {
+    const resultingAuthoringIssue = source === 'agent'
+      ? validateAgentAuthoringResult(result.value.document, operation)
+      : null;
+    if (resultingAuthoringIssue) {
+      return commandBatchFailure(document, {
+        code: 'invalid_state',
+        ...resultingAuthoringIssue,
+        path: `operations[${index}].${resultingAuthoringIssue.path}`
+      });
+    }
+    return result.value;
+  }
   const {
     pathScope = 'operation',
     ...commandError

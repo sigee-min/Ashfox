@@ -18,6 +18,7 @@ import {
 } from '../src/templates.mjs';
 import { galleryContent } from '../src/content.mjs';
 import {
+  GALLERY_CATALOG_SCHEMA_VERSION,
   gallerySourceRoot,
   showcaseCatalog
 } from '../src/showcaseCatalog.mjs';
@@ -119,7 +120,7 @@ await cp(gallerySourceRoot, path.join(outputRoot, 'demos'), {
 await writeFile(
   path.join(outputRoot, 'demos', 'index.json'),
   `${JSON.stringify({
-    schemaVersion: 1,
+    schemaVersion: GALLERY_CATALOG_SCHEMA_VERSION,
     demos: showcaseCatalog
   }, null, 2)}\n`
 );

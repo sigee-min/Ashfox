@@ -10,6 +10,9 @@ import {
   createProjectSessionState,
   projectSessionReducer
 } from '../src/features/workbench/state/projectSessionReducer';
+import {
+  createVisualReviewReceiptFixture
+} from './fixtures/visualReviewReceipt';
 
 const document = createWorkbenchProject();
 const initialAssets = {
@@ -23,6 +26,7 @@ const initial = createProjectSessionState(
   initialAssets
 );
 assert.equal(initial.storage.restoreFromStorage, true);
+assert.deepEqual(initial.visualReviews, []);
 assert.equal(
   createProjectSessionState(
     createHistoryState(document),
@@ -50,6 +54,7 @@ const importedRecord: LocalProjectRecord = {
   document: importedDocument,
   assets: importedAssets,
   activity: [],
+  visualReviews: [],
   savedAt: '2026-01-01T00:00:00.000Z'
 };
 const replaced = projectSessionReducer(initial, {
@@ -91,6 +96,55 @@ const hydrated = projectSessionReducer(replaced, {
 assert.equal(hydrated.history.present, replaced.history.present);
 assert.equal(hydrated.assets, hydratedAssets);
 assert.equal(hydrated.storage, replaced.storage);
+
+const persistedReview = createVisualReviewReceiptFixture(document, {
+  camera: 'front',
+  frameNonce: 21
+});
+const reloaded = projectSessionReducer(
+  createProjectSessionState(createHistoryState(document)),
+  {
+    type: 'hydrate',
+    record: {
+      schemaVersion: LOCAL_PROJECT_SCHEMA_VERSION,
+      projectId: document.id,
+      revision: document.revision,
+      document,
+      assets: initialAssets,
+      activity: [],
+      visualReviews: [persistedReview],
+      savedAt: '2026-08-06T00:00:00.000Z'
+    }
+  }
+);
+assert.deepEqual(
+  reloaded.visualReviews,
+  [persistedReview],
+  'hydration restores the current revision review ledger'
+);
+const nextRevision = {
+  ...document,
+  revision: 'local-9999',
+  updatedAt: '2026-08-06T00:00:01.000Z'
+};
+const revisionChanged = projectSessionReducer(reloaded, {
+  type: 'external',
+  record: {
+    schemaVersion: LOCAL_PROJECT_SCHEMA_VERSION,
+    projectId: nextRevision.id,
+    revision: nextRevision.revision,
+    document: nextRevision,
+    assets: initialAssets,
+    activity: [],
+    visualReviews: [],
+    savedAt: '2026-08-06T00:00:01.000Z'
+  }
+});
+assert.deepEqual(
+  revisionChanged.visualReviews,
+  [],
+  'review evidence is never carried across a document revision change'
+);
 
 const created = projectSessionReducer(hydrated, {
   type: 'execute',

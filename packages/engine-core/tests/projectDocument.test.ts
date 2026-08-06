@@ -5,10 +5,9 @@ import {
   assertProjectDocument,
   parseProjectDocument,
   ProjectFileError,
-  ProjectInvariantError,
-  type ProjectDocument
+  ProjectInvariantError
 } from '../src';
-import { createJavaProject } from './helpers';
+import { createGeckoLib5Project, createJavaProject } from './helpers';
 
 const project = createJavaProject();
 
@@ -55,15 +54,104 @@ assert.deepEqual(
 
 assert.throws(
   () => parseProjectDocument({ name: 'incomplete' }),
-  ProjectFileError
+  ProjectInvariantError
 );
 
-const wrongSchema = {
+const documentWithUnknownProperty = {
   ...project,
-  schemaVersion: 99
-} as unknown as ProjectDocument;
-
+  obsoleteMarker: true
+};
 assert.throws(
-  () => assertProjectDocument(wrongSchema),
-  /violates 1 invariant/
+  () => parseProjectDocument(documentWithUnknownProperty),
+  ProjectInvariantError,
+  'the current document contract must reject undeclared internal fields'
 );
+
+const unsupportedSchema = {
+  ...project,
+  schemaVersion: 2
+};
+assert.throws(
+  () => parseProjectDocument(unsupportedSchema),
+  ProjectInvariantError,
+  'pre-release documents must use the single v1 schema'
+);
+
+const closedContractMutations: readonly [string, (value: any) => void][] = [
+  ['nested settings property', (value) => { value.settings.obsolete = true; }],
+  ['nested format property', (value) => { value.formatProfile.obsolete = true; }],
+  ['non-boolean format option', (value) => {
+    value.formatProfile.ambientOcclusion = 'false';
+  }],
+  ['missing node visibility', (value) => {
+    delete value.scene.nodes['cube-body'].visible;
+  }],
+  ['missing cube mirror', (value) => {
+    delete value.scene.nodes['cube-body'].mirror;
+  }],
+  ['unknown cube face', (value) => {
+    value.scene.nodes['cube-body'].faces.obsolete = {
+      enabled: false,
+      textureId: null
+    };
+  }],
+  ['missing texture sampling', (value) => {
+    delete value.textures['texture-base'].sampling;
+  }],
+  ['unknown texture sampling', (value) => {
+    value.textures['texture-base'].sampling = 'bogus';
+  }],
+  ['non-boolean texture visibility', (value) => {
+    value.textures['texture-base'].visible = Number.NaN;
+  }],
+  ['unknown blob property', (value) => {
+    value.textures['texture-base'].source.obsolete = true;
+  }],
+  ['non-canonical date', (value) => {
+    value.createdAt = '2026-08-06';
+  }],
+  ['offset ISO date', (value) => {
+    value.createdAt = '2026-08-06T09:00:00+09:00';
+  }]
+];
+
+for (const [label, mutate] of closedContractMutations) {
+  const candidate = JSON.parse(JSON.stringify(project));
+  mutate(candidate);
+  assert.throws(
+    () => parseProjectDocument(candidate),
+    ProjectInvariantError,
+    `closed v1 document must reject ${label}`
+  );
+}
+
+const animatedContractMutations: readonly [
+  string,
+  (value: any) => void
+][] = [
+  ['unknown clip property', (value) => {
+    value.animations['clip-idle'].obsolete = true;
+  }],
+  ['unknown keyframe property', (value) => {
+    value.animations['clip-idle']
+      .channels['channel-root-rotation'].keys[0].obsolete = true;
+  }],
+  ['unknown effect property', (value) => {
+    value.animations['clip-idle']
+      .triggers['trigger-particle'].keys[0].value.obsolete = true;
+  }],
+  ['non-boolean effect binding', (value) => {
+    value.animations['clip-idle']
+      .triggers['trigger-particle'].keys[0].value.bindToActor = 'yes';
+  }]
+];
+
+for (const [label, mutate] of animatedContractMutations) {
+  const candidate = JSON.parse(JSON.stringify(createGeckoLib5Project()));
+  mutate(candidate);
+  assert.throws(
+    () => parseProjectDocument(candidate),
+    ProjectInvariantError,
+    `closed v1 document must reject ${label}`
+  );
+}

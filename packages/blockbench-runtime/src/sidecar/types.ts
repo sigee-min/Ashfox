@@ -1,8 +1,6 @@
-export type SidecarLaunchConfig = {
-  host: string;
-  port: number;
-  path: string;
+import type { ServerConfig } from '../serverConfig';
+
+export type SidecarLaunchConfig = ServerConfig & {
   execPath?: string;
 };
-
 

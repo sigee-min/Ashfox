@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 import {
   createProjectFromInput,
-  executeCommandBatch,
+  executeAgentCommandBatch,
   type CommandBatch,
   type ProjectDocument
 } from '../src';
@@ -24,15 +24,14 @@ const execute = (
   batchId: string,
   operations: CommandBatch['operations']
 ) =>
-  executeCommandBatch(
+  executeAgentCommandBatch(
     document,
     {
       batchId,
       baseProjectId: document.id,
       baseRevision: document.revision,
       operations
-    },
-    { source: 'agent' }
+    }
   );
 
 const created = execute(base, 'minimal-project-create', [{

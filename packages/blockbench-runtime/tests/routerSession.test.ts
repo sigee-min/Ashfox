@@ -2,13 +2,53 @@ import assert from 'node:assert/strict';
 
 import { getSessionFromHeaders, resolveSession } from '../src/transport/mcp/routerSession';
 import { SessionStore } from '../src/transport/mcp/session';
-import { MCP_PROTOCOL_VERSION_MISMATCH, MCP_SESSION_ID_REQUIRED } from '../src/shared/messages';
+import {
+  MCP_INITIALIZE_REQUIRES_ID,
+  MCP_PROTOCOL_VERSION_MISMATCH,
+  MCP_SESSION_CAPACITY_REACHED,
+  MCP_SESSION_ID_REQUIRED
+} from '../src/shared/messages';
 
 {
   const sessions = new SessionStore();
   const session = sessions.create('s1', '2025-06-18');
   assert.equal(getSessionFromHeaders(sessions, { 'mcp-session-id': 's1' }), session);
   assert.equal(getSessionFromHeaders(sessions, {}), null);
+}
+
+{
+  const sessions = new SessionStore(1);
+  const res = resolveSession(
+    sessions,
+    { jsonrpc: '2.0', method: 'initialize' },
+    null,
+    undefined,
+    {}
+  );
+  assert.equal(res.ok, false);
+  if (!res.ok) {
+    assert.equal(res.status, 400);
+    assert.equal(res.error.error?.message, MCP_INITIALIZE_REQUIRES_ID);
+  }
+  assert.equal(sessions.size, 0);
+}
+
+{
+  const sessions = new SessionStore(1);
+  sessions.create('occupied', '2025-06-18');
+  const res = resolveSession(
+    sessions,
+    { jsonrpc: '2.0', method: 'initialize' },
+    6,
+    undefined,
+    {}
+  );
+  assert.equal(res.ok, false);
+  if (!res.ok) {
+    assert.equal(res.status, 429);
+    assert.equal(res.error.error?.message, MCP_SESSION_CAPACITY_REACHED);
+  }
+  assert.equal(sessions.size, 1);
 }
 
 {

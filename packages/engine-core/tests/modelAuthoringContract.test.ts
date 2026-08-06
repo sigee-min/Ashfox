@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   auditEyeAnatomy,
   createProjectFromInput,
-  executeCommandBatch,
+  executeSystemCommandBatch,
   readPartRecipe,
   type CommandBatch,
   type CommandBatchResult,
@@ -28,15 +28,14 @@ const run = (
   batchId: string,
   operations: CommandBatch['operations']
 ): CommandBatchResult =>
-  executeCommandBatch(
+  executeSystemCommandBatch(
     document,
     {
       batchId,
       baseProjectId: document.id,
       baseRevision: document.revision,
       operations
-    },
-    { source: 'agent' }
+    }
   );
 
 const succeed = (

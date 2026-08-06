@@ -27,6 +27,9 @@ import { setNodeVisibilityCommand } from './definitions/setNodeVisibility';
 import { setNodePivotCommand } from './definitions/setNodePivot';
 import { setProjectIntentCommand } from './definitions/setProjectIntent';
 import {
+  configureAuthoringCommand
+} from './definitions/configureAuthoring';
+import {
   setProjectResourceCommand
 } from './definitions/setProjectResource';
 import { setProjectTargetCommand } from './definitions/setProjectTarget';
@@ -65,6 +68,10 @@ const registrations: Readonly<Record<CommandName, CommandRegistration>> = {
     false
   ),
   'project.intent.set': registration(setProjectIntentCommand, true),
+  'project.authoring.configure': registration(
+    configureAuthoringCommand,
+    true
+  ),
   'model.parts.upsert': registration(upsertModelPartsCommand, true),
   'model.parts.mirror': registration(mirrorModelPartsCommand, true),
   'model.parts.transform': registration(transformModelPartsCommand, true),

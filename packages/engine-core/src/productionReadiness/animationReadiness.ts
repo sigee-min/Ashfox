@@ -9,7 +9,7 @@ import {
   loopClipTransformChannelsClose
 } from '../animation/loopClosure';
 import {
-  animationSupportForFormatProfile
+  formatProfileSupportsAnimation
 } from '../export/compatibility';
 import type {
   AnimationClip,
@@ -184,7 +184,7 @@ export const evaluateAnimationReadiness = (
   visibleNodeIds: ReadonlySet<string>
 ): AnimationReadiness => {
   const targetSupportsAnimations =
-    animationSupportForFormatProfile(document.formatProfile) !== 'none';
+    formatProfileSupportsAnimation(document.formatProfile);
   const canonicalIdle = document.animations[CANONICAL_IDLE_CLIP_ID];
   const idleClips = canonicalIdle ? [canonicalIdle] : [];
   const visibleIdleChannels = idleClips.map((clip) =>

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 import {
   createProjectFromInput,
-  executeCommandBatch,
+  executeSystemCommandBatch,
   type CubeNode,
   type ProjectDocument
 } from '../src';
@@ -49,7 +49,7 @@ const project = createProjectFromInput(
   'revision-surface-authority'
 );
 
-const authored = executeCommandBatch(
+const authored = executeSystemCommandBatch(
   project,
   {
     batchId: 'surface-authority-part',
@@ -80,8 +80,7 @@ const authored = executeCommandBatch(
         }]
       }
     }]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(authored.ok, true);
 if (!authored.ok) {

@@ -29,6 +29,7 @@ import {
   presentationCancellationResult,
   presentationTimeoutResult,
   stalePresentationResult,
+  snapshotPresentationObservation,
   type PresentationPlaybackEffect,
   type PresentationSession
 } from './presentationSession';
@@ -96,7 +97,10 @@ export const usePresentationSession = ({
     setPresentationNonce(0);
     if (result.ok && result.data.verdict === 'pending') {
       observationsRef.current = new Map([
-        [result.data.frameNonce, result]
+        [
+          result.data.frameNonce,
+          snapshotPresentationObservation(result)
+        ]
       ]);
     }
     pending.resolve(result);

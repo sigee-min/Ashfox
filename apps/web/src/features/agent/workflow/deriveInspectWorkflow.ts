@@ -9,8 +9,9 @@ import {
 } from '../../../application/projectIdentity';
 import {
   rejectedVisualReviewsForRevision,
+  visualReviewPlanItem,
   type VisualReviewReceipt
-} from '../presentationReview';
+} from '../../../application/visualReviewReceipt';
 import {
   remainingVisualReviews,
   visualReviewKey
@@ -128,9 +129,9 @@ export const deriveInspectWorkflow = (
   const workflowBlocker: InspectWorkflowBlocker | null = rejected
     ? {
         code: 'review.rejected',
-        path: `review.${visualReviewKey(rejected)}`,
+        path: `review.${visualReviewKey(visualReviewPlanItem(rejected))}`,
         fix:
-          `Revise the rejected visual issues: ${rejected.issues.join(', ')}.`
+          `Revise the rejected visual issues: ${rejected.decision.issues.join(', ')}.`
       }
     : blocker
       ? {

@@ -108,6 +108,13 @@ export const animationSupportForFormatProfile = (
 ): ExportCompatibilityOption['animationSupport'] | null =>
   compatibilityForFormatProfile(profile)?.animationSupport ?? null;
 
+export const formatProfileSupportsAnimation = (
+  profile: ProjectFormatProfile
+): boolean => {
+  const support = animationSupportForFormatProfile(profile);
+  return support === 'actor' || support === 'scene';
+};
+
 export const supportsJavaBlockMultiAxisRotation = (
   gameVersion: JavaGameVersion
 ): boolean =>

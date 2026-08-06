@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 
 import {
   createProjectFromInput,
-  executeCommandBatch,
+  executeAgentCommandBatch,
+  executeSystemCommandBatch,
   readCompiledParts,
   type CommandBatch,
   type ProjectDocument
@@ -377,17 +378,19 @@ const execute = (
   document: ProjectDocument,
   batchId: string,
   operations: CommandBatch['operations'],
-  source: 'agent' | 'system' = 'agent'
+  source: 'agent' | 'system' = 'system'
 ): ProjectDocument => {
-  const result = executeCommandBatch(
+  const executeBatch = source === 'agent'
+    ? executeAgentCommandBatch
+    : executeSystemCommandBatch;
+  const result = executeBatch(
     document,
     {
       batchId,
       baseProjectId: document.id,
       baseRevision: document.revision,
       operations
-    },
-    { source }
+    }
   );
   if (!result.ok) {
     throw new Error(
@@ -448,7 +451,7 @@ const oneSided = execute(createProject('project-mirror-parts'), 'upsert-left', [
   }
 }]);
 const oneSidedSnapshot = JSON.stringify(oneSided);
-const quarterPlaneMirror = executeCommandBatch(
+const quarterPlaneMirror = executeSystemCommandBatch(
   oneSided,
   {
     batchId: 'mirror-quarter-plane',
@@ -462,8 +465,7 @@ const quarterPlaneMirror = executeCommandBatch(
         plane: 0.25
       }
     }]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(quarterPlaneMirror.ok, false);
 if (!quarterPlaneMirror.ok) {
@@ -475,7 +477,7 @@ if (!quarterPlaneMirror.ok) {
 }
 assert.equal(JSON.stringify(oneSided), oneSidedSnapshot);
 
-const collidingMirror = executeCommandBatch(
+const collidingMirror = executeSystemCommandBatch(
   oneSided,
   {
     batchId: 'mirror-colliding-target',
@@ -490,8 +492,7 @@ const collidingMirror = executeCommandBatch(
         targetRootPartId: 'hand.left'
       }
     }]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(collidingMirror.ok, false);
 if (!collidingMirror.ok) {
@@ -583,7 +584,7 @@ for (const [leftId, rightId] of [
 }
 
 const bilateralSnapshot = JSON.stringify(bilateral);
-const mirrorRetry = executeCommandBatch(
+const mirrorRetry = executeSystemCommandBatch(
   bilateral,
   {
     batchId: 'mirror-right-retry',
@@ -598,8 +599,7 @@ const mirrorRetry = executeCommandBatch(
         targetRootPartId: 'arm.right'
       }
     }]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(mirrorRetry.ok, false);
 if (!mirrorRetry.ok) {
@@ -650,7 +650,7 @@ const crossingOneSided = execute(
   }]
 );
 const crossingSnapshot = JSON.stringify(crossingOneSided);
-const crossingMirror = executeCommandBatch(
+const crossingMirror = executeSystemCommandBatch(
   crossingOneSided,
   {
     batchId: 'mirror-center-crossing',
@@ -665,8 +665,7 @@ const crossingMirror = executeCommandBatch(
         targetRootPartId: 'crossing.right'
       }
     }]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(crossingMirror.ok, false);
 if (!crossingMirror.ok) {
@@ -831,7 +830,7 @@ assert.equal(
   0
 );
 
-const detachedTransform = executeCommandBatch(
+const detachedTransform = executeSystemCommandBatch(
   fullChain,
   {
     batchId: 'transform-detached-subtree',
@@ -844,8 +843,7 @@ const detachedTransform = executeCommandBatch(
         by: [0, 10, 0]
       }
     }]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(detachedTransform.ok, false);
 if (!detachedTransform.ok) {
@@ -860,7 +858,7 @@ assert.equal(
   'failed subtree projection must expose no intermediate document state'
 );
 
-const unexpectedTransformInput = executeCommandBatch(
+const unexpectedTransformInput = executeSystemCommandBatch(
   fullChain,
   {
     batchId: 'transform-unexpected-input',
@@ -874,8 +872,7 @@ const unexpectedTransformInput = executeCommandBatch(
         unexpected: true
       }
     }] as unknown as CommandBatch['operations']
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(unexpectedTransformInput.ok, false);
 if (!unexpectedTransformInput.ok) {

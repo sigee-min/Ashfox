@@ -1,7 +1,11 @@
 import type { JsonSchema } from './types';
+import {
+  isClosedContractRecord,
+  isDenseContractArray
+} from '@ashfox/internal-contracts';
 
 export const isObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
+  isClosedContractRecord(value);
 
 export const readRuntimeType = (value: unknown): string =>
   value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value;
@@ -12,7 +16,7 @@ export const typeMatches = (schemaType: JsonSchema['type'], value: unknown): boo
     case 'object':
       return isObject(value);
     case 'array':
-      return Array.isArray(value);
+      return isDenseContractArray(value);
     case 'string':
       return typeof value === 'string';
     case 'number':

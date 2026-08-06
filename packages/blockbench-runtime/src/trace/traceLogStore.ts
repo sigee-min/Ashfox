@@ -1,6 +1,14 @@
-import type { TraceLogRecord } from '@ashfox/blockbench-contracts/types/traceLog';
+import {
+  isTraceLogRecord,
+  TRACE_LOG_FINITE_JSON_ENVELOPE_DEPTH,
+  type TraceLogRecord
+} from '@ashfox/blockbench-contracts/types/traceLog';
 import type { TraceLogWriter } from '../ports/traceLog';
 import type { ToolError } from '@ashfox/blockbench-contracts/types/internal';
+import {
+  createFiniteJsonSnapshot,
+  utf8ContractByteLength
+} from '@ashfox/internal-contracts';
 import { serializeTraceLogRecord } from './traceLogFormat';
 
 export type TraceLogStoreOptions = {
@@ -12,15 +20,17 @@ export type TraceLogStoreOptions = {
 };
 
 export class TraceLogStore {
-  private readonly lines: string[] = [];
-  private startIndex = 0;
-  private text = '';
+  private headerLine: string | null = null;
+  private readonly stepLines: string[] = [];
+  private stepStartIndex = 0;
+  private stepsText = '';
   private writer?: TraceLogWriter | null;
   private autoFlush: boolean;
   private maxEntries: number;
   private maxBytes?: number;
   private minEntries: number;
   private currentSize = 0;
+  private lastSeq = 0;
 
   constructor(options: TraceLogStoreOptions = {}) {
     this.writer = options.writer ?? null;
@@ -31,14 +41,51 @@ export class TraceLogStore {
   }
 
   append(record: TraceLogRecord): { text: string; error?: ToolError } {
-    const text = serializeTraceLogRecord(record);
-    this.lines.push(text);
-    this.text += `${text}\n`;
-    this.currentSize += text.length + 1;
+    const snapshot = createFiniteJsonSnapshot(record, {
+      depthAllowance: TRACE_LOG_FINITE_JSON_ENVELOPE_DEPTH
+    });
+    if (!snapshot.ok || !isTraceLogRecord(snapshot.value)) {
+      return {
+        text: '',
+        error: {
+          code: 'invalid_state',
+          message: 'Trace log record violates the current closed contract.',
+          details: { reason: 'trace_log_record_invalid' }
+        }
+      };
+    }
+    const acceptedRecord = snapshot.value;
+    const text = serializeTraceLogRecord(acceptedRecord);
+    if (acceptedRecord.kind === 'header') {
+      if (this.headerLine !== null) {
+        return ledgerError(
+          'trace_log_header_duplicated',
+          'Trace log ledger already contains its v1 header.'
+        );
+      }
+      this.headerLine = text;
+    } else {
+      if (this.headerLine === null) {
+        return ledgerError(
+          'trace_log_header_required',
+          'Trace log ledger requires a v1 header before its first step.'
+        );
+      }
+      if (acceptedRecord.seq <= this.lastSeq) {
+        return ledgerError(
+          'trace_log_sequence_invalid',
+          `Trace log step sequence ${acceptedRecord.seq} must be greater than ${this.lastSeq}.`
+        );
+      }
+      this.stepLines.push(text);
+      this.stepsText += `${text}\n`;
+      this.lastSeq = acceptedRecord.seq;
+    }
+    this.currentSize += utf8ContractByteLength(text) + 1;
     this.trim();
     let error: ToolError | undefined;
     if (this.autoFlush && this.writer) {
-      const result = this.writer.write(this.getText());
+      const result = writeTraceLog(this.writer, this.getText());
       if (result) error = result;
     }
     return { text, ...(error ? { error } : {}) };
@@ -47,18 +94,20 @@ export class TraceLogStore {
   flush(writerOverride?: TraceLogWriter | null): ToolError | null {
     const writer = writerOverride ?? this.writer;
     if (!writer) return null;
-    return writer.write(this.getText());
+    return writeTraceLog(writer, this.getText());
   }
 
   clear(): void {
-    this.lines.length = 0;
-    this.startIndex = 0;
-    this.text = '';
+    this.headerLine = null;
+    this.stepLines.length = 0;
+    this.stepStartIndex = 0;
+    this.stepsText = '';
     this.currentSize = 0;
+    this.lastSeq = 0;
   }
 
   size(): number {
-    return Math.max(0, this.lines.length - this.startIndex);
+    return (this.headerLine === null ? 0 : 1) + this.stepCount();
   }
 
   update(options: TraceLogStoreOptions): void {
@@ -77,47 +126,88 @@ export class TraceLogStore {
   }
 
   getText(): string {
-    if (this.size() === 0) return '';
-    return this.text;
+    if (this.headerLine === null) return '';
+    return `${this.headerLine}\n${this.stepsText}`;
   }
 
   private trim(): void {
-    while (this.size() > this.maxEntries) {
-      this.dropOldest();
+    while (this.size() > this.maxEntries && this.stepCount() > 0) {
+      this.dropOldestStep();
     }
     if (this.maxBytes && this.maxBytes > 0) {
-      while (this.currentSize > this.maxBytes && this.size() > this.minEntries) {
-        this.dropOldest();
+      const retainedFloor = this.headerLine === null
+        ? this.minEntries
+        : Math.max(1, this.minEntries);
+      while (
+        this.currentSize > this.maxBytes &&
+        this.size() > retainedFloor &&
+        this.stepCount() > 0
+      ) {
+        this.dropOldestStep();
       }
     }
     if (this.size() === 0) {
       this.currentSize = 0;
-      this.text = '';
-      this.startIndex = 0;
-      this.lines.length = 0;
+      this.stepsText = '';
+      this.stepStartIndex = 0;
+      this.stepLines.length = 0;
     }
   }
 
-  private dropOldest(): void {
-    const removed = this.lines[this.startIndex];
+  private stepCount(): number {
+    return Math.max(0, this.stepLines.length - this.stepStartIndex);
+  }
+
+  private dropOldestStep(): void {
+    const removed = this.stepLines[this.stepStartIndex];
     if (removed === undefined) return;
-    this.startIndex += 1;
+    this.stepStartIndex += 1;
     if (removed) {
-      this.currentSize -= removed.length + 1;
+      this.currentSize -= utf8ContractByteLength(removed) + 1;
       if (this.currentSize < 0) this.currentSize = 0;
       const dropLength = removed.length + 1;
-      if (this.text.length <= dropLength) {
-        this.text = '';
+      if (this.stepsText.length <= dropLength) {
+        this.stepsText = '';
       } else {
-        this.text = this.text.slice(dropLength);
+        this.stepsText = this.stepsText.slice(dropLength);
       }
     }
-    if (this.startIndex > 1000 && this.startIndex > this.lines.length / 2) {
-      this.lines.splice(0, this.startIndex);
-      this.startIndex = 0;
+    if (
+      this.stepStartIndex > 1000 &&
+      this.stepStartIndex > this.stepLines.length / 2
+    ) {
+      this.stepLines.splice(0, this.stepStartIndex);
+      this.stepStartIndex = 0;
     }
   }
 }
+
+const ledgerError = (
+  reason: string,
+  message: string
+): { text: string; error: ToolError } => ({
+  text: '',
+  error: {
+    code: 'invalid_state',
+    message,
+    details: { reason }
+  }
+});
+
+const writeTraceLog = (
+  writer: TraceLogWriter,
+  text: string
+): ToolError | null => {
+  try {
+    return writer.write(text);
+  } catch (_error) {
+    return {
+      code: 'io_error',
+      message: 'Trace log writer threw while persisting the accepted ledger.',
+      details: { reason: 'trace_log_writer_threw' }
+    };
+  }
+};
 
 const normalizeMaxBytes = (value?: number): number | undefined => {
   if (value === undefined) return undefined;
@@ -132,8 +222,3 @@ const normalizeMinEntries = (value?: number): number => {
   const normalized = Math.max(0, Math.trunc(value));
   return normalized;
 };
-
-
-
-
-

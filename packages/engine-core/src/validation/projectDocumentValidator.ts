@@ -1,8 +1,8 @@
-import type { ProjectDocument } from '../model';
 import { validateAnimations } from './animation/animationValidator';
 import { createValidationContext } from './context';
 import { validateDocument } from './documentValidator';
 import { validateModelParts } from './modelPartsValidator';
+import { validateProjectDocumentContract } from './projectDocumentContract';
 import { validateSceneOcclusion } from './scene/occlusionValidator';
 import { validateScene } from './scene/sceneValidator';
 import { validateFormatProfile } from './target/formatValidator';
@@ -22,18 +22,20 @@ const sortedByPathAndCode = (
   });
 
 export const validateProjectDocument = (
-  document: ProjectDocument,
+  value: unknown,
   options: ValidateProjectOptions = {}
 ): ValidationReport => {
   const context = createValidationContext();
-  validateDocument(document, context.add);
-  validateScene(document, context.add, context.registerId);
-  validateModelParts(document, context.add);
-  validateSceneOcclusion(document, context.add);
-  validateTextures(document, context.add, context.registerId);
-  validateAnimations(document, context.add, context.registerId);
-  if (options.includeFormatProfile !== false) {
-    validateFormatProfile(document, context.add);
+  if (validateProjectDocumentContract(value, context.add)) {
+    validateDocument(value, context.add);
+    validateScene(value, context.add, context.registerId);
+    validateModelParts(value, context.add);
+    validateSceneOcclusion(value, context.add);
+    validateTextures(value, context.add, context.registerId);
+    validateAnimations(value, context.add, context.registerId);
+    if (options.includeFormatProfile !== false) {
+      validateFormatProfile(value, context.add);
+    }
   }
 
   const findings = sortedByPathAndCode(context.findings);

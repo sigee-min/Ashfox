@@ -16,7 +16,10 @@ import {
 } from '../src/features/agent/visualReviewPlan';
 import type {
   VisualReviewReceipt
-} from '../src/features/agent/presentationReview';
+} from '../src/application/visualReviewReceipt';
+import {
+  createVisualReviewReceiptFixture
+} from './fixtures/visualReviewReceipt';
 
 const document = createGltfProject();
 const required = requiredVisualReviews(document);
@@ -64,17 +67,12 @@ assert.deepEqual(
 const receipt = (
   review: (typeof required)[number],
   completedCycles = review.mode === 'cycle' ? 1 : 0
-): VisualReviewReceipt => ({
-  projectId: document.id,
-  revision: document.revision,
+): VisualReviewReceipt => createVisualReviewReceiptFixture(document, {
   mode: review.mode,
   camera: review.camera,
   clipId: review.clipId,
-  observedTimeSeconds: 0,
   completedCycles,
-  frameNonce: 1,
-  verdict: 'accepted',
-  issues: []
+  frameNonce: 1
 });
 
 const readiness = evaluateProductionReadiness(document);
@@ -92,6 +90,21 @@ assert.deepEqual(
   ).map(visualReviewKey),
   required.slice(1).map(visualReviewKey)
 );
+assert.deepEqual(
+  remainingVisualReviews(
+    document,
+    readiness,
+    [createVisualReviewReceiptFixture(document, {
+      purpose: 'preview',
+      milestone: 'archetype',
+      mode: required[0].mode,
+      camera: required[0].camera,
+      clipId: required[0].clipId
+    })]
+  ).map(visualReviewKey),
+  required.map(visualReviewKey),
+  'an accepted milestone preview must not satisfy delivery review'
+);
 
 assert.ok(
   remainingVisualReviews(
@@ -99,7 +112,16 @@ assert.ok(
     readiness,
     [
       ...required.slice(0, -1).map((review) => receipt(review)),
-      receipt(required.at(-1)!, 0)
+      {
+        ...receipt(required.at(-1)!),
+        observation: {
+          ...receipt(required.at(-1)!).observation,
+          data: {
+            ...receipt(required.at(-1)!).observation.data,
+            completedCycles: 0
+          }
+        }
+      }
     ]
   ).some((review) =>
     visualReviewKey(review) === 'cycle:perspective:clip-idle'
@@ -120,11 +142,13 @@ assert.deepEqual(
   remainingVisualReviews(
     document,
     readiness,
-    [{
-      ...receipt(required[0]),
+    [createVisualReviewReceiptFixture(document, {
+      mode: required[0].mode,
+      camera: required[0].camera,
+      clipId: required[0].clipId,
       verdict: 'rejected',
       issues: ['silhouette']
-    }]
+    })]
   )[0],
   required[0],
   'a rendered but rejected view must remain incomplete'

@@ -1,7 +1,8 @@
 import { canonicalJsonString } from '@ashfox/engine-core';
 
-export const schemaHash = (schema: unknown): string => {
-  const source = canonicalJsonString(schema);
+/* Deterministic local-integrity checksum; this is not a security signature. */
+export const canonicalFingerprint = (value: unknown): string => {
+  const source = canonicalJsonString(value);
   let hash = 0x811c9dc5;
   for (let index = 0; index < source.length; index += 1) {
     hash ^= source.charCodeAt(index);

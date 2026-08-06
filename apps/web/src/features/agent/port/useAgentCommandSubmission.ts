@@ -21,6 +21,7 @@ import type {
 import {
   useLatestValue
 } from '../../../hooks/useLatestValue';
+import { AGENT_ACTOR_ID } from '../agentIdentity';
 
 interface PendingCommand {
   commandId: string;
@@ -71,7 +72,7 @@ export const useAgentCommandSubmission = ({
       dispatch({
         type: 'execute',
         batch,
-        actorId: 'ashfox-agent',
+        actorId: AGENT_ACTOR_ID,
         source: 'agent',
         committedAt: new Date().toISOString()
       });

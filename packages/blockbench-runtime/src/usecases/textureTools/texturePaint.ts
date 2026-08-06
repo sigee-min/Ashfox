@@ -94,9 +94,14 @@ export const runPaintTexture = (
       message: TEXTURE_OPS_TOO_MANY(MAX_TEXTURE_OPS, label)
     });
   }
-  for (const op of ops) {
+  for (let opIndex = 0; opIndex < ops.length; opIndex += 1) {
+    const op = ops[opIndex];
     if (!isTextureOp(op)) {
-      return fail({ code: 'invalid_payload', message: TEXTURE_OP_INVALID(label) });
+      return fail({
+        code: 'invalid_payload',
+        message: TEXTURE_OP_INVALID(label),
+        details: { opIndex }
+      });
     }
   }
 
@@ -192,10 +197,14 @@ export const runPaintTexture = (
       const reason =
         res.reason === 'invalid_line_width'
           ? TEXTURE_OP_LINEWIDTH_INVALID(resolvedLabel)
-          : res.reason === 'invalid_op'
+          : res.reason === 'invalid_op' || res.reason === 'raster_work_exceeded'
             ? TEXTURE_OP_INVALID(resolvedLabel)
             : TEXTURE_OP_COLOR_INVALID(resolvedLabel);
-      return fail({ code: 'invalid_payload', message: reason, details: { opIndex: res.opIndex } });
+      return fail({
+        code: 'invalid_payload',
+        message: reason,
+        details: { opIndex: res.opIndex, reason: res.reason }
+      });
     }
   }
 
@@ -245,4 +254,3 @@ export const runPaintTexture = (
   if (!upsert.ok) return fail(upsert.error);
   return ok({ width, height, uvUsageId: payload.uvUsageId, opsApplied: ops.length });
 };
-

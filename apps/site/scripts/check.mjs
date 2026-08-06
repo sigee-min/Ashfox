@@ -7,6 +7,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { galleryContent, landingContent } from '../src/content.mjs';
+import {
+  isCurrentGalleryCatalogVersion
+} from '../src/showcaseCatalog.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repositoryRoot = path.resolve(siteRoot, '../..');
@@ -260,7 +263,10 @@ for (const item of galleryContent.items) {
     failures.push(`gallery manifest is missing: ${item.manifest}`);
   } else {
     const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
-    if (manifest.schemaVersion !== 1 || manifest.id !== item.galleryId) {
+    if (
+      !isCurrentGalleryCatalogVersion(manifest.schemaVersion) ||
+      manifest.id !== item.galleryId
+    ) {
       failures.push(`gallery manifest identity is invalid: ${item.manifest}`);
     }
   }
@@ -285,7 +291,7 @@ if (!(await exists(galleryIndexPath))) {
   const galleryIndex = JSON.parse(await readFile(galleryIndexPath, 'utf8'));
   const indexIds = galleryIndex.demos?.map((item) => item.id) ?? [];
   if (
-    galleryIndex.schemaVersion !== 1 ||
+    !isCurrentGalleryCatalogVersion(galleryIndex.schemaVersion) ||
     indexIds.join('|') !== expectedGalleryIds.join('|')
   ) {
     failures.push('gallery JSON index does not match the catalog');
@@ -371,14 +377,14 @@ if (heroPlayerCount !== 1) {
   failures.push(`landing must contain one hero player, received ${heroPlayerCount}`);
 }
 if (/data-demo-reel/.test(landingHtml)) {
-  failures.push('legacy landing reel DOM must not be present');
+  failures.push('retired landing reel DOM must not be present');
 }
 if (/media\/showcase\/[^"']+\.gif/.test(landingHtml)) {
-  failures.push('landing must not reference legacy showcase GIF media');
+  failures.push('landing must not reference retired showcase GIF media');
 }
 const videoTags = landingHtml.match(/<video[\s\S]*?<\/video>/g) ?? [];
 if (videoTags.length !== 0) {
-  failures.push('landing must not retain the legacy video player');
+  failures.push('landing must not retain the retired video player');
 }
 
 const storyPlayerCount = (

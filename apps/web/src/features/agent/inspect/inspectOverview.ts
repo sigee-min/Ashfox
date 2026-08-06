@@ -1,5 +1,7 @@
 import {
   CANONICAL_IDLE_CLIP_ID,
+  evaluateAuthoringCompatibility,
+  evaluateAuthoringPlan,
   evaluateProductionReadiness,
   isSceneNodeEffectivelyVisible,
   measureDocumentFormComposition,
@@ -21,7 +23,7 @@ import {
 } from '../inspectWorkflow';
 import type {
   VisualReviewReceipt
-} from '../presentationReview';
+} from '../../../application/visualReviewReceipt';
 import type {
   InspectResult
 } from '../types';
@@ -52,6 +54,11 @@ export const inspectOverview = (
   const exportTarget = projectExportTargetFor(document);
   const compatibility = exportCompatibilitySummary(document);
   const formComposition = measureDocumentFormComposition(document);
+  const authoringPlan = evaluateAuthoringPlan(document);
+  const authoringProfile = document.authoringProfile ?? null;
+  const authoringCompatibility = authoringProfile
+    ? evaluateAuthoringCompatibility(authoringProfile)
+    : null;
   return boundedSuccess(
     document.revision,
     {
@@ -87,6 +94,21 @@ export const inspectOverview = (
         surfacePixelDensity:
           document.settings.surfacePixelDensity,
         authoringStyle: 'iconic-pixel',
+        authoring: authoringProfile
+          ? {
+              archetype: authoringProfile.archetype.id,
+              specialists: authoringProfile.specialists.map(
+                (reference) => reference.id
+              ),
+              evidence: authoringProfile.claims.map((claim) => ({
+                authority: claim.authority.id,
+                criterionId: claim.criterionId,
+                basis: claim.basis
+              })),
+              compatible: authoringCompatibility?.compatible ?? false,
+              ready: authoringPlan.ready
+            }
+          : null,
         textureResolution:
           document.settings.textureResolution
       },

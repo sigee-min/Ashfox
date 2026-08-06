@@ -11,7 +11,7 @@ import type { FormatDescriptor } from '../src/ports/formats';
 
 {
   assert.equal(PLUGIN_ID, 'ashfox');
-  assert.equal(DEFAULT_SERVER_HOST, '0.0.0.0');
+  assert.equal(DEFAULT_SERVER_HOST, '127.0.0.1');
   assert.equal(DEFAULT_SERVER_PORT, 8787);
   assert.equal(DEFAULT_SERVER_PATH, '/mcp');
 }
@@ -72,4 +72,3 @@ import type { FormatDescriptor } from '../src/ports/formats';
   assert.equal(generic?.flags?.meshes, true);
   assert.equal(generic?.flags?.armatureRig, true);
 }
-

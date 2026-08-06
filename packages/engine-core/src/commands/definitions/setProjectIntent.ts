@@ -37,6 +37,48 @@ const inputSchema = {
       uniqueItems: true,
       description:
         'Concise visual criteria for the later semantic review.'
+    },
+    references: {
+      type: 'array',
+      maxItems: PROJECT_INTENT_LIMITS.maxReferences,
+      uniqueItems: true,
+      description:
+        'Auditable image, text, or model observations used for authority routing and later visual review. Store observations and content hashes, never local file paths or raw bytes.',
+      items: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            minLength: 1,
+            maxLength: 64,
+            pattern: '^[a-z][a-z0-9._-]{0,63}$'
+          },
+          kind: { enum: ['image', 'text', 'model'] },
+          description: {
+            type: 'string',
+            minLength: 1,
+            maxLength:
+              PROJECT_INTENT_LIMITS.maxReferenceDescriptionLength
+          },
+          cues: {
+            type: 'array',
+            maxItems: PROJECT_INTENT_LIMITS.maxReferenceCues,
+            uniqueItems: true,
+            items: {
+              type: 'string',
+              minLength: 1,
+              maxLength: PROJECT_INTENT_LIMITS.maxReferenceCueLength
+            }
+          },
+          contentHash: {
+            type: 'string',
+            minLength: 1,
+            maxLength: 160
+          }
+        },
+        required: ['id', 'kind', 'description', 'cues'],
+        additionalProperties: false
+      }
     }
   },
   required: ['subject'],
@@ -49,7 +91,8 @@ const completeIntentInput = (
   subject: input.subject,
   forward: input.forward ?? 'north',
   grounding: input.grounding ?? 'free',
-  features: input.features ?? []
+  features: input.features ?? [],
+  references: input.references
 });
 
 export const setProjectIntentCommand = defineCommand({

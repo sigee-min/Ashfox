@@ -1,15 +1,12 @@
 import assert from 'node:assert/strict';
 
 import {
-  createProjectFromInput,
   evaluateProductionReadiness,
-  executeCommandBatch,
+  executeAgentCommandBatch,
+  executeSystemCommandBatch,
   validateProjectDocument
 } from '@ashfox/engine-core';
 
-import {
-  createGltfProject
-} from '../../../packages/engine-core/tests/helpers';
 import {
   deriveInspectWorkflow
 } from '../src/features/agent/inspectWorkflow';
@@ -19,34 +16,16 @@ import {
 } from '../src/application/projectIdentity';
 import type {
   VisualReviewReceipt
-} from '../src/features/agent/presentationReview';
+} from '../src/application/visualReviewReceipt';
+import {
+  createAuthoringProject,
+  authoringSelectionFor
+} from './fixtures/authoringProject';
+import {
+  createVisualReviewReceiptFixture
+} from './fixtures/visualReviewReceipt';
 
-const readyProject = structuredClone(createGltfProject());
-readyProject.intent = {
-  subject: 'wooden crate',
-  forward: 'north',
-  grounding: 'free',
-  features: ['readable crate silhouette']
-};
-const idle = readyProject.animations['clip-idle'];
-const idleChannel = idle.channels['channel-root-rotation'];
-readyProject.animations = {
-  idle: {
-    ...idle,
-    id: 'idle',
-    channels: {
-      ...idle.channels,
-      'channel-root-rotation': {
-        ...idleChannel,
-        keys: idleChannel.keys.map((key, index) =>
-          index === idleChannel.keys.length - 1
-            ? { ...key, value: [0, 0, 0] }
-            : key
-        )
-      }
-    }
-  }
-};
+const readyProject = createAuthoringProject();
 
 const readyReport = validateProjectDocument(readyProject);
 const readyReadiness = evaluateProductionReadiness(
@@ -62,7 +41,7 @@ const assertOpenLoopRecovery = (
   const converted =
     target === 'glb'
       ? { ok: true as const, document: source }
-      : executeCommandBatch(
+      : executeAgentCommandBatch(
           source,
           {
             batchId: 'workflow-open-loop-target-gecko',
@@ -71,17 +50,18 @@ const assertOpenLoopRecovery = (
             operations: [{
               name: 'project.target.set',
               payload: { target: 'geckolib5' }
+            }, {
+              name: 'project.authoring.configure',
+              payload: authoringSelectionFor(source)
             }]
-          },
-          { source: 'agent' }
+          }
         );
   assert.equal(converted.ok, true);
   if (!converted.ok) throw new Error(converted.error.message);
   const document = converted.document;
   const sourceChannel =
-    document.animations.idle.channels[
-      'channel-root-rotation'
-    ];
+    Object.values(document.animations.idle.channels)[0];
+  if (!sourceChannel) throw new Error('Idle channel is unavailable.');
   const openChannel = {
     ...sourceChannel,
     id: `channel-${target}-open-loop`,
@@ -122,7 +102,7 @@ const assertOpenLoopRecovery = (
     }
   }]);
 
-  const recovered = executeCommandBatch(
+  const recovered = executeAgentCommandBatch(
     document,
     {
       batchId: `workflow-open-loop-delete-${target}`,
@@ -132,15 +112,14 @@ const assertOpenLoopRecovery = (
         name: 'animation.clip.delete',
         payload: { clipId: 'walk' }
       }]
-    },
-    { source: 'agent' }
+    }
   );
   assert.equal(recovered.ok, true);
   if (!recovered.ok) throw new Error(recovered.error.message);
   assert.equal(recovered.document.animations.walk, undefined);
 
   if (target === 'geckolib5') {
-    const empty = executeCommandBatch(
+    const empty = executeAgentCommandBatch(
       recovered.document,
       {
         batchId: 'workflow-delete-last-gecko-clip',
@@ -150,8 +129,7 @@ const assertOpenLoopRecovery = (
           name: 'animation.clip.delete',
           payload: { clipId: 'idle' }
         }]
-      },
-      { source: 'agent' }
+      }
     );
     assert.equal(
       empty.ok,
@@ -199,17 +177,13 @@ const receipt = (
   camera: 'perspective' | 'native' | 'front' | 'side' | 'top',
   clipId: string | null,
   revision = readyProject.revision
-): VisualReviewReceipt => ({
-  projectId: readyProject.id,
+): VisualReviewReceipt => createVisualReviewReceiptFixture(readyProject, {
   revision,
   mode,
   camera,
   clipId,
-  observedTimeSeconds: 1,
   completedCycles: mode === 'cycle' ? 1 : 0,
-  frameNonce: 1,
-  verdict: 'accepted',
-  issues: []
+  frameNonce: 1
 });
 
 const completeReceipts = [
@@ -230,7 +204,7 @@ assert.equal(reviewed.stage, 'deliver');
 assert.deepEqual(reviewed.remainingVisualReviews, []);
 assert.equal(reviewed.remainingVisualReviewCount, 0);
 
-const staticJavaResult = executeCommandBatch(
+const staticJavaResult = executeAgentCommandBatch(
   readyProject,
   {
     batchId: 'workflow-java-static',
@@ -242,9 +216,13 @@ const staticJavaResult = executeCommandBatch(
         target: 'java_block',
         gameVersion: '1.21.11'
       }
+    }, {
+      name: 'project.authoring.configure',
+      payload: authoringSelectionFor(readyProject, {
+        animationSupported: false
+      })
     }]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(staticJavaResult.ok, true);
 if (!staticJavaResult.ok) {
@@ -303,7 +281,9 @@ const staticJavaReviewed = deriveInspectWorkflow(
   staticJava,
   staticJavaReport,
   staticJavaReadiness,
-  completeReceipts.filter((candidate) => candidate.mode === 'frame')
+  completeReceipts.filter(
+    (candidate) => candidate.observation.data.mode === 'frame'
+  )
 );
 assert.equal(staticJavaReviewed.stage, 'deliver');
 assert.deepEqual(staticJavaReviewed.remainingVisualReviews, []);
@@ -363,7 +343,9 @@ assert.equal(staleReview.stage, 'review');
 assert.equal(staleReview.remainingVisualReviews.length, 6);
 assert.equal(staleReview.remainingVisualReviewCount, 6);
 
-const unspecified = structuredClone(createGltfProject());
+const unspecified = structuredClone(readyProject);
+delete unspecified.intent;
+delete unspecified.authoringProfile;
 const unspecifiedReport = validateProjectDocument(unspecified);
 const unspecifiedGuidance = deriveInspectWorkflow(
   unspecified,
@@ -402,14 +384,16 @@ assert.deepEqual(
 );
 
 const locatorProject = structuredClone(readyProject);
+const locatorRoot = locatorProject.scene.nodes[
+  locatorProject.scene.roots[0]
+];
+if (!locatorRoot) throw new Error('Fixture root is unavailable.');
 locatorProject.scene.nodes['locator-broken'] = {
   id: 'locator-broken',
   kind: 'locator',
   name: 'broken',
   parentId: 'bone-missing',
-  transform: structuredClone(
-    locatorProject.scene.nodes['bone-root'].transform
-  ),
+  transform: structuredClone(locatorRoot.transform),
   visible: true
 };
 const locatorReport = validateProjectDocument(locatorProject);
@@ -476,7 +460,7 @@ const untexturedGuidance = deriveInspectWorkflow(
 assert.equal(untexturedGuidance.stage, 'model');
 assert.match(
   untexturedGuidance.blocker?.code ?? '',
-  /^(cube\.texture_missing|production\.texture_coverage_incomplete)$/
+  /^(cube\.texture_missing|model\.part_projection|production\.texture_coverage_incomplete)$/
 );
 assert.ok(
   untexturedGuidance.nextActions.some(
@@ -490,6 +474,7 @@ const geometryMissing = structuredClone(readyProject);
 geometryMissing.scene = { roots: [], nodes: {} };
 geometryMissing.textures = {};
 geometryMissing.animations = {};
+delete geometryMissing.modeling;
 const geometryReport = validateProjectDocument(geometryMissing);
 const geometryGuidance = deriveInspectWorkflow(
   geometryMissing,
@@ -506,68 +491,16 @@ assert.deepEqual(
   [{ kind: 'command', name: 'model.parts.upsert' }]
 );
 
-const idleBase = createProjectFromInput(
-  {
-    id: 'workflow-idle',
-    name: 'Workflow idle',
-    target: 'glb',
-    namespace: 'ashfox',
-    modelPath: 'workflow_idle',
-    createdAt: '2026-07-31T00:00:00.000Z'
-  },
-  'idle-0001'
-);
-const idleAuthored = executeCommandBatch(
-  idleBase,
-  {
-    batchId: 'workflow-idle-author',
-    baseProjectId: idleBase.id,
-    baseRevision: idleBase.revision,
-    operations: [
-      {
-        name: 'project.intent.set',
-        payload: {
-          subject: 'workflow cube',
-          forward: 'north',
-          grounding: 'free',
-          features: ['readable cube']
-        }
-      },
-      {
-        name: 'model.parts.upsert',
-        payload: {
-          parts: [{
-            kind: 'mass',
-            partId: 'body',
-            parentPartId: null,
-            materialId: 'stone',
-            joint: { kind: 'fixed' },
-            center: [0, 1, 0],
-            radii: [1, 1, 1],
-            profile: 'hard'
-          }],
-          materials: [{
-            id: 'stone',
-            baseColor: '#777777'
-          }]
-        }
-      }
-    ]
-  },
-  { source: 'agent' }
-);
-assert.equal(idleAuthored.ok, true);
-if (!idleAuthored.ok) {
-  throw new Error(idleAuthored.error.message);
-}
+const idleAuthoredDocument = structuredClone(readyProject);
+idleAuthoredDocument.animations = {};
 const idleReport = validateProjectDocument(
-  idleAuthored.document
+  idleAuthoredDocument
 );
 const idleGuidance = deriveInspectWorkflow(
-  idleAuthored.document,
+  idleAuthoredDocument,
   idleReport,
   evaluateProductionReadiness(
-    idleAuthored.document,
+    idleAuthoredDocument,
     idleReport
   )
 );
@@ -592,12 +525,12 @@ assert.match(
   /returned animation\.motion\.upsert operation/
 );
 
-const incompatibleIdle = executeCommandBatch(
-  idleAuthored.document,
+const incompatibleIdle = executeSystemCommandBatch(
+  idleAuthoredDocument,
   {
     batchId: 'workflow-invalid-idle',
-    baseProjectId: idleAuthored.document.id,
-    baseRevision: idleAuthored.document.revision,
+    baseProjectId: idleAuthoredDocument.id,
+    baseRevision: idleAuthoredDocument.revision,
     operations: [
       {
         name: 'animation.clip.upsert',
@@ -615,7 +548,7 @@ const incompatibleIdle = executeCommandBatch(
           clipId: 'idle',
           channels: [{
             id: 'idle-root-position',
-            targetNodeId: 'bone:body',
+            targetNodeId: idleAuthoredDocument.scene.roots[0],
             property: 'position',
             keys: [
               {
@@ -633,8 +566,7 @@ const incompatibleIdle = executeCommandBatch(
         }
       }
     ]
-  },
-  { source: 'system' }
+  }
 );
 assert.equal(incompatibleIdle.ok, true);
 if (!incompatibleIdle.ok) {
@@ -670,47 +602,25 @@ assert.match(
   /returned animation\.clip\.delete operation/
 );
 
-const groundingBase = createProjectFromInput(
-  {
-    id: 'workflow-grounding',
-    name: 'Workflow grounding',
-    target: 'glb',
-    namespace: 'ashfox',
-    modelPath: 'workflow_grounding',
-    createdAt: '2026-07-31T00:00:00.000Z'
-  },
-  'grounding-0001'
-);
-const groundingResult = executeCommandBatch(
-  groundingBase,
+const groundingIntent = readyProject.intent;
+if (!groundingIntent) throw new Error('Fixture intent is unavailable.');
+const groundingResult = executeAgentCommandBatch(
+  readyProject,
   {
     batchId: 'workflow-grounding-author',
-    baseProjectId: groundingBase.id,
-    baseRevision: groundingBase.revision,
+    baseProjectId: readyProject.id,
+    baseRevision: readyProject.revision,
     operations: [{
       name: 'project.intent.set',
       payload: {
-        subject: 'grounded crate',
+        ...groundingIntent,
         grounding: 'grounded'
       }
     }, {
-      name: 'model.parts.upsert',
-      payload: {
-        parts: [{
-          kind: 'mass',
-          partId: 'body',
-          materialId: 'wood',
-          center: [0, 4, 0],
-          radii: [2, 2, 2]
-        }],
-        materials: [{
-          id: 'wood',
-          baseColor: '#8A5A32'
-        }]
-      }
+      name: 'project.authoring.configure',
+      payload: authoringSelectionFor(readyProject)
     }]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(groundingResult.ok, true);
 if (!groundingResult.ok) {

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 
 import {
-  executeCommandBatch,
+  executeAgentCommandBatch,
+  executeSystemCommandBatch,
   createProjectFromInput,
   normalizePartRecipe,
   parseProjectDocument,
@@ -113,17 +114,19 @@ const execute = (
   document: ProjectDocument,
   batchId: string,
   operations: CommandBatch['operations'],
-  source: 'agent' | 'system' = 'agent'
+  source: 'agent' | 'system' = 'system'
 ): ProjectDocument => {
-  const result = executeCommandBatch(
+  const executeBatch = source === 'agent'
+    ? executeAgentCommandBatch
+    : executeSystemCommandBatch;
+  const result = executeBatch(
     document,
     {
       batchId,
       baseProjectId: document.id,
       baseRevision: document.revision,
       operations
-    },
-    { source }
+    }
   );
   if (!result.ok) {
     throw new Error(
@@ -189,7 +192,7 @@ const snapBase = createProjectFromInput(
   },
   'revision-derived-attachments'
 );
-const snapped = executeCommandBatch(
+const snapped = executeSystemCommandBatch(
   snapBase,
   {
     batchId: 'derive-attachment-chain',
@@ -222,8 +225,7 @@ const snapped = executeCommandBatch(
         materials: [{ id: 'gold', baseColor: '#C58A32' }]
       }
     }]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(snapped.ok, true);
 if (!snapped.ok) {
@@ -250,7 +252,7 @@ assert.deepEqual(snappedTip?.attachment, {
   partAnchor: [6, 0, 0]
 });
 
-const diagonalSnap = executeCommandBatch(
+const diagonalSnap = executeSystemCommandBatch(
   snapBase,
   {
     batchId: 'derive-diagonal-attachment',
@@ -276,8 +278,7 @@ const diagonalSnap = executeCommandBatch(
         materials: [{ id: 'gold', baseColor: '#C58A32' }]
       }
     }]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(diagonalSnap.ok, true);
 if (!diagonalSnap.ok) {
@@ -313,7 +314,7 @@ assert.deepEqual(
   [4, 0, 0]
 );
 
-const expandedRoot = executeCommandBatch(
+const expandedRoot = executeSystemCommandBatch(
   snapped.document,
   {
     batchId: 'rederive-after-parent-edit',
@@ -332,8 +333,7 @@ const expandedRoot = executeCommandBatch(
         materials: []
       }
     }]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(expandedRoot.ok, true);
 if (!expandedRoot.ok) {
@@ -365,7 +365,7 @@ assert.deepEqual(
   'a deeper descendant must remain connected after ancestor rederivation'
 );
 
-const partialChildUpdate = executeCommandBatch(
+const partialChildUpdate = executeSystemCommandBatch(
   ordered,
   {
     batchId: 'preserve-existing-authoring-defaults',
@@ -383,8 +383,7 @@ const partialChildUpdate = executeCommandBatch(
         }]
       }
     }]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(partialChildUpdate.ok, true);
 if (!partialChildUpdate.ok) {
@@ -502,15 +501,14 @@ if (repairedSurfaceCube.kind === 'cube') {
   assert.equal(repairedSurfaceCube.faces.north.rotation, 0);
 }
 
-const repeated = executeCommandBatch(
+const repeated = executeSystemCommandBatch(
   ordered,
   {
     batchId: 'parts-repeat-identical',
     baseProjectId: ordered.id,
     baseRevision: ordered.revision,
     operations: [upsert([child, root])]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(repeated.ok, false);
 if (!repeated.ok) {
@@ -619,7 +617,7 @@ for (const density of [1, 2, 4] as const) {
 }
 
 const rawAgentProject = createEmptyProject();
-const rawAgent = executeCommandBatch(
+const rawAgent = executeAgentCommandBatch(
   rawAgentProject,
   {
     batchId: 'raw-agent-rejected',
@@ -639,8 +637,7 @@ const rawAgent = executeCommandBatch(
         }]
       }
     }]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(rawAgent.ok, false);
 if (!rawAgent.ok) {
@@ -650,7 +647,7 @@ if (!rawAgent.ok) {
 const generatedCubeId =
   compiled.parts.get('body')?.cubes[0]?.id ?? '';
 const beforeRawEdit = JSON.stringify(ordered);
-const rawGeneratedEdit = executeCommandBatch(
+const rawGeneratedEdit = executeSystemCommandBatch(
   ordered,
   {
     batchId: 'raw-generated-edit',
@@ -665,8 +662,7 @@ const rawGeneratedEdit = executeCommandBatch(
         }
       }
     }]
-  },
-  { source: 'system' }
+  }
 );
 assert.equal(rawGeneratedEdit.ok, false);
 if (!rawGeneratedEdit.ok) {
@@ -701,15 +697,14 @@ const detached: PartSpec = {
   partId: 'detached',
   center: [40, 40, 40]
 };
-const rejectedDetached = executeCommandBatch(
+const rejectedDetached = executeSystemCommandBatch(
   ordered,
   {
     batchId: 'parts-detached',
     baseProjectId: ordered.id,
     baseRevision: ordered.revision,
     operations: [upsert([detached])]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(rejectedDetached.ok, false);
 if (!rejectedDetached.ok) {
@@ -719,7 +714,7 @@ assert.equal(JSON.stringify(ordered), beforeRawEdit);
 assert.equal(ordered.scene.nodes['bone:detached'], undefined);
 
 const missingDeleteSnapshot = JSON.stringify(recolored);
-const missingDelete = executeCommandBatch(
+const missingDelete = executeSystemCommandBatch(
   recolored,
   {
     batchId: 'parts-delete-missing',
@@ -731,8 +726,7 @@ const missingDelete = executeCommandBatch(
         partIds: ['missing-part']
       }
     }]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(missingDelete.ok, false);
 if (!missingDelete.ok) {
@@ -744,7 +738,7 @@ if (!missingDelete.ok) {
 }
 assert.equal(JSON.stringify(recolored), missingDeleteSnapshot);
 
-const mixedDelete = executeCommandBatch(
+const mixedDelete = executeSystemCommandBatch(
   recolored,
   {
     batchId: 'parts-delete-mixed',
@@ -756,8 +750,7 @@ const mixedDelete = executeCommandBatch(
         partIds: ['missing-part', 'head']
       }
     }]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(mixedDelete.ok, false);
 if (!mixedDelete.ok) {
@@ -774,7 +767,7 @@ assert.equal(
 );
 
 const emptyDeleteBase = createEmptyProject();
-const emptyDelete = executeCommandBatch(
+const emptyDelete = executeSystemCommandBatch(
   emptyDeleteBase,
   {
     batchId: 'parts-delete-empty-project',
@@ -786,8 +779,7 @@ const emptyDelete = executeCommandBatch(
         partIds: ['missing-part']
       }
     }]
-  },
-  { source: 'agent' }
+  }
 );
 assert.equal(emptyDelete.ok, false);
 if (!emptyDelete.ok) {

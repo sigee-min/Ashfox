@@ -22,6 +22,9 @@ import {
   createOperationLease
 } from '../../../application/operationLease';
 import type {
+  VisualReviewReceipt
+} from '../../../application/visualReviewReceipt';
+import type {
   ProjectArchiveFile
 } from '../../files/projectArchive';
 import {
@@ -75,7 +78,7 @@ export const useWorkbenchProjectSession = () => {
     ({ history, isShowcase }) =>
       createProjectSessionState(history, {}, !isShowcase)
   );
-  const { history, assets, storage } = project;
+  const { history, assets, visualReviews, storage } = project;
   const document = history.present;
 
   const report = useMemo(
@@ -116,6 +119,7 @@ export const useWorkbenchProjectSession = () => {
     document,
     assets,
     activity: history.activity,
+    visualReviews,
     onHydrate: hydrateProject,
     onExternal: receiveExternalProject
   }).status;
@@ -130,9 +134,16 @@ export const useWorkbenchProjectSession = () => {
         document: archive.document,
         assets: archive.assets,
         activity: [],
+        visualReviews: [],
         savedAt
       })
     });
+  }, []);
+
+  const recordVisualReview = useCallback((
+    receipt: VisualReviewReceipt
+  ): void => {
+    dispatchProject({ type: 'visualReview.record', receipt });
   }, []);
 
   useEffect(() => {
@@ -175,6 +186,7 @@ export const useWorkbenchProjectSession = () => {
     document,
     history,
     assets,
+    visualReviews,
     storage,
     report,
     buildCaptureDocuments,
@@ -183,6 +195,7 @@ export const useWorkbenchProjectSession = () => {
     operationLease,
     dispatchProject,
     dispatchUserMutation,
+    recordVisualReview,
     replaceProject
   };
 };

@@ -6,6 +6,7 @@ import type {
   ExportFile,
   ExportTargetId
 } from '../types';
+import { EXPORT_BUNDLE_SCHEMA_VERSION } from '../types';
 
 export interface ExportBundleContent {
   target: {
@@ -22,7 +23,7 @@ export const createExportBundle = (
   findings: readonly InvariantFinding[],
   content: ExportBundleContent
 ): ExportBundle => ({
-  schemaVersion: 1,
+  schemaVersion: EXPORT_BUNDLE_SCHEMA_VERSION,
   projectId: document.id,
   revision: document.revision,
   target: content.target,

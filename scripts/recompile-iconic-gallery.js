@@ -14,7 +14,7 @@ register({
 });
 
 const {
-  executeCommandBatch,
+  executeSystemCommandBatch,
   exportProductionProjectResolved,
   readPartRecipe,
   validateProjectDocument
@@ -47,7 +47,7 @@ const glbProject = (document, demoId) => {
     document.formatProfile.id === 'gltf.2' &&
     document.formatProfile.container === 'glb'
   ) return document;
-  const result = executeCommandBatch(document, {
+  const result = executeSystemCommandBatch(document, {
     batchId: `gallery-${demoId}-iconic-metrics`,
     baseProjectId: document.id,
     baseRevision: document.revision,
@@ -55,7 +55,7 @@ const glbProject = (document, demoId) => {
       name: 'project.target.set',
       payload: { target: 'glb' }
     }]
-  }, { source: 'system' });
+  });
   if (!result.ok) throw new Error(result.error.message);
   return result.document;
 };

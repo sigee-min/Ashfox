@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 import {
   createProjectFromInput,
-  executeCommandBatch,
+  executeSystemCommandBatch,
   readCompiledParts,
   validateProjectDocument,
   type PartAuthoringSpec,
@@ -108,7 +108,7 @@ for (const density of [1, 2, 4] as const) {
   const densityResult =
     density === 1
       ? { ok: true as const, document: emptyRoundTrip }
-      : executeCommandBatch(
+      : executeSystemCommandBatch(
           emptyRoundTrip,
           {
             batchId: `inspect-density-${density}`,
@@ -118,14 +118,13 @@ for (const density of [1, 2, 4] as const) {
               name: 'textures.density.set',
               payload: { density }
             }]
-          },
-          { source: 'system' }
+          }
         );
   assert.equal(densityResult.ok, true);
   if (!densityResult.ok) {
     throw new Error('Round-trip density could not be selected.');
   }
-  const authored = executeCommandBatch(
+  const authored = executeSystemCommandBatch(
     densityResult.document,
     {
       batchId: `inspect-author-${density}`,
@@ -141,8 +140,7 @@ for (const density of [1, 2, 4] as const) {
           }]
         }
       }]
-    },
-    { source: 'agent' }
+    }
   );
   assert.equal(
     authored.ok,
@@ -224,7 +222,7 @@ for (const density of [1, 2, 4] as const) {
     [7, -3, 0]
   );
   const beforeRoundTrip = compiledVisualSnapshot(authored.document);
-  const reapplied = executeCommandBatch(
+  const reapplied = executeSystemCommandBatch(
     authored.document,
     {
       batchId: `inspect-reapply-${density}`,
@@ -236,8 +234,7 @@ for (const density of [1, 2, 4] as const) {
           parts: inspectedParts
         }
       }]
-    },
-    { source: 'agent' }
+    }
   );
   assert.equal(reapplied.ok, true);
   if (!reapplied.ok) {

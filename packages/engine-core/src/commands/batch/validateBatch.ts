@@ -12,12 +12,6 @@ import { commandBatchFailure } from './failure';
 
 const MAX_BATCH_OPERATIONS = 64;
 
-export const isCommandSource = (value: unknown): value is CommandSource =>
-  value === 'web' ||
-  value === 'agent' ||
-  value === 'import' ||
-  value === 'system';
-
 export const validateCommandBatch = (
   document: ProjectDocument,
   batch: CommandBatch,

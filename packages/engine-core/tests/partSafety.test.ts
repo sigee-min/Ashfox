@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 
 import {
   createProjectFromInput,
-  executeCommandBatch,
+  executeAgentCommandBatch,
+  executeSystemCommandBatch,
   validateProjectDocument,
   type CommandBatch,
   type CommandBatchResult,
@@ -55,18 +56,21 @@ const run = (
   document: ProjectDocument,
   batchId: string,
   operations: CommandBatch['operations'],
-  source: 'agent' | 'system' = 'agent'
-): CommandBatchResult =>
-  executeCommandBatch(
+  source: 'agent' | 'system' = 'system'
+): CommandBatchResult => {
+  const executeBatch = source === 'agent'
+    ? executeAgentCommandBatch
+    : executeSystemCommandBatch;
+  return executeBatch(
     document,
     {
       batchId,
       baseProjectId: document.id,
       baseRevision: document.revision,
       operations
-    },
-    { source }
+    }
   );
+};
 
 const committed = (
   result: CommandBatchResult

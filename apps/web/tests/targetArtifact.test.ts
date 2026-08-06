@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 
 import {
-  executeCommandBatch,
+  executeSystemCommandBatch,
   type ExportPreset,
   type MinecraftGameVersion,
   type ProjectDocument
@@ -34,7 +34,7 @@ const authorProject = async (): Promise<ProjectDocument> => {
   const project = createBlankWorkbenchProject(
     '2026-07-30T00:00:00.000Z'
   );
-  const result = executeCommandBatch(project, {
+  const result = executeSystemCommandBatch(project, {
     batchId: 'batch-web-export-fixture',
     baseProjectId: project.id,
     baseRevision: project.revision,
@@ -105,7 +105,7 @@ const authorProject = async (): Promise<ProjectDocument> => {
         }
       }
     ]
-  }, { source: 'system' });
+  });
   if (!result.ok) {
     throw new Error(
       `${result.error.message} ${JSON.stringify(result.findings ?? [])}`
@@ -135,7 +135,7 @@ const projectFor = (
   target: ExportPreset,
   gameVersion?: MinecraftGameVersion
 ): ProjectDocument => {
-  const result = executeCommandBatch(source, {
+  const result = executeSystemCommandBatch(source, {
     batchId: `batch-web-export-${target}-${gameVersion ?? 'default'}`,
     baseProjectId: source.id,
     baseRevision: source.revision,
@@ -152,7 +152,7 @@ const projectFor = (
         modelPath: `artifact_${target}`
       }
     }]
-  }, { source: 'system' });
+  });
   if (!result.ok) {
     throw new Error(
       `${result.error.message} ${JSON.stringify(result.findings ?? [])}`
@@ -165,7 +165,7 @@ const staticJavaProjectFor = (
   source: ProjectDocument,
   gameVersion: '1.21.5' | '1.21.11' | '26.1' | '26.2'
 ): ProjectDocument => {
-  const result = executeCommandBatch(source, {
+  const result = executeSystemCommandBatch(source, {
     batchId: `batch-web-export-java-${gameVersion}`,
     baseProjectId: source.id,
     baseRevision: source.revision,
@@ -182,7 +182,7 @@ const staticJavaProjectFor = (
         modelPath: 'artifact_java_block'
       }
     }]
-  }, { source: 'system' });
+  });
   if (!result.ok) {
     throw new Error(
       `${result.error.message} ${JSON.stringify(result.findings ?? [])}`
@@ -204,7 +204,7 @@ export const test = (async () => {
   const blank = createBlankWorkbenchProject(
     '2026-07-30T00:00:00.000Z'
   );
-  const authored = executeCommandBatch(blank, {
+  const authored = executeSystemCommandBatch(blank, {
     batchId: 'batch-web-stale-fixture',
     baseProjectId: blank.id,
     baseRevision: blank.revision,
@@ -231,7 +231,7 @@ export const test = (async () => {
         }]
       }
     }]
-  }, { source: 'system' });
+  });
   if (!authored.ok) throw new Error(authored.error.message);
   const stale = structuredClone(authored.document);
   const staleCube = stale.scene.nodes['cube-stale'];

@@ -2,9 +2,22 @@ export type TextureRenderMode = 'default' | 'emissive' | 'additive' | 'layered' 
 
 export type TextureRenderSides = 'auto' | 'front' | 'double' | string;
 
-export type TexturePbrChannel = 'color' | 'normal' | 'height' | 'mer';
+export const TEXTURE_PBR_CHANNELS = [
+  'color',
+  'normal',
+  'height',
+  'mer'
+] as const;
+export type TexturePbrChannel = typeof TEXTURE_PBR_CHANNELS[number];
 
-export type TextureFrameOrderType = 'custom' | 'loop' | 'backwards' | 'back_and_forth';
+export const TEXTURE_FRAME_ORDER_TYPES = [
+  'custom',
+  'loop',
+  'backwards',
+  'back_and_forth'
+] as const;
+export type TextureFrameOrderType =
+  typeof TEXTURE_FRAME_ORDER_TYPES[number];
 
 export type TextureMeta = {
   namespace?: string;

@@ -32,7 +32,7 @@ type NativeLoader = (name: string, options?: { message?: string; detail?: string
   };
   try {
     const mod = loadNativeModule<typeof import('node:path')>('path');
-    assert.equal(typeof mod?.resolve, 'function');
+    assert.equal(mod, null);
   } finally {
     globals.requireNativeModule = original;
   }
@@ -49,5 +49,4 @@ type NativeLoader = (name: string, options?: { message?: string; detail?: string
     globals.requireNativeModule = original;
   }
 }
-
 

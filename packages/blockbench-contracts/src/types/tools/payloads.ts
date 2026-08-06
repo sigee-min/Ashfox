@@ -10,6 +10,12 @@ import type {
   IncludeStateOption,
   ProjectStateDetail
 } from '../shared';
+import type { MeshUvPolicy } from '../project';
+
+export type {
+  MeshSymmetryAxis,
+  MeshUvPolicy
+} from '../project';
 
 export type FaceUvRect = [number, number, number, number];
 
@@ -37,14 +43,6 @@ export type UvPaintSpec = {
   source?: UvPaintSource;
   padding?: number;
   anchor?: [number, number];
-};
-
-export type MeshSymmetryAxis = 'none' | 'x' | 'y' | 'z';
-
-export type MeshUvPolicy = {
-  symmetryAxis?: MeshSymmetryAxis;
-  texelDensity?: number;
-  padding?: number;
 };
 
 export type FillShadeDirection = 'tl_br' | 'tr_bl' | 'top_bottom' | 'left_right';
@@ -152,7 +150,7 @@ export interface ExportTraceLogPayload {
 }
 
 export interface ReloadPluginsPayload {
-  confirm?: boolean;
+  confirm: true;
   delayMs?: number;
 }
 

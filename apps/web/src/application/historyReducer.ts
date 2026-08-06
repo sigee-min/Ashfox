@@ -1,9 +1,9 @@
 import {
-  executeCommandBatch,
+  executeAgentCommandBatch,
+  executeWebCommandBatch,
   validateProjectDocument,
   type CommandBatch,
   type CommandReceipt,
-  type CommandSource,
   type ProjectDocument
 } from '@ashfox/engine-core';
 
@@ -41,7 +41,7 @@ export type HistoryAction =
       type: 'execute';
       batch: CommandBatch;
       actorId: string;
-      source: CommandSource;
+      source: 'agent' | 'web';
       committedAt: string;
     }
   | { type: 'undo'; commandId: string; committedAt: string }
@@ -259,11 +259,10 @@ const executeBatch = (
 ): HistoryState => {
   let result;
   try {
-    result = executeCommandBatch(
-      state.present,
-      action.batch,
-      { source: action.source }
-    );
+    const executeForSource = action.source === 'agent'
+      ? executeAgentCommandBatch
+      : executeWebCommandBatch;
+    result = executeForSource(state.present, action.batch);
   } catch (error) {
     const outcome: CommandOutcome = {
       status: 'rejected',

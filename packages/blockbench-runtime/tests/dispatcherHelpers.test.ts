@@ -64,6 +64,32 @@ import { markSchemaValidated } from '../../blockbench-contracts/src/mcpSchemas/v
 }
 
 {
+  const warnings: Array<{ message: string; meta?: Record<string, unknown> }> = [];
+  const logger = {
+    log: () => undefined,
+    debug: () => undefined,
+    info: () => undefined,
+    warn: (message: string, meta?: Record<string, unknown>) => {
+      warnings.push({ message, meta });
+    },
+    error: () => undefined
+  };
+  const traceRecorder = {
+    record: () => ({ code: 'io_error', message: 'flush failed' })
+  };
+  recordTrace(
+    traceRecorder as never,
+    logger as never,
+    'get_project_state',
+    {},
+    { ok: true, data: {} }
+  );
+  assert.equal(warnings.length, 1);
+  assert.equal(warnings[0]?.meta?.code, 'io_error');
+  assert.equal(warnings[0]?.meta?.message, 'flush failed');
+}
+
+{
   recordTrace(undefined, {
     log: () => undefined,
     debug: () => undefined,

@@ -64,7 +64,7 @@ export class ProjectStateService {
     const diff: ProjectDiff = {
       sinceRevision: payload.sinceRevision,
       currentRevision,
-      baseMissing: baseMissing || undefined,
+      ...(baseMissing ? { baseMissing: true } : {}),
       counts: diffResult.counts
     };
     if (detail === 'full' && diffResult.sets) {
@@ -78,4 +78,3 @@ export class ProjectStateService {
     return ok({ diff });
   }
 }
-

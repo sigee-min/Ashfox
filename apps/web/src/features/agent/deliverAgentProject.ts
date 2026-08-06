@@ -19,7 +19,7 @@ import {
 } from './visualReviewPlan';
 import type {
   VisualReviewReceipt
-} from './presentationReview';
+} from '../../application/visualReviewReceipt';
 
 interface DeliverAgentProjectInput {
   document: ProjectDocument;

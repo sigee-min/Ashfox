@@ -17,6 +17,9 @@ import {
   inspectFinding
 } from './inspect/inspectFinding';
 import {
+  inspectAuthoring
+} from './inspect/inspectAuthoring';
+import {
   inspectOverview
 } from './inspect/inspectOverview';
 import {
@@ -34,7 +37,7 @@ import {
 } from './inspect/inspectTarget';
 import type {
   VisualReviewReceipt
-} from './presentationReview';
+} from '../../application/visualReviewReceipt';
 import type {
   InspectRequest,
   InspectResult
@@ -101,6 +104,8 @@ export const inspectProject = (
         assets,
         visualReviews
       );
+    case 'authoring':
+      return inspectAuthoring(document, request.id);
     case 'finding':
       return inspectFinding(document, report, request.path);
   }

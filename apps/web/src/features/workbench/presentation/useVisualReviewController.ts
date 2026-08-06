@@ -5,87 +5,79 @@ import {
   useRef
 } from 'react';
 
+import type { ProjectDocument } from '@ashfox/engine-core';
+
 import {
   recordVisualReview,
   visualReviewReceiptFrom,
   visualReviewsForRevision,
   type VisualReviewReceipt
-} from '../../agent/presentationReview';
+} from '../../../application/visualReviewReceipt';
+import { AGENT_ACTOR_ID } from '../../agent/agentIdentity';
 import type {
-  PresentRequest,
   PresentResult,
-  PresentSuccess
+  VisualReviewDecisionRequest
 } from '../../agent/types';
 import type {
   PresentationObservationStore
 } from './usePresentationSession';
+import {
+  resolvePresentationObservation,
+  reviewPresentationObservation
+} from './visualReviewDecision';
 
 interface UseVisualReviewControllerInput {
-  projectId: string;
-  revision: string;
+  document: ProjectDocument;
+  visualReviews: readonly VisualReviewReceipt[];
   observations: PresentationObservationStore;
+  onRecordVisualReview: (receipt: VisualReviewReceipt) => void;
 }
 
 export const useVisualReviewController = ({
-  projectId,
-  revision,
-  observations
+  document,
+  visualReviews,
+  observations,
+  onRecordVisualReview
 }: UseVisualReviewControllerInput) => {
-  const receiptsRef = useRef<readonly VisualReviewReceipt[]>([]);
+  const receiptsRef = useRef<readonly VisualReviewReceipt[]>(visualReviews);
+  receiptsRef.current = visualReviews;
 
   const review = useCallback((
-    request: Exclude<PresentRequest, { review: 'next' }>
+    request: VisualReviewDecisionRequest
   ): Promise<PresentResult> => {
-    const observation = observations.current.get(request.frameNonce);
-    if (!observation) {
-      return Promise.resolve({
-        ok: false,
-        revision,
-        error: {
-          code: 'not_found',
-          path: 'frameNonce',
-          expected:
-            'the most recently observed pending review frame'
-        }
-      });
+    const resolved = resolvePresentationObservation(
+      observations.current,
+      request.frameNonce,
+      document.revision
+    );
+    if (!resolved.ok) {
+      if (resolved.clear) observations.current = new Map();
+      return Promise.resolve(resolved.result);
     }
-    if (observation.revision !== revision) {
-      observations.current = new Map();
-      return Promise.resolve({
-        ok: false,
-        revision,
-        error: {
-          code: 'stale_revision',
-          path: 'revision',
-          expected: observation.revision
-        }
-      });
-    }
+    const reviewed = reviewPresentationObservation(
+      resolved.observation,
+      request
+    );
+    if (!reviewed.ok) return Promise.resolve(reviewed);
     observations.current = new Map();
-    const reviewed: PresentSuccess = {
-      ...observation,
-      data: {
-        ...observation.data,
-        review: request.review,
-        verdict:
-          request.review === 'accept'
-            ? 'accepted'
-            : 'rejected',
-        issues:
-          request.review === 'reject'
-            ? request.issues
-            : []
+    const receipt = visualReviewReceiptFrom(
+      document,
+      resolved.observation,
+      reviewed,
+      {
+        actorId: AGENT_ACTOR_ID,
+        recordedAt: new Date().toISOString()
       }
-    };
-    const receipt = visualReviewReceiptFrom(projectId, reviewed);
+    );
     if (receipt) {
       receiptsRef.current = recordVisualReview(
         receiptsRef.current,
         receipt
       );
+      onRecordVisualReview(receipt);
     }
     return Promise.resolve(reviewed);
-  }, [observations, projectId, revision]);
+  }, [document, observations, onRecordVisualReview]);
 
   const getVisualReviews = useCallback((
     requestedProjectId: string,

@@ -14,6 +14,7 @@ export const openSseConnection = (
   let closed = false;
   const keepAliveMs = 15_000;
   let cleanup: void | (() => void);
+  let timer: ReturnType<typeof setInterval> | null = null;
 
   const connection: SseConnection = {
     send: (payload) => {
@@ -24,24 +25,33 @@ export const openSseConnection = (
       if (closed) return;
       closed = true;
       if (cleanup) cleanup();
-      clearInterval(timer);
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
       adapter.close();
     },
     isClosed: () => closed
   };
 
-  if (onOpen) {
-    cleanup = onOpen(connection);
-  }
-
-  const timer = setInterval(() => {
+  timer = setInterval(() => {
     if (closed) return;
     adapter.send(encodeSseComment('keepalive'));
   }, keepAliveMs);
 
   adapter.onClose(() => connection.close());
+  if (onOpen) {
+    try {
+      const nextCleanup = onOpen(connection);
+      if (closed && nextCleanup) {
+        nextCleanup();
+      } else {
+        cleanup = nextCleanup;
+      }
+    } catch (err) {
+      connection.close();
+    }
+  }
   return connection;
 };
-
-
 

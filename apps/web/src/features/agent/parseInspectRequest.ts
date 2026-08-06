@@ -212,6 +212,20 @@ export const parseInspectRequest = (
         }
       };
     }
+    case 'authoring': {
+      const unknown = rejectUnknownProperties(value, ['kind', 'id']);
+      if (unknown) return unknown;
+      if (value.id !== undefined && typeof value.id !== 'string') {
+        return failure('id', 'registered archetype, specialist, or recipe ID');
+      }
+      return {
+        ok: true,
+        request: {
+          kind: value.kind,
+          ...(value.id === undefined ? {} : { id: value.id })
+        }
+      };
+    }
     case 'finding': {
       const unknown = rejectUnknownProperties(
         value,
@@ -231,7 +245,7 @@ export const parseInspectRequest = (
     default:
       return failure(
         'kind',
-        'command, catalog, parts, entity, texture, clip, activity, target, or finding'
+        'command, catalog, parts, entity, texture, clip, activity, target, authoring, or finding'
       );
   }
 };

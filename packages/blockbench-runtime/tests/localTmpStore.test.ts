@@ -111,5 +111,3 @@ const VALID_DATA_URI = 'data:image/png;base64,AAAA';
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
 }
-
-

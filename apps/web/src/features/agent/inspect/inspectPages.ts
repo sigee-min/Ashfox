@@ -8,8 +8,8 @@ import {
   boundedSuccess
 } from '../boundedResult';
 import {
-  schemaHash
-} from '../schemaHash';
+  canonicalFingerprint
+} from '../../../application/canonicalFingerprint';
 import type {
   InspectResult
 } from '../types';
@@ -22,7 +22,7 @@ const CATALOG_PAGE_LIMIT = 50;
 const ACTIVITY_PAGE_LIMIT = 20;
 
 const pageScope = (document: ProjectDocument): string =>
-  schemaHash({
+  canonicalFingerprint({
     projectId: document.id,
     revision: document.revision
   }).split(':')[1];

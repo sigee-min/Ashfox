@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import {
   createProjectFromInput,
-  executeCommandBatch,
+  executeWebCommandBatch,
   exportCompatibilityOptions,
   listAgentCommandDefinitions,
   validateProjectDocument,
@@ -19,7 +19,9 @@ import {
 import { agentCommandProtocol } from '../src/features/agent/agentCommandProtocol';
 import { agentManifest as manifest } from '../src/features/agent/agentManifest';
 import { inspectProject } from '../src/features/agent/inspect';
-import { schemaHash } from '../src/features/agent/schemaHash';
+import {
+  canonicalFingerprint
+} from '../src/application/canonicalFingerprint';
 
 const webRoot = path.resolve(__dirname, '..');
 const html = fs.readFileSync(path.join(webRoot, 'index.html'), 'utf8');
@@ -43,6 +45,27 @@ const readSourceTree = (directory: string): string =>
 
 const productSource = readSourceTree(sourceRoot);
 
+assert.doesNotMatch(
+  productSource,
+  /\bassembly\b/i,
+  'web UI and API contracts must not introduce an Assembly surface'
+);
+for (const relativePath of [
+  'application/visualReviewContract.ts',
+  'application/visualReviewReceipt.ts',
+  'features/agent/presentAgentProject.ts',
+  'features/agent/workflow/classifyWorkflowFinding.ts',
+  'features/agent/workflow/deriveInspectWorkflow.ts',
+  'features/agent/workflow/deriveWorkflowActions.ts'
+]) {
+  const source = fs.readFileSync(path.join(sourceRoot, relativePath), 'utf8');
+  assert.doesNotMatch(
+    source,
+    /getAuthoringRecipe|listAuthoringRecipes|AuthoringRecipe/,
+    `${relativePath} must not use discovery recipes as authority`
+  );
+}
+
 const assertSelectorIsRendered = (
   name: string,
   selector: string
@@ -59,6 +82,7 @@ const assertSelectorIsRendered = (
 assert.equal(manifest.protocol, 'ashfox.agent-command-port');
 assert.equal(manifest.workbench, '/workbench/');
 assert.equal(manifest.href, '/workbench/agent-manifest.json');
+assert.doesNotMatch(JSON.stringify(manifest), /\bassembly\b/i);
 assert.equal(manifest.pageApi.global, 'ashfox');
 assert.equal(manifest.pageApi.presentMethod, 'present');
 assert.equal(manifest.pageApi.captureMethod, 'capture');
@@ -77,10 +101,17 @@ assert.ok(
 );
 assert.match(manifest.pageApi.present.call, /window\.ashfox\.present/);
 assert.match(manifest.pageApi.present.call, /review:"next"/);
+assert.match(manifest.pageApi.present.preview, /review:"preview"/);
+assert.match(manifest.pageApi.present.preview, /archetype/);
+assert.match(manifest.pageApi.present.preview, /specialists/);
 assert.match(manifest.pageApi.present.accept, /review:"accept"/);
 assert.match(manifest.pageApi.present.accept, /frameNonce/);
+assert.match(manifest.pageApi.present.accept, /checkIds/);
 assert.match(manifest.pageApi.present.reject, /review:"reject"/);
 assert.match(manifest.pageApi.present.reject, /issues/);
+assert.match(manifest.pageApi.present.reject, /failedCheckIds/);
+assert.match(manifest.pageApi.present.contract, /delivery ledger/);
+assert.match(manifest.pageApi.present.contract, /Stale frames/);
 assert.match(manifest.pageApi.capture.result, /window\.ashfox\.capture/);
 assert.match(manifest.pageApi.capture.result, /kind:"result"/);
 assert.match(manifest.pageApi.capture.animation, /clipId:"idle"/);
@@ -111,6 +142,19 @@ assert.match(manifest.authoring.iconic, /system-generated surface clusters and n
 assert.doesNotMatch(manifest.authoring.iconic, /maximum of 512/);
 assert.match(manifest.authoring.iconic, /no style escape hatch/i);
 assert.match(manifest.authoring.intent, /explicitly set forward/);
+assert.match(manifest.authoring.intent, /references/);
+assert.match(manifest.authoring.authority, /project\.authoring\.configure/);
+assert.match(manifest.authoring.authority, /one broad archetype/);
+assert.match(manifest.authoring.authority, /observed.*requested/);
+assert.match(manifest.authoring.authority, /evidenceCriterion/);
+assert.match(manifest.authoring.authority, /criterionId/);
+assert.match(manifest.authoring.authority, /attachment port/);
+assert.match(manifest.authoring.authority, /optional slots require/i);
+assert.match(manifest.authoring.recipes, /non-authoritative.*examples/);
+assert.match(manifest.authoring.recipes, /never from a recipe/);
+assert.match(manifest.authoring.recipes, /Criterion-specific/);
+assert.match(manifest.pageApi.present.contract, /evidenceCriteria/);
+assert.match(manifest.pageApi.present.contract, /criterionId/);
 assert.match(manifest.authoring.hierarchy, /rederives model-scale parent contact/);
 assert.match(manifest.authoring.hierarchy, /direct semantic cuboids/);
 assert.match(manifest.authoring.hierarchy, /implementation detail/);
@@ -133,14 +177,13 @@ assert.match(manifest.quality.required, /No absolute cuboid count/);
 assert.match(manifest.quality.required, /least geometry/);
 assert.doesNotMatch(manifest.quality.required, /at most 512/);
 assert.match(manifest.quality.required, /may retain canonical clips/);
-assert.match(manifest.quality.fidelity, /generic humanoid/);
+assert.match(manifest.quality.fidelity, /configured archetype slots/);
 assert.match(manifest.quality.fidelity, /body plan/);
-assert.match(manifest.quality.fidelity, /Semantic eye count alone is not proof/);
-assert.match(manifest.quality.fidelity, /defining cues/);
-assert.match(manifest.quality.fidelity, /Gloss, highlights/);
+assert.match(manifest.quality.fidelity, /surface glyphs/);
+assert.match(manifest.quality.fidelity, /decorative micro-cubes/);
 assert.match(manifest.quality.review, /native gameplay-size/);
 assert.match(manifest.quality.review, /reversed feet/);
-assert.match(manifest.quality.review, /identity or appeal/);
+assert.match(manifest.quality.review, /recognizability or appeal/);
 assert.match(manifest.authoring.parts.feature, /exposed mass or segment face/);
 assert.match(manifest.authoring.parts.feature, /billboard/);
 assert.match(manifest.authoring.parts.feature, /dot.*square.*slit/);
@@ -179,8 +222,8 @@ for (const variant of (
   assert.deepEqual(variant.properties.density.enum, [1]);
 }
 assert.equal(
-  schemaHash({ properties: { b: 2, a: 1 } }),
-  schemaHash({ properties: { a: 1, b: 2 } })
+  canonicalFingerprint({ properties: { b: 2, a: 1 } }),
+  canonicalFingerprint({ properties: { a: 1, b: 2 } })
 );
 assert.deepEqual(
   manifest.commands.map((command) => ({
@@ -191,7 +234,7 @@ assert.deepEqual(
   agentDefinitions.map((definition) => ({
     name: definition.name,
     purpose: definition.purpose,
-    schemaHash: schemaHash(definition.inputSchema)
+    schemaHash: canonicalFingerprint(definition.inputSchema)
   }))
 );
 assert.ok(
@@ -201,6 +244,7 @@ assert.ok(
 );
 const agentCommandNames = manifest.commands.map((command) => command.name);
 for (const command of [
+  'project.authoring.configure',
   'model.parts.upsert',
   'model.parts.material',
   'model.parts.delete',
@@ -347,6 +391,7 @@ for (const step of manifest.workflow) {
   assert.ok(JSON.stringify(step).length <= 520);
 }
 assert.match(manifest.workflow[0].instruction, /project\.create/);
+assert.match(manifest.workflow[1].instruction, /project\.authoring\.configure/);
 assert.match(manifest.workflow[2].instruction, /profile:"block"/);
 assert.match(manifest.workflow[3].instruction, /animation\.motion\.upsert/);
 assert.match(manifest.workflow[4].instruction, /capture/);
@@ -491,7 +536,7 @@ if (modelCommand.ok) {
   };
   assert.equal(
     data.schemaHash,
-    schemaHash(
+    canonicalFingerprint(
       agentDefinitions.find(
         (definition) => definition.name === 'model.parts.upsert'
       )?.inputSchema
@@ -532,7 +577,7 @@ const emptyModel = createProjectFromInput(
   },
   'inspect-recipe-revision'
 );
-const authoredModel = executeCommandBatch(
+const authoredModel = executeWebCommandBatch(
   emptyModel,
   {
     batchId: 'inspect-recipe-author',
@@ -548,13 +593,14 @@ const authoredModel = executeCommandBatch(
         }]
       }
     }]
-  },
-  { source: 'agent' }
+  }
 );
-assert.equal(authoredModel.ok, true);
 if (!authoredModel.ok) {
-  throw new Error('Exact inspect fixture could not be authored.');
+  throw new Error(
+    `Exact inspect fixture could not be authored: ${JSON.stringify(authoredModel)}`
+  );
 }
+assert.equal(authoredModel.ok, true);
 const compatibilityInspect = inspectProject(
   authoredModel.document,
   null,

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createProjectFromInput,
   evaluateProjectIntentRequirements,
-  executeCommandBatch,
+  executeSystemCommandBatch,
   normalizeProjectIntent,
   projectGroundingCorrection,
   readProjectIntent,
@@ -16,15 +16,14 @@ const execute = (
   batchId: string,
   operations: CommandBatch['operations']
 ) =>
-  executeCommandBatch(
+  executeSystemCommandBatch(
     document,
     {
       batchId,
       baseProjectId: document.id,
       baseRevision: document.revision,
       operations
-    },
-    { source: 'agent' }
+    }
   );
 
 const empty = createProjectFromInput(
@@ -61,6 +60,65 @@ assert.deepEqual(normalized.intent, {
   ]
 });
 
+const referenceDriven = normalizeProjectIntent({
+  subject: '  Clockwork   hound ',
+  forward: 'west',
+  grounding: 'grounded',
+  features: ['Readable sensor head'],
+  references: [{
+    id: 'reference.front',
+    kind: 'image',
+    description: '  Front view of a compact clockwork hound ',
+    cues: [
+      'Four load-bearing legs',
+      '  Exposed   shoulder joints ',
+      'Four load-bearing legs'
+    ],
+    contentHash: ' sha256:abc123 '
+  }]
+});
+assert.equal(referenceDriven.ok, true);
+if (!referenceDriven.ok) {
+  throw new Error('Expected normalized reference observations.');
+}
+assert.deepEqual(referenceDriven.intent.references, [{
+  id: 'reference.front',
+  kind: 'image',
+  description: 'Front view of a compact clockwork hound',
+  cues: ['Exposed shoulder joints', 'Four load-bearing legs'],
+  contentHash: 'sha256:abc123'
+}]);
+
+const duplicateReference = normalizeProjectIntent({
+  subject: 'Clockwork hound',
+  forward: 'west',
+  grounding: 'grounded',
+  features: [],
+  references: [
+    {
+      id: 'reference.front',
+      kind: 'image',
+      description: 'Front view',
+      cues: []
+    },
+    {
+      id: 'reference.front',
+      kind: 'text',
+      description: 'Notes',
+      cues: []
+    }
+  ]
+});
+assert.equal(duplicateReference.ok, false);
+if (duplicateReference.ok) {
+  throw new Error('Expected duplicate reference ID rejection.');
+}
+assert.ok(
+  duplicateReference.issues.some(
+    (issue) => issue.path === 'references[1].id'
+  )
+);
+
 const unknownContract = normalizeProjectIntent({
   subject: 'Truck',
   forward: 'north',
@@ -78,7 +136,14 @@ const firstIntent = execute(empty, 'intent-first', [{
     subject: 'Golden utility truck',
     forward: 'east',
     grounding: 'grounded',
-    features: ['Connected bonnet and cab']
+    features: ['Connected bonnet and cab'],
+    references: [{
+      id: 'reference.side',
+      kind: 'image',
+      description: 'Side view of the target utility truck',
+      cues: ['Cab connects directly to the bonnet'],
+      contentHash: 'sha256:utility-truck-side'
+    }]
   }
 }]);
 assert.equal(firstIntent.ok, true);
@@ -87,7 +152,14 @@ assert.deepEqual(firstIntent.document.intent, {
   subject: 'Golden utility truck',
   forward: 'east',
   grounding: 'grounded',
-  features: ['Connected bonnet and cab']
+  features: ['Connected bonnet and cab'],
+  references: [{
+    id: 'reference.side',
+    kind: 'image',
+    description: 'Side view of the target utility truck',
+    cues: ['Cab connects directly to the bonnet'],
+    contentHash: 'sha256:utility-truck-side'
+  }]
 });
 
 const replacement = execute(

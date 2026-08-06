@@ -6,6 +6,7 @@ import {
 import {
   observePresentationFrame,
   presentationCancellationResult,
+  snapshotPresentationObservation,
   presentationTimeoutResult,
   stalePresentationResult,
   type PresentationSession
@@ -15,11 +16,15 @@ import type {
 } from '../src/features/workbench/viewport/viewportTypes';
 
 const session = (
-  mode: PresentationSession['mode'] = 'frame'
+  mode: PresentationSession['mode'] = 'frame',
+  review: PresentationSession['review'] = 'next'
 ): PresentationSession => ({
   nonce: 7,
   projectId: 'project-test',
   sourceRevision: 'local-0001',
+  review,
+  purpose: review === 'next' ? 'delivery' : 'preview',
+  milestone: review === 'preview' ? 'specialists' : null,
   mode,
   camera: 'front',
   clipId: mode === 'cycle' ? 'clip-idle' : null,
@@ -29,7 +34,32 @@ const session = (
       ? createCycleObservation(1, 20)
       : null,
   phase: 'observing',
-  previewIssues: []
+  previewIssues: [],
+  reviewChecks: [{
+    id: 'specialist.mechanic.role-read',
+    facets: ['role-prop'],
+    issue: 'focal_detail',
+    instruction: 'Read the mechanic role.',
+    authority: {
+      id: 'specialist.role-props',
+      version: 1
+    },
+    authorityType: 'specialist',
+    evidence: {
+      criteria: [{
+        id: 'criterion.role-cue',
+        basis: 'either',
+        required: true,
+        instruction: 'Ground the role cue.'
+      }],
+      claims: [{
+        criterionId: 'criterion.role-cue',
+        basis: 'requested',
+        referenceIds: ['intent.subject'],
+        rationale: 'The requested subject carries this role.'
+      }]
+    }
+  }]
 });
 
 const frame = (
@@ -57,8 +87,53 @@ assert.equal(frameResult.session, null);
 assert.equal(frameResult.result?.ok, true);
 if (frameResult.result?.ok) {
   assert.equal(frameResult.result.data.review, 'next');
+  assert.equal(frameResult.result.data.purpose, 'delivery');
+  assert.equal(frameResult.result.data.milestone, null);
   assert.equal(frameResult.result.data.verdict, 'pending');
   assert.equal(frameResult.result.data.completedCycles, 0);
+  assert.deepEqual(
+    frameResult.result.data.reviewChecks.map((check) => check.id),
+    ['specialist.mechanic.role-read']
+  );
+  const snapshot = snapshotPresentationObservation(
+    frameResult.result
+  );
+  (
+    frameResult.result.data.reviewChecks as {
+      id: string;
+      evidence: {
+        claims: { criterionId: string }[];
+      };
+    }[]
+  )[0].id = 'mutated.by.caller';
+  (
+    frameResult.result.data.reviewChecks as {
+      evidence: {
+        claims: { criterionId: string }[];
+      };
+    }[]
+  )[0].evidence.claims[0].criterionId = 'criterion.mutated';
+  assert.equal(
+    snapshot.data.reviewChecks[0].id,
+    'specialist.mechanic.role-read',
+    'the stored observation must not share mutable result data'
+  );
+  assert.equal(
+    snapshot.data.reviewChecks[0].evidence.claims[0].criterionId,
+    'criterion.role-cue',
+    'the stored observation must deeply snapshot authority evidence'
+  );
+}
+
+const milestoneResult = observePresentationFrame(
+  session('frame', 'preview'),
+  frame()
+);
+assert.equal(milestoneResult.result?.ok, true);
+if (milestoneResult.result?.ok) {
+  assert.equal(milestoneResult.result.data.review, 'preview');
+  assert.equal(milestoneResult.result.data.purpose, 'preview');
+  assert.equal(milestoneResult.result.data.milestone, 'specialists');
 }
 
 const stale = observePresentationFrame(

@@ -7,7 +7,8 @@
     "./logging": "./src/logging.ts"
   },
   "dependencies": {
-    "@ashfox/engine-core": "^0.0.0"
+    "@ashfox/engine-core": "^0.0.0",
+    "@ashfox/internal-contracts": "^0.0.0"
   },
   "scripts": {
     "test": "node tests/run.js",
