@@ -1,12 +1,12 @@
 import type {
   ArchetypeDefinition,
   AuthoringAttachmentBinding,
-  AuthoringAuthorityReference,
   AuthoringCompatibilityIssue,
   AuthoringMotionBinding,
   AuthoringProfile,
   SpecialistDefinition
 } from './authoringTypes';
+import { authoringCompatibilityIssue as issue } from './authoringIssueFactories';
 
 type ContributionEntry = {
   readonly contribution: SpecialistDefinition['contributions'][number];
@@ -24,20 +24,6 @@ type IndexedMotionBinding = {
   readonly binding: AuthoringMotionBinding;
   readonly index: number;
 };
-
-const issue = (
-  code: AuthoringCompatibilityIssue['code'],
-  path: string,
-  message: string,
-  expected: string,
-  authority?: AuthoringAuthorityReference
-): AuthoringCompatibilityIssue => ({
-  code,
-  path,
-  message,
-  expected,
-  ...(authority ? { authority } : {})
-});
 
 const indexedAttachmentBindings = (
   profile: AuthoringProfile
@@ -68,8 +54,15 @@ const selectedContributions = (
   );
 
 interface AttachmentEvaluationContext {
-  readonly archetype: ArchetypeDefinition;
   readonly contributionsById: ReadonlyMap<string, ContributionEntry>;
+  readonly portsById: ReadonlyMap<
+    string,
+    ArchetypeDefinition['attachmentPorts'][number]
+  >;
+  readonly slotsById: ReadonlyMap<
+    string,
+    AuthoringProfile['slots'][number]
+  >;
   readonly bindingsByContribution: Map<string, number[]>;
   readonly bindingsByPort: Map<string, number[]>;
   readonly issues: AuthoringCompatibilityIssue[];
@@ -83,9 +76,8 @@ const evaluateAttachmentBinding = (
   const contributionEntry = context.contributionsById.get(
     binding.contributionId
   );
-  const port = context.archetype.attachmentPorts.find(
-    (candidate) => candidate.id === binding.portId
-  );
+  const port = context.portsById.get(binding.portId);
+  const hostSlot = context.slotsById.get(binding.hostSlotId);
   const contributionBindings = context.bindingsByContribution.get(
     binding.contributionId
   ) ?? [];
@@ -136,12 +128,18 @@ const evaluateAttachmentBinding = (
       authority
     ));
   }
-  if (!port.hostSlotIds.includes(binding.hostSlotId)) {
+  if (
+    !hostSlot ||
+    !port.hostStructuralRoles.includes(hostSlot.structuralRole)
+  ) {
     context.issues.push(issue(
       'authoring.compatibility.binding_host_invalid',
       `bindings[${index}].hostSlotId`,
-      `Slot "${binding.hostSlotId}" is not a host of port "${port.id}".`,
-      port.hostSlotIds.join(' | '),
+      hostSlot
+        ? `Slot "${binding.hostSlotId}" has role ` +
+          `"${hostSlot.structuralRole}", which cannot host port "${port.id}".`
+        : `Slot "${binding.hostSlotId}" is not declared by this profile.`,
+      port.hostStructuralRoles.join(' | '),
       authority
     ));
   }
@@ -186,9 +184,14 @@ const evaluateAttachmentBindings = (
   const bindingsByContribution = new Map<string, number[]>();
   const bindingsByPort = new Map<string, number[]>();
   const context: AttachmentEvaluationContext = {
-    archetype,
     contributionsById: new Map(
       contributions.map((entry) => [entry.contribution.id, entry])
+    ),
+    portsById: new Map(
+      archetype.attachmentPorts.map((port) => [port.id, port])
+    ),
+    slotsById: new Map(
+      profile.slots.map((slot) => [slot.slotId, slot])
     ),
     bindingsByContribution,
     bindingsByPort,
@@ -288,7 +291,7 @@ const evaluateMotionBindings = (
         'authoring.compatibility.motion_specialist_unknown',
         `bindings[${index}].specialist`,
         `Motion binding references unselected or non-current specialist "${binding.specialist.id}".`,
-        'an explicit v1 reference to a selected specialist'
+        'an explicit v2 reference to a selected specialist'
       ));
       continue;
     }

@@ -6,6 +6,7 @@ import {
 
 import {
   ARCHETYPE_IDS,
+  AUTHORING_STRUCTURAL_ROLES,
   SPECIALIST_IDS,
   type ArchetypeDefinition,
   type SpecialistDefinition
@@ -17,10 +18,10 @@ import {
   allowedFacets,
   allowedPartKinds,
   allowedPortTypes,
-  allowedSpatialRelations,
+  allowedQualityStages,
   allowedSpecialistIds,
+  allowedStructuralRoles,
   duplicateValues,
-  slotGraphHasCycle,
   validCardinality,
   validateClause,
   validateClauseContradictions,
@@ -68,78 +69,70 @@ const validateAuthorityTextAndTaxonomy = (
   }
 };
 
-const validateSemanticSlots = (
+const validateStructuralRolePolicies = (
   definition: ArchetypeDefinition,
   path: string,
   issues: AuthoringCatalogIssue[]
-): ReadonlySet<string> => {
-  const slotIds = definition.semanticSlots.map((slot) => slot.id);
-  for (const id of duplicateValues(slotIds)) {
+): void => {
+  const roles = definition.structuralRolePolicies.map(
+    (policy) => policy.role
+  );
+  for (const role of duplicateValues(roles)) {
     issues.push({
-      code: 'authoring.catalog.slot_duplicated',
-      path: `${path}.semanticSlots`,
-      message: `Duplicate semantic slot "${id}".`
+      code: 'authoring.catalog.role_policy_duplicated',
+      path: `${path}.structuralRolePolicies`,
+      message: `Duplicate structural role policy "${role}".`
     });
   }
-  const slotIdSet = new Set(slotIds);
-  definition.semanticSlots.forEach((slot, index) => {
-    const slotPath = `${path}.semanticSlots[${index}]`;
-    if (!hasExactContractKeys(slot, AUTHORING_DEFINITION_KEYS.slot)) {
+  for (const role of AUTHORING_STRUCTURAL_ROLES) {
+    if (!roles.includes(role)) {
       issues.push({
-        code: 'authoring.catalog.slot_shape_invalid',
-        path: slotPath,
-        message: 'Semantic slot must use the closed v1 shape.'
+        code: 'authoring.catalog.role_policy_missing',
+        path: `${path}.structuralRolePolicies`,
+        message: `Missing structural role policy "${role}".`
+      });
+    }
+  }
+  definition.structuralRolePolicies.forEach((policy, index) => {
+    const policyPath = `${path}.structuralRolePolicies[${index}]`;
+    if (
+      !hasExactContractKeys(
+        policy,
+        AUTHORING_DEFINITION_KEYS.structuralRolePolicy
+      )
+    ) {
+      issues.push({
+        code: 'authoring.catalog.role_policy_shape_invalid',
+        path: policyPath,
+        message: 'Structural role policy must use the closed v2 shape.'
       });
     }
     if (
-      !isNonEmptyContractText(slot.id) ||
-      !isNonEmptyContractText(slot.label) ||
-      !isNonEmptyContractText(slot.instruction) ||
-      typeof slot.required !== 'boolean' ||
-      slot.acceptedPartKinds.length === 0 ||
-      slot.acceptedPartKinds.some((kind) => !allowedPartKinds.has(kind)) ||
-      slot.spatialRelations.some((entry) =>
-        !allowedSpatialRelations.has(entry)
+      !allowedStructuralRoles.has(policy.role) ||
+      policy.acceptedPartKinds.length === 0 ||
+      policy.acceptedPartKinds.some((kind) =>
+        !allowedPartKinds.has(kind)
       ) ||
-      (slot.facing !== null && slot.facing !== 'forward')
+      duplicateValues(policy.acceptedPartKinds).length > 0 ||
+      policy.allowedQualityStages.length === 0 ||
+      policy.allowedQualityStages.some((stage) =>
+        !allowedQualityStages.has(stage)
+      ) ||
+      duplicateValues(policy.allowedQualityStages).length > 0 ||
+      !isNonEmptyContractText(policy.instruction)
     ) {
       issues.push({
-        code: 'authoring.catalog.slot_value_invalid',
-        path: slotPath,
-        message: 'Semantic slot contains an unknown or empty value.'
+        code: 'authoring.catalog.role_policy_value_invalid',
+        path: policyPath,
+        message: 'Structural role policy contains an unknown or empty value.'
       });
-    }
-    if (!validCardinality(slot.minParts, slot.maxParts)) {
-      issues.push({
-        code: 'authoring.catalog.slot_cardinality_invalid',
-        path: slotPath,
-        message: 'Slot cardinality is invalid.'
-      });
-    }
-    for (const parent of slot.parentSlotIds) {
-      if (!slotIdSet.has(parent) || parent === slot.id) {
-        issues.push({
-          code: 'authoring.catalog.slot_parent_invalid',
-          path: `${slotPath}.parentSlotIds`,
-          message: `Invalid parent slot "${parent}".`
-        });
-      }
     }
   });
-  if (slotGraphHasCycle(definition.semanticSlots)) {
-    issues.push({
-      code: 'authoring.catalog.slot_cycle',
-      path: `${path}.semanticSlots`,
-      message: 'Semantic slot parent relationships must form a DAG.'
-    });
-  }
-  return slotIdSet;
 };
 
 const validateAttachmentPorts = (
   definition: ArchetypeDefinition,
   path: string,
-  slotIds: ReadonlySet<string>,
   issues: AuthoringCatalogIssue[]
 ): void => {
   for (const id of duplicateValues(
@@ -157,7 +150,7 @@ const validateAttachmentPorts = (
       issues.push({
         code: 'authoring.catalog.port_shape_invalid',
         path: portPath,
-        message: 'Attachment port must use the closed v1 shape.'
+        message: 'Attachment port must use the closed v2 shape.'
       });
     }
     if (
@@ -184,13 +177,16 @@ const validateAttachmentPorts = (
       });
     }
     if (
-      port.hostSlotIds.length === 0 ||
-      port.hostSlotIds.some((id) => !slotIds.has(id))
+      port.hostStructuralRoles.length === 0 ||
+      port.hostStructuralRoles.some((role) =>
+        !allowedStructuralRoles.has(role)
+      ) ||
+      duplicateValues(port.hostStructuralRoles).length > 0
     ) {
       issues.push({
-        code: 'authoring.catalog.port_host_invalid',
-        path: `${portPath}.hostSlotIds`,
-        message: 'Every port host must be a slot on the same archetype.'
+        code: 'authoring.catalog.port_host_role_invalid',
+        path: `${portPath}.hostStructuralRoles`,
+        message: 'Every port host role must use the closed structural taxonomy.'
       });
     }
   });
@@ -206,7 +202,7 @@ const validateArchetypeDefinition = (
     issues.push({
       code: 'authoring.catalog.archetype_shape_invalid',
       path,
-      message: 'Archetype must use the closed v1 definition shape.'
+      message: 'Archetype must use the closed v2 definition shape.'
     });
   }
   if (!allowedArchetypeIds.has(definition.id)) {
@@ -224,8 +220,8 @@ const validateArchetypeDefinition = (
     });
   }
   validateAuthorityTextAndTaxonomy(definition, path, issues);
-  const slotIds = validateSemanticSlots(definition, path, issues);
-  validateAttachmentPorts(definition, path, slotIds, issues);
+  validateStructuralRolePolicies(definition, path, issues);
+  validateAttachmentPorts(definition, path, issues);
   definition.compatibility.forEach((clause, clauseIndex) =>
     validateClause(clause, `${path}.compatibility[${clauseIndex}]`, issues)
   );
@@ -282,7 +278,7 @@ const validateSpecialistAttachments = (
       issues.push({
         code: 'authoring.catalog.contribution_shape_invalid',
         path: contributionPath,
-        message: 'Contribution must use the topology-free v1 shape.'
+        message: 'Contribution must use the topology-free v2 shape.'
       });
     }
     if (
@@ -371,7 +367,7 @@ const validateSpecialistDefinition = (
     issues.push({
       code: 'authoring.catalog.specialist_shape_invalid',
       path,
-      message: 'Specialist must use the closed v1 definition shape.'
+      message: 'Specialist must use the closed v2 definition shape.'
     });
   }
   if (!allowedSpecialistIds.has(definition.id)) {

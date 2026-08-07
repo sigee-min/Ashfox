@@ -36,9 +36,8 @@ export const specialistDefinitions: readonly SpecialistDefinition[] = [
     )],
     bindingRequirements: [],
     compatibility: [{
-      op: 'includes',
-      path: 'archetype.facets',
-      value: 'humanoid'
+      op: 'provides-capability',
+      capability: 'surface.host'
     }],
     reviewChecks: [{
       id: 'role-props.role-read',
@@ -300,7 +299,6 @@ export const specialistDefinitions: readonly SpecialistDefinition[] = [
     compatibility: [
       { op: 'equals', path: 'routing.animationSupported', value: true },
       { op: 'provides-capability', capability: 'locomotion.paired' },
-      { op: 'forbids', path: 'selection.specialistIds', value: 'specialist.stalking-gait' },
       { op: 'forbids', path: 'selection.specialistIds', value: 'specialist.rotary-cycle' }
     ],
     reviewChecks: [{
@@ -309,43 +307,6 @@ export const specialistDefinitions: readonly SpecialistDefinition[] = [
       cameras: ['side', 'perspective'],
       issue: 'motion',
       instruction: 'Confirm paired supports alternate without sliding or reversing the forward axis.'
-    }]
-  },
-  {
-    id: 'specialist.stalking-gait',
-    version: AUTHORING_PROFILE_SCHEMA_VERSION,
-    label: 'Four-point stalking gait',
-    summary: 'Defines a compact sequential step pattern for a four-point stalking footprint.',
-    useWhen: 'Use when a narrow body advances through a deliberate four-foot sequence.',
-    instruction: 'Preserve the body column while sequencing four grounded contacts.',
-    facets: ['motion', 'gait'],
-    capabilities: ['animation.stalk'],
-    evidenceCriteria: [{
-      id: 'criterion.stalking-gait',
-      basis: 'requested',
-      required: true,
-      instruction: 'Identify the requested four-point stalking gait.'
-    }],
-    attachmentRequirements: [],
-    contributions: [],
-    bindingRequirements: [{
-      type: 'motion',
-      allowedRoles: ['loop'],
-      minBindings: 1,
-      maxBindings: 1
-    }],
-    compatibility: [
-      { op: 'equals', path: 'routing.animationSupported', value: true },
-      { op: 'provides-capability', capability: 'locomotion.stalking' },
-      { op: 'forbids', path: 'selection.specialistIds', value: 'specialist.alternating-gait' },
-      { op: 'forbids', path: 'selection.specialistIds', value: 'specialist.rotary-cycle' }
-    ],
-    reviewChecks: [{
-      id: 'stalking-gait.contacts',
-      facets: ['motion', 'gait'],
-      cameras: ['side', 'top', 'perspective'],
-      issue: 'motion',
-      instruction: 'Confirm the four contacts sequence cleanly while the body column remains coherent.'
     }]
   },
   {
@@ -374,8 +335,7 @@ export const specialistDefinitions: readonly SpecialistDefinition[] = [
     compatibility: [
       { op: 'equals', path: 'routing.animationSupported', value: true },
       { op: 'provides-capability', capability: 'rotary.drive' },
-      { op: 'forbids', path: 'selection.specialistIds', value: 'specialist.alternating-gait' },
-      { op: 'forbids', path: 'selection.specialistIds', value: 'specialist.stalking-gait' }
+      { op: 'forbids', path: 'selection.specialistIds', value: 'specialist.alternating-gait' }
     ],
     reviewChecks: [{
       id: 'rotary-cycle.axis',

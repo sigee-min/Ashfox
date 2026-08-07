@@ -5,7 +5,8 @@ import {
 } from '@ashfox/internal-contracts';
 
 import { archetypeDefinitions } from './archetypeDefinitions';
-import { validateAuthoringCatalog } from './compatibilityEvaluator';
+import { validateAuthoringCatalog } from './authoringCatalogValidator';
+import { deepFreezeAuthoringValue } from './authoringCollections';
 import { specialistDefinitions } from './specialistDefinitions';
 import {
   ARCHETYPE_IDS,
@@ -18,19 +19,11 @@ import {
   type AuthoringAuthorityReference,
   type AuthoringProfile,
   type AuthoringReviewCamera,
+  type AuthoringReviewCheck,
   type SpecialistDefinition,
   type SpecialistId,
   type SpecialistReference
 } from './authoringTypes';
-
-const deepFreeze = <T>(value: T): T => {
-  if (typeof value !== 'object' || value === null || Object.isFrozen(value)) {
-    return value;
-  }
-  Object.freeze(value);
-  for (const nested of Object.values(value)) deepFreeze(nested);
-  return value;
-};
 
 const catalogIssues = validateAuthoringCatalog(
   archetypeDefinitions,
@@ -44,8 +37,8 @@ if (catalogIssues.length > 0) {
   );
 }
 
-const archetypes = deepFreeze([...archetypeDefinitions]);
-const specialists = deepFreeze([...specialistDefinitions]);
+const archetypes = deepFreezeAuthoringValue([...archetypeDefinitions]);
+const specialists = deepFreezeAuthoringValue([...specialistDefinitions]);
 const archetypesById = new Map<ArchetypeId, ArchetypeDefinition>(
   archetypes.map((definition) => [definition.id, definition])
 );
@@ -139,6 +132,94 @@ const appliedChecks = (
       authorityType
     }));
 
+const profileFaceChecks = (
+  profile: AuthoringProfile
+): readonly AuthoringReviewCheck[] => {
+  if (profile.faceMode !== 'full') return [];
+  const trackCheck: AuthoringReviewCheck = profile.track === 'compact'
+    ? {
+        id: 'composable-form.face-compact-budget',
+        facets: ['face'],
+        cameras: ['perspective', 'native', 'front'],
+        issue: 'proportion',
+        instruction:
+          'Confirm the compact composition deliberately gives the face enough visual area for its eye configuration, nasal form, mouth state, and expression without collapsing them into one mark.'
+      }
+    : {
+        id: 'composable-form.face-showcase-separation',
+        facets: ['face'],
+        cameras: ['perspective', 'native', 'front', 'side'],
+        issue: 'focal_detail',
+        instruction:
+          'Confirm adult or hero proportions remain intact while the eye frame, nasal plane, jaw, mouth state, and any open-mouth interior remain separately readable rather than producing an infantile head.'
+      };
+  return [
+    {
+      id: 'composable-form.face-native-read',
+      facets: ['face'],
+      cameras: ['native'],
+      issue: 'focal_detail',
+      instruction:
+        'At native gameplay size, confirm gaze direction, mouth state, and expression read immediately; reject a one-pixel eye, occluded pupil, or ambiguous mouth.'
+    },
+    trackCheck,
+    {
+      id: 'composable-form.face-surface-contrast',
+      facets: ['face', 'surface-cue'],
+      cameras: ['native', 'perspective', 'front'],
+      issue: 'material',
+      instruction:
+        'Confirm generated facial noise stays subordinate to the flat focal glyphs and that eye, nasal, lip or interior role colors remain distinct from their host planes.'
+    }
+  ];
+};
+
+const profileTrackChecks = (
+  profile: AuthoringProfile
+): readonly AuthoringReviewCheck[] => profile.track === 'compact'
+  ? [{
+      id: 'composable-form.track-compact-integrity',
+      facets: ['silhouette', 'function'],
+      cameras: ['native', 'perspective', 'front', 'side', 'top'],
+      issue: 'proportion',
+      instruction:
+        'Confirm compact proportions are an intentional icon, mascot, chibi, or small-game-piece read while silhouette, middle-form structure, contacts, and defining terminals remain complete; reject low-effort miniaturization.'
+    }]
+  : [
+      {
+        id: 'composable-form.track-showcase-structure',
+        facets: ['silhouette', 'function'],
+        cameras: ['native', 'perspective', 'front', 'side', 'top'],
+        issue: 'proportion',
+        instruction:
+          'Confirm showcase preserves requested or observed proportions and separately reads identity-bearing mass rhythm, roots, joints, contacts, openings, terminal forms, and focal framing instead of inflating one childlike block.'
+      },
+      {
+        id: 'composable-form.track-showcase-material',
+        facets: ['surface-cue', 'function'],
+        cameras: ['native', 'perspective', 'front', 'side'],
+        issue: 'material',
+        instruction:
+          'Confirm reference-defining material regions and terminal surfaces use deliberate role-material boundaries; automatic clusters and noise may enrich those regions but may not invent or replace them.'
+      }
+    ];
+
+const appliedProfileChecks = (
+  profile: AuthoringProfile,
+  camera: AuthoringReviewCamera,
+  facet: string | undefined
+): readonly AppliedAuthoringReviewCheck[] =>
+  [...profileTrackChecks(profile), ...profileFaceChecks(profile)]
+    .filter((check) => check.cameras.includes(camera))
+    .filter((check) =>
+      facet === undefined || check.facets.some((value) => value === facet)
+    )
+    .map((check) => ({
+      ...check,
+      authority: profile.archetype,
+      authorityType: 'archetype' as const
+    }));
+
 export const authoringReviewChecks = (
   profile: AuthoringProfile | undefined,
   camera: AuthoringReviewCamera,
@@ -168,6 +249,7 @@ export const authoringReviewChecks = (
     : selectedSpecialists;
   return [
     ...appliedChecks(archetype, 'archetype', camera, facet),
+    ...appliedProfileChecks(profile, camera, facet),
     ...applicableSpecialists.flatMap((definition) =>
       appliedChecks(definition, 'specialist', camera, facet)
     )

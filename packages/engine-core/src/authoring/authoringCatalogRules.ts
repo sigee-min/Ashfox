@@ -8,11 +8,14 @@ import {
   ARCHETYPE_IDS,
   ATTACHMENT_PORT_TYPES,
   AUTHORING_CAPABILITIES,
+  AUTHORING_CONTACTS,
   AUTHORING_FACETS,
   AUTHORING_PART_KINDS,
+  AUTHORING_QUALITY_STAGES,
   AUTHORING_REVIEW_CAMERAS,
   AUTHORING_REVIEW_ISSUES,
   AUTHORING_SPATIAL_RELATIONS,
+  AUTHORING_STRUCTURAL_ROLES,
   SPECIALIST_IDS,
   type ArchetypeDefinition,
   type CompatibilityClause,
@@ -28,23 +31,25 @@ export interface AuthoringCatalogIssue {
 }
 
 const scalarPaths = new Set<CompatibilityScalarPath>([
-  'archetype.id',
   'routing.animationSupported'
 ]);
 const collectionPaths = new Set<CompatibilityCollectionPath>([
-  'archetype.facets',
-  'archetype.capabilities',
-  'selection.specialistIds',
-  'selection.facets',
-  'selection.capabilities'
+  'selection.specialistIds'
 ]);
 
 export const allowedArchetypeIds = new Set<string>(ARCHETYPE_IDS);
 export const allowedSpecialistIds = new Set<string>(SPECIALIST_IDS);
 export const allowedFacets = new Set<string>(AUTHORING_FACETS);
 export const allowedCapabilities = new Set<string>(AUTHORING_CAPABILITIES);
+export const allowedContacts = new Set<string>(AUTHORING_CONTACTS);
 export const allowedPortTypes = new Set<string>(ATTACHMENT_PORT_TYPES);
 export const allowedPartKinds = new Set<string>(AUTHORING_PART_KINDS);
+export const allowedStructuralRoles = new Set<string>(
+  AUTHORING_STRUCTURAL_ROLES
+);
+export const allowedQualityStages = new Set<string>(
+  AUTHORING_QUALITY_STAGES
+);
 export const allowedSpatialRelations = new Set<string>(
   AUTHORING_SPATIAL_RELATIONS
 );
@@ -62,7 +67,7 @@ export const AUTHORING_DEFINITION_KEYS = Object.freeze({
     'facets',
     'capabilities',
     'evidenceCriteria',
-    'semanticSlots',
+    'structuralRolePolicies',
     'attachmentPorts',
     'compatibility',
     'reviewChecks'
@@ -83,17 +88,11 @@ export const AUTHORING_DEFINITION_KEYS = Object.freeze({
     'compatibility',
     'reviewChecks'
   ]),
-  slot: new Set([
-    'id',
-    'label',
+  structuralRolePolicy: new Set([
+    'role',
     'acceptedPartKinds',
-    'instruction',
-    'required',
-    'minParts',
-    'maxParts',
-    'parentSlotIds',
-    'spatialRelations',
-    'facing'
+    'allowedQualityStages',
+    'instruction'
   ]),
   contribution: new Set([
     'id',
@@ -108,7 +107,7 @@ export const AUTHORING_DEFINITION_KEYS = Object.freeze({
   port: new Set([
     'id',
     'type',
-    'hostSlotIds',
+    'hostStructuralRoles',
     'capacity',
     'acceptsFacets'
   ]),
@@ -140,11 +139,8 @@ export const validateClause = (
       !hasExactContractKeys(value, new Set(['op', 'path', 'value'])) ||
       typeof value.path !== 'string' ||
       !scalarPaths.has(value.path as CompatibilityScalarPath);
-    const valueValid = value.path === 'archetype.id'
-      ? typeof value.value === 'string' &&
-        allowedArchetypeIds.has(value.value)
-      : value.path === 'routing.animationSupported' &&
-        typeof value.value === 'boolean';
+    const valueValid = value.path === 'routing.animationSupported' &&
+      typeof value.value === 'boolean';
     if (shapeInvalid || !valueValid) {
       issues.push({
         code: 'authoring.catalog.clause_invalid',
@@ -155,26 +151,19 @@ export const validateClause = (
     }
     return true;
   }
-  if (value.op === 'includes' || value.op === 'forbids') {
+  if (value.op === 'forbids') {
     const shapeInvalid =
       !hasExactContractKeys(value, new Set(['op', 'path', 'value'])) ||
       typeof value.path !== 'string' ||
       !collectionPaths.has(value.path as CompatibilityCollectionPath) ||
       !isNonEmptyContractText(value.value);
-    const valueValid =
-      (value.path === 'archetype.facets' ||
-        value.path === 'selection.facets')
-        ? allowedFacets.has(String(value.value))
-        : (value.path === 'archetype.capabilities' ||
-            value.path === 'selection.capabilities')
-          ? allowedCapabilities.has(String(value.value))
-          : value.path === 'selection.specialistIds' &&
-            allowedSpecialistIds.has(String(value.value));
+    const valueValid = value.path === 'selection.specialistIds' &&
+      allowedSpecialistIds.has(String(value.value));
     if (shapeInvalid || !valueValid) {
       issues.push({
         code: 'authoring.catalog.clause_invalid',
         path,
-        message: `Invalid ${value.op} clause.`
+      message: 'Invalid forbids clause.'
       });
       return false;
     }
@@ -255,7 +244,7 @@ export const validateReviewChecks = (
       issues.push({
         code: 'authoring.catalog.review_shape_invalid',
         path: checkPath,
-        message: 'Review check must use the closed v1 shape.'
+        message: 'Review check must use the closed v2 shape.'
       });
     }
     if (
@@ -311,16 +300,21 @@ export const validateEvidenceCriteria = (
       issues.push({
         code: 'authoring.catalog.evidence_criterion_invalid',
         path: criterionPath,
-        message: 'Evidence criterion must use the closed v1 taxonomy and shape.'
+        message: 'Evidence criterion must use the closed v2 taxonomy and shape.'
       });
     }
   });
 };
 
 export const slotGraphHasCycle = (
-  slots: readonly ArchetypeDefinition['semanticSlots'][number][]
+  slots: readonly {
+    slotId: string;
+    parentSlotIds: readonly string[];
+  }[]
 ): boolean => {
-  const parents = new Map(slots.map((slot) => [slot.id, slot.parentSlotIds]));
+  const parents = new Map(
+    slots.map((slot) => [slot.slotId, slot.parentSlotIds])
+  );
   const visiting = new Set<string>();
   const visited = new Set<string>();
   const visit = (id: string): boolean => {
@@ -341,32 +335,8 @@ export const validateClauseContradictions = (
   path: string,
   issues: AuthoringCatalogIssue[]
 ): void => {
-  const includes = new Set(
-    clauses.flatMap((clause) =>
-      clause.op === 'includes'
-        ? [`${clause.path}\u0000${clause.value}`]
-        : []
-    )
-  );
   const equalsByPath = new Map<string, string>();
-  const requiredPortTypes = new Set<string>(
-    clauses.flatMap((clause) =>
-      clause.op === 'requires-port' ? [clause.portType] : []
-    )
-  );
   for (const clause of clauses) {
-    if (
-      clause.op === 'forbids' &&
-      includes.has(`${clause.path}\u0000${clause.value}`)
-    ) {
-      issues.push({
-        code: 'authoring.catalog.clause_contradiction',
-        path,
-        message:
-          `The catalog both requires and forbids "${clause.value}" at ` +
-          `"${clause.path}".`
-      });
-    }
     if (clause.op === 'equals') {
       const serialized = JSON.stringify(clause.value);
       const prior = equalsByPath.get(clause.path);
@@ -378,33 +348,6 @@ export const validateClauseContradictions = (
         });
       }
       equalsByPath.set(clause.path, serialized);
-    }
-    if (
-      clause.op === 'forbids' &&
-      clause.path === 'selection.facets' &&
-      (authority.facets.includes(clause.value) ||
-        requiredPortTypes.has(clause.value))
-    ) {
-      issues.push({
-        code: 'authoring.catalog.clause_contradiction',
-        path,
-        message:
-          `Authority "${authority.id}" forbids its own required facet ` +
-          `"${clause.value}".`
-      });
-    }
-    if (
-      clause.op === 'forbids' &&
-      clause.path === 'selection.capabilities' &&
-      authority.capabilities.includes(clause.value)
-    ) {
-      issues.push({
-        code: 'authoring.catalog.clause_contradiction',
-        path,
-        message:
-          `Authority "${authority.id}" forbids its own capability ` +
-          `"${clause.value}".`
-      });
     }
     if (
       clause.op === 'forbids' &&

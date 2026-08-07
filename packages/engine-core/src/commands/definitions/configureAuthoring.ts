@@ -8,7 +8,17 @@ import {
 } from '../../authoring/authoringRegistry';
 import {
   ARCHETYPE_IDS,
+  AUTHORING_CONTACTS,
+  AUTHORING_EYE_CONFIGURATIONS,
+  AUTHORING_FACE_COMPONENTS,
+  AUTHORING_FACE_FORMS,
+  AUTHORING_FACE_MODES,
+  AUTHORING_MOUTH_STATES,
   AUTHORING_PROFILE_SCHEMA_VERSION,
+  AUTHORING_QUALITY_STAGES,
+  AUTHORING_SPATIAL_RELATIONS,
+  AUTHORING_STRUCTURAL_ROLES,
+  AUTHORING_TRACKS,
   SPECIALIST_IDS
 } from '../../authoring/authoringTypes';
 import { canonicalJsonString } from '../../canonicalJson';
@@ -40,9 +50,6 @@ const specialistReferenceSchema: CommandInputSchema = {
   additionalProperties: false
 };
 
-const slotIds = listArchetypes().flatMap((definition) =>
-  definition.semanticSlots.map((slot) => slot.id)
-);
 const portIds = listArchetypes().flatMap((definition) =>
   definition.attachmentPorts.map((port) => port.id)
 );
@@ -69,12 +76,118 @@ const partIdsSchema: CommandInputSchema = {
   }
 };
 
+const canonicalIdSchema: CommandInputSchema = {
+  type: 'string',
+  minLength: 1,
+  maxLength: PART_CONTRACT_LIMITS.maxIdLength,
+  pattern: PART_ID_PATTERN_SOURCE
+};
+
 const inputSchema: CommandInputSchema = {
   type: 'object',
   description:
-    'Configure one explicit v1 archetype, zero or more unclassified specialists, grounded authority claims, archetype slots, and closed attachment or motion bindings.',
+    'Configure the explicit v2 composable-form authority, quality track, optional audited full-face contract, structural module graph, intent-feature coverage, topology-free specialists, grounded claims, and closed bindings.',
   properties: {
     archetype: archetypeReferenceSchema,
+    track: { enum: AUTHORING_TRACKS },
+    faceMode: { enum: AUTHORING_FACE_MODES },
+    face: {
+      anyOf: [
+        { enum: [null] },
+        {
+          type: 'object',
+          properties: {
+            hostSlotId: canonicalIdSchema,
+            mouthState: { enum: AUTHORING_MOUTH_STATES },
+            components: {
+              type: 'array',
+              minItems: 1,
+              maxItems: AUTHORING_FACE_COMPONENTS.length,
+              items: {
+                type: 'object',
+                properties: {
+                  component: { enum: AUTHORING_FACE_COMPONENTS },
+                  form: { enum: AUTHORING_FACE_FORMS },
+                  configuration: {
+                    anyOf: [
+                      { enum: AUTHORING_EYE_CONFIGURATIONS },
+                      { enum: [null] }
+                    ]
+                  },
+                  slotIds: {
+                    type: 'array',
+                    minItems: 1,
+                    maxItems: AUTHORING_PROFILE_LIMITS.maxSlots,
+                    uniqueItems: true,
+                    items: canonicalIdSchema
+                  },
+                  materialIds: {
+                    type: 'array',
+                    minItems: 1,
+                    maxItems: AUTHORING_PROFILE_LIMITS.maxPartIdsPerOwner,
+                    uniqueItems: true,
+                    items: canonicalIdSchema
+                  }
+                },
+                required: [
+                  'component',
+                  'form',
+                  'configuration',
+                  'slotIds',
+                  'materialIds'
+                ],
+                additionalProperties: false
+              }
+            },
+            exceptions: {
+              type: 'array',
+              minItems: 0,
+              maxItems: 2,
+              items: {
+                type: 'object',
+                properties: {
+                  component: { enum: ['nasal', 'oral'] },
+                  basis: { enum: ['observed', 'requested'] },
+                  referenceIds: {
+                    type: 'array',
+                    minItems: 1,
+                    maxItems: AUTHORING_PROFILE_LIMITS.maxClaimReferenceIds,
+                    uniqueItems: true,
+                    items: {
+                      type: 'string',
+                      minLength: 1,
+                      maxLength: 64,
+                      pattern:
+                        `^(?:(?:${PROJECT_REFERENCE_ID_PATTERN_SOURCE.slice(1, -1)})|` +
+                        '(?:intent\\.(?:subject|features\\.(?:0|[1-9][0-9]*))))$'
+                    }
+                  },
+                  rationale: {
+                    type: 'string',
+                    minLength: 1,
+                    maxLength: AUTHORING_PROFILE_LIMITS.maxClaimRationaleLength
+                  }
+                },
+                required: [
+                  'component',
+                  'basis',
+                  'referenceIds',
+                  'rationale'
+                ],
+                additionalProperties: false
+              }
+            }
+          },
+          required: [
+            'hostSlotId',
+            'mouthState',
+            'components',
+            'exceptions'
+          ],
+          additionalProperties: false
+        }
+      ]
+    },
     specialists: {
       type: 'array',
       minItems: 0,
@@ -126,16 +239,76 @@ const inputSchema: CommandInputSchema = {
     },
     slots: {
       type: 'array',
+      minItems: 1,
+      maxItems: AUTHORING_PROFILE_LIMITS.maxSlots,
+      items: {
+        type: 'object',
+        properties: {
+          slotId: canonicalIdSchema,
+          structuralRole: { enum: AUTHORING_STRUCTURAL_ROLES },
+          qualityStage: { enum: AUTHORING_QUALITY_STAGES },
+          partIds: partIdsSchema,
+          parentSlotIds: {
+            type: 'array',
+            minItems: 0,
+            maxItems: AUTHORING_PROFILE_LIMITS.maxSlots,
+            uniqueItems: true,
+            items: canonicalIdSchema
+          },
+          spatialRelations: {
+            type: 'array',
+            minItems: 0,
+            maxItems: AUTHORING_SPATIAL_RELATIONS.length,
+            uniqueItems: true,
+            items: { enum: AUTHORING_SPATIAL_RELATIONS }
+          },
+          facing: { enum: ['forward', null] },
+          pairId: { anyOf: [canonicalIdSchema, { enum: [null] }] },
+          contact: { enum: AUTHORING_CONTACTS }
+        },
+        required: [
+          'slotId',
+          'structuralRole',
+          'qualityStage',
+          'partIds',
+          'parentSlotIds',
+          'spatialRelations',
+          'facing',
+          'pairId',
+          'contact'
+        ],
+        additionalProperties: false
+      }
+    },
+    coverage: {
+      type: 'array',
       minItems: 0,
       maxItems: AUTHORING_PROFILE_LIMITS.maxSlots,
       items: {
         type: 'object',
         properties: {
-          slotId: { enum: [...new Set(slotIds)] },
-          partIds: partIdsSchema,
-          reason: { type: 'string', minLength: 1, maxLength: 240 }
+          featureRef: {
+            type: 'string',
+            minLength: 17,
+            maxLength: 32,
+            pattern: '^intent\\.features\\.(?:0|[1-9][0-9]*)$'
+          },
+          slotIds: {
+            type: 'array',
+            minItems: 0,
+            maxItems: AUTHORING_PROFILE_LIMITS.maxSlots,
+            uniqueItems: true,
+            items: canonicalIdSchema
+          },
+          materialIds: {
+            type: 'array',
+            minItems: 0,
+            maxItems: AUTHORING_PROFILE_LIMITS.maxPartIdsPerOwner,
+            uniqueItems: true,
+            items: canonicalIdSchema
+          }
         },
-        required: ['slotId', 'partIds'],
+        required: ['featureRef', 'slotIds', 'materialIds'],
         additionalProperties: false
       }
     },
@@ -151,7 +324,7 @@ const inputSchema: CommandInputSchema = {
               type: { enum: ['attachment'] },
               contributionId: { enum: contributionIds },
               portId: { enum: [...new Set(portIds)] },
-              hostSlotId: { enum: [...new Set(slotIds)] },
+              hostSlotId: canonicalIdSchema,
               partIds: partIdsSchema
             },
             required: [
@@ -183,7 +356,17 @@ const inputSchema: CommandInputSchema = {
       }
     }
   },
-  required: ['archetype', 'specialists', 'claims', 'slots', 'bindings'],
+  required: [
+    'archetype',
+    'track',
+    'faceMode',
+    'face',
+    'specialists',
+    'claims',
+    'slots',
+    'coverage',
+    'bindings'
+  ],
   additionalProperties: false
 };
 
@@ -191,7 +374,7 @@ export const configureAuthoringCommand = defineCommand({
   name: 'project.authoring.configure',
   label: 'Configure authoring authorities',
   purpose:
-    'Persist the single v1 archetype and specialist authority plan grounded in current intent provenance.',
+    'Persist the v2 composable authority, quality track, explicit face mode, structural graph, verified intent coverage, and topology-free specialist plan.',
   inputSchema,
   apply: (document, payload) => {
     const normalized = createAuthoringProfile(document, payload);

@@ -31,6 +31,22 @@ const productionCode = (
       return 'production.authoring_slot_spatial_invalid';
     case 'authoring.plan.slot_facing_invalid':
       return 'production.authoring_slot_facing_invalid';
+    case 'authoring.plan.quality_stage_invalid':
+      return 'production.authoring_quality_stage_invalid';
+    case 'authoring.plan.intent_coverage_incomplete':
+      return 'production.authoring_intent_coverage_incomplete';
+    case 'authoring.plan.compact_stage_incomplete':
+      return 'production.authoring_compact_stage_incomplete';
+    case 'authoring.plan.showcase_stage_incomplete':
+      return 'production.authoring_showcase_stage_incomplete';
+    case 'authoring.plan.face_host_incomplete':
+      return 'production.authoring_face_host_incomplete';
+    case 'authoring.plan.face_component_incomplete':
+      return 'production.authoring_face_component_incomplete';
+    case 'authoring.plan.face_eye_unreadable':
+      return 'production.authoring_face_eye_unreadable';
+    case 'authoring.plan.face_eye_visibility_invalid':
+      return 'production.authoring_face_eye_visibility_invalid';
     case 'authoring.plan.part_unassigned':
       return 'production.authoring_part_unassigned';
     case 'authoring.plan.motion_clip_missing':

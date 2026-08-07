@@ -10,6 +10,10 @@ import { canonicalJsonString } from '../canonicalJson';
 import type { ProjectIntent } from '../model';
 import { PROJECT_REFERENCE_ID_PATTERN_SOURCE } from '../project/projectIntent';
 import {
+  addAuthoringProfileIssue,
+  type AuthoringProfileIssue
+} from './authoringIssueFactories';
+import {
   isArchetypeReference,
   isSpecialistReference,
   resolveArchetypeReference,
@@ -35,20 +39,10 @@ export const AUTHORING_PROFILE_LIMITS = Object.freeze({
   maxPartIdsPerOwner: 32
 });
 
-export interface AuthoringProfileIssue {
-  path: string;
-  message: string;
-  expected: string;
-}
-
-export const addAuthoringProfileIssue = (
-  issues: AuthoringProfileIssue[],
-  path: string,
-  message: string,
-  expected: string
-): void => {
-  issues.push({ path, message, expected });
-};
+export {
+  addAuthoringProfileIssue,
+  type AuthoringProfileIssue
+} from './authoringIssueFactories';
 
 const REFERENCE_KEYS = new Set(['id', 'version']);
 const CLAIM_KEYS = new Set([
@@ -78,7 +72,7 @@ export const readArchetypeReference = (
     addAuthoringProfileIssue(
       issues,
       path,
-      'Archetype must be a registered explicit v1 reference.',
+      'Archetype must be a registered explicit v2 reference.',
       `{id: registered archetype ID, version: ${AUTHORING_PROFILE_SCHEMA_VERSION}}`
     );
     return null;
@@ -100,7 +94,7 @@ export const readSpecialistReference = (
     addAuthoringProfileIssue(
       issues,
       path,
-      'Specialist must be a registered explicit v1 reference.',
+      'Specialist must be a registered explicit v2 reference.',
       `{id: registered specialist ID, version: ${AUTHORING_PROFILE_SCHEMA_VERSION}}`
     );
     return null;
@@ -120,7 +114,7 @@ export const readSpecialists = (
       issues,
       'specialists',
       'Specialists must be a bounded array.',
-      `0-${AUTHORING_PROFILE_LIMITS.maxSpecialists} explicit v1 references`
+      `0-${AUTHORING_PROFILE_LIMITS.maxSpecialists} explicit v2 references`
     );
     return null;
   }
@@ -235,7 +229,7 @@ export const readClaims = (
       addAuthoringProfileIssue(
         issues,
         path,
-        'Claim must use the closed v1 shape.',
+        'Claim must use the closed v2 shape.',
         '{authority,criterionId,basis,referenceIds,rationale}'
       );
       return;

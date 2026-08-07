@@ -1,7 +1,9 @@
 import {
   composeTextureRaster,
   paintFeatureMotifPixel,
+  paintDirectionalFocalSurfacePixel,
   paintDirectionalSurfacePixel,
+  paintFocalSurfacePixel,
   paintSurfacePixel,
   stableTextureSeed,
   type ProjectDocument,
@@ -38,7 +40,8 @@ const markedSurfacePixel = (
   region: TextureCompositionRegion,
   base: RgbColor,
   x: number,
-  y: number
+  y: number,
+  focalPlane: boolean
 ): RgbColor => {
   let markedBase = base;
   for (const marking of region.markings ?? []) {
@@ -54,7 +57,9 @@ const markedSurfacePixel = (
       const color = rgbColor(marking.color);
       const pattern = region.pattern;
       if (pattern) {
-        markedBase = paintDirectionalSurfacePixel(
+        markedBase = (focalPlane
+          ? paintDirectionalFocalSurfacePixel
+          : paintDirectionalSurfacePixel)(
           color,
           region.face,
           pattern.origin[0] + x - pattern.bounds.x,
@@ -68,7 +73,9 @@ const markedSurfacePixel = (
         );
         continue;
       }
-      markedBase = paintDirectionalSurfacePixel(
+      markedBase = (focalPlane
+        ? paintDirectionalFocalSurfacePixel
+        : paintDirectionalSurfacePixel)(
         color,
         region.face,
         marking.motifX + x - marking.x,
@@ -99,10 +106,13 @@ export const generatedSurfacePixel = (
   y: number
 ): RgbColor => {
   const pattern = region.pattern;
+  const focalPlane = (region.markings ?? []).some(
+    (marking) => marking.motif !== 'patch'
+  );
   if (!pattern) {
     return markedSurfacePixel(
       region,
-      paintSurfacePixel(
+      (focalPlane ? paintFocalSurfacePixel : paintSurfacePixel)(
         rgbColor(region.color),
         x,
         y,
@@ -114,12 +124,15 @@ export const generatedSurfacePixel = (
         )
       ),
       x,
-      y
+      y,
+      focalPlane
     );
   }
   return markedSurfacePixel(
     region,
-    paintDirectionalSurfacePixel(
+    (focalPlane
+      ? paintDirectionalFocalSurfacePixel
+      : paintDirectionalSurfacePixel)(
       rgbColor(region.color),
       region.face,
       pattern.origin[0] + x - pattern.bounds.x,
@@ -129,7 +142,8 @@ export const generatedSurfacePixel = (
       stableTextureSeed(pattern.seedKey, 0x41534846)
     ),
     x,
-    y
+    y,
+    focalPlane
   );
 };
 

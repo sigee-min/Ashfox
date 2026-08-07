@@ -97,6 +97,8 @@ export const inspectOverview = (
         authoring: authoringProfile
           ? {
               archetype: authoringProfile.archetype.id,
+              track: authoringProfile.track,
+              faceMode: authoringProfile.faceMode,
               specialists: authoringProfile.specialists.map(
                 (reference) => reference.id
               ),
@@ -106,7 +108,29 @@ export const inspectOverview = (
                 basis: claim.basis
               })),
               compatible: authoringCompatibility?.compatible ?? false,
-              ready: authoringPlan.ready
+              ready: authoringPlan.ready,
+              structuralQuality: authoringPlan.structuralQuality === null
+                ? null
+                : {
+                    activeStage:
+                      authoringPlan.structuralQuality.activeStage,
+                    ready: authoringPlan.structuralQuality.ready
+                  },
+              intentCoverage: authoringPlan.intentCoverage === null
+                ? null
+                : {
+                    ready: authoringPlan.intentCoverage.ready,
+                    incompleteFeatureCount:
+                      authoringPlan.intentCoverage.features.filter(
+                        (feature) => feature.state === 'incomplete'
+                      ).length
+                  },
+              faceQuality: authoringPlan.faceQuality === null
+                ? null
+                : {
+                    mode: authoringPlan.faceQuality.mode,
+                    ready: authoringPlan.faceQuality.ready
+                  }
             }
           : null,
         textureResolution:

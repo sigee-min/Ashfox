@@ -6,7 +6,9 @@ import {
   faceTexelSize,
   packUvAtlas,
   packUvAtlasWithGutter,
+  paintDirectionalFocalSurfacePixel,
   paintDirectionalSurfacePixel,
+  paintFocalSurfacePixel,
   paintSurfacePixel,
   reduceAtlasPixelsPerBlock,
   shadePixelRect,
@@ -36,6 +38,51 @@ assert.deepEqual(
     directionalSeed
   ),
   'directional tone must be owned by engine-core'
+);
+
+assert.deepEqual(
+  paintDirectionalFocalSurfacePixel(
+    { r: 100, g: 100, b: 100 },
+    'up',
+    0,
+    0,
+    1,
+    1,
+    directionalSeed
+  ),
+  paintFocalSurfacePixel(
+    { r: 108, g: 108, b: 108 },
+    0,
+    0,
+    1,
+    1,
+    directionalSeed
+  ),
+  'focal surface tone must keep the shared directional authority'
+);
+
+const surfaceToneCounts = (focal: boolean): number =>
+  new Set(
+    Array.from({ length: 64 }, (_, index) => {
+      const x = index % 8;
+      const y = Math.floor(index / 8);
+      const color = (focal
+        ? paintFocalSurfacePixel
+        : paintSurfacePixel)(
+        { r: 100, g: 100, b: 100 },
+        x,
+        y,
+        8,
+        8,
+        directionalSeed
+      );
+      return `${color.r},${color.g},${color.b}`;
+    })
+  ).size;
+
+assert.ok(
+  surfaceToneCounts(true) < surfaceToneCounts(false),
+  'focal host planes must use a quieter generated noise field'
 );
 
 const from = [-4, 5, -5] as const;

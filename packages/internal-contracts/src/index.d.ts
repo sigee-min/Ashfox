@@ -1,6 +1,6 @@
 export declare const INTERNAL_CONTRACT_VERSIONS: Readonly<{
   readonly projectDocument: 1;
-  readonly authoringProfile: 1;
+  readonly authoringProfile: 2;
   readonly authoringRouting: 1;
   readonly commandReceipt: 1;
   readonly exportBundle: 1;

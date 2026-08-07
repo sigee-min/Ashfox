@@ -1,36 +1,27 @@
 import type {
   AuthoringPartKind,
-  AuthoringSpatialRelation,
-  SemanticSlotDefinition,
-  SpecialistContributionDefinition
+  AuthoringQualityStage,
+  AuthoringStructuralRole,
+  SpecialistContributionDefinition,
+  StructuralRolePolicyDefinition
 } from './authoringTypes';
 
-interface SlotOptions {
+interface ContributionOptions {
   required?: boolean;
   minParts?: number;
   maxParts?: number;
-  parentSlotIds?: readonly string[];
-  spatialRelations?: readonly AuthoringSpatialRelation[];
-  facing?: 'forward' | null;
 }
 
-export const semanticSlot = (
-  id: string,
-  label: string,
+export const structuralRolePolicy = (
+  role: AuthoringStructuralRole,
   acceptedPartKinds: readonly AuthoringPartKind[],
-  instruction: string,
-  options: SlotOptions = {}
-): SemanticSlotDefinition => ({
-  id,
-  label,
+  allowedQualityStages: readonly AuthoringQualityStage[],
+  instruction: string
+): StructuralRolePolicyDefinition => ({
+  role,
   acceptedPartKinds,
+  allowedQualityStages,
   instruction,
-  required: options.required ?? true,
-  minParts: options.minParts ?? 1,
-  maxParts: options.maxParts ?? 1,
-  parentSlotIds: options.parentSlotIds ?? [],
-  spatialRelations: options.spatialRelations ?? [],
-  facing: options.facing ?? null
 });
 
 export const contribution = (
@@ -39,7 +30,7 @@ export const contribution = (
   attachmentRequirementId: string,
   acceptedPartKinds: readonly AuthoringPartKind[],
   instruction: string,
-  options: Pick<SlotOptions, 'required' | 'minParts' | 'maxParts'> = {}
+  options: ContributionOptions = {}
 ): SpecialistContributionDefinition => ({
   id,
   label,

@@ -83,6 +83,8 @@ assert.equal(manifest.protocol, 'ashfox.agent-command-port');
 assert.equal(manifest.workbench, '/workbench/');
 assert.equal(manifest.href, '/workbench/agent-manifest.json');
 assert.doesNotMatch(JSON.stringify(manifest), /\bassembly\b/i);
+assert.doesNotMatch(JSON.stringify(manifest), /\bquadruped\b/i);
+assert.match(manifest.description, /structurally authored/);
 assert.equal(manifest.pageApi.global, 'ashfox');
 assert.equal(manifest.pageApi.presentMethod, 'present');
 assert.equal(manifest.pageApi.captureMethod, 'capture');
@@ -125,6 +127,8 @@ assert.match(manifest.pageApi.deliver.contract, /adaptationCount/);
 assert.match(manifest.pageApi.deliver.contract, /converted,omitted/);
 assert.match(manifest.pageApi.deliver.contract, /never mutates/);
 assert.match(manifest.pageApi.inspect.command, /kind:"command"/);
+assert.match(manifest.pageApi.inspect.catalog, /structuralRole, qualityStage/);
+assert.match(manifest.pageApi.inspect.catalog, /Role policies/);
 assert.match(manifest.pageApi.run.call, /await window\.ashfox\.run/);
 assert.match(manifest.pageApi.run.call, /requestId/);
 assert.doesNotMatch(manifest.pageApi.run.call, /baseRevision|batchId/);
@@ -144,15 +148,72 @@ assert.match(manifest.authoring.iconic, /no style escape hatch/i);
 assert.match(manifest.authoring.intent, /explicitly set forward/);
 assert.match(manifest.authoring.intent, /references/);
 assert.match(manifest.authoring.authority, /project\.authoring\.configure/);
-assert.match(manifest.authoring.authority, /one broad archetype/);
+assert.match(manifest.authoring.authority, /composable structural authority/);
+assert.match(manifest.authoring.authority, /named body plan/);
 assert.match(manifest.authoring.authority, /observed.*requested/);
 assert.match(manifest.authoring.authority, /evidenceCriterion/);
 assert.match(manifest.authoring.authority, /criterionId/);
-assert.match(manifest.authoring.authority, /attachment port/);
-assert.match(manifest.authoring.authority, /optional slots require/i);
+assert.match(manifest.authoring.authority, /Specialists.*never topology/);
+assert.match(manifest.authoring.structuralAuthority, /v2 authority/);
+assert.match(manifest.authoring.structuralAuthority, /open module graph/);
+assert.match(manifest.authoring.structuralAuthority, /parentSlotIds/);
+assert.match(manifest.authoring.structuralAuthority, /spatialRelations/);
+assert.match(manifest.authoring.structuralAuthority, /facing/);
+assert.match(manifest.authoring.structuralAuthority, /pairId/);
+assert.match(manifest.authoring.structuralAuthority, /contact/);
+assert.deepEqual(
+  Object.keys(manifest.authoring.tracks),
+  ['contract', 'compact', 'showcase', 'coverage']
+);
+assert.match(manifest.authoring.tracks.contract, /completeness contracts/);
+assert.match(manifest.authoring.tracks.contract, /never low\/high quality/);
+assert.match(manifest.authoring.tracks.contract, /showcase.*default.*recommended/);
+assert.match(manifest.authoring.tracks.compact, /never cheap or low quality/);
+assert.match(manifest.authoring.tracks.compact, /silhouette and structure are required/);
+assert.match(manifest.authoring.tracks.compact, /only focal is optional/);
+assert.match(manifest.authoring.tracks.compact, /only for explicit cute, chibi/);
+assert.match(manifest.authoring.tracks.compact, /Targets may be shared/);
+assert.match(manifest.authoring.tracks.showcase, /requires all stages/);
+assert.match(manifest.authoring.tracks.showcase, /exclusive/);
+assert.match(manifest.authoring.tracks.showcase, /reference fidelity/);
+assert.match(manifest.authoring.tracks.showcase, /mature or hero/);
+assert.match(manifest.authoring.tracks.showcase, /ambiguity/);
+assert.match(manifest.authoring.tracks.showcase, /semantic material boundaries/);
+assert.match(manifest.authoring.tracks.coverage, /intent\.features\.N exactly once/);
+assert.match(manifest.authoring.tracks.coverage, /slotIds and materialIds/);
+assert.match(manifest.authoring.tracks.coverage, /Automatic noise never counts/);
+assert.match(manifest.authoring.intent, /every requested or observed cue/);
+assert.deepEqual(
+  Object.keys(manifest.authoring.face),
+  ['contract', 'tracks', 'review']
+);
+assert.match(manifest.authoring.face.contract, /faceMode explicitly/);
+assert.match(manifest.authoring.face.contract, /never infer/);
+assert.match(manifest.authoring.face.contract, /biological face uses full/);
+assert.match(manifest.authoring.face.contract, /component-exclusive descendant slots/);
+assert.match(manifest.authoring.face.tracks, /full compact.*eye.*nasal.*oral/);
+assert.match(manifest.authoring.face.tracks, /nose\|muzzle\|beak/);
+assert.match(manifest.authoring.face.tracks, /full showcase.*mature proportions/);
+assert.match(manifest.authoring.face.tracks, /eye-frame orbital\|brow/);
+assert.match(manifest.authoring.face.tracks, /open mouth.*mouth-interior/);
+assert.match(manifest.authoring.face.review, /native gameplay size/);
+assert.match(manifest.authoring.face.review, /lone dot or 1px eye fails/);
+assert.match(manifest.authoring.face.review, /non-dot and at least 2x2/);
+assert.match(manifest.authoring.face.review, /noise subordinate/);
+assert.match(manifest.authoring.face.review, /observed\/requested species evidence/);
+assert.deepEqual(
+  Object.keys(manifest.authoring.motifs),
+  ['core', 'axis', 'articulated', 'span', 'focal-frame', 'accent']
+);
+assert.match(manifest.authoring.motifs.core, /load-bearing/);
+assert.match(manifest.authoring.motifs.axis, /taper/);
+assert.match(manifest.authoring.motifs.articulated, /grounded\/free contact/);
+assert.match(manifest.authoring.motifs.span, /segments.*plates/);
+assert.match(manifest.authoring.motifs['focal-frame'], /before projecting/);
+assert.match(manifest.authoring.motifs.accent, /silhouette-changing/);
 assert.match(manifest.authoring.recipes, /non-authoritative.*examples/);
 assert.match(manifest.authoring.recipes, /never from a recipe/);
-assert.match(manifest.authoring.recipes, /Criterion-specific/);
+assert.match(manifest.authoring.recipes, /claim, slot, and binding/);
 assert.match(manifest.pageApi.present.contract, /evidenceCriteria/);
 assert.match(manifest.pageApi.present.contract, /criterionId/);
 assert.match(manifest.authoring.hierarchy, /rederives model-scale parent contact/);
@@ -177,10 +238,36 @@ assert.match(manifest.quality.required, /No absolute cuboid count/);
 assert.match(manifest.quality.required, /least geometry/);
 assert.doesNotMatch(manifest.quality.required, /at most 512/);
 assert.match(manifest.quality.required, /may retain canonical clips/);
-assert.match(manifest.quality.fidelity, /configured archetype slots/);
+assert.match(manifest.quality.fidelity, /configured module graph/);
 assert.match(manifest.quality.fidelity, /body plan/);
+assert.match(manifest.quality.fidelity, /maturity/);
 assert.match(manifest.quality.fidelity, /surface glyphs/);
 assert.match(manifest.quality.fidelity, /decorative micro-cubes/);
+assert.match(manifest.quality.structure, /every requested or observed cue/);
+assert.match(
+  manifest.quality.structure,
+  /explicit geometry, a feature, or a distinct role material/
+);
+assert.match(
+  manifest.quality.structure,
+  /Automatic noise never invents semantic material boundaries/
+);
+assert.deepEqual(
+  Object.keys(manifest.quality.gates),
+  ['silhouette', 'structure', 'focal', 'surface']
+);
+assert.match(manifest.quality.gates.silhouette, /Gate 1/);
+assert.match(manifest.quality.gates.structure, /Gate 2/);
+assert.match(manifest.quality.gates.focal, /Gate 3/);
+assert.match(manifest.quality.gates.surface, /Gate 4/);
+assert.match(manifest.quality.gates.silhouette, /macro/);
+assert.match(manifest.quality.gates.structure, /meso/);
+assert.match(manifest.quality.gates.focal, /focal/);
+assert.match(manifest.quality.gates.surface, /surface/);
+assert.match(manifest.quality.gates.surface, /after the first three gates/);
+assert.match(manifest.quality.gates.surface, /required automatic noise/);
+assert.match(manifest.authoring.iconic, /identity-bearing middle forms/);
+assert.match(manifest.authoring.iconic, /does not mean childlike/);
 assert.match(manifest.quality.review, /native gameplay-size/);
 assert.match(manifest.quality.review, /reversed feet/);
 assert.match(manifest.quality.review, /recognizability or appeal/);
@@ -392,7 +479,16 @@ for (const step of manifest.workflow) {
 }
 assert.match(manifest.workflow[0].instruction, /project\.create/);
 assert.match(manifest.workflow[1].instruction, /project\.authoring\.configure/);
+assert.match(
+  manifest.workflow[1].instruction,
+  /track, faceMode.*exact feature coverage/
+);
 assert.match(manifest.workflow[2].instruction, /profile:"block"/);
+assert.match(manifest.workflow[2].instruction, /macro, meso, and focal/);
+assert.match(
+  manifest.workflow[2].instruction,
+  /geometry, a feature, or a distinct role material/
+);
 assert.match(manifest.workflow[3].instruction, /animation\.motion\.upsert/);
 assert.match(manifest.workflow[4].instruction, /capture/);
 assert.equal(manifest.artifact.requestedPath, 'workspace-relative directory');

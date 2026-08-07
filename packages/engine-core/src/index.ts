@@ -48,13 +48,22 @@ export {
   ARCHETYPE_IDS,
   ATTACHMENT_PORT_TYPES,
   AUTHORING_CAPABILITIES,
+  AUTHORING_CONTACTS,
+  AUTHORING_EYE_CONFIGURATIONS,
   AUTHORING_FACETS,
+  AUTHORING_FACE_COMPONENTS,
+  AUTHORING_FACE_FORMS,
+  AUTHORING_FACE_MODES,
+  AUTHORING_MOUTH_STATES,
   AUTHORING_PART_KINDS,
   AUTHORING_PROFILE_SCHEMA_VERSION,
+  AUTHORING_QUALITY_STAGES,
   AUTHORING_REVIEW_CAMERAS,
   AUTHORING_REVIEW_ISSUES,
   AUTHORING_ROUTING_CONTRACT_VERSION,
   AUTHORING_SPATIAL_RELATIONS,
+  AUTHORING_STRUCTURAL_ROLES,
+  AUTHORING_TRACKS,
   SPECIALIST_IDS,
   type AppliedAuthoringReviewCheck,
   type ArchetypeDefinition,
@@ -70,13 +79,24 @@ export {
   type AuthoringBinding,
   type AuthoringCapability,
   type AuthoringClaimBasis,
+  type AuthoringContact,
   type AuthoringCompatibilityIssue,
   type AuthoringCompatibilityResult,
   type AuthoringFacet,
+  type AuthoringEyeConfiguration,
+  type AuthoringFaceComponent,
+  type AuthoringFaceComponentDeclaration,
+  type AuthoringFaceContract,
+  type AuthoringFaceException,
+  type AuthoringFaceForm,
+  type AuthoringFaceMode,
+  type AuthoringFeatureCoverage,
   type AuthoringMotionBinding,
   type AuthoringMotionRole,
+  type AuthoringMouthState,
   type AuthoringPartKind,
   type AuthoringProfile,
+  type AuthoringQualityStage,
   type AuthoringRecipe,
   type AuthoringRecipeSummary,
   type AuthoringReviewCamera,
@@ -86,10 +106,12 @@ export {
   type AuthoringSelectionInput,
   type AuthoringSlotAssignment,
   type AuthoringSpatialRelation,
+  type AuthoringStructuralRole,
+  type AuthoringTrack,
   type CompatibilityClause,
   type ComposedAuthoringSlotDefinition,
   type EvidenceCriterionDefinition,
-  type SemanticSlotDefinition,
+  type StructuralRolePolicyDefinition,
   type SpecialistBindingRequirement,
   type SpecialistContributionDefinition,
   type SpecialistDefinition,
@@ -123,6 +145,26 @@ export {
   type AuthoringSlotState,
   type AuthoringSlotStatus
 } from './authoring/authoringPlan';
+export {
+  AUTHORING_COVERAGE_ASPECTS,
+  evaluateIntentCoverage,
+  type AuthoringCoverageAspect,
+  type IntentCoverageEvaluation,
+  type IntentCoverageStageStatus,
+  type IntentFeatureCoverageStatus
+} from './authoring/intentCoverage';
+export {
+  evaluateFaceQuality,
+  type FaceComponentQualityStatus,
+  type FaceQualityEvaluation
+} from './authoring/faceQuality';
+export {
+  evaluateStructuralQuality,
+  STRUCTURAL_QUALITY_STAGE_ORDER,
+  type StructuralQualityEvaluation,
+  type StructuralQualityGate,
+  type StructuralQualityGateState
+} from './authoring/structuralQuality';
 export {
   evaluateAuthoringCompatibility,
   validateAuthoringCatalog,
@@ -280,7 +322,10 @@ export {
   stableTextureSeed
 } from './textures/deterministicPixel';
 export {
+  FOCAL_PIXEL_SHADE_STYLE,
+  paintDirectionalFocalSurfacePixel,
   paintDirectionalSurfacePixel,
+  paintFocalSurfacePixel,
   paintSurfacePixel
 } from './textures/pixelSurfacePattern';
 export {

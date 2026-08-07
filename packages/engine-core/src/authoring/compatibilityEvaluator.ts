@@ -1,8 +1,9 @@
-import { isCurrentInternalContractVersion } from '@ashfox/internal-contracts';
-
-import { archetypeDefinitions } from './archetypeDefinitions';
 import { evaluateAuthoringBindings } from './authoringBindingEvaluator';
-import { specialistDefinitions } from './specialistDefinitions';
+import { authoringCompatibilityIssue as issue } from './authoringIssueFactories';
+import {
+  resolveArchetypeReference,
+  resolveSpecialistReference
+} from './authoringRegistry';
 import {
   type ArchetypeDefinition,
   type AuthoringAuthorityReference,
@@ -22,32 +23,12 @@ export type {
   AuthoringCatalogIssue
 } from './authoringCatalogRules';
 
-const archetypesById = new Map(
-  archetypeDefinitions.map((definition) => [definition.id, definition])
-);
-const specialistsById = new Map(
-  specialistDefinitions.map((definition) => [definition.id, definition])
-);
-
-const issue = (
-  code: AuthoringCompatibilityIssue['code'],
-  path: string,
-  message: string,
-  expected: string,
-  authority?: AuthoringAuthorityReference
-): AuthoringCompatibilityIssue => ({
-  code,
-  path,
-  message,
-  expected,
-  ...(authority ? { authority } : {})
-});
-
 interface EvaluationContext {
-  scalars: Readonly<Record<CompatibilityScalarPath, string | boolean>>;
-  collections: Readonly<
-    Record<CompatibilityCollectionPath, ReadonlySet<string>>
-  >;
+  scalars: Readonly<Record<CompatibilityScalarPath, boolean>>;
+  collections: Readonly<Record<
+    CompatibilityCollectionPath,
+    ReadonlySet<string>
+  >>;
   archetypePortTypes: ReadonlySet<string>;
   capabilitiesByAuthority: ReadonlyMap<string, ReadonlySet<string>>;
 }
@@ -67,16 +48,6 @@ const evaluateClause = (
             path,
             `Compatibility value at "${clause.path}" does not equal the required value.`,
             JSON.stringify(clause.value),
-            owner
-          );
-    case 'includes':
-      return context.collections[clause.path].has(clause.value)
-        ? null
-        : issue(
-            'authoring.compatibility.includes_failed',
-            path,
-            `Compatibility collection "${clause.path}" does not include "${clause.value}".`,
-            clause.value,
             owner
           );
     case 'forbids':
@@ -121,37 +92,25 @@ export const evaluateAuthoringCompatibility = (
   profile: AuthoringProfile
 ): AuthoringCompatibilityResult => {
   const issues: AuthoringCompatibilityIssue[] = [];
-  const archetype = archetypesById.get(profile.archetype.id);
-  if (
-    !archetype ||
-    !isCurrentInternalContractVersion(
-      'authoringProfile',
-      profile.archetype.version
-    )
-  ) {
+  const archetype = resolveArchetypeReference(profile.archetype);
+  if (!archetype) {
     issues.push(issue(
       'authoring.compatibility.archetype_unknown',
       'archetype',
       `Archetype reference "${profile.archetype.id}" is not current.`,
-      'a registered explicit v1 archetype reference'
+      'a registered explicit v2 archetype reference'
     ));
     return { compatible: false, issues };
   }
   const selectedSpecialists: SpecialistDefinition[] = [];
   profile.specialists.forEach((reference, index) => {
-    const definition = specialistsById.get(reference.id);
-    if (
-      !definition ||
-      !isCurrentInternalContractVersion(
-        'authoringProfile',
-        reference.version
-      )
-    ) {
+    const definition = resolveSpecialistReference(reference);
+    if (!definition) {
       issues.push(issue(
         'authoring.compatibility.specialist_unknown',
         `specialists[${index}]`,
         `Specialist reference "${reference.id}" is not current.`,
-        'a registered explicit v1 specialist reference'
+        'a registered explicit v2 specialist reference'
       ));
       return;
     }
@@ -159,14 +118,6 @@ export const evaluateAuthoringCompatibility = (
   });
   if (issues.length > 0) return { compatible: false, issues };
 
-  const selectedFacets = new Set([
-    ...archetype.facets,
-    ...selectedSpecialists.flatMap((definition) => definition.facets)
-  ]);
-  const selectedCapabilities = new Set([
-    ...archetype.capabilities,
-    ...selectedSpecialists.flatMap((definition) => definition.capabilities)
-  ]);
   const capabilitiesByAuthority = new Map<string, ReadonlySet<string>>([
     [archetype.id, new Set(archetype.capabilities)],
     ...selectedSpecialists.map((definition) => [
@@ -176,17 +127,12 @@ export const evaluateAuthoringCompatibility = (
   ]);
   const context: EvaluationContext = {
     scalars: {
-      'archetype.id': archetype.id,
       'routing.animationSupported': profile.routing.animationSupported
     },
     collections: {
-      'archetype.facets': new Set(archetype.facets),
-      'archetype.capabilities': new Set(archetype.capabilities),
       'selection.specialistIds': new Set(
         selectedSpecialists.map((definition) => definition.id)
-      ),
-      'selection.facets': selectedFacets,
-      'selection.capabilities': selectedCapabilities
+      )
     },
     archetypePortTypes: new Set(
       archetype.attachmentPorts.map((port) => port.type)

@@ -6,10 +6,7 @@ export const AUTHORING_ROUTING_CONTRACT_VERSION =
   INTERNAL_CONTRACT_VERSIONS.authoringRouting;
 
 export const ARCHETYPE_IDS = [
-  'archetype.mini-biped',
-  'archetype.pillar-stalker',
-  'archetype.quadruped',
-  'archetype.compact-construct'
+  'archetype.composable-form'
 ] as const;
 
 export const SPECIALIST_IDS = [
@@ -21,7 +18,6 @@ export const SPECIALIST_IDS = [
   'specialist.protective-shell',
   'specialist.static-loop',
   'specialist.alternating-gait',
-  'specialist.stalking-gait',
   'specialist.rotary-cycle'
 ] as const;
 
@@ -41,16 +37,7 @@ export type SpecialistReference = AuthoringAuthorityReference<SpecialistId>;
 export type AuthoringClaimBasis = 'observed' | 'requested';
 
 export const AUTHORING_FACETS = [
-  'character',
-  'humanoid',
-  'upright',
-  'creature',
-  'arm-free',
-  'quadruped',
-  'horizontal',
-  'construct',
-  'compact',
-  'functional',
+  'composable',
   'role-prop',
   'surface-cue',
   'hard-surface',
@@ -64,7 +51,6 @@ export const AUTHORING_FACETS = [
   'rotary',
   'silhouette',
   'face',
-  'grounding',
   'function'
 ] as const;
 export type AuthoringFacet = (typeof AUTHORING_FACETS)[number];
@@ -72,7 +58,6 @@ export type AuthoringFacet = (typeof AUTHORING_FACETS)[number];
 export const AUTHORING_CAPABILITIES = [
   'animation.anchor',
   'locomotion.paired',
-  'locomotion.stalking',
   'rotary.drive',
   'surface.host',
   'cue.role',
@@ -83,7 +68,6 @@ export const AUTHORING_CAPABILITIES = [
   'cue.protective',
   'animation.idle',
   'animation.gait',
-  'animation.stalk',
   'animation.rotary'
 ] as const;
 export type AuthoringCapability =
@@ -120,6 +104,77 @@ export const AUTHORING_PART_KINDS = [
   'feature'
 ] as const;
 export type AuthoringPartKind = (typeof AUTHORING_PART_KINDS)[number];
+
+export const AUTHORING_STRUCTURAL_ROLES = [
+  'core',
+  'axis',
+  'articulated',
+  'span',
+  'focal-frame',
+  'accent'
+] as const;
+export type AuthoringStructuralRole =
+  (typeof AUTHORING_STRUCTURAL_ROLES)[number];
+
+// The declaration order is the quality-gate order.
+export const AUTHORING_QUALITY_STAGES = [
+  'silhouette',
+  'structure',
+  'focal'
+] as const;
+export type AuthoringQualityStage =
+  (typeof AUTHORING_QUALITY_STAGES)[number];
+
+export const AUTHORING_CONTACTS = ['grounded', 'free'] as const;
+export type AuthoringContact = (typeof AUTHORING_CONTACTS)[number];
+
+export const AUTHORING_TRACKS = ['compact', 'showcase'] as const;
+export type AuthoringTrack = (typeof AUTHORING_TRACKS)[number];
+
+export const AUTHORING_FACE_MODES = ['none', 'full'] as const;
+export type AuthoringFaceMode = (typeof AUTHORING_FACE_MODES)[number];
+
+export const AUTHORING_FACE_COMPONENTS = [
+  'eye',
+  'nasal',
+  'oral',
+  'eye-frame',
+  'jaw',
+  'mouth-interior'
+] as const;
+export type AuthoringFaceComponent =
+  (typeof AUTHORING_FACE_COMPONENTS)[number];
+
+export const AUTHORING_FACE_FORMS = [
+  'eye',
+  'nose',
+  'muzzle',
+  'beak',
+  'mouth',
+  'jaw',
+  'orbital',
+  'brow',
+  'mouth-interior'
+] as const;
+export type AuthoringFaceForm = (typeof AUTHORING_FACE_FORMS)[number];
+
+export const AUTHORING_EYE_CONFIGURATIONS = [
+  'single',
+  'paired',
+  'compound'
+] as const;
+export type AuthoringEyeConfiguration =
+  (typeof AUTHORING_EYE_CONFIGURATIONS)[number];
+
+export const AUTHORING_MOUTH_STATES = [
+  'closed',
+  'open',
+  'beak',
+  'absent'
+] as const;
+export type AuthoringMouthState =
+  (typeof AUTHORING_MOUTH_STATES)[number];
+
 export const AUTHORING_SPATIAL_RELATIONS = [
   'left',
   'right',
@@ -168,17 +223,11 @@ export interface AppliedAuthoringReviewCheck extends AuthoringReviewCheck {
   authorityType: 'archetype' | 'specialist';
 }
 
-export interface SemanticSlotDefinition {
-  id: string;
-  label: string;
+export interface StructuralRolePolicyDefinition {
+  role: AuthoringStructuralRole;
   acceptedPartKinds: readonly AuthoringPartKind[];
+  allowedQualityStages: readonly AuthoringQualityStage[];
   instruction: string;
-  required: boolean;
-  minParts: number;
-  maxParts: number;
-  parentSlotIds: readonly string[];
-  spatialRelations: readonly AuthoringSpatialRelation[];
-  facing: 'forward' | null;
 }
 
 export interface SpecialistContributionDefinition {
@@ -195,63 +244,19 @@ export interface SpecialistContributionDefinition {
 export interface AttachmentPortDefinition {
   id: string;
   type: AttachmentPortType;
-  hostSlotIds: readonly string[];
+  hostStructuralRoles: readonly AuthoringStructuralRole[];
   capacity: number;
   acceptsFacets: readonly AuthoringFacet[];
 }
 
-export type CompatibilityScalarPath =
-  | 'archetype.id'
-  | 'routing.animationSupported';
-export type CompatibilityCollectionPath =
-  | 'archetype.facets'
-  | 'archetype.capabilities'
-  | 'selection.specialistIds'
-  | 'selection.facets'
-  | 'selection.capabilities';
-
-type FacetCollectionPath =
-  | 'archetype.facets'
-  | 'selection.facets';
-type CapabilityCollectionPath =
-  | 'archetype.capabilities'
-  | 'selection.capabilities';
+export type CompatibilityScalarPath = 'routing.animationSupported';
+export type CompatibilityCollectionPath = 'selection.specialistIds';
 
 export type CompatibilityClause =
   | {
       op: 'equals';
-      path: 'archetype.id';
-      value: ArchetypeId;
-    }
-  | {
-      op: 'equals';
       path: 'routing.animationSupported';
       value: boolean;
-    }
-  | {
-      op: 'includes';
-      path: FacetCollectionPath;
-      value: AuthoringFacet;
-    }
-  | {
-      op: 'includes';
-      path: CapabilityCollectionPath;
-      value: AuthoringCapability;
-    }
-  | {
-      op: 'includes';
-      path: 'selection.specialistIds';
-      value: SpecialistId;
-    }
-  | {
-      op: 'forbids';
-      path: FacetCollectionPath;
-      value: AuthoringFacet;
-    }
-  | {
-      op: 'forbids';
-      path: CapabilityCollectionPath;
-      value: AuthoringCapability;
     }
   | {
       op: 'forbids';
@@ -283,7 +288,7 @@ export interface ArchetypeDefinition {
   facets: readonly AuthoringFacet[];
   capabilities: readonly AuthoringCapability[];
   evidenceCriteria: readonly EvidenceCriterionDefinition[];
-  semanticSlots: readonly SemanticSlotDefinition[];
+  structuralRolePolicies: readonly StructuralRolePolicyDefinition[];
   attachmentPorts: readonly AttachmentPortDefinition[];
   compatibility: readonly CompatibilityClause[];
   reviewChecks: readonly AuthoringReviewCheck[];
@@ -315,8 +320,42 @@ export interface AuthoringRoutingSnapshot {
 
 export interface AuthoringSlotAssignment {
   slotId: string;
+  structuralRole: AuthoringStructuralRole;
+  qualityStage: AuthoringQualityStage;
   partIds: readonly string[];
-  reason?: string;
+  parentSlotIds: readonly string[];
+  spatialRelations: readonly AuthoringSpatialRelation[];
+  facing: 'forward' | null;
+  pairId: string | null;
+  contact: AuthoringContact;
+}
+
+export interface AuthoringFeatureCoverage {
+  featureRef: string;
+  slotIds: readonly string[];
+  materialIds: readonly string[];
+}
+
+export interface AuthoringFaceComponentDeclaration {
+  component: AuthoringFaceComponent;
+  form: AuthoringFaceForm;
+  configuration: AuthoringEyeConfiguration | null;
+  slotIds: readonly string[];
+  materialIds: readonly string[];
+}
+
+export interface AuthoringFaceException {
+  component: 'nasal' | 'oral';
+  basis: AuthoringClaimBasis;
+  referenceIds: readonly string[];
+  rationale: string;
+}
+
+export interface AuthoringFaceContract {
+  hostSlotId: string;
+  mouthState: AuthoringMouthState;
+  components: readonly AuthoringFaceComponentDeclaration[];
+  exceptions: readonly AuthoringFaceException[];
 }
 
 export interface AuthoringAttachmentBinding {
@@ -349,9 +388,13 @@ export type AuthoringBinding =
 
 export interface AuthoringSelectionInput {
   archetype: ArchetypeReference;
+  track: AuthoringTrack;
+  faceMode: AuthoringFaceMode;
+  face: AuthoringFaceContract | null;
   specialists: readonly SpecialistReference[];
   claims: readonly AuthoringAuthorityClaim[];
   slots: readonly AuthoringSlotAssignment[];
+  coverage: readonly AuthoringFeatureCoverage[];
   bindings: readonly AuthoringBinding[];
 }
 
@@ -360,8 +403,21 @@ export interface AuthoringProfile extends AuthoringSelectionInput {
   routing: AuthoringRoutingSnapshot;
 }
 
-export interface ComposedAuthoringSlotDefinition
-  extends SemanticSlotDefinition {
+export interface ComposedAuthoringSlotDefinition {
+  id: string;
+  label: string;
+  structuralRole: AuthoringStructuralRole | null;
+  qualityStage: AuthoringQualityStage;
+  acceptedPartKinds: readonly AuthoringPartKind[];
+  instruction: string;
+  required: boolean;
+  minParts: number;
+  maxParts: number;
+  parentSlotIds: readonly string[];
+  spatialRelations: readonly AuthoringSpatialRelation[];
+  facing: 'forward' | null;
+  pairId: string | null;
+  contact: AuthoringContact | null;
   authority: AuthoringAuthorityReference;
   authorityType: 'archetype' | 'specialist';
   attachmentPortId: string | null;
@@ -391,7 +447,11 @@ export interface AuthoringRecipeSummary {
 }
 
 export interface AuthoringRecipe extends AuthoringRecipeSummary {
+  track: AuthoringTrack;
+  faceMode: AuthoringFaceMode;
+  face: AuthoringFaceContract | null;
   claimSuggestions: readonly AuthoringAuthorityClaim[];
   slotSuggestions: readonly AuthoringSlotAssignment[];
+  coverageSuggestions: readonly AuthoringFeatureCoverage[];
   bindingSuggestions: readonly AuthoringBinding[];
 }

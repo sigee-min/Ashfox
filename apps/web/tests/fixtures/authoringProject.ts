@@ -33,10 +33,10 @@ export const createAuthoringProject = (): ProjectDocument => {
   const empty = createProjectFromInput(
     {
       id: 'project-authoring-mechanic',
-      name: 'Archetype mechanic',
+      name: 'Structural mechanic',
       target: 'glb',
       namespace: 'ashfox',
-      modelPath: 'archetype_mechanic',
+      modelPath: 'structural_mechanic',
       createdAt: '2026-08-06T00:00:00.000Z'
     },
     'authoring-fixture-0001'
@@ -67,9 +67,12 @@ export const createAuthoringProject = (): ProjectDocument => {
     name: 'project.authoring.configure',
     payload: {
       archetype: {
-        id: 'archetype.mini-biped',
+        id: 'archetype.composable-form',
         version: AUTHORING_PROFILE_SCHEMA_VERSION
       },
+      track: 'showcase',
+      faceMode: 'none',
+      face: null,
       specialists: [{
         id: 'specialist.role-props',
         version: AUTHORING_PROFILE_SCHEMA_VERSION
@@ -79,10 +82,10 @@ export const createAuthoringProject = (): ProjectDocument => {
       }],
       claims: [{
         authority: {
-          id: 'archetype.mini-biped',
+          id: 'archetype.composable-form',
           version: AUTHORING_PROFILE_SCHEMA_VERSION
         },
-        criterionId: 'criterion.body-plan',
+        criterionId: 'criterion.structure-graph',
         basis: 'observed',
         referenceIds: ['reference.mechanic'],
         rationale:
@@ -110,30 +113,92 @@ export const createAuthoringProject = (): ProjectDocument => {
       }],
       slots: [{
         slotId: 'body.torso',
-        partIds: ['torso']
+        structuralRole: 'core',
+        qualityStage: 'silhouette',
+        partIds: ['torso'],
+        parentSlotIds: [],
+        spatialRelations: [],
+        facing: null,
+        pairId: null,
+        contact: 'free'
       }, {
         slotId: 'body.head',
-        partIds: ['head']
+        structuralRole: 'focal-frame',
+        qualityStage: 'structure',
+        partIds: ['head'],
+        parentSlotIds: ['body.torso'],
+        spatialRelations: ['above'],
+        facing: 'forward',
+        pairId: null,
+        contact: 'free'
       }, {
         slotId: 'body.arm-left',
-        partIds: ['arm.left']
+        structuralRole: 'articulated',
+        qualityStage: 'silhouette',
+        partIds: ['arm.left'],
+        parentSlotIds: ['body.torso'],
+        spatialRelations: ['left'],
+        facing: null,
+        pairId: 'body.arms',
+        contact: 'free'
       }, {
         slotId: 'body.arm-right',
-        partIds: ['arm.right']
+        structuralRole: 'articulated',
+        qualityStage: 'silhouette',
+        partIds: ['arm.right'],
+        parentSlotIds: ['body.torso'],
+        spatialRelations: ['right'],
+        facing: null,
+        pairId: 'body.arms',
+        contact: 'free'
       }, {
         slotId: 'body.leg-left',
-        partIds: ['leg.left']
+        structuralRole: 'articulated',
+        qualityStage: 'silhouette',
+        partIds: ['leg.left'],
+        parentSlotIds: ['body.torso'],
+        spatialRelations: ['left', 'below'],
+        facing: 'forward',
+        pairId: 'body.legs',
+        contact: 'grounded'
       }, {
         slotId: 'body.leg-right',
-        partIds: ['leg.right']
+        structuralRole: 'articulated',
+        qualityStage: 'silhouette',
+        partIds: ['leg.right'],
+        parentSlotIds: ['body.torso'],
+        spatialRelations: ['right', 'below'],
+        facing: 'forward',
+        pairId: 'body.legs',
+        contact: 'grounded'
       }, {
         slotId: 'body.face',
-        partIds: ['face.eye']
+        structuralRole: 'focal-frame',
+        qualityStage: 'focal',
+        partIds: ['face.eye'],
+        parentSlotIds: ['body.head'],
+        spatialRelations: ['front'],
+        facing: 'forward',
+        pairId: null,
+        contact: 'free'
+      }],
+      coverage: [{
+        featureRef: 'intent.features.0',
+        slotIds: ['body.head'],
+        materialIds: []
+      }, {
+        featureRef: 'intent.features.1',
+        slotIds: [],
+        materialIds: ['metal']
+      }, {
+        featureRef: 'intent.features.2',
+        slotIds: ['body.arm-left'],
+        materialIds: []
       }],
       bindings: [{
         type: 'attachment',
         contributionId: 'contribution.role-prop',
-        portId: 'port.hand-or-module',
+        portId: 'port.role-module',
         hostSlotId: 'body.torso',
         partIds: ['utility.pack']
       }, {
@@ -240,6 +305,181 @@ export const createAuthoringProject = (): ProjectDocument => {
   }]);
 };
 
+export const createCompactFullFaceProject = (): ProjectDocument => {
+  const empty = createProjectFromInput(
+    {
+      id: 'project-authoring-full-face',
+      name: 'Compact full-face contract',
+      target: 'glb',
+      namespace: 'ashfox',
+      modelPath: 'compact_full_face_contract',
+      createdAt: '2026-08-07T00:00:00.000Z'
+    },
+    'authoring-full-face-0001'
+  );
+  const planned = apply(empty, 'authoring-full-face-plan', [{
+    name: 'project.intent.set',
+    payload: {
+      subject: 'Small game-piece animal icon',
+      forward: 'south',
+      grounding: 'free',
+      features: ['Readable closed-mouth expression'],
+      references: []
+    }
+  }, {
+    name: 'project.authoring.configure',
+    payload: {
+      archetype: {
+        id: 'archetype.composable-form',
+        version: AUTHORING_PROFILE_SCHEMA_VERSION
+      },
+      track: 'compact',
+      faceMode: 'full',
+      face: {
+        hostSlotId: 'focal.host',
+        mouthState: 'closed',
+        components: [{
+          component: 'eye',
+          form: 'eye',
+          configuration: 'single',
+          slotIds: ['face.eye'],
+          materialIds: ['eye_dark']
+        }, {
+          component: 'nasal',
+          form: 'nose',
+          configuration: null,
+          slotIds: ['face.nasal'],
+          materialIds: ['nose_tone']
+        }, {
+          component: 'oral',
+          form: 'mouth',
+          configuration: null,
+          slotIds: ['face.oral'],
+          materialIds: ['mouth_tone']
+        }],
+        exceptions: []
+      },
+      specialists: [],
+      claims: [{
+        authority: {
+          id: 'archetype.composable-form',
+          version: AUTHORING_PROFILE_SCHEMA_VERSION
+        },
+        criterionId: 'criterion.structure-graph',
+        basis: 'requested',
+        referenceIds: ['intent.subject'],
+        rationale:
+          'The requested small game-piece form needs a readable compact face.'
+      }],
+      slots: [{
+        slotId: 'core.primary',
+        structuralRole: 'core',
+        qualityStage: 'silhouette',
+        partIds: ['core_primary'],
+        parentSlotIds: [],
+        spatialRelations: [],
+        facing: null,
+        pairId: null,
+        contact: 'free'
+      }, {
+        slotId: 'focal.host',
+        structuralRole: 'focal-frame',
+        qualityStage: 'structure',
+        partIds: ['focal_host'],
+        parentSlotIds: ['core.primary'],
+        spatialRelations: ['above'],
+        facing: 'forward',
+        pairId: null,
+        contact: 'free'
+      }, ...(['eye', 'nasal', 'oral'] as const).map((component) => ({
+        slotId: `face.${component}`,
+        structuralRole: 'focal-frame' as const,
+        qualityStage: 'focal' as const,
+        partIds: [`face_${component}`],
+        parentSlotIds: ['focal.host'],
+        spatialRelations: [],
+        facing: 'forward' as const,
+        pairId: null,
+        contact: 'free' as const
+      }))],
+      coverage: [{
+        featureRef: 'intent.features.0',
+        slotIds: ['face.oral'],
+        materialIds: []
+      }],
+      bindings: []
+    }
+  }]);
+  return apply(planned, 'authoring-full-face-model', [{
+    name: 'model.parts.upsert',
+    payload: {
+      parts: [{
+        kind: 'mass',
+        partId: 'core_primary',
+        parentPartId: null,
+        materialId: 'body',
+        center: [0, 0, 0],
+        radii: [2, 2, 2],
+        profile: 'block'
+      }, {
+        kind: 'mass',
+        partId: 'focal_host',
+        parentPartId: 'core_primary',
+        materialId: 'face_base',
+        center: [0, 5, 0],
+        radii: [3, 3, 2],
+        profile: 'block'
+      }, {
+        kind: 'feature',
+        partId: 'face_eye',
+        parentPartId: 'focal_host',
+        materialId: 'eye_dark',
+        motif: 'eye',
+        glyph: 'square',
+        face: 'south',
+        anchor: [0, 6, 2],
+        size: [2, 2]
+      }, {
+        kind: 'feature',
+        partId: 'face_nasal',
+        parentPartId: 'focal_host',
+        materialId: 'nose_tone',
+        motif: 'nose',
+        glyph: 'snout',
+        face: 'south',
+        anchor: [0, 4, 2],
+        size: [2, 2]
+      }, {
+        kind: 'feature',
+        partId: 'face_oral',
+        parentPartId: 'focal_host',
+        materialId: 'mouth_tone',
+        motif: 'mouth',
+        glyph: 'neutral',
+        face: 'south',
+        anchor: [0, 2, 2],
+        size: [2, 1]
+      }],
+      materials: [{
+        id: 'body',
+        baseColor: '#53677A'
+      }, {
+        id: 'face_base',
+        baseColor: '#B7C8D8'
+      }, {
+        id: 'eye_dark',
+        baseColor: '#111827'
+      }, {
+        id: 'nose_tone',
+        baseColor: '#76556A'
+      }, {
+        id: 'mouth_tone',
+        baseColor: '#512D3A'
+      }]
+    }
+  }]);
+};
+
 export const authoringSelectionFor = (
   document: ProjectDocument,
   options: { animationSupported?: boolean } = {}
@@ -249,6 +489,9 @@ export const authoringSelectionFor = (
   const includeMotion = options.animationSupported !== false;
   return {
     archetype: profile.archetype,
+    track: profile.track,
+    faceMode: profile.faceMode,
+    face: profile.face,
     specialists: profile.specialists.filter(
       (reference) =>
         includeMotion || reference.id !== 'specialist.static-loop'
@@ -258,6 +501,7 @@ export const authoringSelectionFor = (
         includeMotion || claim.authority.id !== 'specialist.static-loop'
     ),
     slots: profile.slots,
+    coverage: profile.coverage,
     bindings: profile.bindings.filter(
       (binding) => includeMotion || binding.type !== 'motion'
     )

@@ -7,6 +7,13 @@ import {
   type RgbColor
 } from './pixelRectShade';
 
+export const FOCAL_PIXEL_SHADE_STYLE = {
+  intensity: 0.09,
+  edge: 0.02,
+  noise: 0.025,
+  lightDir: 'tl_br'
+} as const;
+
 const DIRECTIONAL_TONE: Readonly<
   Record<CubeFaceDirection, number>
 > = {
@@ -57,6 +64,34 @@ export const paintSurfacePixel = (
     }
   );
 
+/**
+ * Keeps the system-owned three-tone language on focal host planes while
+ * reducing variation that can compete with eyes, mouths, controls, or signs.
+ */
+export const paintFocalSurfacePixel = (
+  color: RgbColor,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  seed: number
+): RgbColor =>
+  shadePixelRect(
+    color,
+    x,
+    y,
+    {
+      x: 0,
+      y: 0,
+      width,
+      height
+    },
+    {
+      ...FOCAL_PIXEL_SHADE_STYLE,
+      seed
+    }
+  );
+
 export const paintDirectionalSurfacePixel = (
   color: RgbColor,
   face: CubeFaceDirection,
@@ -67,6 +102,24 @@ export const paintDirectionalSurfacePixel = (
   seed: number
 ): RgbColor =>
   paintSurfacePixel(
+    directionalSurfaceBaseColor(color, face),
+    x,
+    y,
+    width,
+    height,
+    seed
+  );
+
+export const paintDirectionalFocalSurfacePixel = (
+  color: RgbColor,
+  face: CubeFaceDirection,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  seed: number
+): RgbColor =>
+  paintFocalSurfacePixel(
     directionalSurfaceBaseColor(color, face),
     x,
     y,

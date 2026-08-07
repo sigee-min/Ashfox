@@ -81,12 +81,17 @@ const eyeRegion: TextureCompositionRegion = {
 
 assert.deepEqual(
   generatedSurfacePixel(eyeRegion, 0, 0),
+  generatedSurfacePixel(eyeRegion, 0, 0),
+  'the quieter focal host synthesis must remain deterministic'
+);
+assert.notDeepEqual(
+  generatedSurfacePixel(eyeRegion, 0, 0),
   generatedSurfacePixel(
     { ...eyeRegion, markings: undefined },
     0,
     0
   ),
-  'pixels outside the eye motif must preserve the parent surface'
+  'a focal marking must reduce automatic noise across its host plane'
 );
 assert.notDeepEqual(
   generatedSurfacePixel(eyeRegion, 2, 2),

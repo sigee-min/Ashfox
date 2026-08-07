@@ -1,71 +1,49 @@
 import type {
-  AnimationClip,
   ProjectDocument,
   ProjectForwardDirection,
-  ProjectIntent,
-  TransformChannel
+  ProjectIntent
 } from '../model';
 import type { PartSpec } from '../modeling/partContract';
 import { readPartRecipe } from '../modeling/partRecipe';
-import { canonicalJsonString } from '../canonicalJson';
 import { evaluateAuthoringCompatibility } from './compatibilityEvaluator';
+import {
+  evaluateFaceQuality,
+  type FaceQualityEvaluation
+} from './faceQuality';
 import { readAuthoringProfile } from './authoringProfile';
+import { AUTHORING_PROFILE_LIMITS } from './authoringEvidence';
+import { authoringPlanIssue } from './authoringIssueFactories';
+import { motionIssues } from './authoringMotionPlan';
+import type {
+  AuthoringPlanIssue,
+  AuthoringSlotState,
+  AuthoringSlotStatus
+} from './authoringPlanTypes';
+import {
+  evaluateIntentCoverage,
+  type IntentCoverageEvaluation
+} from './intentCoverage';
 import {
   resolveArchetypeReference,
   resolveSpecialistReference
 } from './authoringRegistry';
 import { authoringRoutingMatches } from './authoringRouting';
+import {
+  evaluateStructuralQuality,
+  type StructuralQualityEvaluation
+} from './structuralQuality';
 import type {
-  AuthoringAuthorityReference,
   AuthoringCompatibilityResult,
-  AuthoringMotionBinding,
-  AuthoringPartKind,
   AuthoringProfile,
   AuthoringSpatialRelation,
   ComposedAuthoringSlotDefinition
 } from './authoringTypes';
 
-export type AuthoringSlotState =
-  | 'planned'
-  | 'complete'
-  | 'missing'
-  | 'invalid';
-
-export interface AuthoringSlotStatus {
-  slotId: string;
-  label: string;
-  authority: AuthoringAuthorityReference;
-  authorityType: 'archetype' | 'specialist';
-  required: boolean;
-  reason: string | null;
-  acceptedPartKinds: readonly AuthoringPartKind[];
-  minParts: number;
-  maxParts: number;
-  parentSlotIds: readonly string[];
-  spatialRelations: readonly AuthoringSpatialRelation[];
-  facing: 'forward' | null;
-  attachmentPortId: string | null;
-  hostSlotId: string | null;
-  partIds: readonly string[];
-  presentPartIds: readonly string[];
-  missingPartIds: readonly string[];
-  invalidKindPartIds: readonly string[];
-  invalidHierarchyPartIds: readonly string[];
-  invalidSpatialPartIds: readonly string[];
-  invalidFacingPartIds: readonly string[];
-  state: AuthoringSlotState;
-  instruction: string;
-}
-
-export interface AuthoringPlanIssue {
-  code: `authoring.plan.${string}`;
-  path: string;
-  message: string;
-  expected: string;
-  authority?: AuthoringAuthorityReference;
-  partIds?: readonly string[];
-  clipIds?: readonly string[];
-}
+export type {
+  AuthoringPlanIssue,
+  AuthoringSlotState,
+  AuthoringSlotStatus
+} from './authoringPlanTypes';
 
 export interface AuthoringPlanEvaluation {
   selected: boolean;
@@ -74,6 +52,9 @@ export interface AuthoringPlanEvaluation {
   routingAligned: boolean;
   compatibility: AuthoringCompatibilityResult;
   slots: readonly AuthoringSlotStatus[];
+  structuralQuality: StructuralQualityEvaluation | null;
+  intentCoverage: IntentCoverageEvaluation | null;
+  faceQuality: FaceQualityEvaluation | null;
   incompleteSlotIds: readonly string[];
   unassignedPartIds: readonly string[];
   issues: readonly AuthoringPlanIssue[];
@@ -171,35 +152,65 @@ export const composeAuthoringSlots = (
   const archetype = resolveArchetypeReference(profile.archetype);
   if (!archetype) return [];
   const archetypeSlots: ComposedAuthoringSlotDefinition[] =
-    archetype.semanticSlots.map((slot) => ({
-      ...slot,
-      authority: profile.archetype,
-      authorityType: 'archetype',
-      attachmentPortId: null,
-      hostSlotId: null
-    }));
+    profile.slots.flatMap((slot) => {
+      const policy = archetype.structuralRolePolicies.find(
+        (candidate) => candidate.role === slot.structuralRole
+      );
+      if (!policy) return [];
+      return [{
+        id: slot.slotId,
+        label: `${slot.structuralRole} module`,
+        structuralRole: slot.structuralRole,
+        qualityStage: slot.qualityStage,
+        acceptedPartKinds: policy.acceptedPartKinds,
+        instruction: policy.instruction,
+        required: true,
+        minParts: 1,
+        maxParts: AUTHORING_PROFILE_LIMITS.maxPartIdsPerOwner,
+        parentSlotIds: slot.parentSlotIds,
+        spatialRelations: slot.spatialRelations,
+        facing: slot.facing,
+        pairId: slot.pairId,
+        contact: slot.contact,
+        authority: profile.archetype,
+        authorityType: 'archetype' as const,
+        attachmentPortId: null,
+        hostSlotId: null
+      }];
+    });
   const attachmentBindings = profile.bindings.filter(
     (binding) => binding.type === 'attachment'
   );
+  const attachmentBindingByContribution = new Map<
+    string,
+    (typeof attachmentBindings)[number]
+  >();
+  for (const binding of attachmentBindings) {
+    if (!attachmentBindingByContribution.has(binding.contributionId)) {
+      attachmentBindingByContribution.set(binding.contributionId, binding);
+    }
+  }
   const specialistSlots = profile.specialists.flatMap((reference) => {
     const specialist = resolveSpecialistReference(reference);
     if (!specialist) return [];
     return specialist.contributions.flatMap((contribution) => {
-      const binding = attachmentBindings.find(
-        (candidate) => candidate.contributionId === contribution.id
-      );
+      const binding = attachmentBindingByContribution.get(contribution.id);
       if (!binding) return [];
       return [{
         id: contribution.id,
         label: contribution.label,
         acceptedPartKinds: contribution.acceptedPartKinds,
         instruction: contribution.instruction,
+        structuralRole: null,
+        qualityStage: 'focal' as const,
         required: contribution.required,
         minParts: contribution.minParts,
         maxParts: contribution.maxParts,
         parentSlotIds: [binding.hostSlotId],
         spatialRelations: [],
         facing: null,
+        pairId: null,
+        contact: null,
         authority: reference,
         authorityType: 'specialist' as const,
         attachmentPortId: binding.portId,
@@ -210,40 +221,14 @@ export const composeAuthoringSlots = (
   return [...archetypeSlots, ...specialistSlots];
 };
 
-const partIdsForSlot = (
-  profile: AuthoringProfile,
-  definition: ComposedAuthoringSlotDefinition
-): { partIds: readonly string[]; reason: string | null } => {
-  if (definition.authorityType === 'archetype') {
-    const assignment = profile.slots.find(
-      (entry) => entry.slotId === definition.id
-    );
-    return {
-      partIds: assignment?.partIds ?? [],
-      reason: assignment?.reason ?? null
-    };
-  }
-  const binding = profile.bindings.find(
-    (entry) =>
-      entry.type === 'attachment' &&
-      entry.contributionId === definition.id
-  );
-  return {
-    partIds: binding?.type === 'attachment' ? binding.partIds : [],
-    reason: null
-  };
-};
-
 const statusForSlot = (
-  profile: AuthoringProfile,
   definition: ComposedAuthoringSlotDefinition,
   assignmentsBySlot: ReadonlyMap<string, readonly string[]>,
   partsById: ReadonlyMap<string, PartSpec>,
   intent: ProjectIntent,
   hasRecipe: boolean
 ): AuthoringSlotStatus => {
-  const assignment = partIdsForSlot(profile, definition);
-  const partIds = assignment.partIds;
+  const partIds = assignmentsBySlot.get(definition.id) ?? [];
   const presentParts = partIds.flatMap((partId) => {
     const part = partsById.get(partId);
     return part ? [part] : [];
@@ -259,6 +244,12 @@ const statusForSlot = (
     )
   );
   const sameSlotPartIds = new Set(partIds);
+  const rootPartIds = presentParts
+    .filter((part) => part.parentPartId === null)
+    .map((part) => part.partId);
+  const moduleRootId = rootPartIds.length === 1
+    ? rootPartIds[0] ?? null
+    : null;
   const invalidHierarchyPartIds = definition.parentSlotIds.length > 0
     ? presentParts
         .filter((part) => !reachesParentSlot(
@@ -268,7 +259,21 @@ const statusForSlot = (
           partsById
         ))
         .map((part) => part.partId)
-    : [];
+    : presentParts.length === 0
+      ? []
+      : moduleRootId === null
+        ? presentPartIds
+        : presentParts
+            .filter((part) =>
+              part.partId !== moduleRootId &&
+              !reachesParentSlot(
+                part,
+                new Set([moduleRootId]),
+                sameSlotPartIds,
+                partsById
+              )
+            )
+            .map((part) => part.partId);
   const parentCenter = average(
     [...parentPartIds].flatMap((partId) => {
       const part = partsById.get(partId);
@@ -316,13 +321,16 @@ const statusForSlot = (
     authority: definition.authority,
     authorityType: definition.authorityType,
     required: definition.required,
-    reason: assignment.reason,
+    structuralRole: definition.structuralRole,
+    qualityStage: definition.qualityStage,
     acceptedPartKinds: definition.acceptedPartKinds,
     minParts: definition.minParts,
     maxParts: definition.maxParts,
     parentSlotIds: definition.parentSlotIds,
     spatialRelations: definition.spatialRelations,
     facing: definition.facing,
+    pairId: definition.pairId,
+    contact: definition.contact,
     attachmentPortId: definition.attachmentPortId,
     hostSlotId: definition.hostSlotId,
     partIds,
@@ -336,66 +344,6 @@ const statusForSlot = (
     instruction: definition.instruction
   };
 };
-
-const channelMoves = (channel: TransformChannel): boolean => {
-  const opening = channel.keys[0];
-  return opening !== undefined && channel.keys.some(
-    (key) => canonicalJsonString(key.value) !==
-      canonicalJsonString(opening.value)
-  );
-};
-
-const clipRoleMatches = (
-  clip: AnimationClip,
-  binding: AuthoringMotionBinding
-): boolean =>
-  binding.role === 'once' ? clip.loop === 'once' : clip.loop === 'loop';
-
-const motionIssues = (
-  document: ProjectDocument,
-  profile: AuthoringProfile
-): readonly AuthoringPlanIssue[] =>
-  profile.bindings.flatMap((binding, index) => {
-    if (binding.type !== 'motion') return [];
-    const path = `authoringProfile.bindings[${index}]`;
-    const clip = document.animations[binding.clipId];
-    if (!clip) {
-      return [{
-        code: 'authoring.plan.motion_clip_missing' as const,
-        path: `${path}.clipId`,
-        message: `Bound motion clip "${binding.clipId}" is missing.`,
-        expected: `animation.motion.upsert for ${binding.clipId}`,
-        authority: binding.specialist,
-        clipIds: [binding.clipId]
-      }];
-    }
-    const issues: AuthoringPlanIssue[] = [];
-    if (!clipRoleMatches(clip, binding)) {
-      issues.push({
-        code: 'authoring.plan.motion_role_invalid',
-        path: `${path}.role`,
-        message:
-          `Clip "${clip.id}" does not realize bound role "${binding.role}".`,
-        expected: binding.role,
-        authority: binding.specialist,
-        clipIds: [clip.id]
-      });
-    }
-    if (
-      binding.role !== 'idle' &&
-      !Object.values(clip.channels).some(channelMoves)
-    ) {
-      issues.push({
-        code: 'authoring.plan.motion_static',
-        path: `animations.${clip.id}.channels`,
-        message: `Non-idle bound clip "${clip.id}" contains no changing motion.`,
-        expected: 'at least one changing transform channel',
-        authority: binding.specialist,
-        clipIds: [clip.id]
-      });
-    }
-    return issues;
-  });
 
 const emptyCompatibility: AuthoringCompatibilityResult = {
   compatible: false,
@@ -414,14 +362,17 @@ export const evaluateAuthoringPlan = (
       routingAligned: false,
       compatibility: emptyCompatibility,
       slots: [],
+      structuralQuality: null,
+      intentCoverage: null,
+      faceQuality: null,
       incompleteSlotIds: [],
       unassignedPartIds: [],
-      issues: [{
-        code: 'authoring.plan.profile_invalid',
-        path: 'authoringProfile',
-        message: read.issues[0]?.message ?? 'Authoring profile is invalid.',
-        expected: read.issues[0]?.expected ?? 'a canonical v1 authoring profile'
-      }],
+      issues: [authoringPlanIssue(
+        'authoring.plan.profile_invalid',
+        'authoringProfile',
+        read.issues[0]?.message ?? 'Authoring profile is invalid.',
+        read.issues[0]?.expected ?? 'a canonical v2 authoring profile'
+      )],
       ready: false
     };
   }
@@ -433,14 +384,17 @@ export const evaluateAuthoringPlan = (
       routingAligned: false,
       compatibility: emptyCompatibility,
       slots: [],
+      structuralQuality: null,
+      intentCoverage: null,
+      faceQuality: null,
       incompleteSlotIds: [],
       unassignedPartIds: [],
-      issues: [{
-        code: 'authoring.plan.profile_missing',
-        path: 'authoringProfile',
-        message: 'No canonical authoring authority profile is selected.',
-        expected: 'project.authoring.configure before authored model work'
-      }],
+      issues: [authoringPlanIssue(
+        'authoring.plan.profile_missing',
+        'authoringProfile',
+        'No canonical authoring authority profile is selected.',
+        'project.authoring.configure before authored model work'
+      )],
       ready: false
     };
   }
@@ -450,6 +404,7 @@ export const evaluateAuthoringPlan = (
   const recipe = readPartRecipe(document);
   const hasRecipe = recipe.ok && recipe.recipe !== null;
   const parts = hasRecipe ? recipe.recipe?.parts ?? [] : [];
+  const materials = hasRecipe ? recipe.recipe?.materials ?? [] : [];
   const partsById = new Map(parts.map((part) => [part.partId, part]));
   const assignmentsBySlot = new Map<string, readonly string[]>([
     ...profile.slots.map((assignment) => [
@@ -464,13 +419,27 @@ export const evaluateAuthoringPlan = (
   ]);
   const slots = composeAuthoringSlots(profile).map((definition) =>
     statusForSlot(
-      profile,
       definition,
       assignmentsBySlot,
       partsById,
       document.intent as ProjectIntent,
       hasRecipe
     )
+  );
+  const structuralQuality = evaluateStructuralQuality(slots);
+  const intentCoverage = evaluateIntentCoverage(
+    profile,
+    document.intent,
+    slots,
+    parts,
+    materials
+  );
+  const faceQuality = evaluateFaceQuality(
+    document,
+    profile,
+    slots,
+    parts,
+    materials
   );
   const assignedPartIds = new Set(
     [...assignmentsBySlot.values()].flatMap((partIds) => partIds)
@@ -481,40 +450,41 @@ export const evaluateAuthoringPlan = (
     .sort((left, right) => left.localeCompare(right));
   const issues: AuthoringPlanIssue[] = [];
   if (!routingAligned) {
-    issues.push({
-      code: 'authoring.plan.routing_stale',
-      path: 'authoringProfile.routing',
-      message:
-        'Authoring authority routing no longer matches intent, references, or delivery target.',
-      expected: 'replace the profile through project.authoring.configure'
-    });
+    issues.push(authoringPlanIssue(
+      'authoring.plan.routing_stale',
+      'authoringProfile.routing',
+      'Authoring authority routing no longer matches intent, references, or delivery target.',
+      'replace the profile through project.authoring.configure'
+    ));
   }
   if (!compatibility.compatible) {
-    issues.push(...compatibility.issues.map((finding) => ({
-      code: 'authoring.plan.compatibility_failed' as const,
-      path: `authoringProfile.${finding.path}`,
-      message: finding.message,
-      expected: finding.expected,
-      ...(finding.authority ? { authority: finding.authority } : {})
-    })));
+    issues.push(...compatibility.issues.map((finding) => authoringPlanIssue(
+      'authoring.plan.compatibility_failed',
+      `authoringProfile.${finding.path}`,
+      finding.message,
+      finding.expected,
+      finding.authority ? { authority: finding.authority } : {}
+    )));
   }
   for (const slot of slots) {
     const path = slot.authorityType === 'archetype'
       ? `authoringProfile.slots.${slot.slotId}`
       : `authoringProfile.bindings.${slot.slotId}`;
     if (slot.state === 'planned' || slot.state === 'missing') {
-      issues.push({
-        code: slot.authorityType === 'specialist'
+      issues.push(authoringPlanIssue(
+        slot.authorityType === 'specialist'
           ? 'authoring.plan.attachment_incomplete'
           : 'authoring.plan.slot_incomplete',
         path,
-        message: `Authoring slot "${slot.slotId}" is not materialized.`,
-        expected: slot.instruction,
-        authority: slot.authority,
-        partIds: slot.missingPartIds.length > 0
-          ? slot.missingPartIds
-          : slot.partIds
-      });
+        `Authoring slot "${slot.slotId}" is not materialized.`,
+        slot.instruction,
+        {
+          authority: slot.authority,
+          partIds: slot.missingPartIds.length > 0
+            ? slot.missingPartIds
+            : slot.partIds
+        }
+      ));
     }
     for (const [code, partIds] of [
       ['authoring.plan.slot_kind_invalid', slot.invalidKindPartIds],
@@ -523,25 +493,26 @@ export const evaluateAuthoringPlan = (
       ['authoring.plan.slot_facing_invalid', slot.invalidFacingPartIds]
     ] as const) {
       if (partIds.length === 0) continue;
-      issues.push({
+      issues.push(authoringPlanIssue(
         code,
         path,
-        message: `Authoring slot "${slot.slotId}" violates ${code.slice('authoring.plan.slot_'.length).replace('_invalid', '')} constraints.`,
-        expected: slot.instruction,
-        authority: slot.authority,
-        partIds
-      });
+        `Authoring slot "${slot.slotId}" violates ${code.slice('authoring.plan.slot_'.length).replace('_invalid', '')} constraints.`,
+        slot.instruction,
+        { authority: slot.authority, partIds }
+      ));
     }
   }
+  issues.push(...structuralQuality.issues);
+  issues.push(...intentCoverage.issues);
+  issues.push(...faceQuality.issues);
   if (unassignedPartIds.length > 0) {
-    issues.push({
-      code: 'authoring.plan.part_unassigned',
-      path: 'modeling.parts',
-      message:
-        `Model contains part IDs outside the authority plan: ${unassignedPartIds.join(', ')}.`,
-      expected: 'every generated part owned by one archetype slot or attachment binding',
-      partIds: unassignedPartIds
-    });
+    issues.push(authoringPlanIssue(
+      'authoring.plan.part_unassigned',
+      'modeling.parts',
+      `Model contains part IDs outside the authority plan: ${unassignedPartIds.join(', ')}.`,
+      'every generated part owned by one archetype slot or attachment binding',
+      { partIds: unassignedPartIds }
+    ));
   }
   issues.push(...motionIssues(document, profile));
   const incompleteSlotIds = slots
@@ -554,12 +525,18 @@ export const evaluateAuthoringPlan = (
     routingAligned,
     compatibility,
     slots,
+    structuralQuality,
+    intentCoverage,
+    faceQuality,
     incompleteSlotIds,
     unassignedPartIds,
     issues,
     ready:
       routingAligned &&
       compatibility.compatible &&
+      structuralQuality.ready &&
+      intentCoverage.ready &&
+      faceQuality.ready &&
       hasRecipe &&
       issues.length === 0
   };

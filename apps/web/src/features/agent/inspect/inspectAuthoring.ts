@@ -40,6 +40,8 @@ export const inspectAuthoring = (
   const compatibility = profile
     ? evaluateAuthoringCompatibility(profile)
     : null;
+  const archetypes = listArchetypes();
+  const specialists = listSpecialists();
   if (id !== undefined) {
     const archetype = getArchetype(id);
     if (archetype) {
@@ -95,7 +97,8 @@ export const inspectAuthoring = (
       error: {
         code: 'not_found',
         path: 'id',
-        expected: 'registered archetype, specialist, or authoring recipe ID'
+        expected:
+          'registered structural authority, specialist, or authoring recipe ID'
       }
     };
   }
@@ -108,8 +111,9 @@ export const inspectAuthoring = (
         compatibility,
         plan: authoringPlanProjection(plan)
       },
-      catalog: {
-        archetypes: listArchetypes().map((archetype) => ({
+      catalog: profile === null
+        ? {
+          archetypes: archetypes.map((archetype) => ({
           id: archetype.id,
           version: archetype.version,
           label: archetype.label,
@@ -121,12 +125,20 @@ export const inspectAuthoring = (
             basis: criterion.basis,
             required: criterion.required
           })),
+          structuralRolePolicies: archetype.structuralRolePolicies.map(
+            (policy) => ({
+              role: policy.role,
+              acceptedPartKinds: policy.acceptedPartKinds,
+              allowedQualityStages: policy.allowedQualityStages
+            })
+          ),
           attachmentPorts: archetype.attachmentPorts.map((port) => ({
             id: port.id,
-            type: port.type
+            type: port.type,
+            hostStructuralRoles: port.hostStructuralRoles
           }))
-        })),
-        specialists: listSpecialists().map((specialist) => ({
+          })),
+          specialists: specialists.map((specialist) => ({
           id: specialist.id,
           version: specialist.version,
           label: specialist.label,
@@ -150,8 +162,26 @@ export const inspectAuthoring = (
           bindingRequirements: specialist.bindingRequirements.map(
             (requirement) => ({ type: requirement.type })
           )
-        }))
-      },
+          }))
+        }
+        : {
+          archetypes: archetypes.map((archetype) => ({
+            id: archetype.id,
+            version: archetype.version,
+            label: archetype.label,
+            selected: profile.archetype.id === archetype.id
+          })),
+          specialists: specialists.map((specialist) => ({
+            id: specialist.id,
+            version: specialist.version,
+            label: specialist.label,
+            selected: profile.specialists.some(
+              (reference) => reference.id === specialist.id
+            )
+          })),
+          detail:
+            'Inspect authoring with an authority or specialist id for its full definition.'
+        },
       guidance: {
         authoritative: false,
         role: 'non-authoritative',
@@ -168,9 +198,9 @@ export const inspectAuthoring = (
           'Recipes are discovery examples only. Configure current authority explicitly; compatibility, readiness, review checks, and commands never read a recipe.'
       },
       next: profile === null
-        ? 'Inspect one archetype and the needed specialists, then submit project.authoring.configure with authority claims, slots, and attachment bindings.'
+        ? 'Inspect the composable structural authority and needed specialists, then submit project.authoring.configure with claims, module slots, and bindings.'
         : plan.ready
-          ? 'Follow the current archetype and specialist review checks at every presented view.'
+          ? 'Follow structural and specialist review checks at every presented view.'
           : 'Correct the reported plan issues, then inspect authoring again.'
     },
     DETAIL_INSPECT_LIMIT

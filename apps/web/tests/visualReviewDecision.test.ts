@@ -9,7 +9,10 @@ import {
 import {
   presentedReviewChecks
 } from '../src/application/visualReviewContract';
-import { createAuthoringProject } from './fixtures/authoringProject';
+import {
+  createAuthoringProject,
+  createCompactFullFaceProject
+} from './fixtures/authoringProject';
 import type {
   PresentSuccess
 } from '../src/features/agent/types';
@@ -44,48 +47,48 @@ const observation: PresentSuccess = {
     completedCycles: 0,
     previewIssues: [],
     reviewChecks: [{
-      id: 'mini-biped.face-read',
+      id: 'composable-form.focal-read',
       facets: ['face'],
       issue: 'focal_detail',
       instruction: 'Verify that the face reads.',
       authority: {
-        id: 'archetype.mini-biped',
-        version: 1
+        id: 'archetype.composable-form',
+        version: 2
       },
       authorityType: 'archetype',
       evidence: {
         criteria: [{
-          id: 'criterion.body-plan',
+          id: 'criterion.structure-graph',
           basis: 'either',
           required: true,
           instruction: 'Ground the body plan.'
         }],
         claims: [{
-          criterionId: 'criterion.body-plan',
+          criterionId: 'criterion.structure-graph',
           basis: 'observed',
           referenceIds: ['reference.demo'],
           rationale: 'The reference shows the body plan.'
         }]
       }
     }, {
-      id: 'mini-biped.forward-stance',
+      id: 'composable-form.silhouette-read',
       facets: ['silhouette'],
       issue: 'proportion',
       instruction: 'Verify the forward stance.',
       authority: {
-        id: 'archetype.mini-biped',
-        version: 1
+        id: 'archetype.composable-form',
+        version: 2
       },
       authorityType: 'archetype',
       evidence: {
         criteria: [{
-          id: 'criterion.body-plan',
+          id: 'criterion.structure-graph',
           basis: 'either',
           required: true,
           instruction: 'Ground the body plan.'
         }],
         claims: [{
-          criterionId: 'criterion.body-plan',
+          criterionId: 'criterion.structure-graph',
           basis: 'observed',
           referenceIds: ['reference.demo'],
           rationale: 'The reference shows the body plan.'
@@ -94,6 +97,23 @@ const observation: PresentSuccess = {
     }]
   }
 };
+
+const nativeFullFaceCheckIds = presentedReviewChecks(
+  createCompactFullFaceProject(),
+  'native',
+  false,
+  null,
+  null
+).map((check) => check.id);
+assert.ok(nativeFullFaceCheckIds.includes(
+  'composable-form.face-native-read'
+));
+assert.ok(nativeFullFaceCheckIds.includes(
+  'composable-form.face-compact-budget'
+));
+assert.ok(nativeFullFaceCheckIds.includes(
+  'composable-form.face-surface-contrast'
+));
 
 const missingObservation = resolvePresentationObservation(
   new Map(),
@@ -151,7 +171,7 @@ const incompleteAcceptance = reviewPresentationObservation(
   {
     review: 'accept',
     frameNonce: 17,
-    checkIds: ['mini-biped.face-read']
+    checkIds: ['composable-form.focal-read']
   }
 );
 assert.equal(incompleteAcceptance.ok, false);
@@ -165,8 +185,8 @@ const accepted = reviewPresentationObservation(
     review: 'accept',
     frameNonce: 17,
     checkIds: [
-      'mini-biped.forward-stance',
-      'mini-biped.face-read'
+      'composable-form.silhouette-read',
+      'composable-form.focal-read'
     ]
   }
 );
@@ -174,8 +194,8 @@ assert.equal(accepted.ok, true);
 if (accepted.ok) {
   assert.equal(accepted.data.verdict, 'accepted');
   assert.deepEqual(accepted.data.acknowledgedCheckIds, [
-    'mini-biped.face-read',
-    'mini-biped.forward-stance'
+    'composable-form.focal-read',
+    'composable-form.silhouette-read'
   ]);
 }
 
@@ -234,7 +254,7 @@ const mismatchedFailure = reviewPresentationObservation(
     review: 'reject',
     frameNonce: 17,
     issues: ['proportion'],
-    failedCheckIds: ['mini-biped.face-read']
+    failedCheckIds: ['composable-form.focal-read']
   }
 );
 assert.equal(mismatchedFailure.ok, false);
@@ -245,7 +265,7 @@ const rejected = reviewPresentationObservation(
     review: 'reject',
     frameNonce: 17,
     issues: ['focal_detail'],
-    failedCheckIds: ['mini-biped.face-read']
+    failedCheckIds: ['composable-form.focal-read']
   }
 );
 assert.equal(rejected.ok, true);
@@ -253,7 +273,7 @@ if (rejected.ok) {
   assert.equal(rejected.data.verdict, 'rejected');
   assert.deepEqual(
     rejected.data.failedCheckIds,
-    ['mini-biped.face-read']
+    ['composable-form.focal-read']
   );
   const document = createAuthoringProject();
   const semanticObservation: PresentSuccess = {
@@ -276,7 +296,7 @@ if (rejected.ok) {
       review: 'reject',
       frameNonce: 17,
       issues: ['focal_detail'],
-      failedCheckIds: ['compact-upright.face-read']
+      failedCheckIds: ['composable-form.focal-read']
     }
   );
   assert.equal(semanticRejected.ok, true);
@@ -294,7 +314,9 @@ if (rejected.ok) {
   assert.deepEqual(receipt.observation.data.reviewChecks.map(
     (check) => check.id
   ), [
-    'compact-upright.face-read',
+    'composable-form.focal-read',
+    'composable-form.track-showcase-structure',
+    'composable-form.track-showcase-material',
     'role-props.role-read'
   ]);
   assert.deepEqual(
@@ -304,9 +326,17 @@ if (rejected.ok) {
       claims: check.evidence.claims.map((claim) => claim.criterionId)
     })),
     [{
-      authority: 'archetype.mini-biped',
-      criteria: ['criterion.body-plan'],
-      claims: ['criterion.body-plan']
+      authority: 'archetype.composable-form',
+      criteria: ['criterion.structure-graph'],
+      claims: ['criterion.structure-graph']
+    }, {
+      authority: 'archetype.composable-form',
+      criteria: ['criterion.structure-graph'],
+      claims: ['criterion.structure-graph']
+    }, {
+      authority: 'archetype.composable-form',
+      criteria: ['criterion.structure-graph'],
+      claims: ['criterion.structure-graph']
     }, {
       authority: 'specialist.role-props',
       criteria: ['criterion.role-cue'],
@@ -316,10 +346,10 @@ if (rejected.ok) {
   );
   assert.deepEqual(
     receipt.decision.acknowledgedCheckIds,
-    ['compact-upright.face-read']
+    ['composable-form.focal-read']
   );
   assert.deepEqual(receipt.decision.failedCheckIds, [
-    'compact-upright.face-read'
+    'composable-form.focal-read'
   ]);
   const mismatchedFrame: PresentSuccess = {
     ...semanticRejected,
@@ -354,7 +384,7 @@ if (rejected.ok) {
       review: 'reject',
       frameNonce: 17,
       issues: ['focal_detail'],
-      failedCheckIds: ['compact-upright.face-read']
+      failedCheckIds: ['composable-form.focal-read']
     }
   );
   assert.equal(incompleteReviewed.ok, true);
@@ -384,7 +414,7 @@ if (rejected.ok) {
       review: 'reject',
       frameNonce: 17,
       issues: ['focal_detail'],
-      failedCheckIds: ['compact-upright.face-read']
+      failedCheckIds: ['composable-form.focal-read']
     }
   );
   assert.equal(wrongCriterionReviewed.ok, true);
@@ -413,12 +443,12 @@ if (rejected.ok) {
   assert.equal(receipt.observation.data.cameraMatrix[0], 1);
   assert.equal(
     receipt.observation.data.reviewChecks[0].id,
-    'compact-upright.face-read',
+    'composable-form.focal-read',
     'the receipt must own a deep snapshot of the raw observation'
   );
   assert.equal(
     receipt.observation.data.reviewChecks[0].evidence.criteria[0].id,
-    'criterion.body-plan',
+    'criterion.structure-graph',
     'the receipt must deeply snapshot evidence criteria'
   );
 }
