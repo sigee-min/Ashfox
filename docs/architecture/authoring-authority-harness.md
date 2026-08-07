@@ -1,12 +1,13 @@
 # Authoring Authority Harness
 
-Status: accepted; v2 is a hard cut with no predecessor compatibility contract.
+Status: accepted; the pre-release contract is a hard cut with no predecessor
+compatibility contract.
 
 This document defines the single authoring authority model for reference-driven
 asset work. It complements the normative geometry compiler in
 [Iconic Hardcut Modeling](iconic-hardcut-modeling.md). Only exported game and
 tool artifacts are compatibility promises; internal authoring records accept
-exactly the current explicit v2 contract.
+exactly the current explicit contract.
 
 ## Authority model
 
@@ -22,7 +23,7 @@ specialist never provides a port and never owns body topology.
 
 ```mermaid
 flowchart LR
-  I["Intent and reference provenance"] --> P["Canonical v2 profile"]
+  I["Intent and reference provenance"] --> P["Canonical authoring profile"]
   A["Composable-form role policies"] --> P
   G["Dynamic slot relation graph"] --> P
   S["Zero or more Specialists"] --> P
@@ -34,7 +35,7 @@ flowchart LR
 ```
 
 The profile contains the explicit
-`{id: "archetype.composable-form", version: 2}` reference, explicit v2
+`{id: "archetype.composable-form", version: 1}` reference, explicit versioned
 specialist references, authority claims, dynamic slot declarations,
 attachment or motion bindings, and a routing snapshot. String
 shorthand, missing versions, unknown fields, migration aliases, and inferred
@@ -50,7 +51,7 @@ from a hyphenated combination name or slot-name convention.
 ## Provenance
 
 Every authority declares closed evidence criteria. Every selected authority's
-required criterion has a claim with an authority v2 reference, matching
+required criterion has a claim with a current authority reference, matching
 `criterionId`, `basis`, `referenceIds`, and a non-empty rationale.
 
 - `observed` claims may reference only IDs that exist in the current
@@ -78,7 +79,7 @@ contributions, and part IDs owned by more than one slot or binding. Parent
 topology is injected from the selected host; the specialist contribution
 cannot encode it.
 
-A motion binding atomically identifies one selected specialist v2 reference,
+A motion binding atomically identifies one selected specialist reference,
 one clip ID, and one allowed role. A clip has one binding, and a specialist's
 binding cardinality and role come from its data definition. Review checks for
 a clip are selected through that binding, so checks from another motion
@@ -86,7 +87,7 @@ specialist cannot leak into the review.
 
 ## One compatibility language
 
-Only `compatibilityEvaluator.ts` interprets compatibility clauses. The v2
+Only `compatibilityEvaluator.ts` interprets compatibility clauses. The current
 language is a closed discriminated union:
 
 | Operator | Meaning |
@@ -124,7 +125,8 @@ module.
 
 ## Future composition boundary
 
-`Assembly` is intentionally not implemented in v2. There is no Assembly type,
-command, document field, evaluator, or compiler path. If multi-asset
-composition is later required, it must receive a separate versioned contract
-and cannot be smuggled into specialist ports, bindings, or recipes.
+`Assembly` is intentionally not implemented in the current contract. There is
+no Assembly type, command, document field, evaluator, or compiler path. If
+multi-asset composition is later required, it must receive a separate
+versioned contract and cannot be smuggled into specialist ports, bindings, or
+recipes.

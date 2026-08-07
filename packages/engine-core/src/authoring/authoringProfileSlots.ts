@@ -64,7 +64,7 @@ const readSlotEntry = (
     addIssue(
       issues,
       path,
-      'Structural slot declaration must use the closed v2 shape.',
+      'Structural slot declaration must use the closed contract shape.',
       '{slotId,structuralRole,qualityStage,partIds,parentSlotIds,' +
         'spatialRelations,facing,pairId,contact}'
     );

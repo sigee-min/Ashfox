@@ -146,6 +146,20 @@ export {
   type AuthoringSlotStatus
 } from './authoring/authoringPlan';
 export {
+  AUTHORING_ASSET_QUALITY_DIMENSIONS,
+  evaluateAssetQuality,
+  type AssetQualityEvaluation,
+  type AuthoringAssetQualityDimension,
+  type AuthoringAssetQualityDimensionStatus,
+  type AuthoringAssetQualityStage
+} from './authoring/assetQuality';
+export {
+  AUTHORING_TRACK_POLICIES,
+  authoringTrackPolicy,
+  type AuthoringTrackFacePolicy,
+  type AuthoringTrackPolicy
+} from './authoring/authoringTrackPolicies';
+export {
   AUTHORING_COVERAGE_ASPECTS,
   evaluateIntentCoverage,
   type AuthoringCoverageAspect,

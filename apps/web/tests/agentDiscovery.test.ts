@@ -154,7 +154,7 @@ assert.match(manifest.authoring.authority, /observed.*requested/);
 assert.match(manifest.authoring.authority, /evidenceCriterion/);
 assert.match(manifest.authoring.authority, /criterionId/);
 assert.match(manifest.authoring.authority, /Specialists.*never topology/);
-assert.match(manifest.authoring.structuralAuthority, /v2 authority/);
+assert.doesNotMatch(manifest.authoring.structuralAuthority, /v2/i);
 assert.match(manifest.authoring.structuralAuthority, /open module graph/);
 assert.match(manifest.authoring.structuralAuthority, /parentSlotIds/);
 assert.match(manifest.authoring.structuralAuthority, /spatialRelations/);
@@ -163,22 +163,21 @@ assert.match(manifest.authoring.structuralAuthority, /pairId/);
 assert.match(manifest.authoring.structuralAuthority, /contact/);
 assert.deepEqual(
   Object.keys(manifest.authoring.tracks),
-  ['contract', 'compact', 'showcase', 'coverage']
+  ['contract', 'essential', 'hero', 'coverage']
 );
-assert.match(manifest.authoring.tracks.contract, /completeness contracts/);
+assert.match(manifest.authoring.tracks.contract, /asset-wide representation contracts/);
 assert.match(manifest.authoring.tracks.contract, /never low\/high quality/);
-assert.match(manifest.authoring.tracks.contract, /showcase.*default.*recommended/);
-assert.match(manifest.authoring.tracks.compact, /never cheap or low quality/);
-assert.match(manifest.authoring.tracks.compact, /silhouette and structure are required/);
-assert.match(manifest.authoring.tracks.compact, /only focal is optional/);
-assert.match(manifest.authoring.tracks.compact, /only for explicit cute, chibi/);
-assert.match(manifest.authoring.tracks.compact, /Targets may be shared/);
-assert.match(manifest.authoring.tracks.showcase, /requires all stages/);
-assert.match(manifest.authoring.tracks.showcase, /exclusive/);
-assert.match(manifest.authoring.tracks.showcase, /reference fidelity/);
-assert.match(manifest.authoring.tracks.showcase, /mature or hero/);
-assert.match(manifest.authoring.tracks.showcase, /ambiguity/);
-assert.match(manifest.authoring.tracks.showcase, /semantic material boundaries/);
+assert.match(manifest.authoring.tracks.contract, /hero.*default/);
+assert.match(manifest.authoring.tracks.contract, /face rules.*conditional part/);
+assert.match(manifest.authoring.tracks.essential, /deliberately distills the whole asset/);
+assert.match(manifest.authoring.tracks.essential, /explicit cute, chibi/);
+assert.match(manifest.authoring.tracks.essential, /Silhouette and middle structure remain complete/);
+assert.match(manifest.authoring.tracks.essential, /Targets may be shared/);
+assert.match(manifest.authoring.tracks.hero, /reference fidelity/);
+assert.match(manifest.authoring.tracks.hero, /terminal forms/);
+assert.match(manifest.authoring.tracks.hero, /semantic material boundaries/);
+assert.match(manifest.authoring.tracks.hero, /exclusive feature targets/);
+assert.match(manifest.authoring.tracks.hero, /multi-view material review/);
 assert.match(manifest.authoring.tracks.coverage, /intent\.features\.N exactly once/);
 assert.match(manifest.authoring.tracks.coverage, /slotIds and materialIds/);
 assert.match(manifest.authoring.tracks.coverage, /Automatic noise never counts/);
@@ -191,9 +190,9 @@ assert.match(manifest.authoring.face.contract, /faceMode explicitly/);
 assert.match(manifest.authoring.face.contract, /never infer/);
 assert.match(manifest.authoring.face.contract, /biological face uses full/);
 assert.match(manifest.authoring.face.contract, /component-exclusive descendant slots/);
-assert.match(manifest.authoring.face.tracks, /full compact.*eye.*nasal.*oral/);
+assert.match(manifest.authoring.face.tracks, /full essential.*eye.*nasal.*oral/);
 assert.match(manifest.authoring.face.tracks, /nose\|muzzle\|beak/);
-assert.match(manifest.authoring.face.tracks, /full showcase.*mature proportions/);
+assert.match(manifest.authoring.face.tracks, /full hero.*reference proportions/);
 assert.match(manifest.authoring.face.tracks, /eye-frame orbital\|brow/);
 assert.match(manifest.authoring.face.tracks, /open mouth.*mouth-interior/);
 assert.match(manifest.authoring.face.review, /native gameplay size/);
@@ -481,7 +480,7 @@ assert.match(manifest.workflow[0].instruction, /project\.create/);
 assert.match(manifest.workflow[1].instruction, /project\.authoring\.configure/);
 assert.match(
   manifest.workflow[1].instruction,
-  /track, faceMode.*exact feature coverage/
+  /asset-wide track, conditional face contract.*exact feature coverage/
 );
 assert.match(manifest.workflow[2].instruction, /profile:"block"/);
 assert.match(manifest.workflow[2].instruction, /macro, meso, and focal/);

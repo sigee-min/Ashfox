@@ -244,7 +244,7 @@ export const validateReviewChecks = (
       issues.push({
         code: 'authoring.catalog.review_shape_invalid',
         path: checkPath,
-        message: 'Review check must use the closed v2 shape.'
+        message: 'Review check must use the closed contract shape.'
       });
     }
     if (
@@ -300,7 +300,7 @@ export const validateEvidenceCriteria = (
       issues.push({
         code: 'authoring.catalog.evidence_criterion_invalid',
         path: criterionPath,
-        message: 'Evidence criterion must use the closed v2 taxonomy and shape.'
+        message: 'Evidence criterion must use the closed contract taxonomy and shape.'
       });
     }
   });

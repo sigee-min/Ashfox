@@ -291,7 +291,7 @@ const evaluateMotionBindings = (
         'authoring.compatibility.motion_specialist_unknown',
         `bindings[${index}].specialist`,
         `Motion binding references unselected or non-current specialist "${binding.specialist.id}".`,
-        'an explicit v2 reference to a selected specialist'
+        'an explicit registered reference to a selected specialist'
       ));
       continue;
     }

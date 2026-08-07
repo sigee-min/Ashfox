@@ -38,11 +38,11 @@ packs, Bedrock geometry and animations, GeckoLib 5 assets, and glTF 2.0 output
 must continue to satisfy the selected external game or tool contract.
 
 Ashfox is pre-release. Its project document, commands, semantic recipes,
-generated scene, and compiler caches are one internal v2 authority, with no
-migration reader or alternate compiler. A breaking internal improvement
-replaces the current version in place until the first release. Generated cubes remain
-implementation artifacts; semantic parts and surface features remain the only
-authoring authority.
+generated scene, and compiler caches use one current internal authority, with
+no migration reader, legacy alias, or alternate compiler. A breaking internal
+improvement replaces that contract in place until the first release. Generated
+cubes remain implementation artifacts; semantic parts and surface features
+remain the only authoring authority.
 
 ## Replaced internal boundary
 
@@ -81,37 +81,41 @@ IDs.
 
 ## Composable structural authority
 
-The v2 authority accepts an open graph of structural module instances. Each
+The current authority accepts an open graph of structural module instances. Each
 configured slot declares `structuralRole`, `qualityStage`, `partIds`,
 `parentSlotIds`, `spatialRelations`, `facing`, `pairId`, and `contact`. Together
 those fields encode parentage, pairing, direction, proportion, attachment, and
 grounded or free contact. A specialist may contribute bounded surface,
 silhouette, grounding, or motion policy, but cannot manufacture body topology.
 
-### Completeness tracks and feature coverage
+### Asset-wide representation tracks and feature coverage
 
-Every v2 authoring selection declares `track: "compact" | "showcase"` and a
+Every authoring selection declares `track: "essential" | "hero"` and a
 `coverage` entry for every `intent.features.N` exactly once. Agents normalize
 each requested or observed cue that must survive into an intent feature before
 configuration. Each coverage entry names its `featureRef` and the explicit
 `slotIds` and `materialIds` that realize it.
 
-The tracks are two completeness contracts, not low and high quality.
-`showcase` is the default and recommended choice whenever intent is ambiguous:
+The tracks are whole-asset representation and completeness contracts, not a
+face-style switch and not low versus acceptable quality. `hero` is the default
+whenever intent is ambiguous:
 
 | Track | Contract |
 | --- | --- |
-| `compact` | Use only when the user explicitly requests cute, chibi, mascot, icon, or small-game-piece proportions. It requires a complete `silhouette` and `structure` floor; only `focal` is optional. Feature entries may share a target that visibly carries every mapped cue. |
-| `showcase` | Use for ambiguity, reference fidelity, mature or hero subjects, teeth, claws, open forms, semantic material boundaries, or high-quality requests. It requires `silhouette`, `structure`, and `focal`. Every feature owns an exclusive target. |
+| `essential` | Use only for an explicitly distilled icon, mascot, chibi subject, or small game piece. Preserve a decisive silhouette, connected mass rhythm, intentional proportions, contacts, and every declared identity cue while omitting non-semantic subdivision. It requires complete `silhouette` and `structure`; focal modules remain conditional on the subject and requested cues. Feature entries may share a target only when that target visibly realizes every mapped cue. |
+| `hero` | Use for reference fidelity, mature or flagship subjects, close inspection, or any ambiguous request. Preserve primary and secondary mass rhythm, articulation, roots and terminal forms, openings, negative space, and semantic material boundaries. It requires complete `silhouette`, `structure`, and `focal`; every declared feature owns an exclusive realization target. |
 
-Compact is not a cheap or low-quality mode and must never be inferred from
+Essential is not a cheap or unfinished mode and must never be inferred from
 optimization, low-spec delivery, fewer cuboids, or faster authoring. Delivery
 performance and semantic completeness are independent decisions.
 
 Both tracks install revision-bound visual checks even when `faceMode` is
-`none`. Compact review rejects accidental low-effort miniaturization; showcase
-review rejects collapsed middle form and material boundaries left for noise to
-invent.
+`none`. Essential review rejects accidental low-effort miniaturization or a
+single undifferentiated mass. Hero review rejects collapsed secondary form,
+missing terminal geometry, and material boundaries left for noise to invent.
+For example, a hero dragon must retain its neck/body/tail rhythm, wing roots,
+spars and membranes, claws, teeth, horns, jaw opening, underside division, and
+material regions when those cues are present in the intent or references.
 
 Coverage targets are authored geometry, zero-depth features, or explicit role
 materials. A palette cluster, generated tone, or automatic noise sample is not
@@ -130,7 +134,7 @@ The closed motif vocabulary is subject-neutral:
 | `accent` | Optional silhouette-changing horn, crest, handle, antenna, or blade | `mass`, `segment`, or `plate` |
 
 These roles do not add a second public modeling API. Agents continue to submit
-the inspected `model.parts.upsert` shapes. `project.authoring.configure` v2
+the inspected `model.parts.upsert` shapes. `project.authoring.configure`
 assigns semantic part IDs to module slots and validates their relations before
 the existing compiler runs.
 
@@ -211,8 +215,8 @@ mouth-interior target.
 
 | Track | Required full-face hierarchy |
 | --- | --- |
-| `compact` | Deliberately enlarge the facial read while retaining the track's complete silhouette and structure. Declare `eye`, `nasal` (`nose`, `muzzle`, or `beak`), and `oral` (`mouth` or `beak`). |
-| `showcase` | Preserve mature or hero proportions. Separately declare `eye`, `eye-frame` (`orbital` or `brow`), `nasal`, `oral`, and `jaw`. An `open` mouth also declares an exclusive `mouth-interior`. |
+| `essential` | Deliberately enlarge the facial read while retaining the track's complete silhouette and structure. Declare `eye`, `nasal` (`nose`, `muzzle`, or `beak`), and `oral` (`mouth` or `beak`). |
+| `hero` | Preserve mature or reference-faithful proportions. Separately declare `eye`, `eye-frame` (`orbital` or `brow`), `nasal`, `oral`, and `jaw`. An `open` mouth also declares an exclusive `mouth-interior`. |
 
 `mouthState: "beak"` requires an oral beak. `mouthState: "absent"` is valid
 only with an oral species exception and no oral, jaw, or mouth-interior
@@ -269,8 +273,8 @@ or mouth-interior contrast. A surrounding `patch` inherits ordinary generated
 shading and noise only after its semantic material boundary is explicit.
 
 Native gameplay-size review must read gaze direction, mouth state, and
-expression without relying on a close-up. Compact review rejects an
-undersized face area; showcase review rejects infantile proportion changes or
+expression without relying on a close-up. Essential review rejects an
+undersized face area; hero review rejects infantile proportion changes or
 collapsed orbital, nasal, jaw, and interior planes.
 
 Eyes, noses, and mouths must not become eyeball cubes, sockets, face plates,
@@ -389,7 +393,7 @@ The hardcut is complete only when tests prove:
 - eyes, noses, mouths, and patches create no accidental geometry;
 - every requested or observed cue maps to geometry, a feature, or a distinct
   role material before automatic noise;
-- compact coverage may share explicit targets, while showcase coverage owns
+- essential coverage may share explicit targets, while hero coverage owns
   exclusive targets and declares silhouette, structure, and focal stages;
 - general surfaces preserve automatic noise and cuboid-to-cuboid continuity;
 - the same recipe reproduces byte-identical generated

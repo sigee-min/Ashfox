@@ -98,7 +98,7 @@ export const evaluateAuthoringCompatibility = (
       'authoring.compatibility.archetype_unknown',
       'archetype',
       `Archetype reference "${profile.archetype.id}" is not current.`,
-      'a registered explicit v2 archetype reference'
+      'an explicit registered archetype reference'
     ));
     return { compatible: false, issues };
   }
@@ -110,7 +110,7 @@ export const evaluateAuthoringCompatibility = (
         'authoring.compatibility.specialist_unknown',
         `specialists[${index}]`,
         `Specialist reference "${reference.id}" is not current.`,
-        'a registered explicit v2 specialist reference'
+        'an explicit registered specialist reference'
       ));
       return;
     }

@@ -11,7 +11,7 @@ import {
 } from '../src/application/visualReviewContract';
 import {
   createAuthoringProject,
-  createCompactFullFaceProject
+  createEssentialFullFaceProject
 } from './fixtures/authoringProject';
 import type {
   PresentSuccess
@@ -53,7 +53,7 @@ const observation: PresentSuccess = {
       instruction: 'Verify that the face reads.',
       authority: {
         id: 'archetype.composable-form',
-        version: 2
+        version: 1
       },
       authorityType: 'archetype',
       evidence: {
@@ -77,7 +77,7 @@ const observation: PresentSuccess = {
       instruction: 'Verify the forward stance.',
       authority: {
         id: 'archetype.composable-form',
-        version: 2
+        version: 1
       },
       authorityType: 'archetype',
       evidence: {
@@ -99,7 +99,7 @@ const observation: PresentSuccess = {
 };
 
 const nativeFullFaceCheckIds = presentedReviewChecks(
-  createCompactFullFaceProject(),
+  createEssentialFullFaceProject(),
   'native',
   false,
   null,
@@ -109,7 +109,7 @@ assert.ok(nativeFullFaceCheckIds.includes(
   'composable-form.face-native-read'
 ));
 assert.ok(nativeFullFaceCheckIds.includes(
-  'composable-form.face-compact-budget'
+  'composable-form.face-essential-budget'
 ));
 assert.ok(nativeFullFaceCheckIds.includes(
   'composable-form.face-surface-contrast'
@@ -315,8 +315,8 @@ if (rejected.ok) {
     (check) => check.id
   ), [
     'composable-form.focal-read',
-    'composable-form.track-showcase-structure',
-    'composable-form.track-showcase-material',
+    'composable-form.track-hero-structure',
+    'composable-form.track-hero-material',
     'role-props.role-read'
   ]);
   assert.deepEqual(

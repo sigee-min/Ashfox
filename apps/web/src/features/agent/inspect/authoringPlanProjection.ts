@@ -47,9 +47,10 @@ export const authoringProfileProjection = (
 export const authoringPlanProjection = (
   plan: AuthoringPlanEvaluation
 ) => {
-  const prioritizedCoverageFeatures = plan.intentCoverage === null
+  const quality = plan.assetQuality;
+  const prioritizedCoverageFeatures = quality === null
     ? []
-    : [...plan.intentCoverage.features].sort((left, right) =>
+    : [...quality.intentCoverage.features].sort((left, right) =>
         Number(left.state === 'complete') -
           Number(right.state === 'complete') ||
         left.featureRef.localeCompare(right.featureRef)
@@ -74,66 +75,67 @@ export const authoringPlanProjection = (
     profileValid: plan.profileValid,
     routingAligned: plan.routingAligned,
     ready: plan.ready,
-    structuralQuality: plan.structuralQuality === null
+    assetQuality: quality === null
       ? null
       : {
-          activeStage: plan.structuralQuality.activeStage,
-          ready: plan.structuralQuality.ready,
-          gates: plan.structuralQuality.gates.map((gate) => ({
-            stage: gate.stage,
-            state: gate.state,
-            structuralRoles: gate.structuralRoles,
-            incompleteSlotIds: gate.incompleteSlotIds
-          }))
-        },
-    intentCoverage: plan.intentCoverage === null
-      ? null
-      : {
-          track: plan.intentCoverage.track,
-          ready: plan.intentCoverage.ready,
-          featureCount: plan.intentCoverage.features.length,
-          incompleteFeatureCount: plan.intentCoverage.features.filter(
-            (feature) => feature.state === 'incomplete'
-          ).length,
-          features: projectedCoverageFeatures,
-          truncatedFeatureCount:
-            plan.intentCoverage.features.length -
-            projectedCoverageFeatures.length,
-          stages: plan.intentCoverage.stages.map((stage) => ({
-            stage: stage.stage,
-            ready: stage.ready,
-            slotCount: stage.slotIds.length,
-            completeSlotCount: stage.completeSlotIds.length
-          }))
-        },
-    faceQuality: plan.faceQuality === null
-      ? null
-      : {
-          mode: plan.faceQuality.mode,
-          hostSlotId: plan.faceQuality.hostSlotId,
-          mouthState: plan.faceQuality.mouthState,
-          hostReady: plan.faceQuality.hostReady,
-          ready: plan.faceQuality.ready,
-          incompleteComponentCount: plan.faceQuality.components.filter(
-            (component) => component.state === 'incomplete'
-          ).length,
-          components: plan.faceQuality.components.map((component) => ({
-            component: component.component,
-            form: component.form,
-            state: component.state,
-            slotIds: component.slotIds,
-            materialIds: component.materialIds,
-            ...(component.readableEyePartIds.length === 0
-              ? {}
-              : { readableEyePartIds: component.readableEyePartIds }),
-            ...(component.missingSlotIds.length === 0
-              ? {}
-              : { missingSlotIds: component.missingSlotIds }),
-            ...(component.missingMaterialIds.length === 0
-              ? {}
-              : { missingMaterialIds: component.missingMaterialIds })
-          })),
-          exceptions: plan.faceQuality.exceptions
+          track: quality.track,
+          activeStage: quality.activeStage,
+          ready: quality.ready,
+          dimensions: quality.dimensions,
+          structuralQuality: {
+            activeStage: quality.structuralQuality.activeStage,
+            ready: quality.structuralQuality.ready,
+            gates: quality.structuralQuality.gates.map((gate) => ({
+              stage: gate.stage,
+              state: gate.state,
+              structuralRoles: gate.structuralRoles,
+              incompleteSlotIds: gate.incompleteSlotIds
+            }))
+          },
+          intentCoverage: {
+            ready: quality.intentCoverage.ready,
+            featureCount: quality.intentCoverage.features.length,
+            incompleteFeatureCount: quality.intentCoverage.features.filter(
+              (feature) => feature.state === 'incomplete'
+            ).length,
+            features: projectedCoverageFeatures,
+            truncatedFeatureCount:
+              quality.intentCoverage.features.length -
+              projectedCoverageFeatures.length,
+            stages: quality.intentCoverage.stages.map((stage) => ({
+              stage: stage.stage,
+              ready: stage.ready,
+              slotCount: stage.slotIds.length,
+              completeSlotCount: stage.completeSlotIds.length
+            }))
+          },
+          faceQuality: {
+            mode: quality.faceQuality.mode,
+            hostSlotId: quality.faceQuality.hostSlotId,
+            mouthState: quality.faceQuality.mouthState,
+            hostReady: quality.faceQuality.hostReady,
+            ready: quality.faceQuality.ready,
+            incompleteComponentCount: quality.faceQuality.components.filter(
+              (component) => component.state === 'incomplete'
+            ).length,
+            components: quality.faceQuality.components.map((component) => ({
+              component: component.component,
+              form: component.form,
+              state: component.state,
+              slotIds: component.slotIds,
+              materialIds: component.materialIds,
+              ...(component.readableEyePartIds.length === 0
+                ? {}
+                : { readableEyePartIds: component.readableEyePartIds }),
+              ...(component.missingSlotIds.length === 0
+                ? {}
+                : { missingSlotIds: component.missingSlotIds }),
+              ...(component.missingMaterialIds.length === 0
+                ? {}
+                : { missingMaterialIds: component.missingMaterialIds })
+            })),
+            exceptions: quality.faceQuality.exceptions
+          }
         },
     slots: plan.slots.map((slot) => ({
       slotId: slot.slotId,

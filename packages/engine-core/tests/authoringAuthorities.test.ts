@@ -6,6 +6,8 @@ import {
   AUTHORING_PROFILE_SCHEMA_VERSION,
   AUTHORING_QUALITY_STAGES,
   AUTHORING_STRUCTURAL_ROLES,
+  AUTHORING_TRACK_POLICIES,
+  AUTHORING_TRACKS,
   authoringReviewChecks,
   createAuthoringProfile,
   createProjectFromInput,
@@ -38,7 +40,7 @@ const catalogIssues = validateAuthoringCatalog(
 assert.deepEqual(catalogIssues, []);
 assert.equal(listArchetypes().length, 1);
 assert.equal(listSpecialists().length, 9);
-assert.equal(AUTHORING_PROFILE_SCHEMA_VERSION, 2);
+assert.equal(AUTHORING_PROFILE_SCHEMA_VERSION, 1);
 assert.deepEqual(AUTHORING_STRUCTURAL_ROLES, [
   'core',
   'axis',
@@ -52,6 +54,24 @@ assert.deepEqual(AUTHORING_QUALITY_STAGES, [
   'structure',
   'focal'
 ]);
+assert.deepEqual(AUTHORING_TRACKS, ['essential', 'hero']);
+assert.deepEqual(Object.keys(AUTHORING_TRACK_POLICIES), AUTHORING_TRACKS);
+assert.deepEqual(
+  AUTHORING_TRACK_POLICIES.essential.requiredQualityStages,
+  ['silhouette', 'structure']
+);
+assert.equal(
+  AUTHORING_TRACK_POLICIES.essential.requireExclusiveCoverageTarget,
+  false
+);
+assert.deepEqual(
+  AUTHORING_TRACK_POLICIES.hero.requiredQualityStages,
+  ['silhouette', 'structure', 'focal']
+);
+assert.equal(
+  AUTHORING_TRACK_POLICIES.hero.requireExclusiveCoverageTarget,
+  true
+);
 assert.ok(listSpecialists().every((definition) =>
   !('kind' in definition) && !('attachmentPorts' in definition)
 ));
@@ -63,11 +83,11 @@ assert.equal(resolveSpecialistReference({
 }), undefined);
 assert.equal(resolveArchetypeReference({
   id: 'archetype.composable-form',
-  version: 1
+  version: 2
 }), undefined);
 assert.ok(resolveArchetypeReference({
   id: 'archetype.composable-form',
-  version: 2
+  version: 1
 }));
 
 const composableForm = resolveArchetypeReference({
@@ -354,12 +374,23 @@ const selection: AuthoringSelectionInput = {
 const created = createAuthoringProfile(intended, selection);
 assert.equal(created.ok, true);
 if (!created.ok) throw new Error(created.issues[0]?.message);
+for (const retiredTrack of ['compact', 'showcase'] as const) {
+  const retiredTrackResult = createAuthoringProfile(intended, {
+    ...selection,
+    track: retiredTrack
+  } as unknown as AuthoringSelectionInput);
+  assert.equal(
+    retiredTrackResult.ok,
+    false,
+    `pre-release hardcut must not retain a ${retiredTrack} alias`
+  );
+}
 assert.equal(evaluateAuthoringCompatibility(created.profile).compatible, true);
 const staleArchetypeCompatibility = evaluateAuthoringCompatibility({
   ...created.profile,
   archetype: {
     ...created.profile.archetype,
-    version: 1
+    version: 2
   }
 } as unknown as AuthoringProfile);
 assert.equal(staleArchetypeCompatibility.compatible, false);
@@ -371,7 +402,7 @@ assert.equal(
 const staleSpecialistCompatibility = evaluateAuthoringCompatibility({
   ...created.profile,
   specialists: created.profile.specialists.map((reference, index) =>
-    index === 0 ? { ...reference, version: 1 } : reference
+    index === 0 ? { ...reference, version: 2 } : reference
   )
 } as unknown as AuthoringProfile);
 assert.equal(staleSpecialistCompatibility.compatible, false);
@@ -402,22 +433,22 @@ const sharedCoverage = [
 ] as const;
 assert.equal(createAuthoringProfile(multiFeatureIntended, {
   ...selection,
-  track: 'compact',
+  track: 'essential',
   coverage: sharedCoverage
-}).ok, true, 'compact track may integrate features into one graphic target');
-const sharedShowcaseCoverage = createAuthoringProfile(multiFeatureIntended, {
+}).ok, true, 'essential track may integrate features into one graphic target');
+const sharedHeroCoverage = createAuthoringProfile(multiFeatureIntended, {
   ...selection,
   coverage: sharedCoverage
 });
-assert.equal(sharedShowcaseCoverage.ok, false);
-if (!sharedShowcaseCoverage.ok) {
-  assert.equal(sharedShowcaseCoverage.issues.filter((issue) =>
+assert.equal(sharedHeroCoverage.ok, false);
+if (!sharedHeroCoverage.ok) {
+  assert.equal(sharedHeroCoverage.issues.filter((issue) =>
     issue.message.includes('has no exclusive realization target')
   ).length, 2);
 }
 const incompleteFeatureMap = createAuthoringProfile(multiFeatureIntended, {
   ...selection,
-  track: 'compact',
+  track: 'essential',
   coverage: sharedCoverage.slice(0, 1)
 });
 assert.equal(incompleteFeatureMap.ok, false);
@@ -426,9 +457,9 @@ if (!incompleteFeatureMap.ok) {
     issue.message.includes('must have exactly one coverage entry')
   ));
 }
-const rootOnlyCompact = createAuthoringProfile(intended, {
+const rootOnlyEssential = createAuthoringProfile(intended, {
   ...selection,
-  track: 'compact',
+  track: 'essential',
   slots: selection.slots.filter((slot) => slot.slotId === 'core.primary'),
   coverage: [{
     featureRef: 'intent.features.0',
@@ -436,15 +467,15 @@ const rootOnlyCompact = createAuthoringProfile(intended, {
     materialIds: []
   }]
 });
-assert.equal(rootOnlyCompact.ok, false);
-if (!rootOnlyCompact.ok) {
-  assert.ok(rootOnlyCompact.issues.some((issue) =>
+assert.equal(rootOnlyEssential.ok, false);
+if (!rootOnlyEssential.ok) {
+  assert.ok(rootOnlyEssential.issues.some((issue) =>
     issue.message.includes('requires a declared structure stage module')
   ));
 }
-const focalOptionalCompactSelection: AuthoringSelectionInput = {
+const focalOptionalEssentialSelection: AuthoringSelectionInput = {
   ...selection,
-  track: 'compact',
+  track: 'essential',
   slots: selection.slots.filter((slot) =>
     slot.slotId === 'core.primary' || slot.slotId === 'axis.primary'
   ),
@@ -455,12 +486,12 @@ const focalOptionalCompactSelection: AuthoringSelectionInput = {
   }]
 };
 assert.equal(
-  createAuthoringProfile(intended, focalOptionalCompactSelection).ok,
+  createAuthoringProfile(intended, focalOptionalEssentialSelection).ok,
   true,
-  'compact track may omit focal modules after declaring macro and meso stages'
+  'essential track may omit focal modules after declaring macro and meso stages'
 );
 
-const compactFaceSlots: AuthoringSelectionInput['slots'] = [
+const essentialFaceSlots: AuthoringSelectionInput['slots'] = [
   {
     slotId: 'core.primary',
     structuralRole: 'core',
@@ -495,7 +526,7 @@ const compactFaceSlots: AuthoringSelectionInput['slots'] = [
     contact: 'free' as const
   }))
 ];
-const compactFaceComponents = [
+const essentialFaceComponents = [
   {
     component: 'eye',
     form: 'eye',
@@ -518,19 +549,19 @@ const compactFaceComponents = [
     materialIds: ['mouth_tone']
   }
 ] as const;
-const compactFullFaceSelection: AuthoringSelectionInput = {
+const essentialFullFaceSelection: AuthoringSelectionInput = {
   archetype: recipe.archetype,
-  track: 'compact',
+  track: 'essential',
   faceMode: 'full',
   face: {
     hostSlotId: 'focal.host',
     mouthState: 'closed',
-    components: compactFaceComponents,
+    components: essentialFaceComponents,
     exceptions: []
   },
   specialists: [],
   claims: recipe.claimSuggestions,
-  slots: compactFaceSlots,
+  slots: essentialFaceSlots,
   coverage: [{
     featureRef: 'intent.features.0',
     slotIds: ['face.oral'],
@@ -538,62 +569,62 @@ const compactFullFaceSelection: AuthoringSelectionInput = {
   }],
   bindings: []
 };
-const compactFullFace = createAuthoringProfile(
+const essentialFullFace = createAuthoringProfile(
   intended,
-  compactFullFaceSelection
+  essentialFullFaceSelection
 );
-assert.equal(compactFullFace.ok, true);
-if (!compactFullFace.ok) {
-  throw new Error(compactFullFace.issues[0]?.message);
+assert.equal(essentialFullFace.ok, true);
+if (!essentialFullFace.ok) {
+  throw new Error(essentialFullFace.issues[0]?.message);
 }
-const compactNativeFaceChecks = authoringReviewChecks(
-  compactFullFace.profile,
+const essentialNativeFaceChecks = authoringReviewChecks(
+  essentialFullFace.profile,
   'native'
 ).map((check) => check.id);
-assert.ok(compactNativeFaceChecks.includes(
+assert.ok(essentialNativeFaceChecks.includes(
   'composable-form.face-native-read'
 ));
-assert.ok(compactNativeFaceChecks.includes(
-  'composable-form.face-compact-budget'
+assert.ok(essentialNativeFaceChecks.includes(
+  'composable-form.face-essential-budget'
 ));
-assert.ok(compactNativeFaceChecks.includes(
+assert.ok(essentialNativeFaceChecks.includes(
   'composable-form.face-surface-contrast'
 ));
-assert.ok(compactNativeFaceChecks.includes(
-  'composable-form.track-compact-integrity'
+assert.ok(essentialNativeFaceChecks.includes(
+  'composable-form.track-essential-integrity'
 ));
-const showcaseNativeChecks = authoringReviewChecks(
+const heroNativeChecks = authoringReviewChecks(
   created.profile,
   'native'
 ).map((check) => check.id);
-assert.ok(!showcaseNativeChecks.some((id) =>
+assert.ok(!heroNativeChecks.some((id) =>
   id.startsWith('composable-form.face-')
 ));
-assert.ok(showcaseNativeChecks.includes(
-  'composable-form.track-showcase-structure'
+assert.ok(heroNativeChecks.includes(
+  'composable-form.track-hero-structure'
 ));
-assert.ok(showcaseNativeChecks.includes(
-  'composable-form.track-showcase-material'
+assert.ok(heroNativeChecks.includes(
+  'composable-form.track-hero-material'
 ));
 const missingNasalFace = createAuthoringProfile(intended, {
-  ...compactFullFaceSelection,
+  ...essentialFullFaceSelection,
   face: {
-    ...compactFullFaceSelection.face as NonNullable<
+    ...essentialFullFaceSelection.face as NonNullable<
       AuthoringSelectionInput['face']
     >,
-    components: compactFaceComponents.filter((entry) =>
+    components: essentialFaceComponents.filter((entry) =>
       entry.component !== 'nasal'
     )
   }
 });
 assert.equal(missingNasalFace.ok, false);
 const exceptedNasalFace = createAuthoringProfile(intended, {
-  ...compactFullFaceSelection,
+  ...essentialFullFaceSelection,
   face: {
-    ...compactFullFaceSelection.face as NonNullable<
+    ...essentialFullFaceSelection.face as NonNullable<
       AuthoringSelectionInput['face']
     >,
-    components: compactFaceComponents.filter((entry) =>
+    components: essentialFaceComponents.filter((entry) =>
       entry.component !== 'nasal'
     ),
     exceptions: [{
@@ -606,8 +637,8 @@ const exceptedNasalFace = createAuthoringProfile(intended, {
 });
 assert.equal(exceptedNasalFace.ok, true);
 
-const showcaseFaceSlots: AuthoringSelectionInput['slots'] = [
-  ...compactFaceSlots,
+const heroFaceSlots: AuthoringSelectionInput['slots'] = [
+  ...essentialFaceSlots,
   ...(['eye_frame', 'jaw', 'mouth_interior'] as const).map((component) => ({
     slotId: `face.${component}`,
     structuralRole: 'focal-frame' as const,
@@ -620,15 +651,15 @@ const showcaseFaceSlots: AuthoringSelectionInput['slots'] = [
     contact: 'free' as const
   }))
 ];
-const showcaseClosedFaceSelection: AuthoringSelectionInput = {
-  ...compactFullFaceSelection,
-  track: 'showcase',
-  slots: showcaseFaceSlots,
+const heroClosedFaceSelection: AuthoringSelectionInput = {
+  ...essentialFullFaceSelection,
+  track: 'hero',
+  slots: heroFaceSlots,
   face: {
     hostSlotId: 'focal.host',
     mouthState: 'closed',
     components: [
-      ...compactFaceComponents,
+      ...essentialFaceComponents,
       {
         component: 'eye-frame',
         form: 'brow',
@@ -647,47 +678,47 @@ const showcaseClosedFaceSelection: AuthoringSelectionInput = {
     exceptions: []
   }
 };
-const showcaseClosedFace = createAuthoringProfile(
+const heroClosedFace = createAuthoringProfile(
   intended,
-  showcaseClosedFaceSelection
+  heroClosedFaceSelection
 );
 assert.equal(
-  showcaseClosedFace.ok,
+  heroClosedFace.ok,
   true,
-  'showcase accepts one orbital-or-brow eye frame and closed mouth without interior'
+  'hero accepts one orbital-or-brow eye frame and closed mouth without interior'
 );
-if (showcaseClosedFace.ok) {
+if (heroClosedFace.ok) {
   assert.ok(authoringReviewChecks(
-    showcaseClosedFace.profile,
+    heroClosedFace.profile,
     'perspective'
   ).some((check) =>
-    check.id === 'composable-form.face-showcase-separation'
+    check.id === 'composable-form.face-hero-separation'
   ));
 }
-const openShowcaseWithoutInterior = createAuthoringProfile(intended, {
-  ...showcaseClosedFaceSelection,
+const openHeroWithoutInterior = createAuthoringProfile(intended, {
+  ...heroClosedFaceSelection,
   face: {
-    ...showcaseClosedFaceSelection.face as NonNullable<
+    ...heroClosedFaceSelection.face as NonNullable<
       AuthoringSelectionInput['face']
     >,
     mouthState: 'open'
   }
 });
-assert.equal(openShowcaseWithoutInterior.ok, false);
-if (!openShowcaseWithoutInterior.ok) {
-  assert.ok(openShowcaseWithoutInterior.issues.some((issue) =>
+assert.equal(openHeroWithoutInterior.ok, false);
+if (!openHeroWithoutInterior.ok) {
+  assert.ok(openHeroWithoutInterior.issues.some((issue) =>
     issue.message.includes('requires a separate mouth interior')
   ));
 }
-const openShowcaseWithInterior = createAuthoringProfile(intended, {
-  ...showcaseClosedFaceSelection,
+const openHeroWithInterior = createAuthoringProfile(intended, {
+  ...heroClosedFaceSelection,
   face: {
-    ...showcaseClosedFaceSelection.face as NonNullable<
+    ...heroClosedFaceSelection.face as NonNullable<
       AuthoringSelectionInput['face']
     >,
     mouthState: 'open',
     components: [
-      ...(showcaseClosedFaceSelection.face as NonNullable<
+      ...(heroClosedFaceSelection.face as NonNullable<
         AuthoringSelectionInput['face']
       >).components,
       {
@@ -700,7 +731,7 @@ const openShowcaseWithInterior = createAuthoringProfile(intended, {
     ]
   }
 });
-assert.equal(openShowcaseWithInterior.ok, true);
+assert.equal(openHeroWithInterior.ok, true);
 
 const asymmetricPair = createAuthoringProfile(intended, {
   ...selection,
@@ -788,18 +819,21 @@ assert.ok(plan.issues.some((issue) =>
   issue.code === 'authoring.plan.intent_coverage_incomplete'
 ));
 assert.ok(plan.issues.some((issue) =>
-  issue.code === 'authoring.plan.showcase_stage_incomplete'
+  issue.code === 'authoring.plan.track_stage_incomplete'
 ));
-assert.equal(plan.intentCoverage?.track, 'showcase');
-assert.equal(plan.intentCoverage?.features[0]?.state, 'incomplete');
+assert.equal(plan.assetQuality?.track, 'hero');
+assert.equal(
+  plan.assetQuality?.intentCoverage.features[0]?.state,
+  'incomplete'
+);
 
 const fullFaceConfigured = execute(intended, 'configure-full-face', [{
   name: 'project.authoring.configure',
-  payload: compactFullFaceSelection
+  payload: essentialFullFaceSelection
 }]);
 const emptyFullFacePlan = evaluateAuthoringPlan(fullFaceConfigured);
-assert.equal(emptyFullFacePlan.faceQuality?.mode, 'full');
-assert.equal(emptyFullFacePlan.faceQuality?.ready, false);
+assert.equal(emptyFullFacePlan.assetQuality?.faceQuality.mode, 'full');
+assert.equal(emptyFullFacePlan.assetQuality?.faceQuality.ready, false);
 assert.ok(emptyFullFacePlan.issues.some((issue) =>
   issue.code === 'authoring.plan.face_host_incomplete'
 ));
@@ -872,9 +906,9 @@ const fullFaceAuthored = execute(fullFaceConfigured, 'author-full-face', [{
   }
 }]);
 const fullFacePlan = evaluateAuthoringPlan(fullFaceAuthored);
-assert.equal(fullFacePlan.faceQuality?.hostReady, true);
+assert.equal(fullFacePlan.assetQuality?.faceQuality.hostReady, true);
 assert.deepEqual(
-  fullFacePlan.faceQuality?.components.map((component) => [
+  fullFacePlan.assetQuality?.faceQuality.components.map((component) => [
     component.component,
     component.state
   ]),
@@ -884,7 +918,8 @@ assert.deepEqual(
     ['oral', 'complete']
   ]
 );
-assert.equal(fullFacePlan.faceQuality?.ready, true);
+assert.equal(fullFacePlan.assetQuality?.faceQuality.ready, true);
+assert.equal(fullFacePlan.assetQuality?.activeStage, 'complete');
 assert.equal(fullFacePlan.ready, true);
 const lowContrastFullFace = execute(
   fullFaceAuthored,
@@ -898,7 +933,7 @@ const lowContrastFullFace = execute(
   }]
 );
 const lowContrastFacePlan = evaluateAuthoringPlan(lowContrastFullFace);
-assert.equal(lowContrastFacePlan.faceQuality?.ready, false);
+assert.equal(lowContrastFacePlan.assetQuality?.faceQuality.ready, false);
 assert.ok(lowContrastFacePlan.issues.some((issue) =>
   issue.code === 'authoring.plan.face_eye_visibility_invalid' &&
   issue.partIds?.includes('face_eye')
@@ -915,9 +950,9 @@ const onePixelFullFace = execute(fullFaceAuthored, 'collapse-full-face-eye', [{
   }
 }]);
 const onePixelFacePlan = evaluateAuthoringPlan(onePixelFullFace);
-assert.equal(onePixelFacePlan.faceQuality?.ready, false);
+assert.equal(onePixelFacePlan.assetQuality?.faceQuality.ready, false);
 assert.deepEqual(
-  onePixelFacePlan.faceQuality?.components.find(
+  onePixelFacePlan.assetQuality?.faceQuality.components.find(
     (component) => component.component === 'eye'
   )?.readableEyePartIds,
   []
@@ -942,7 +977,7 @@ const mislabeledNasalFace = execute(
 );
 const mislabeledNasalPlan = evaluateAuthoringPlan(mislabeledNasalFace);
 assert.equal(
-  mislabeledNasalPlan.faceQuality?.components.find(
+  mislabeledNasalPlan.assetQuality?.faceQuality.components.find(
     (component) => component.component === 'nasal'
   )?.state,
   'incomplete',
@@ -953,13 +988,13 @@ assert.ok(mislabeledNasalPlan.issues.some((issue) =>
   issue.path.endsWith('.nasal')
 ));
 
-const compactConfigured = execute(intended, 'configure-compact-authoring', [{
+const essentialConfigured = execute(intended, 'configure-essential-authoring', [{
   name: 'project.authoring.configure',
-  payload: { ...selection, track: 'compact' }
+  payload: { ...selection, track: 'essential' }
 }]);
-const compactPlan = evaluateAuthoringPlan(compactConfigured);
+const essentialPlan = evaluateAuthoringPlan(essentialConfigured);
 assert.deepEqual(
-  compactPlan.intentCoverage?.stages.map((stage) => [
+  essentialPlan.assetQuality?.intentCoverage.stages.map((stage) => [
     stage.stage,
     stage.ready
   ]),
@@ -968,34 +1003,34 @@ assert.deepEqual(
     ['structure', false],
     ['focal', false]
   ],
-  'compact requires all declared stages to materialize'
+  'essential requires all declared stages to materialize'
 );
-assert.ok(compactPlan.issues.some((issue) =>
-  issue.code === 'authoring.plan.compact_stage_incomplete'
+assert.ok(essentialPlan.issues.some((issue) =>
+  issue.code === 'authoring.plan.track_stage_incomplete'
 ));
-const focalOptionalCompactConfigured = execute(
+const focalOptionalEssentialConfigured = execute(
   intended,
-  'configure-focal-optional-compact-authoring',
+  'configure-focal-optional-essential-authoring',
   [{
     name: 'project.authoring.configure',
-    payload: focalOptionalCompactSelection
+    payload: focalOptionalEssentialSelection
   }]
 );
-const focalOptionalCompactPlan = evaluateAuthoringPlan(
-  focalOptionalCompactConfigured
+const focalOptionalEssentialPlan = evaluateAuthoringPlan(
+  focalOptionalEssentialConfigured
 );
 assert.equal(
-  focalOptionalCompactPlan.intentCoverage?.stages.find(
+  focalOptionalEssentialPlan.assetQuality?.intentCoverage.stages.find(
     (stage) => stage.stage === 'focal'
   )?.ready,
   true,
-  'compact focal stage remains optional when no focal module is declared'
+  'essential focal stage remains optional when no focal module is declared'
 );
-assert.ok(focalOptionalCompactPlan.issues.some((issue) =>
-  issue.code === 'authoring.plan.compact_stage_incomplete'
+assert.ok(focalOptionalEssentialPlan.issues.some((issue) =>
+  issue.code === 'authoring.plan.track_stage_incomplete'
 ));
-assert.ok(!focalOptionalCompactPlan.issues.some((issue) =>
-  issue.code === 'authoring.plan.compact_stage_incomplete' &&
+assert.ok(!focalOptionalEssentialPlan.issues.some((issue) =>
+  issue.code === 'authoring.plan.track_stage_incomplete' &&
   issue.path.endsWith('.focal')
 ));
 
@@ -1262,7 +1297,7 @@ for (const file of [
   assert.doesNotMatch(
     fs.readFileSync(file, 'utf8'),
     /AuthoringAssembly|authoring\.assembly|project\.assembly/,
-    `Assembly must remain outside the v2 runtime boundary: ${file}`
+    `Assembly must remain outside the current runtime boundary: ${file}`
   );
 }
 for (const file of [

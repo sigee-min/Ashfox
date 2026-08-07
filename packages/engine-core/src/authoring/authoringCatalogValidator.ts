@@ -104,7 +104,7 @@ const validateStructuralRolePolicies = (
       issues.push({
         code: 'authoring.catalog.role_policy_shape_invalid',
         path: policyPath,
-        message: 'Structural role policy must use the closed v2 shape.'
+        message: 'Structural role policy must use the closed contract shape.'
       });
     }
     if (
@@ -150,7 +150,7 @@ const validateAttachmentPorts = (
       issues.push({
         code: 'authoring.catalog.port_shape_invalid',
         path: portPath,
-        message: 'Attachment port must use the closed v2 shape.'
+        message: 'Attachment port must use the closed contract shape.'
       });
     }
     if (
@@ -202,7 +202,7 @@ const validateArchetypeDefinition = (
     issues.push({
       code: 'authoring.catalog.archetype_shape_invalid',
       path,
-      message: 'Archetype must use the closed v2 definition shape.'
+      message: 'Archetype must use the closed contract definition shape.'
     });
   }
   if (!allowedArchetypeIds.has(definition.id)) {
@@ -278,7 +278,7 @@ const validateSpecialistAttachments = (
       issues.push({
         code: 'authoring.catalog.contribution_shape_invalid',
         path: contributionPath,
-        message: 'Contribution must use the topology-free v2 shape.'
+        message: 'Contribution must use the topology-free contract shape.'
       });
     }
     if (
@@ -367,7 +367,7 @@ const validateSpecialistDefinition = (
     issues.push({
       code: 'authoring.catalog.specialist_shape_invalid',
       path,
-      message: 'Specialist must use the closed v2 definition shape.'
+      message: 'Specialist must use the closed contract definition shape.'
     });
   }
   if (!allowedSpecialistIds.has(definition.id)) {

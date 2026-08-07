@@ -17,7 +17,7 @@ const recipes: readonly AuthoringRecipe[] = deepFreezeAuthoringValue([(() => {
       'A non-authoritative example showing a connected core, directional structure, host frame, and focal module declaration.',
     role: 'non-authoritative',
     archetype,
-    track: 'showcase',
+    track: 'hero',
     faceMode: 'none',
     face: null,
     specialists: [],

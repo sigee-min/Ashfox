@@ -8,6 +8,7 @@ import { archetypeDefinitions } from './archetypeDefinitions';
 import { validateAuthoringCatalog } from './authoringCatalogValidator';
 import { deepFreezeAuthoringValue } from './authoringCollections';
 import { specialistDefinitions } from './specialistDefinitions';
+import { authoringTrackPolicy } from './authoringTrackPolicies';
 import {
   ARCHETYPE_IDS,
   SPECIALIST_IDS,
@@ -136,23 +137,7 @@ const profileFaceChecks = (
   profile: AuthoringProfile
 ): readonly AuthoringReviewCheck[] => {
   if (profile.faceMode !== 'full') return [];
-  const trackCheck: AuthoringReviewCheck = profile.track === 'compact'
-    ? {
-        id: 'composable-form.face-compact-budget',
-        facets: ['face'],
-        cameras: ['perspective', 'native', 'front'],
-        issue: 'proportion',
-        instruction:
-          'Confirm the compact composition deliberately gives the face enough visual area for its eye configuration, nasal form, mouth state, and expression without collapsing them into one mark.'
-      }
-    : {
-        id: 'composable-form.face-showcase-separation',
-        facets: ['face'],
-        cameras: ['perspective', 'native', 'front', 'side'],
-        issue: 'focal_detail',
-        instruction:
-          'Confirm adult or hero proportions remain intact while the eye frame, nasal plane, jaw, mouth state, and any open-mouth interior remain separately readable rather than producing an infantile head.'
-      };
+  const trackCheck = authoringTrackPolicy(profile.track).face.reviewCheck;
   return [
     {
       id: 'composable-form.face-native-read',
@@ -176,33 +161,8 @@ const profileFaceChecks = (
 
 const profileTrackChecks = (
   profile: AuthoringProfile
-): readonly AuthoringReviewCheck[] => profile.track === 'compact'
-  ? [{
-      id: 'composable-form.track-compact-integrity',
-      facets: ['silhouette', 'function'],
-      cameras: ['native', 'perspective', 'front', 'side', 'top'],
-      issue: 'proportion',
-      instruction:
-        'Confirm compact proportions are an intentional icon, mascot, chibi, or small-game-piece read while silhouette, middle-form structure, contacts, and defining terminals remain complete; reject low-effort miniaturization.'
-    }]
-  : [
-      {
-        id: 'composable-form.track-showcase-structure',
-        facets: ['silhouette', 'function'],
-        cameras: ['native', 'perspective', 'front', 'side', 'top'],
-        issue: 'proportion',
-        instruction:
-          'Confirm showcase preserves requested or observed proportions and separately reads identity-bearing mass rhythm, roots, joints, contacts, openings, terminal forms, and focal framing instead of inflating one childlike block.'
-      },
-      {
-        id: 'composable-form.track-showcase-material',
-        facets: ['surface-cue', 'function'],
-        cameras: ['native', 'perspective', 'front', 'side'],
-        issue: 'material',
-        instruction:
-          'Confirm reference-defining material regions and terminal surfaces use deliberate role-material boundaries; automatic clusters and noise may enrich those regions but may not invent or replace them.'
-      }
-    ];
+): readonly AuthoringReviewCheck[] =>
+  authoringTrackPolicy(profile.track).reviewChecks;
 
 const appliedProfileChecks = (
   profile: AuthoringProfile,

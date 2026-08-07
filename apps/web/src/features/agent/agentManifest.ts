@@ -52,7 +52,7 @@ export const agentManifest = {
       clip:
         'window.ashfox.inspect({kind:"clip",id:"<clipId>"}) returns paged authoring track summaries. Add trackId to page through exact keys for one track; follow nextCursor and never infer omitted keys.',
       catalog:
-        'Use kind authoring without id for the composable contract, neutral specialists, claims, progress, and recipes. Modules expose structuralRole, qualityStage, partIds, parentSlotIds, spatialRelations, facing, pairId, and contact; structuralQuality, intentCoverage, and faceQuality report gates. Role policies list allowed parts and stages. Recipes never decide commands. Use target for readiness, finding for blockers, and activity for receipts.'
+        'Use kind authoring without id for the composable contract, neutral specialists, claims, progress, and recipes. Modules expose structuralRole, qualityStage, partIds, parentSlotIds, spatialRelations, facing, pairId, and contact; assetQuality nests structure, intent coverage, and conditional face gates. Role policies list allowed parts and stages. Recipes never decide commands. Use target for readiness, finding for blockers, and activity for receipts.'
     },
     run: {
       call:
@@ -100,24 +100,24 @@ export const agentManifest = {
     authority:
       'After intent, inspect {kind:"authoring"} and the project.authoring.configure schema. Configure one composable structural authority from neutral module instances; do not select or invent a named body plan. Cover each evidenceCriterion with criterionId, basis:"observed"|"requested", referenceIds, and rationale. Optional modules require identity, silhouette, articulation, or target-format reason. Specialists add bounded policy and motion, never topology.',
     structuralAuthority:
-      'The v2 authority is an open module graph. Each slot declares structuralRole, qualityStage, partIds, parentSlotIds, spatialRelations, facing, pairId, and contact through the inspected schema. Compose any number of core, axis, articulated, span, focal-frame, and accent instances. Missing or contradictory landmarks block the next gate.',
+      'The authority is an open module graph. Each slot declares structuralRole, qualityStage, partIds, parentSlotIds, spatialRelations, facing, pairId, and contact through the inspected schema. Compose any number of core, axis, articulated, span, focal-frame, and accent instances. Missing or contradictory landmarks block the next gate.',
     tracks: {
       contract:
-        'Tracks are completeness contracts, never low/high quality. showcase is the default and recommended choice whenever intent is ambiguous.',
-      compact:
-        'compact is never cheap or low quality: silhouette and structure are required; only focal is optional. Use it only for explicit cute, chibi, mascot, icon, or small-game-piece proportions. Targets may be shared.',
-      showcase:
-        'Default to showcase for ambiguity, reference fidelity, mature or hero subjects, teeth, claws, open forms, semantic material boundaries, or "high quality". It requires all stages plus exclusive targets.',
+        'Tracks are asset-wide representation contracts, never low/high quality. hero is default; face rules are a conditional part.',
+      essential:
+        'essential deliberately distills the whole asset for explicit cute, chibi, mascot, or icon needs. Silhouette and middle structure remain complete. Targets may be shared; undeclared focal modules are optional.',
+      hero:
+        'hero is for ambiguity, reference fidelity, terminal forms, and semantic material boundaries. It requires all stages, exclusive feature targets, and multi-view material review.',
       coverage:
-        'coverage lists every intent.features.N exactly once with slotIds and materialIds. Targets are explicit geometry, features, or distinct role materials. Automatic noise never counts.'
+        'Map every intent.features.N exactly once with slotIds and materialIds; use geometry, features, or role materials. Automatic noise never counts.'
     },
     face: {
       contract:
-        'Set faceMode explicitly; never infer it from subject names or specialists. A biological face uses full with one focal-frame host and component-exclusive descendant slots plus explicit role materials.',
+        'Set faceMode explicitly; never infer it. A biological face uses full with one focal-frame host, component-exclusive descendant slots, and explicit role materials.',
       tracks:
-        'full compact enlarges the facial read and requires eye, nasal nose|muzzle|beak, and oral mouth. full showcase preserves mature proportions and separates eye, eye-frame orbital|brow, nasal plane, oral form, and jaw; an open mouth also requires mouth-interior.',
+        'full essential requires readable eye, nasal nose|muzzle|beak, and oral mouth. full hero preserves reference proportions with eye-frame orbital|brow, nasal, oral, and jaw; an open mouth requires mouth-interior.',
       review:
-        'At native gameplay size, gaze, mouth state, and expression must read. A lone dot or 1px eye fails; eye glyphs are non-dot and at least 2x2. Keep facial noise subordinate and protect focal contrast. Omit nasal or oral only with current observed/requested species evidence and rationale.'
+        'At native gameplay size, gaze, mouth state, and expression must read. A lone dot or 1px eye fails; eyes are non-dot and at least 2x2. Keep noise subordinate. Nasal or oral omissions need observed/requested species evidence.'
     },
     motifs: {
       core:
@@ -201,7 +201,7 @@ export const agentManifest = {
     {
       stage: 'plan',
       instruction:
-        'Replace intent with subject, forward, grounding, normalized features, and references. Inspect contracts, then call project.authoring.configure v2 with track, faceMode and face contract, exact feature coverage, claims, and modules declaring role, stage, parts, hierarchy, direction, pair, and contact before coordinates.'
+        'Replace intent with subject, forward, grounding, normalized features, and references. Inspect contracts, then call project.authoring.configure with asset-wide track, conditional face contract, exact feature coverage, claims, and modules declaring role, stage, parts, hierarchy, direction, pair, and contact before coordinates.'
     },
     {
       stage: 'model',

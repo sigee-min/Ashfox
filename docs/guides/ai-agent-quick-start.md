@@ -25,10 +25,10 @@ Fetch and follow https://ashfox.io/workbench/agent-manifest.json using a direct 
 ```
 
 The manifest tells the agent how to open ashfox, record reference observations,
-route the request through one archetype and focused specialists, inspect the project, make
-changes, review the viewport, and prepare files. When the agent asks what you
-want to create, answer naturally. Paste the instruction once per working
-session.
+compose a neutral structural module graph with focused specialists, inspect the
+project, make changes, review the viewport, and prepare files. When the agent
+asks what you want to create, answer naturally. Paste the instruction once per
+working session.
 
 ## Describe your first asset
 
@@ -46,11 +46,13 @@ Animation-capable authority profiles bind selected motion specialists to
 canonical clip roles. Name every additional clip you expect. Static export
 targets do not create an empty ceremonial animation clip.
 
-The current archetypes cover compact upright figures, arm-free stalkers,
-quadrupeds, and compact functional constructs. Focused specialists can add one
-grounded role, surface, silhouette, or motion contribution. The agent will
-identify the selected authorities, evidence criteria, and claims before it
-authors coordinates.
+The current composable authority covers creatures, figures, props, vehicles,
+and other assets through neutral `core`, `axis`, `articulated`, `span`,
+`focal-frame`, and `accent` modules. Choose `essential` only when you explicitly
+want an intentionally distilled icon, mascot, chibi subject, or small game
+piece. Choose `hero` for reference fidelity, mature proportions, flagship
+detail, or whenever the request is ambiguous. The selected track governs the
+whole asset; face requirements apply only when a full face is declared.
 
 ## Watch the result
 

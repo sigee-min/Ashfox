@@ -29,18 +29,28 @@ and add calm idle and alert animation clips.
 Avoid starting with a long list of individual cubes. The agent can establish a
 better hierarchy when it understands the final silhouette and motion first.
 
-## Select authoring authorities
+## Select the representation track and structure
 
-For a new agent-authored asset, ashfox selects one broad archetype and focused
-specialists from request and reference provenance before modeling. The
-archetype owns the body slots and every attachment port. Specialists contribute
-role, surface, silhouette, or motion policies without replacing that topology.
-The resulting plan covers parts such as head, torso, paired limbs, body column,
-four-foot stance, functional core, and grounded specialist contributions.
+For a new agent-authored asset, ashfox composes one subject-neutral module graph
+from request and reference provenance before modeling. The graph explicitly
+declares core masses, directed axes, articulated chains, spans, focal frames,
+and silhouette accents together with their parent, pair, direction, and contact
+relations. Focused specialists may add surface, silhouette, grounding, or
+motion policy, but never manufacture body topology.
 
-Ask the agent to report the selected archetype, specialists, and claims when
-the request crosses body plans. If no archetype provides the required body
-plan or attachment ports, the agent must report that the route is unsupported.
+The asset also declares one whole-asset representation track:
+
+- `essential` deliberately distills an icon, mascot, chibi subject, or small
+  game piece while retaining a decisive silhouette, connected middle form,
+  contacts, semantic regions, and every declared identity cue;
+- `hero` preserves reference proportions, secondary mass rhythm,
+  articulation, roots, terminal forms, openings, focal modules, and material
+  boundaries. It is the default for ambiguity and high-fidelity work.
+
+Ask the agent to report the track, structural modules, specialists, evidence
+claims, and explicit feature coverage before modeling. A full face adds a
+conditional facial-read contract, but it never substitutes for whole-asset
+structure or quality.
 
 Every optional slot must justify its geometry through silhouette, articulation,
 recognition, or target-format correctness. Color-only belts, panels, fur patches,

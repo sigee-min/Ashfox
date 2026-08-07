@@ -1,9 +1,9 @@
 # ashfox Docs
 
-ashfox routes a model request through a broad body-plan archetype and focused
-specialists, then turns the grounded semantic plan into an editable low-poly
-asset you can watch, correct, review, and export in the browser. There is
-nothing to install and no account to create.
+ashfox composes a model request through one subject-neutral structural
+authority and focused specialists, then turns the grounded semantic plan into
+an editable low-poly asset you can watch, correct, review, and export in the
+browser. There is nothing to install and no account to create.
 
 Blockbench is optional. The quickest path uses only ashfox and an AI agent with
 browser access.
@@ -23,8 +23,10 @@ Undo to review complete changes.
 
 ## What you can make
 
-- upright figures, arm-free stalkers, quadrupeds, and compact functional
-  constructs through explicit archetypes;
+- creatures, figures, props, vehicles, and other forms through composable
+  structural modules rather than named body-plan archetypes;
+- intentional `essential` assets for distilled small-scale reads and `hero`
+  assets for reference-faithful secondary form and material separation;
 - focused role, surface, silhouette, and motion specialists selected from
   request and reference provenance;
 - pixel textures with consistent UV scale;

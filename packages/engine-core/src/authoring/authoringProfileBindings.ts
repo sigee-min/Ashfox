@@ -81,7 +81,7 @@ export const readAuthoringBindings = (
         addIssue(
           issues,
           path,
-          'Attachment binding must use the closed v2 shape.',
+          'Attachment binding must use the closed contract shape.',
           '{type,contributionId,portId,hostSlotId,partIds}'
         );
         return;
@@ -120,7 +120,7 @@ export const readAuthoringBindings = (
         addIssue(
           issues,
           path,
-          'Motion binding must use the closed v2 shape.',
+          'Motion binding must use the closed contract shape.',
           '{type,specialist,clipId,role}'
         );
         return;
@@ -135,7 +135,7 @@ export const readAuthoringBindings = (
           issues,
           `${path}.specialist`,
           `Motion specialist "${specialist.id}" is not selected.`,
-          'an explicit v2 selected specialist reference'
+          'an explicit registered selected-specialist reference'
         );
       }
       const clipValid = isNonEmptyContractText(entry.clipId) &&

@@ -9,6 +9,7 @@ import type {
 } from './authoringPlanTypes';
 import { uniqueSortedAuthoringValues } from './authoringCollections';
 import { authoringPlanIssue } from './authoringIssueFactories';
+import { authoringTrackPolicy } from './authoringTrackPolicies';
 import {
   AUTHORING_QUALITY_STAGES,
   type AuthoringProfile,
@@ -70,6 +71,7 @@ export const evaluateIntentCoverage = (
   parts: readonly PartSpec[],
   materials: readonly PartMaterialDefinition[]
 ): IntentCoverageEvaluation => {
+  const policy = authoringTrackPolicy(profile.track);
   const archetypeSlots = slots.filter(
     (slot) => slot.authorityType === 'archetype'
   );
@@ -136,9 +138,9 @@ export const evaluateIntentCoverage = (
         {
           authority: profile.archetype,
           partIds: uniqueSortedAuthoringValues(
-          coverage.slotIds.flatMap((slotId) =>
-            slotsById.get(slotId)?.partIds ?? []
-          )
+            coverage.slotIds.flatMap((slotId) =>
+              slotsById.get(slotId)?.partIds ?? []
+            )
           )
         }
       ));
@@ -163,9 +165,7 @@ export const evaluateIntentCoverage = (
     const completeSlotIds = stageSlots
       .filter((slot) => slot.state === 'complete')
       .map((slot) => slot.slotId);
-    const required =
-      profile.track === 'showcase' ||
-      stage !== 'focal' ||
+    const required = policy.requiredQualityStages.includes(stage) ||
       stageSlots.length > 0;
     return {
       stage,
@@ -179,11 +179,9 @@ export const evaluateIntentCoverage = (
   for (const stage of stages) {
     if (stage.ready) continue;
     issues.push(authoringPlanIssue(
-      profile.track === 'showcase'
-        ? 'authoring.plan.showcase_stage_incomplete'
-        : 'authoring.plan.compact_stage_incomplete',
+      'authoring.plan.track_stage_incomplete',
       `authoringProfile.track.${stage.stage}`,
-      `${profile.track === 'showcase' ? 'Showcase' : 'Compact'} track ` +
+      `${policy.label} track ` +
         `has no complete ${stage.stage} realization.`,
       `at least one complete ${stage.stage} slot`,
       { authority: profile.archetype }

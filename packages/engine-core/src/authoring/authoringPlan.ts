@@ -5,11 +5,11 @@ import type {
 } from '../model';
 import type { PartSpec } from '../modeling/partContract';
 import { readPartRecipe } from '../modeling/partRecipe';
-import { evaluateAuthoringCompatibility } from './compatibilityEvaluator';
 import {
-  evaluateFaceQuality,
-  type FaceQualityEvaluation
-} from './faceQuality';
+  evaluateAssetQuality,
+  type AssetQualityEvaluation
+} from './assetQuality';
+import { evaluateAuthoringCompatibility } from './compatibilityEvaluator';
 import { readAuthoringProfile } from './authoringProfile';
 import { AUTHORING_PROFILE_LIMITS } from './authoringEvidence';
 import { authoringPlanIssue } from './authoringIssueFactories';
@@ -20,18 +20,10 @@ import type {
   AuthoringSlotStatus
 } from './authoringPlanTypes';
 import {
-  evaluateIntentCoverage,
-  type IntentCoverageEvaluation
-} from './intentCoverage';
-import {
   resolveArchetypeReference,
   resolveSpecialistReference
 } from './authoringRegistry';
 import { authoringRoutingMatches } from './authoringRouting';
-import {
-  evaluateStructuralQuality,
-  type StructuralQualityEvaluation
-} from './structuralQuality';
 import type {
   AuthoringCompatibilityResult,
   AuthoringProfile,
@@ -52,9 +44,7 @@ export interface AuthoringPlanEvaluation {
   routingAligned: boolean;
   compatibility: AuthoringCompatibilityResult;
   slots: readonly AuthoringSlotStatus[];
-  structuralQuality: StructuralQualityEvaluation | null;
-  intentCoverage: IntentCoverageEvaluation | null;
-  faceQuality: FaceQualityEvaluation | null;
+  assetQuality: AssetQualityEvaluation | null;
   incompleteSlotIds: readonly string[];
   unassignedPartIds: readonly string[];
   issues: readonly AuthoringPlanIssue[];
@@ -362,16 +352,14 @@ export const evaluateAuthoringPlan = (
       routingAligned: false,
       compatibility: emptyCompatibility,
       slots: [],
-      structuralQuality: null,
-      intentCoverage: null,
-      faceQuality: null,
+      assetQuality: null,
       incompleteSlotIds: [],
       unassignedPartIds: [],
       issues: [authoringPlanIssue(
         'authoring.plan.profile_invalid',
         'authoringProfile',
         read.issues[0]?.message ?? 'Authoring profile is invalid.',
-        read.issues[0]?.expected ?? 'a canonical v2 authoring profile'
+        read.issues[0]?.expected ?? 'a canonical authoring profile'
       )],
       ready: false
     };
@@ -384,9 +372,7 @@ export const evaluateAuthoringPlan = (
       routingAligned: false,
       compatibility: emptyCompatibility,
       slots: [],
-      structuralQuality: null,
-      intentCoverage: null,
-      faceQuality: null,
+      assetQuality: null,
       incompleteSlotIds: [],
       unassignedPartIds: [],
       issues: [authoringPlanIssue(
@@ -426,16 +412,9 @@ export const evaluateAuthoringPlan = (
       hasRecipe
     )
   );
-  const structuralQuality = evaluateStructuralQuality(slots);
-  const intentCoverage = evaluateIntentCoverage(
-    profile,
-    document.intent,
-    slots,
-    parts,
-    materials
-  );
-  const faceQuality = evaluateFaceQuality(
+  const assetQuality = evaluateAssetQuality(
     document,
+    document.intent,
     profile,
     slots,
     parts,
@@ -502,9 +481,9 @@ export const evaluateAuthoringPlan = (
       ));
     }
   }
-  issues.push(...structuralQuality.issues);
-  issues.push(...intentCoverage.issues);
-  issues.push(...faceQuality.issues);
+  issues.push(...assetQuality.structuralQuality.issues);
+  issues.push(...assetQuality.intentCoverage.issues);
+  issues.push(...assetQuality.faceQuality.issues);
   if (unassignedPartIds.length > 0) {
     issues.push(authoringPlanIssue(
       'authoring.plan.part_unassigned',
@@ -525,18 +504,14 @@ export const evaluateAuthoringPlan = (
     routingAligned,
     compatibility,
     slots,
-    structuralQuality,
-    intentCoverage,
-    faceQuality,
+    assetQuality,
     incompleteSlotIds,
     unassignedPartIds,
     issues,
     ready:
       routingAligned &&
       compatibility.compatible &&
-      structuralQuality.ready &&
-      intentCoverage.ready &&
-      faceQuality.ready &&
+      assetQuality.ready &&
       hasRecipe &&
       issues.length === 0
   };

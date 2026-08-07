@@ -128,7 +128,7 @@ export type AuthoringQualityStage =
 export const AUTHORING_CONTACTS = ['grounded', 'free'] as const;
 export type AuthoringContact = (typeof AUTHORING_CONTACTS)[number];
 
-export const AUTHORING_TRACKS = ['compact', 'showcase'] as const;
+export const AUTHORING_TRACKS = ['essential', 'hero'] as const;
 export type AuthoringTrack = (typeof AUTHORING_TRACKS)[number];
 
 export const AUTHORING_FACE_MODES = ['none', 'full'] as const;

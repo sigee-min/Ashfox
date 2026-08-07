@@ -86,7 +86,7 @@ const canonicalIdSchema: CommandInputSchema = {
 const inputSchema: CommandInputSchema = {
   type: 'object',
   description:
-    'Configure the explicit v2 composable-form authority, quality track, optional audited full-face contract, structural module graph, intent-feature coverage, topology-free specialists, grounded claims, and closed bindings.',
+    'Configure the explicit composable-form authority, asset-wide quality track, optional audited full-face contract, structural module graph, intent-feature coverage, topology-free specialists, grounded claims, and closed bindings.',
   properties: {
     archetype: archetypeReferenceSchema,
     track: { enum: AUTHORING_TRACKS },
@@ -374,7 +374,7 @@ export const configureAuthoringCommand = defineCommand({
   name: 'project.authoring.configure',
   label: 'Configure authoring authorities',
   purpose:
-    'Persist the v2 composable authority, quality track, explicit face mode, structural graph, verified intent coverage, and topology-free specialist plan.',
+    'Persist the composable authority, asset-wide quality track, explicit face mode, structural graph, verified intent coverage, and topology-free specialist plan.',
   inputSchema,
   apply: (document, payload) => {
     const normalized = createAuthoringProfile(document, payload);

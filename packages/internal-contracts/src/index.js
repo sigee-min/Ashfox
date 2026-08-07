@@ -6,7 +6,7 @@
  */
 const INTERNAL_CONTRACT_VERSIONS = Object.freeze({
   projectDocument: 1,
-  authoringProfile: 2,
+  authoringProfile: 1,
   authoringRouting: 1,
   commandReceipt: 1,
   exportBundle: 1,

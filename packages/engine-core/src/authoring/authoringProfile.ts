@@ -254,7 +254,7 @@ export const normalizeAuthoringProfile = (
   ) {
     return failure(
       'authoringProfile',
-      'Authoring profile must use the closed v2 shape.',
+      'Authoring profile must use the closed contract shape.',
       '{schemaVersion,archetype,track,faceMode,face,specialists,claims,routing,' +
         'slots,coverage,bindings}'
     );
@@ -270,7 +270,7 @@ export const normalizeAuthoringProfile = (
       issues,
       'schemaVersion',
       'Authoring profile version is missing or unsupported.',
-      'explicit schemaVersion 2'
+      'explicit schemaVersion 1'
     );
   }
   const profile = normalizeProfileRecord(value, context, issues);
@@ -296,7 +296,7 @@ export const createAuthoringProfile = (
   ) {
     return failure(
       'authoringProfile',
-      'Authoring selection must use the closed v2 shape.',
+      'Authoring selection must use the closed contract shape.',
       '{archetype,track,faceMode,face,specialists,claims,slots,coverage,bindings}'
     );
   }
@@ -340,7 +340,7 @@ export const readAuthoringProfile = (
   ) {
     return failure(
       'authoringProfile',
-      'Stored authoring profile is not in canonical v2 form.',
+      'Stored authoring profile is not in canonical contract form.',
       'replace it through project.authoring.configure'
     );
   }

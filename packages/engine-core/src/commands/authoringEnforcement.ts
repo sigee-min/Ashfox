@@ -218,7 +218,7 @@ export const validateAgentAuthoringResult = (
       invalid.instruction
     );
   }
-  const qualityIssue = evaluation.structuralQuality?.issues[0];
+  const qualityIssue = evaluation.assetQuality?.structuralQuality.issues[0];
   return qualityIssue
     ? enforcementIssue(
         qualityIssue.message,

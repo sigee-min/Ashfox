@@ -35,10 +35,8 @@ const productionCode = (
       return 'production.authoring_quality_stage_invalid';
     case 'authoring.plan.intent_coverage_incomplete':
       return 'production.authoring_intent_coverage_incomplete';
-    case 'authoring.plan.compact_stage_incomplete':
-      return 'production.authoring_compact_stage_incomplete';
-    case 'authoring.plan.showcase_stage_incomplete':
-      return 'production.authoring_showcase_stage_incomplete';
+    case 'authoring.plan.track_stage_incomplete':
+      return 'production.authoring_track_stage_incomplete';
     case 'authoring.plan.face_host_incomplete':
       return 'production.authoring_face_host_incomplete';
     case 'authoring.plan.face_component_incomplete':

@@ -14,6 +14,7 @@ import {
   type AuthoringProfileIssue
 } from './authoringEvidence';
 import { AUTHORING_PART_ID_PATTERN } from './authoringProfilePrimitives';
+import { authoringTrackPolicy } from './authoringTrackPolicies';
 import {
   AUTHORING_EYE_CONFIGURATIONS,
   AUTHORING_FACE_COMPONENTS,
@@ -135,7 +136,7 @@ const readComponents = (
       addIssue(
         issues,
         path,
-        'Face component must use the closed v2 shape.',
+        'Face component must use the closed contract shape.',
         '{component,form,configuration,slotIds,materialIds}'
       );
       return;
@@ -260,7 +261,7 @@ const readExceptions = (
       addIssue(
         issues,
         path,
-        'Species exception must use the closed v2 shape.',
+        'Species exception must use the closed contract shape.',
         '{component,basis,referenceIds,rationale}'
       );
       return;
@@ -361,20 +362,23 @@ const validateFaceDeclarations = (
     components.some((entry) => entry.component === component);
   const excepted = (component: 'nasal' | 'oral'): boolean =>
     exceptions.some((entry) => entry.component === component);
-  if (!has('eye')) {
+  const policy = track === null ? null : authoringTrackPolicy(track);
+  for (const component of policy?.face.requiredComponents ?? []) {
+    const satisfied = has(component) ||
+      (component === 'nasal' && excepted('nasal')) ||
+      (component === 'oral' && excepted('oral'));
+    if (satisfied) continue;
     addIssue(
       issues,
       'face.components',
-      'Full face requires an eye component.',
-      'one readable configured eye component'
-    );
-  }
-  if (!has('nasal') && !excepted('nasal')) {
-    addIssue(
-      issues,
-      'face.components',
-      'Full face requires a nasal form or species exception.',
-      'nose, muzzle, beak, or nasal exception'
+      `${policy?.label ?? 'Selected'} full face requires a ${component} component.`,
+      component === 'eye'
+        ? 'one readable configured eye component'
+        : component === 'nasal'
+          ? 'nose, muzzle, beak, or nasal species exception'
+          : component === 'oral'
+            ? 'mouth, jaw, beak, or oral species exception'
+            : `one exclusive ${component} component`
     );
   }
   if (mouthState === 'absent') {
@@ -413,28 +417,27 @@ const validateFaceDeclarations = (
       );
     }
   }
-  if (track !== 'showcase') return;
-  if (!has('eye-frame')) {
+  if (
+    policy?.face.requireJawWhenMouthPresent &&
+    mouthState !== 'absent' &&
+    !has('jaw')
+  ) {
     addIssue(
       issues,
       'face.components',
-      'Showcase full face requires an eye frame.',
-      'one orbital or brow component'
-    );
-  }
-  if (mouthState !== 'absent' && !has('jaw')) {
-    addIssue(
-      issues,
-      'face.components',
-      'Showcase full face requires a separate jaw.',
+      `${policy.label} full face requires a separate jaw.`,
       'one jaw component'
     );
   }
-  if (mouthState === 'open' && !has('mouth-interior')) {
+  if (
+    policy?.face.requireInteriorWhenMouthOpen &&
+    mouthState === 'open' &&
+    !has('mouth-interior')
+  ) {
     addIssue(
       issues,
       'face.components',
-      'Open showcase face requires a separate mouth interior.',
+      `Open ${policy.label} face requires a separate mouth interior.`,
       'one mouth-interior component'
     );
   }
@@ -475,7 +478,7 @@ export const readAuthoringFace = (
     addIssue(
       issues,
       'face',
-      'Full face must use the closed v2 face contract.',
+      'Full face must use the closed face contract.',
       '{hostSlotId,mouthState,components,exceptions}'
     );
     return null;

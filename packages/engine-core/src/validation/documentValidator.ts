@@ -68,7 +68,7 @@ const validateAuthoringProfile = (
           ? issue.path
           : `authoringProfile.${issue.path}`,
       fix:
-        'Replace the profile through project.authoring.configure using the current explicit v2 module-graph contract.'
+        'Replace the profile through project.authoring.configure using the current explicit module-graph contract.'
     });
   }
 };

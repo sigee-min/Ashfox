@@ -11,7 +11,7 @@ import { parseInspectRequest } from '../src/features/agent/parseInspectRequest';
 import {
   authoringSelectionFor,
   createAuthoringProject,
-  createCompactFullFaceProject
+  createEssentialFullFaceProject
 } from './fixtures/authoringProject';
 
 const empty = createProjectFromInput(
@@ -340,8 +340,8 @@ if (command.ok) {
   assert.match(schema, /pairId/);
   assert.match(schema, /contact/);
   assert.match(schema, /track/);
-  assert.match(schema, /compact/);
-  assert.match(schema, /showcase/);
+  assert.match(schema, /essential/);
+  assert.match(schema, /hero/);
   assert.match(schema, /coverage/);
   assert.match(schema, /featureRef/);
   assert.match(schema, /materialIds/);
@@ -371,34 +371,24 @@ if (configuredOverview.ok) {
       authoring: {
         track: string;
         faceMode: string;
-        structuralQuality: {
+        assetQuality: {
           activeStage: string;
           ready: boolean;
-        };
-        intentCoverage: {
-          ready: boolean;
+          incompleteDimensions: readonly string[];
           incompleteFeatureCount: number;
-        };
-        faceQuality: {
-          mode: string;
-          ready: boolean;
+          faceReady: boolean;
         };
       };
     };
   }).project.authoring;
-  assert.equal(authoring.track, 'showcase');
+  assert.equal(authoring.track, 'hero');
   assert.equal(authoring.faceMode, 'none');
-  assert.deepEqual(authoring.structuralQuality, {
+  assert.deepEqual(authoring.assetQuality, {
     activeStage: 'complete',
-    ready: true
-  });
-  assert.deepEqual(authoring.intentCoverage, {
     ready: true,
-    incompleteFeatureCount: 0
-  });
-  assert.deepEqual(authoring.faceQuality, {
-    mode: 'none',
-    ready: true
+    incompleteDimensions: [],
+    incompleteFeatureCount: 0,
+    faceReady: true
   });
 }
 const configuredInspect = inspectProject(
@@ -426,41 +416,49 @@ if (configuredInspect.ok) {
       compatibility: { compatible: boolean };
       plan: {
         ready: boolean;
-        structuralQuality: {
+        assetQuality: {
+          track: string;
           activeStage: string;
           ready: boolean;
-          gates: readonly {
-            stage: string;
+          dimensions: readonly {
+            dimension: string;
             state: string;
-            structuralRoles: readonly string[];
           }[];
-        };
-        intentCoverage: {
-          track: string;
-          ready: boolean;
-          featureCount: number;
-          incompleteFeatureCount: number;
-          features: readonly {
-            featureRef: string;
-            state: string;
-            slotIds: readonly string[];
-            materialIds: readonly string[];
-            realizedAspects: readonly string[];
-          }[];
-          truncatedFeatureCount: number;
-          stages: readonly {
-            stage: string;
+          structuralQuality: {
+            activeStage: string;
             ready: boolean;
-            slotCount: number;
-            completeSlotCount: number;
-          }[];
-        };
-        faceQuality: {
-          mode: string;
-          ready: boolean;
-          incompleteComponentCount: number;
-          components: readonly unknown[];
-          exceptions: readonly unknown[];
+            gates: readonly {
+              stage: string;
+              state: string;
+              structuralRoles: readonly string[];
+            }[];
+          };
+          intentCoverage: {
+            ready: boolean;
+            featureCount: number;
+            incompleteFeatureCount: number;
+            features: readonly {
+              featureRef: string;
+              state: string;
+              slotIds: readonly string[];
+              materialIds: readonly string[];
+              realizedAspects: readonly string[];
+            }[];
+            truncatedFeatureCount: number;
+            stages: readonly {
+              stage: string;
+              ready: boolean;
+              slotCount: number;
+              completeSlotCount: number;
+            }[];
+          };
+          faceQuality: {
+            mode: string;
+            ready: boolean;
+            incompleteComponentCount: number;
+            components: readonly unknown[];
+            exceptions: readonly unknown[];
+          };
         };
         slots: readonly {
           structuralRole: string | null;
@@ -478,7 +476,7 @@ if (configuredInspect.ok) {
   assert.equal('routing' in authority.profile, false);
   assert.equal('slots' in authority.profile, false);
   assert.equal('bindings' in authority.profile, false);
-  assert.equal(authority.profile.track, 'showcase');
+  assert.equal(authority.profile.track, 'hero');
   assert.equal(authority.profile.faceMode, 'none');
   assert.equal(authority.profile.face, null);
   assert.equal(authority.profile.structuralModuleCount, 7);
@@ -487,7 +485,7 @@ if (configuredInspect.ok) {
     [...new Set(authority.evidence.map((claim) => claim.basis))].sort(),
     ['observed', 'requested']
   );
-  assert.deepEqual(authority.plan.faceQuality, {
+  assert.deepEqual(authority.plan.assetQuality.faceQuality, {
     mode: 'none',
     hostSlotId: null,
     mouthState: null,
@@ -504,19 +502,32 @@ if (configuredInspect.ok) {
   );
   assert.equal(authority.compatibility.compatible, true);
   assert.equal(authority.plan.ready, true);
-  assert.equal(authority.plan.structuralQuality.activeStage, 'complete');
-  assert.equal(authority.plan.structuralQuality.ready, true);
+  assert.equal(authority.plan.assetQuality.track, 'hero');
+  assert.equal(authority.plan.assetQuality.activeStage, 'complete');
+  assert.equal(authority.plan.assetQuality.ready, true);
+  assert.equal(
+    authority.plan.assetQuality.structuralQuality.activeStage,
+    'complete'
+  );
+  assert.equal(authority.plan.assetQuality.structuralQuality.ready, true);
   assert.deepEqual(
-    authority.plan.structuralQuality.gates.map((gate) => gate.stage),
+    authority.plan.assetQuality.structuralQuality.gates.map(
+      (gate) => gate.stage
+    ),
     ['silhouette', 'structure', 'focal']
   );
-  assert.equal(authority.plan.intentCoverage.track, 'showcase');
-  assert.equal(authority.plan.intentCoverage.ready, true);
-  assert.equal(authority.plan.intentCoverage.featureCount, 3);
-  assert.equal(authority.plan.intentCoverage.incompleteFeatureCount, 0);
-  assert.equal(authority.plan.intentCoverage.truncatedFeatureCount, 0);
+  assert.equal(authority.plan.assetQuality.intentCoverage.ready, true);
+  assert.equal(authority.plan.assetQuality.intentCoverage.featureCount, 3);
+  assert.equal(
+    authority.plan.assetQuality.intentCoverage.incompleteFeatureCount,
+    0
+  );
+  assert.equal(
+    authority.plan.assetQuality.intentCoverage.truncatedFeatureCount,
+    0
+  );
   assert.deepEqual(
-    authority.plan.intentCoverage.features.map((feature) => ({
+    authority.plan.assetQuality.intentCoverage.features.map((feature) => ({
       featureRef: feature.featureRef,
       state: feature.state
     })),
@@ -527,7 +538,7 @@ if (configuredInspect.ok) {
     ]
   );
   assert.deepEqual(
-    authority.plan.intentCoverage.stages.map((stage) => ({
+    authority.plan.assetQuality.intentCoverage.stages.map((stage) => ({
       stage: stage.stage,
       ready: stage.ready
     })),
@@ -552,47 +563,56 @@ if (configuredInspect.ok) {
   );
 }
 
-const compactFullFace = createCompactFullFaceProject();
-const compactFullFaceOverview = inspectProject(
-  compactFullFace,
+const essentialFullFace = createEssentialFullFaceProject();
+const essentialFullFaceOverview = inspectProject(
+  essentialFullFace,
   null,
-  validateProjectDocument(compactFullFace)
+  validateProjectDocument(essentialFullFace)
 );
-assert.equal(compactFullFaceOverview.ok, true);
+assert.equal(essentialFullFaceOverview.ok, true);
 assert.ok(
-  Buffer.byteLength(JSON.stringify(compactFullFaceOverview)) <= 2_048,
+  Buffer.byteLength(JSON.stringify(essentialFullFaceOverview)) <= 2_048,
   'full-face status must remain visible in bounded overview inspect'
 );
-if (compactFullFaceOverview.ok) {
-  const authoring = (compactFullFaceOverview.data as {
+if (essentialFullFaceOverview.ok) {
+  const authoring = (essentialFullFaceOverview.data as {
     project: {
       authoring: {
         track: string;
         faceMode: string;
-        faceQuality: { mode: string; ready: boolean };
+        assetQuality: {
+          activeStage: string;
+          ready: boolean;
+          incompleteDimensions: readonly string[];
+          incompleteFeatureCount: number;
+          faceReady: boolean;
+        };
       };
     };
   }).project.authoring;
-  assert.equal(authoring.track, 'compact');
+  assert.equal(authoring.track, 'essential');
   assert.equal(authoring.faceMode, 'full');
-  assert.deepEqual(authoring.faceQuality, {
-    mode: 'full',
+  assert.deepEqual(authoring.assetQuality, {
+    activeStage: 'complete',
+    incompleteDimensions: [],
+    incompleteFeatureCount: 0,
+    faceReady: true,
     ready: true
   });
 }
-const compactFullFaceInspect = inspectProject(
-  compactFullFace,
+const essentialFullFaceInspect = inspectProject(
+  essentialFullFace,
   null,
-  validateProjectDocument(compactFullFace),
+  validateProjectDocument(essentialFullFace),
   { kind: 'authoring' }
 );
-assert.equal(compactFullFaceInspect.ok, true);
+assert.equal(essentialFullFaceInspect.ok, true);
 assert.ok(
-  Buffer.byteLength(JSON.stringify(compactFullFaceInspect)) <= 16_384,
+  Buffer.byteLength(JSON.stringify(essentialFullFaceInspect)) <= 16_384,
   'a complete explicit full-face plan must fit detail inspect'
 );
-if (compactFullFaceInspect.ok) {
-  const authority = (compactFullFaceInspect.data as {
+if (essentialFullFaceInspect.ok) {
+  const authority = (essentialFullFaceInspect.data as {
     authority: {
       profile: {
         track: string;
@@ -610,27 +630,31 @@ if (compactFullFaceInspect.ok) {
       };
       plan: {
         ready: boolean;
-        faceQuality: {
-          mode: string;
-          hostSlotId: string;
-          mouthState: string;
-          hostReady: boolean;
+        assetQuality: {
+          track: string;
           ready: boolean;
-          incompleteComponentCount: number;
-          components: readonly {
-            component: string;
-            form: string;
-            state: string;
-            slotIds: readonly string[];
-            materialIds: readonly string[];
-            readableEyePartIds?: readonly string[];
-          }[];
-          exceptions: readonly unknown[];
+          faceQuality: {
+            mode: string;
+            hostSlotId: string;
+            mouthState: string;
+            hostReady: boolean;
+            ready: boolean;
+            incompleteComponentCount: number;
+            components: readonly {
+              component: string;
+              form: string;
+              state: string;
+              slotIds: readonly string[];
+              materialIds: readonly string[];
+              readableEyePartIds?: readonly string[];
+            }[];
+            exceptions: readonly unknown[];
+          };
         };
       };
     };
   }).authority;
-  assert.equal(authority.profile.track, 'compact');
+  assert.equal(authority.profile.track, 'essential');
   assert.equal(authority.profile.faceMode, 'full');
   assert.equal(authority.profile.face.hostSlotId, 'focal.host');
   assert.equal(authority.profile.face.mouthState, 'closed');
@@ -648,14 +672,17 @@ if (compactFullFaceInspect.ok) {
   );
   assert.equal(authority.profile.face.exceptionCount, 0);
   assert.equal(authority.plan.ready, true);
-  assert.equal(authority.plan.faceQuality.mode, 'full');
-  assert.equal(authority.plan.faceQuality.hostSlotId, 'focal.host');
-  assert.equal(authority.plan.faceQuality.mouthState, 'closed');
-  assert.equal(authority.plan.faceQuality.hostReady, true);
-  assert.equal(authority.plan.faceQuality.ready, true);
-  assert.equal(authority.plan.faceQuality.incompleteComponentCount, 0);
+  assert.equal(authority.plan.assetQuality.track, 'essential');
+  assert.equal(authority.plan.assetQuality.ready, true);
+  const faceQuality = authority.plan.assetQuality.faceQuality;
+  assert.equal(faceQuality.mode, 'full');
+  assert.equal(faceQuality.hostSlotId, 'focal.host');
+  assert.equal(faceQuality.mouthState, 'closed');
+  assert.equal(faceQuality.hostReady, true);
+  assert.equal(faceQuality.ready, true);
+  assert.equal(faceQuality.incompleteComponentCount, 0);
   assert.deepEqual(
-    authority.plan.faceQuality.components.map((component) => [
+    faceQuality.components.map((component) => [
       component.component,
       component.form,
       component.state
@@ -667,7 +694,7 @@ if (compactFullFaceInspect.ok) {
     ]
   );
   assert.deepEqual(
-    authority.plan.faceQuality.components.find(
+    faceQuality.components.find(
       (component) => component.component === 'eye'
     )?.readableEyePartIds,
     ['face_eye']
@@ -675,11 +702,11 @@ if (compactFullFaceInspect.ok) {
 }
 
 const collapsedFullFaceEye = executeAgentCommandBatch(
-  compactFullFace,
+  essentialFullFace,
   {
     batchId: 'web-authoring-collapse-full-face-eye',
-    baseProjectId: compactFullFace.id,
-    baseRevision: compactFullFace.revision,
+    baseProjectId: essentialFullFace.id,
+    baseRevision: essentialFullFace.revision,
     operations: [{
       name: 'model.parts.upsert',
       payload: {
@@ -708,18 +735,20 @@ if (collapsedFullFaceInspect.ok) {
   const faceQuality = (collapsedFullFaceInspect.data as {
     authority: {
       plan: {
-        faceQuality: {
-          ready: boolean;
-          incompleteComponentCount: number;
-          components: readonly {
-            component: string;
-            state: string;
-            readableEyePartIds?: readonly string[];
-          }[];
+        assetQuality: {
+          faceQuality: {
+            ready: boolean;
+            incompleteComponentCount: number;
+            components: readonly {
+              component: string;
+              state: string;
+              readableEyePartIds?: readonly string[];
+            }[];
+          };
         };
       };
     };
-  }).authority.plan.faceQuality;
+  }).authority.plan.assetQuality.faceQuality;
   assert.equal(faceQuality.ready, false);
   assert.equal(faceQuality.incompleteComponentCount, 1);
   const eye = faceQuality.components.find(
@@ -799,81 +828,84 @@ if (expandedInspect.ok) {
   );
 }
 
-const compactFeatures = Array.from(
+const essentialFeatures = Array.from(
   { length: 32 },
-  (_, index) => `Compact semantic cue ${index}`
+  (_, index) => `Essential semantic cue ${index}`
 );
-const compactCoverage = compactFeatures.map((_, index) => ({
+const essentialCoverage = essentialFeatures.map((_, index) => ({
   featureRef: `intent.features.${index}`,
   slotIds: ['body.torso'],
   materialIds: []
 }));
-const compactConfigured = executeAgentCommandBatch(
+const essentialConfigured = executeAgentCommandBatch(
   configured,
   {
-    batchId: 'web-authoring-compact-coverage',
+    batchId: 'web-authoring-essential-coverage',
     baseProjectId: configured.id,
     baseRevision: configured.revision,
     operations: [{
       name: 'project.intent.set',
       payload: {
-        subject: configured.intent?.subject ?? 'Compact semantic asset',
+        subject: configured.intent?.subject ?? 'Essential semantic asset',
         forward: configured.intent?.forward ?? 'north',
         grounding: configured.intent?.grounding ?? 'free',
-        features: compactFeatures,
+        features: essentialFeatures,
         references: configured.intent?.references ?? []
       }
     }, {
       name: 'project.authoring.configure',
       payload: {
         ...baseSelection,
-        track: 'compact',
-        coverage: compactCoverage
+        track: 'essential',
+        coverage: essentialCoverage
       }
     }]
   }
 );
-assert.equal(compactConfigured.ok, true);
-if (!compactConfigured.ok) {
-  throw new Error(compactConfigured.error.message);
+assert.equal(essentialConfigured.ok, true);
+if (!essentialConfigured.ok) {
+  throw new Error(essentialConfigured.error.message);
 }
-const compactInspect = inspectProject(
-  compactConfigured.document,
+const essentialInspect = inspectProject(
+  essentialConfigured.document,
   null,
-  validateProjectDocument(compactConfigured.document),
+  validateProjectDocument(essentialConfigured.document),
   { kind: 'authoring' }
 );
-assert.equal(compactInspect.ok, true);
+assert.equal(essentialInspect.ok, true);
 assert.ok(
-  Buffer.byteLength(JSON.stringify(compactInspect)) <= 16_384,
+  Buffer.byteLength(JSON.stringify(essentialInspect)) <= 16_384,
   'the maximum 32-feature coverage plan must fit detail inspect'
 );
-if (compactInspect.ok) {
-  const authority = (compactInspect.data as {
+if (essentialInspect.ok) {
+  const authority = (essentialInspect.data as {
     authority: {
       profile: { track: string; coverageCount: number };
       plan: {
-        intentCoverage: {
+        assetQuality: {
           track: string;
-          ready: boolean;
-          featureCount: number;
-          incompleteFeatureCount: number;
-          features: readonly { state: string }[];
-          truncatedFeatureCount: number;
+          intentCoverage: {
+            ready: boolean;
+            featureCount: number;
+            incompleteFeatureCount: number;
+            features: readonly { state: string }[];
+            truncatedFeatureCount: number;
+          };
         };
       };
     };
   }).authority;
-  assert.equal(authority.profile.track, 'compact');
+  assert.equal(authority.profile.track, 'essential');
   assert.equal(authority.profile.coverageCount, 32);
-  assert.equal(authority.plan.intentCoverage.track, 'compact');
-  assert.equal(authority.plan.intentCoverage.ready, true);
-  assert.equal(authority.plan.intentCoverage.featureCount, 32);
-  assert.equal(authority.plan.intentCoverage.incompleteFeatureCount, 0);
-  assert.equal(authority.plan.intentCoverage.features.length, 12);
-  assert.equal(authority.plan.intentCoverage.truncatedFeatureCount, 20);
+  assert.equal(authority.plan.assetQuality.track, 'essential');
+  const coverage = authority.plan.assetQuality.intentCoverage;
+  assert.equal(coverage.ready, true);
+  assert.equal(coverage.featureCount, 32);
+  assert.equal(coverage.incompleteFeatureCount, 0);
+  assert.equal(coverage.features.length, 12);
+  assert.equal(coverage.truncatedFeatureCount, 20);
   assert.ok(
-    authority.plan.intentCoverage.features.every(
+    coverage.features.every(
       (feature) => feature.state === 'complete'
     )
   );

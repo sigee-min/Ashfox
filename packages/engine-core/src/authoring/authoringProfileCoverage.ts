@@ -13,8 +13,8 @@ import {
   type AuthoringProfileIssue
 } from './authoringEvidence';
 import { AUTHORING_PART_ID_PATTERN } from './authoringProfilePrimitives';
+import { authoringTrackPolicy } from './authoringTrackPolicies';
 import {
-  AUTHORING_QUALITY_STAGES,
   type AuthoringFeatureCoverage,
   type AuthoringSlotAssignment,
   type AuthoringTrack
@@ -29,28 +29,19 @@ const validateTrackCoverage = (
   coverage: readonly AuthoringFeatureCoverage[],
   issues: AuthoringProfileIssue[]
 ): void => {
-  if (
-    track === 'compact' &&
-    !slots.some((slot) => slot.qualityStage === 'structure')
-  ) {
-    addIssue(
-      issues,
-      'track',
-      'Compact track requires a declared structure stage module.',
-      'at least one structure slot in addition to the silhouette root'
-    );
-  }
-  if (track !== 'showcase') return;
-  for (const stage of AUTHORING_QUALITY_STAGES) {
+  if (track === null) return;
+  const policy = authoringTrackPolicy(track);
+  for (const stage of policy.requiredQualityStages) {
     if (!slots.some((slot) => slot.qualityStage === stage)) {
       addIssue(
         issues,
         'track',
-        `Showcase track requires a declared ${stage} stage module.`,
-        'at least one slot in each silhouette, structure, and focal stage'
+        `${policy.label} track requires a declared ${stage} stage module.`,
+        `at least one slot in every required stage: ${policy.requiredQualityStages.join(', ')}`
       );
     }
   }
+  if (!policy.requireExclusiveCoverageTarget) return;
   const targetCounts = new Map<string, number>();
   for (const entry of coverage) {
     for (const target of [
@@ -69,7 +60,7 @@ const validateTrackCoverage = (
       addIssue(
         issues,
         `coverage.${entry.featureRef}`,
-        `Showcase feature "${entry.featureRef}" has no exclusive realization target.`,
+        `${policy.label} feature "${entry.featureRef}" has no exclusive realization target.`,
         'at least one slot or explicit material not claimed by another feature'
       );
     }
@@ -115,7 +106,7 @@ export const readAuthoringCoverage = (
       addIssue(
         issues,
         path,
-        'Coverage entry must use the closed v2 shape.',
+        'Coverage entry must use the closed contract shape.',
         '{featureRef,slotIds,materialIds}'
       );
       return;

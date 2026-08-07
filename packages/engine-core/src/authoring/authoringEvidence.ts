@@ -72,7 +72,7 @@ export const readArchetypeReference = (
     addAuthoringProfileIssue(
       issues,
       path,
-      'Archetype must be a registered explicit v2 reference.',
+      'Archetype must be an explicit registered reference.',
       `{id: registered archetype ID, version: ${AUTHORING_PROFILE_SCHEMA_VERSION}}`
     );
     return null;
@@ -94,7 +94,7 @@ export const readSpecialistReference = (
     addAuthoringProfileIssue(
       issues,
       path,
-      'Specialist must be a registered explicit v2 reference.',
+      'Specialist must be an explicit registered reference.',
       `{id: registered specialist ID, version: ${AUTHORING_PROFILE_SCHEMA_VERSION}}`
     );
     return null;
@@ -114,7 +114,7 @@ export const readSpecialists = (
       issues,
       'specialists',
       'Specialists must be a bounded array.',
-      `0-${AUTHORING_PROFILE_LIMITS.maxSpecialists} explicit v2 references`
+      `0-${AUTHORING_PROFILE_LIMITS.maxSpecialists} explicit registered references`
     );
     return null;
   }
@@ -229,7 +229,7 @@ export const readClaims = (
       addAuthoringProfileIssue(
         issues,
         path,
-        'Claim must use the closed v2 shape.',
+        'Claim must use the closed contract shape.',
         '{authority,criterionId,basis,referenceIds,rationale}'
       );
       return;

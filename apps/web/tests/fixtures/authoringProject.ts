@@ -70,7 +70,7 @@ export const createAuthoringProject = (): ProjectDocument => {
         id: 'archetype.composable-form',
         version: AUTHORING_PROFILE_SCHEMA_VERSION
       },
-      track: 'showcase',
+      track: 'hero',
       faceMode: 'none',
       face: null,
       specialists: [{
@@ -305,14 +305,14 @@ export const createAuthoringProject = (): ProjectDocument => {
   }]);
 };
 
-export const createCompactFullFaceProject = (): ProjectDocument => {
+export const createEssentialFullFaceProject = (): ProjectDocument => {
   const empty = createProjectFromInput(
     {
       id: 'project-authoring-full-face',
-      name: 'Compact full-face contract',
+      name: 'Essential full-face contract',
       target: 'glb',
       namespace: 'ashfox',
-      modelPath: 'compact_full_face_contract',
+      modelPath: 'essential_full_face_contract',
       createdAt: '2026-08-07T00:00:00.000Z'
     },
     'authoring-full-face-0001'
@@ -333,7 +333,7 @@ export const createCompactFullFaceProject = (): ProjectDocument => {
         id: 'archetype.composable-form',
         version: AUTHORING_PROFILE_SCHEMA_VERSION
       },
-      track: 'compact',
+      track: 'essential',
       faceMode: 'full',
       face: {
         hostSlotId: 'focal.host',
@@ -369,7 +369,7 @@ export const createCompactFullFaceProject = (): ProjectDocument => {
         basis: 'requested',
         referenceIds: ['intent.subject'],
         rationale:
-          'The requested small game-piece form needs a readable compact face.'
+          'The requested small game-piece form needs a readable essential face.'
       }],
       slots: [{
         slotId: 'core.primary',

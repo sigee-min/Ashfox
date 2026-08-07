@@ -109,27 +109,22 @@ export const inspectOverview = (
               })),
               compatible: authoringCompatibility?.compatible ?? false,
               ready: authoringPlan.ready,
-              structuralQuality: authoringPlan.structuralQuality === null
+              assetQuality: authoringPlan.assetQuality === null
                 ? null
                 : {
-                    activeStage:
-                      authoringPlan.structuralQuality.activeStage,
-                    ready: authoringPlan.structuralQuality.ready
-                  },
-              intentCoverage: authoringPlan.intentCoverage === null
-                ? null
-                : {
-                    ready: authoringPlan.intentCoverage.ready,
+                    activeStage: authoringPlan.assetQuality.activeStage,
+                    ready: authoringPlan.assetQuality.ready,
+                    incompleteDimensions:
+                      authoringPlan.assetQuality.dimensions.flatMap(
+                        (dimension) => dimension.state === 'incomplete'
+                          ? [dimension.dimension]
+                          : []
+                      ),
                     incompleteFeatureCount:
-                      authoringPlan.intentCoverage.features.filter(
+                      authoringPlan.assetQuality.intentCoverage.features.filter(
                         (feature) => feature.state === 'incomplete'
-                      ).length
-                  },
-              faceQuality: authoringPlan.faceQuality === null
-                ? null
-                : {
-                    mode: authoringPlan.faceQuality.mode,
-                    ready: authoringPlan.faceQuality.ready
+                      ).length,
+                    faceReady: authoringPlan.assetQuality.faceQuality.ready
                   }
             }
           : null,
