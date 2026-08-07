@@ -11,6 +11,9 @@ import type {
   ProjectStateDetail
 } from '../shared';
 import type { MeshUvPolicy } from '../project';
+import type {
+  FillShadeDirection as ContractFillShadeDirection
+} from '../../textureShadeContract';
 
 export type {
   MeshSymmetryAxis,
@@ -45,7 +48,8 @@ export type UvPaintSpec = {
   anchor?: [number, number];
 };
 
-export type FillShadeDirection = 'tl_br' | 'tr_bl' | 'top_bottom' | 'left_right';
+export type FillShadeDirection =
+  ContractFillShadeDirection;
 
 export type FillRectShadeLike =
   | boolean

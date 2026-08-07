@@ -1,10 +1,25 @@
 import assert from 'node:assert/strict';
 
+import {
+  FILL_SHADE_DIRECTIONS
+} from '@ashfox/blockbench-contracts/mcpSchemas/schemas/texture';
 import { applyTextureOps, parseHexColor } from '../src/domain/texturePaint';
-import { isTextureOp } from '../src/domain/textureOps';
+import {
+  isFillShadeDirection,
+  isTextureOp
+} from '../src/domain/textureOps';
 
 const width = 8;
 const height = 8;
+
+assert.deepEqual(FILL_SHADE_DIRECTIONS, [
+  'tl_br',
+  'tr_bl',
+  'top_bottom',
+  'left_right'
+]);
+assert.ok(FILL_SHADE_DIRECTIONS.every(isFillShadeDirection));
+assert.equal(isFillShadeDirection('diagonal'), false);
 
 const collectColors = (data: Uint8ClampedArray): Set<string> => {
   const colors = new Set<string>();

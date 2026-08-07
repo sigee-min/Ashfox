@@ -1,4 +1,7 @@
 import type { JsonSchema } from '../types';
+import { FILL_SHADE_DIRECTIONS } from '../../textureShadeContract';
+
+export { FILL_SHADE_DIRECTIONS };
 
 export const TEXTURE_HEX_COLOR_PATTERN =
   '^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$';
@@ -59,7 +62,7 @@ const fillShadeSchema: JsonSchema = {
         seed: { type: 'number', description: 'Deterministic shading seed.' },
         lightDir: {
           type: 'string',
-          enum: ['tl_br', 'tr_bl', 'top_bottom', 'left_right'],
+          enum: [...FILL_SHADE_DIRECTIONS],
           description: 'Light direction for the directional gradient.'
         }
       }

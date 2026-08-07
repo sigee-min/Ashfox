@@ -3,7 +3,6 @@ export const CONFIG_NON_LOOPBACK_TOKEN_REQUIRED =
   'non-loopback MCP hosts require an explicit authentication token';
 export const CONFIG_PORT_RANGE = 'port must be between 1 and 65535';
 export const CONFIG_PATH_REQUIRED = 'path is required';
-export const CONFIG_PATH_SLASH_REQUIRED = 'path must start with /';
 export const SERVER_HTTP_PERMISSION_MESSAGE = 'ashfox needs HTTP access for the local MCP server.';
 export const SERVER_NET_PERMISSION_MESSAGE = 'ashfox needs network permission to accept MCP connections.';
 export const SERVER_NET_PERMISSION_DETAIL = 'ashfox opens a local server so AI assistants can connect.';
@@ -15,7 +14,6 @@ export const SIDECAR_ENTRY_NOT_FOUND = 'sidecar entry not found; expected ashfox
 export const SIDECAR_EXECPATH_UNAVAILABLE = 'execPath unavailable; sidecar not started';
 export const SIDECAR_STDIO_UNAVAILABLE = 'sidecar stdio unavailable';
 export const SIDECAR_INFLIGHT_LIMIT_REACHED = 'too many in-flight requests';
-export const SIDECAR_TOOL_ERROR = 'sidecar error';
 export const SIDECAR_RUN_AS_NODE_REJECTED = 'sidecar runtime rejected --run-as-node; retry without it';
 
 export const TMP_STORE_UNAVAILABLE = 'Tmp store is not available.';
@@ -84,4 +82,3 @@ export const ADAPTER_PLUGINS_DEVRELOAD_UNAVAILABLE = 'Plugins.devReload not avai
 export const PLUGIN_RELOAD_CONFIRM_REQUIRED = 'confirm=true is required to reload plugins.';
 export const PLUGIN_RELOAD_CONFIRM_REQUIRED_FIX = 'Set confirm=true to proceed.';
 export const PLUGIN_RELOAD_UNAVAILABLE = 'Plugin reload is not available in this host.';
-

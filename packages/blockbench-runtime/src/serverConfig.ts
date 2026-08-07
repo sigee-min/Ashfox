@@ -13,7 +13,7 @@ export type ServerConfig = {
   token?: string;
 };
 
-export type ServerConfigInput = {
+type ServerConfigInput = {
   host: unknown;
   port: unknown;
   path: unknown;
@@ -30,7 +30,7 @@ export type ServerConfigValidationResult =
   | { ok: true; config: ServerConfig }
   | { ok: false; reason: ServerConfigValidationReason; message: string };
 
-export const isLoopbackHost = (value: string): boolean => {
+const isLoopbackHost = (value: string): boolean => {
   const host = value.trim().toLowerCase();
   if (
     host === 'localhost' ||

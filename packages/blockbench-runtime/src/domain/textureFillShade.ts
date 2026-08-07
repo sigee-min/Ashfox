@@ -1,4 +1,8 @@
-import type { FillRectShadeLike } from './textureOps';
+import {
+  isFillShadeDirection,
+  type FillRectShadeLike,
+  type FillShadeDirection
+} from './textureOps';
 import { clamp } from './math';
 import {
   DEFAULT_PIXEL_SHADE_STYLE,
@@ -6,8 +10,6 @@ import {
 } from '@ashfox/engine-core';
 
 export type RgbaLike = { r: number; g: number; b: number; a: number };
-
-type FillShadeDirection = 'tl_br' | 'tr_bl' | 'top_bottom' | 'left_right';
 
 export type NormalizedFillShade = {
   intensity: number;
@@ -94,10 +96,10 @@ export const applyShadedFillRect = (
 
 const clampUnit = (value: number): number => clamp(Number(value), 0, 1);
 
-const resolveLightDir = (value: unknown): FillShadeDirection => {
-  if (value === 'tr_bl' || value === 'top_bottom' || value === 'left_right') return value;
-  return DEFAULT_PIXEL_SHADE_STYLE.lightDir;
-};
+const resolveLightDir = (value: unknown): FillShadeDirection =>
+  isFillShadeDirection(value)
+    ? value
+    : DEFAULT_PIXEL_SHADE_STYLE.lightDir;
 
 const hashSeed = (...values: number[]): number => {
   let h = 2166136261 >>> 0;

@@ -1,6 +1,12 @@
-import { textureOpSchema } from '@ashfox/blockbench-contracts/mcpSchemas/schemas/texture';
+import {
+  FILL_SHADE_DIRECTIONS,
+  textureOpSchema
+} from '@ashfox/blockbench-contracts/mcpSchemas/schemas/texture';
 import { validateSchema } from '@ashfox/blockbench-contracts/mcpSchemas/validation';
-import type { TextureOpLike } from '@ashfox/blockbench-contracts/types/internal';
+import type {
+  FillShadeDirection,
+  TextureOpLike
+} from '@ashfox/blockbench-contracts/types/internal';
 import { createFiniteJsonSnapshot } from '@ashfox/internal-contracts';
 
 export type {
@@ -30,6 +36,14 @@ type TextureRasterPlan =
 
 export const isTextureOp = (op: unknown): op is TextureOpLike =>
   validateSchema(textureOpSchema, op).ok;
+
+const fillShadeDirections: ReadonlySet<string> =
+  new Set(FILL_SHADE_DIRECTIONS);
+
+export const isFillShadeDirection = (
+  value: unknown
+): value is FillShadeDirection =>
+  typeof value === 'string' && fillShadeDirections.has(value);
 
 const clippedRectArea = (
   x: number,

@@ -21,13 +21,8 @@ import type { IncomingMessage, Server as HttpServer, ServerResponse } from 'http
 import type { Server as NetServer, Socket } from 'net';
 import type { TransportServerHandle } from './transport/serverLifecycle';
 
-export { isLoopbackHost, validateServerConfig } from './serverConfig';
-export type {
-  ServerConfig,
-  ServerConfigInput,
-  ServerConfigValidationReason,
-  ServerConfigValidationResult
-} from './serverConfig';
+export { validateServerConfig } from './serverConfig';
+export type { ServerConfig } from './serverConfig';
 
 type HttpModule = {
   createServer: (
