@@ -249,7 +249,7 @@ export const modelPartSpecSchema = {
             'beak'
           ],
           description:
-            'Motif-specific pixel language: eye dot/square/slit; nose dot/snout; mouth neutral/fang/beak. Patch does not accept glyph.'
+            'Motif-specific pixel language: eye square/slit; nose dot/snout; mouth neutral/fang/beak. Patch does not accept glyph.'
         },
         face: {
           enum: ['north', 'south', 'east', 'west', 'up', 'down']

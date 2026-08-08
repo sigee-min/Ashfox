@@ -622,37 +622,15 @@ const groundingResult = executeAgentCommandBatch(
     }]
   }
 );
-assert.equal(groundingResult.ok, true);
+assert.equal(
+  groundingResult.ok,
+  false,
+  'grounding cannot diverge from the sole/base support contract'
+);
 if (!groundingResult.ok) {
-  throw new Error(groundingResult.error.message);
-}
-const groundingReport =
-  validateProjectDocument(groundingResult.document);
-const groundingGuidance = deriveInspectWorkflow(
-  groundingResult.document,
-  groundingReport,
-  evaluateProductionReadiness(
-    groundingResult.document,
-    groundingReport
-  )
-);
-assert.equal(
-  groundingGuidance.blocker?.code,
-  'production.intent_grounding_mismatch'
-);
-assert.equal(
-  groundingGuidance.nextActions[0]?.kind,
-  'operation'
-);
-if (groundingGuidance.nextActions[0]?.kind === 'operation') {
-  assert.equal(
-    groundingGuidance.nextActions[0].operation.name,
-    'model.parts.transform'
+  assert.equal(groundingResult.currentRevision, readyProject.revision);
+  assert.match(
+    groundingResult.error.message,
+    /requires at least one grounded typed support/
   );
-  const by = (
-    groundingGuidance.nextActions[0].operation.payload as {
-      by: readonly [number, number, number];
-    }
-  ).by;
-  assert.ok(by[1] < 0);
 }

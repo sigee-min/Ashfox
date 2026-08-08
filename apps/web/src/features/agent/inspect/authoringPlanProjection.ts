@@ -3,7 +3,7 @@ import type {
   AuthoringProfile
 } from '@ashfox/engine-core';
 
-const AUTHORING_PLAN_ISSUE_LIMIT = 20;
+const AUTHORING_PLAN_ISSUE_LIMIT = 8;
 const INTENT_COVERAGE_FEATURE_LIMIT = 12;
 
 export const authoringProfileProjection = (
@@ -20,11 +20,21 @@ export const authoringProfileProjection = (
         : {
             hostSlotId: profile.face.hostSlotId,
             mouthState: profile.face.mouthState,
-            components: profile.face.components.map((component) => ({
-              component: component.component,
-              form: component.form,
-              configuration: component.configuration
-            })),
+            components: profile.face.components.map((component) =>
+              component.component === 'eye'
+                ? {
+                    component: component.component,
+                    form: component.form,
+                    configuration: component.configuration,
+                    gaze: component.gaze,
+                    palette: component.palette
+                  }
+                : {
+                    component: component.component,
+                    form: component.form,
+                    slotIds: component.slotIds
+                  }
+            ),
             exceptionCount: profile.face.exceptions.length
           },
       specialists: profile.specialists,
@@ -92,6 +102,55 @@ export const authoringPlanProjection = (
               incompleteSlotIds: gate.incompleteSlotIds
             }))
           },
+          symmetryQuality: {
+            required: quality.symmetryQuality.required,
+            ready: quality.symmetryQuality.ready,
+            statusCount: quality.symmetryQuality.statuses.length,
+            failingStatuses: quality.symmetryQuality.statuses
+              .filter((status) =>
+                !status.complete ||
+                !status.geometryExact ||
+                !status.featureExact ||
+                !status.lateralOwnershipExact ||
+                !status.rigExact
+              )
+              .map((status) => ({
+                id: status.id,
+                slotIds: status.slotIds,
+                complete: status.complete,
+                geometryExact: status.geometryExact,
+                featureExact: status.featureExact,
+                lateralOwnershipExact: status.lateralOwnershipExact,
+                rigExact: status.rigExact
+              }))
+          },
+          supportQuality: {
+            ready: quality.supportQuality.ready,
+            statusCount: quality.supportQuality.statuses.filter(
+              (status) => status.supportKind !== 'none'
+            ).length,
+            failingStatuses: quality.supportQuality.statuses.flatMap(
+              (status) =>
+                status.supportKind === 'none' || status.state === 'complete'
+                  ? []
+                  : [{
+                    slotId: status.slotId,
+                    supportKind: status.supportKind,
+                    contact: status.contact,
+                    state: status.state,
+                    missingPartIds: status.missingPartIds,
+                    groundContactCellCount:
+                      status.groundContactCellCount,
+                    downwardExposedSoleCellCount:
+                      status.downwardExposedSoleCellCount,
+                    toeForwardMarginCells:
+                      status.toeForwardMarginCells,
+                    clawForwardMarginCells:
+                      status.clawForwardMarginCells,
+                    issueCodes: status.issueCodes
+                  }]
+            )
+          },
           intentCoverage: {
             ready: quality.intentCoverage.ready,
             featureCount: quality.intentCoverage.features.length,
@@ -146,8 +205,8 @@ export const authoringPlanProjection = (
       parentSlotIds: slot.parentSlotIds,
       spatialRelations: slot.spatialRelations,
       facing: slot.facing,
-      pairId: slot.pairId,
-      contact: slot.contact,
+      symmetry: slot.symmetry,
+      support: slot.support,
       required: slot.required,
       state: slot.state,
       ...(slot.partIds.length === 0 ? {} : { partIds: slot.partIds }),

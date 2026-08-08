@@ -439,19 +439,13 @@ const flattenedEyeHost = run(
 );
 assert.equal(
   flattenedEyeHost.ok,
-  true,
-  'reshaping a host must reproject its glyph onto the nearest valid face'
+  false,
+  'eye anchors are explicit and host reshapes may not independently snap gaze'
 );
-if (flattenedEyeHost.ok) {
-  const flattenedRecipe = readPartRecipe(flattenedEyeHost.document);
-  assert.equal(flattenedRecipe.ok, true);
-  assert.deepEqual(
-    flattenedRecipe.ok
-      ? flattenedRecipe.recipe?.parts.find(
-          (part) => part.partId === 'face.marking'
-        )?.anchor
-      : null,
-    [0, 0, 1]
+if (!flattenedEyeHost.ok) {
+  assert.match(
+    flattenedEyeHost.error.message,
+    /never independently snapped|does not fit/i
   );
 }
 

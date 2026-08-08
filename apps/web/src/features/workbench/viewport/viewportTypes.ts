@@ -7,6 +7,7 @@ import type {
 import type { ProjectAssets } from '../../../application/projectAssets';
 import type { CameraMode } from '../../../rendering/cameraPresets';
 import type { ViewportEnvironmentId } from '../../../rendering/viewportEnvironment';
+import type { PixelFrameEvidence } from '../../../rendering/pixelFrameEvidence';
 
 export interface ViewportOptions {
   showGrid: boolean;
@@ -31,6 +32,8 @@ export interface ViewportPresentationFrame {
   revision: string;
   camera: CameraMode;
   cameraMatrix: readonly number[];
+  frameEvidence: PixelFrameEvidence | null;
+  frameEvidenceError: string | null;
   clipId: string | null;
   playing: boolean;
   timeSeconds: number;

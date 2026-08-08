@@ -24,6 +24,7 @@ import {
 import {
   projectSurfaceFeaturePlacement,
   surfaceFeaturePixels,
+  validateSurfaceFeaturePlacement
 } from './surfaceFeature';
 import type {
   CellKey,
@@ -404,11 +405,19 @@ const projectAndValidateFeatures = (
         message: `Surface feature "${feature.partId}" requires a geometric parent.`
       };
     }
-    const projected = projectSurfaceFeaturePlacement(
-      feature,
-      parent.canonical,
-      environment
-    );
+    const projected = feature.motif === 'eye'
+      ? validateSurfaceFeaturePlacement(
+          feature,
+          parent.canonical,
+          environment
+        ) === null
+        ? feature
+        : null
+      : projectSurfaceFeaturePlacement(
+          feature,
+          parent.canonical,
+          environment
+        );
     if (!projected) {
       return {
         ok: false,
@@ -417,7 +426,10 @@ const projectAndValidateFeatures = (
           `Surface feature "${feature.partId}" does not fit on an ` +
           `uncovered ${feature.face} face of parent ` +
           `"${feature.parentPartId}" at size ` +
-          `${feature.size[0]}×${feature.size[1]}.`
+          `${feature.size[0]}×${feature.size[1]}.` +
+          (feature.motif === 'eye'
+            ? ' Eye anchors are explicit and are never independently snapped.'
+            : '')
       };
     }
     for (const pixel of surfaceFeaturePixels(projected)) {

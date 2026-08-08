@@ -13,19 +13,25 @@ import {
   addAuthoringProfileIssue as addIssue,
   type AuthoringProfileIssue
 } from './authoringEvidence';
+import {
+  readAuthoringFaceExceptions
+} from './authoringProfileFaceEvidence';
+import {
+  validateAuthoringFaceDeclarations
+} from './authoringProfileFacePolicy';
 import { AUTHORING_PART_ID_PATTERN } from './authoringProfilePrimitives';
-import { authoringTrackPolicy } from './authoringTrackPolicies';
 import {
   AUTHORING_EYE_CONFIGURATIONS,
+  AUTHORING_EYE_PALETTES,
   AUTHORING_FACE_COMPONENTS,
   AUTHORING_FACE_FORMS,
   AUTHORING_MOUTH_STATES,
   type AuthoringFaceComponent,
   type AuthoringFaceComponentDeclaration,
   type AuthoringFaceContract,
-  type AuthoringFaceException,
   type AuthoringFaceForm,
   type AuthoringFaceMode,
+  type AuthoringEyeConfiguration,
   type AuthoringSlotAssignment,
   type AuthoringTrack
 } from './authoringTypes';
@@ -36,22 +42,30 @@ const FACE_KEYS = new Set([
   'components',
   'exceptions'
 ]);
-const FACE_COMPONENT_KEYS = new Set([
+const EYE_COMPONENT_KEYS = new Set([
   'component',
   'form',
   'configuration',
+  'gaze',
+  'palette',
+  'materialIds'
+]);
+const NON_EYE_COMPONENT_KEYS = new Set([
+  'component',
+  'form',
   'slotIds',
   'materialIds'
 ]);
-const FACE_EXCEPTION_KEYS = new Set([
-  'component',
-  'basis',
-  'referenceIds',
-  'rationale'
+const SINGLE_EYE_CONFIGURATION_KEYS = new Set(['kind', 'slotId']);
+const PAIRED_EYE_CONFIGURATION_KEYS = new Set([
+  'kind',
+  'leftSlotId',
+  'rightSlotId'
 ]);
 const FACE_COMPONENTS = new Set<string>(AUTHORING_FACE_COMPONENTS);
 const FACE_FORMS = new Set<string>(AUTHORING_FACE_FORMS);
 const EYE_CONFIGURATIONS = new Set<string>(AUTHORING_EYE_CONFIGURATIONS);
+const EYE_PALETTES = new Set<string>(AUTHORING_EYE_PALETTES);
 const MOUTH_STATES = new Set<string>(AUTHORING_MOUTH_STATES);
 
 const FACE_FORMS_BY_COMPONENT: Readonly<
@@ -108,6 +122,85 @@ const slotDescendsFrom = (
   return false;
 };
 
+const readEyeConfiguration = (
+  value: unknown,
+  path: string,
+  issues: AuthoringProfileIssue[]
+): AuthoringEyeConfiguration | null => {
+  if (!isClosedContractRecord(value) ||
+    typeof value.kind !== 'string' ||
+    !EYE_CONFIGURATIONS.has(value.kind)) {
+    addIssue(
+      issues,
+      path,
+      'Eye configuration must be an explicit single or paired target contract.',
+      '{kind:"single",slotId} | {kind:"paired",leftSlotId,rightSlotId}'
+    );
+    return null;
+  }
+  if (value.kind === 'single') {
+    if (!hasExactContractKeys(value, SINGLE_EYE_CONFIGURATION_KEYS) ||
+      typeof value.slotId !== 'string' ||
+      !AUTHORING_PART_ID_PATTERN.test(value.slotId)) {
+      addIssue(
+        issues,
+        path,
+        'Single-eye configuration requires one canonical centered slot.',
+        '{kind:"single",slotId}'
+      );
+      return null;
+    }
+    return { kind: 'single', slotId: value.slotId };
+  }
+  if (!hasExactContractKeys(value, PAIRED_EYE_CONFIGURATION_KEYS) ||
+    typeof value.leftSlotId !== 'string' ||
+    typeof value.rightSlotId !== 'string' ||
+    !AUTHORING_PART_ID_PATTERN.test(value.leftSlotId) ||
+    !AUTHORING_PART_ID_PATTERN.test(value.rightSlotId) ||
+    value.leftSlotId === value.rightSlotId) {
+    addIssue(
+      issues,
+      path,
+      'Paired-eye configuration requires distinct canonical left/right slots.',
+      '{kind:"paired",leftSlotId,rightSlotId}'
+    );
+    return null;
+  }
+  return {
+    kind: 'paired',
+    leftSlotId: value.leftSlotId,
+    rightSlotId: value.rightSlotId
+  };
+};
+
+const validateComponentSlots = (
+  slotIds: readonly string[],
+  path: string,
+  hostSlotId: string | null,
+  slotsById: ReadonlyMap<string, AuthoringSlotAssignment>,
+  issues: AuthoringProfileIssue[]
+): boolean => slotIds.every((slotId) => {
+  if (!slotsById.has(slotId)) {
+    addIssue(
+      issues,
+      path,
+      `Face component references undeclared slot "${slotId}".`,
+      'declared slots below the focal-frame host'
+    );
+    return false;
+  }
+  if (hostSlotId && !slotDescendsFrom(slotId, hostSlotId, slotsById)) {
+    addIssue(
+      issues,
+      path,
+      `Face component slot "${slotId}" is not below host "${hostSlotId}".`,
+      'a descendant slot of the focal-frame host'
+    );
+    return false;
+  }
+  return true;
+});
+
 const readComponents = (
   value: unknown,
   hostSlotId: string | null,
@@ -129,15 +222,12 @@ const readComponents = (
   const components: AuthoringFaceComponentDeclaration[] = [];
   value.forEach((entry, index) => {
     const path = `face.components[${index}]`;
-    if (
-      !isClosedContractRecord(entry) ||
-      !hasExactContractKeys(entry, FACE_COMPONENT_KEYS)
-    ) {
+    if (!isClosedContractRecord(entry)) {
       addIssue(
         issues,
         path,
-        'Face component must use the closed contract shape.',
-        '{component,form,configuration,slotIds,materialIds}'
+        'Face component must be a closed contract record.',
+        'eye or non-eye component contract'
       );
       return;
     }
@@ -158,23 +248,116 @@ const readComponents = (
         'eye; nasal nose/muzzle/beak; oral mouth/jaw/beak; eye-frame orbital/brow; jaw; or mouth-interior'
       );
     }
-    const configuration = typeof entry.configuration === 'string' &&
-      EYE_CONFIGURATIONS.has(entry.configuration)
-      ? entry.configuration as AuthoringFaceComponentDeclaration['configuration']
-      : entry.configuration === null
-        ? null
-        : undefined;
-    const configurationValid = configuration !== undefined &&
-      (component === 'eye' ? configuration !== null : configuration === null);
-    if (!configurationValid) {
+    const materialIds = readTargetIds(
+      entry.materialIds,
+      `${path}.materialIds`,
+      AUTHORING_PROFILE_LIMITS.maxPartIdsPerOwner,
+      issues
+    );
+    if (!component || !form || !semanticPair || !materialIds) return;
+    if (component === 'eye') {
+      if (!hasExactContractKeys(entry, EYE_COMPONENT_KEYS) || form !== 'eye') {
+        addIssue(
+          issues,
+          path,
+          'Eye component must use the closed gaze and palette contract.',
+          '{component:"eye",form:"eye",configuration,gaze,palette,materialIds}'
+        );
+        return;
+      }
+      const configuration = readEyeConfiguration(
+        entry.configuration,
+        `${path}.configuration`,
+        issues
+      );
+      const gazeValid = entry.gaze === 'centered';
+      const paletteValid = typeof entry.palette === 'string' &&
+        EYE_PALETTES.has(entry.palette);
+      const materialPolicyValid = materialIds.length === 1;
+      if (!gazeValid) {
+        addIssue(
+          issues,
+          `${path}.gaze`,
+          'Eye gaze must use the compiler-derived centered contract.',
+          'centered'
+        );
+      }
+      if (!paletteValid) {
+        addIssue(
+          issues,
+          `${path}.palette`,
+          'Eye palette must use a compiler-owned contrast policy.',
+          AUTHORING_EYE_PALETTES.join(' | ')
+        );
+      }
+      if (!materialPolicyValid) {
+        addIssue(
+          issues,
+          `${path}.materialIds`,
+          'Eye contrast policy requires one shared iris material.',
+          'exactly one material ID used by every configured eye member'
+        );
+      }
+      if (!configuration) return;
+      const slotIds = configuration.kind === 'single'
+        ? [configuration.slotId]
+        : [configuration.leftSlotId, configuration.rightSlotId];
+      const slotsValid = validateComponentSlots(
+        slotIds,
+        `${path}.configuration`,
+        hostSlotId,
+        slotsById,
+        issues
+      );
+      if (configuration.kind === 'single') {
+        const slot = slotsById.get(configuration.slotId);
+        if (slot && slot.symmetry.kind === 'paired') {
+          addIssue(
+            issues,
+            `${path}.configuration.slotId`,
+            'A single eye cannot be owned by one side of a slot pair.',
+            'centered slot for bilateral projects, or asymmetric slot'
+          );
+          return;
+        }
+      } else {
+        const left = slotsById.get(configuration.leftSlotId);
+        const right = slotsById.get(configuration.rightSlotId);
+        const pairValid = left?.symmetry.kind === 'paired' &&
+          right?.symmetry.kind === 'paired' &&
+          left.symmetry.pairId === right.symmetry.pairId &&
+          left.spatialRelations.includes('left') &&
+          right.spatialRelations.includes('right');
+        if (!pairValid) {
+          addIssue(
+            issues,
+            `${path}.configuration`,
+            'Paired eyes must target the left/right members of one declared slot pair.',
+            'two paired slots sharing pairId with complementary left/right relations'
+          );
+          return;
+        }
+      }
+      if (gazeValid && paletteValid && materialPolicyValid && slotsValid) {
+        components.push({
+          component: 'eye',
+          form: 'eye',
+          configuration,
+          gaze: 'centered',
+          palette: entry.palette as (typeof AUTHORING_EYE_PALETTES)[number],
+          materialIds
+        });
+      }
+      return;
+    }
+    if (!hasExactContractKeys(entry, NON_EYE_COMPONENT_KEYS)) {
       addIssue(
         issues,
-        `${path}.configuration`,
-        'Only an eye component may declare a non-null eye configuration.',
-        component === 'eye'
-          ? AUTHORING_EYE_CONFIGURATIONS.join(' | ')
-          : 'null'
+        path,
+        'Non-eye face component must use the closed slot contract.',
+        '{component,form,slotIds,materialIds}'
       );
+      return;
     }
     const slotIds = readTargetIds(
       entry.slotIds,
@@ -182,273 +365,23 @@ const readComponents = (
       AUTHORING_PROFILE_LIMITS.maxSlots,
       issues
     );
-    const materialIds = readTargetIds(
-      entry.materialIds,
-      `${path}.materialIds`,
-      AUTHORING_PROFILE_LIMITS.maxPartIdsPerOwner,
+    const slotsValid = slotIds !== null && validateComponentSlots(
+      slotIds,
+      `${path}.slotIds`,
+      hostSlotId,
+      slotsById,
       issues
     );
-    const slotsValid = slotIds !== null && slotIds.every((slotId) => {
-      if (!slotsById.has(slotId)) {
-        addIssue(
-          issues,
-          `${path}.slotIds`,
-          `Face component references undeclared slot "${slotId}".`,
-          'declared slots below the focal-frame host'
-        );
-        return false;
-      }
-      if (hostSlotId && !slotDescendsFrom(slotId, hostSlotId, slotsById)) {
-        addIssue(
-          issues,
-          `${path}.slotIds`,
-          `Face component slot "${slotId}" is not below host "${hostSlotId}".`,
-          'a descendant slot of the focal-frame host'
-        );
-        return false;
-      }
-      return true;
-    });
-    if (
-      component &&
-      form &&
-      semanticPair &&
-      configurationValid &&
-      slotIds &&
-      materialIds &&
-      slotsValid
-    ) {
+    if (slotIds && slotsValid) {
       components.push({
-        component,
-        form,
-        configuration: configuration as AuthoringFaceComponentDeclaration['configuration'],
+        component: component as Exclude<AuthoringFaceComponent, 'eye'>,
+        form: form as Exclude<AuthoringFaceForm, 'eye'>,
         slotIds,
         materialIds
       });
     }
   });
   return components;
-};
-
-const readExceptions = (
-  value: unknown,
-  intent: ProjectIntent | undefined,
-  issues: AuthoringProfileIssue[]
-): readonly AuthoringFaceException[] => {
-  if (!isDenseContractArray(value) || value.length > 2) {
-    addIssue(
-      issues,
-      'face.exceptions',
-      'Face exceptions must be a bounded dense array.',
-      'zero to two nasal/oral species exceptions'
-    );
-    return [];
-  }
-  const observedRefs = new Set(
-    intent?.references?.map((reference) => reference.id) ?? []
-  );
-  const requestedRefs = new Set([
-    'intent.subject',
-    ...(intent?.features.map((_, index) => `intent.features.${index}`) ?? [])
-  ]);
-  const exceptions: AuthoringFaceException[] = [];
-  value.forEach((entry, index) => {
-    const path = `face.exceptions[${index}]`;
-    if (
-      !isClosedContractRecord(entry) ||
-      !hasExactContractKeys(entry, FACE_EXCEPTION_KEYS)
-    ) {
-      addIssue(
-        issues,
-        path,
-        'Species exception must use the closed contract shape.',
-        '{component,basis,referenceIds,rationale}'
-      );
-      return;
-    }
-    const component = entry.component === 'nasal' || entry.component === 'oral'
-      ? entry.component
-      : null;
-    const basis = entry.basis === 'observed' || entry.basis === 'requested'
-      ? entry.basis
-      : null;
-    const referenceIds = isUniqueContractTextArray(entry.referenceIds) &&
-      entry.referenceIds.length > 0 &&
-      entry.referenceIds.length <= AUTHORING_PROFILE_LIMITS.maxClaimReferenceIds
-      ? [...entry.referenceIds].sort((left, right) =>
-          left.localeCompare(right)
-        )
-      : null;
-    const allowedRefs = basis === 'observed' ? observedRefs : requestedRefs;
-    const referencesValid = referenceIds !== null &&
-      referenceIds.every((referenceId) => allowedRefs.has(referenceId));
-    const rationale = isNonEmptyContractText(entry.rationale) &&
-      entry.rationale.length <= AUTHORING_PROFILE_LIMITS.maxClaimRationaleLength
-      ? entry.rationale.trim()
-      : null;
-    if (!component || !basis || !referencesValid || !rationale) {
-      addIssue(
-        issues,
-        path,
-        'Nasal/oral omission requires auditable species evidence.',
-        'nasal or oral + observed/requested current references + species rationale'
-      );
-      return;
-    }
-    exceptions.push({ component, basis, referenceIds, rationale });
-  });
-  return exceptions;
-};
-
-const validateFaceDeclarations = (
-  track: AuthoringTrack | null,
-  mouthState: AuthoringFaceContract['mouthState'] | null,
-  components: readonly AuthoringFaceComponentDeclaration[],
-  exceptions: readonly AuthoringFaceException[],
-  issues: AuthoringProfileIssue[]
-): void => {
-  for (const component of AUTHORING_FACE_COMPONENTS) {
-    if (components.filter((entry) => entry.component === component).length > 1) {
-      addIssue(
-        issues,
-        'face.components',
-        `Face component "${component}" may be declared only once.`,
-        'one declaration per semantic component'
-      );
-    }
-  }
-  const slotOwners = new Map<string, AuthoringFaceComponent[]>();
-  for (const component of components) {
-    for (const slotId of component.slotIds) {
-      slotOwners.set(slotId, [
-        ...(slotOwners.get(slotId) ?? []),
-        component.component
-      ]);
-    }
-  }
-  for (const [slotId, owners] of slotOwners) {
-    if (owners.length > 1) {
-      addIssue(
-        issues,
-        'face.components',
-        `Face slot "${slotId}" is reused across semantic components.`,
-        'component-exclusive descendant slots with explicit parts'
-      );
-    }
-  }
-  for (const component of ['nasal', 'oral'] as const) {
-    const matches = exceptions.filter((entry) => entry.component === component);
-    if (matches.length > 1) {
-      addIssue(
-        issues,
-        'face.exceptions',
-        `Species exception "${component}" may be declared only once.`,
-        'at most one exception per omittable component'
-      );
-    }
-    if (
-      matches.length > 0 &&
-      components.some((entry) => entry.component === component)
-    ) {
-      addIssue(
-        issues,
-        'face',
-        `Face component "${component}" cannot be both realized and excepted.`,
-        'either one actual component or one species exception'
-      );
-    }
-  }
-  const has = (component: AuthoringFaceComponent): boolean =>
-    components.some((entry) => entry.component === component);
-  const excepted = (component: 'nasal' | 'oral'): boolean =>
-    exceptions.some((entry) => entry.component === component);
-  const policy = track === null ? null : authoringTrackPolicy(track);
-  for (const component of policy?.face.requiredComponents ?? []) {
-    const satisfied = has(component) ||
-      (component === 'nasal' && excepted('nasal')) ||
-      (component === 'oral' && excepted('oral'));
-    if (satisfied) continue;
-    addIssue(
-      issues,
-      'face.components',
-      `${policy?.label ?? 'Selected'} full face requires a ${component} component.`,
-      component === 'eye'
-        ? 'one readable configured eye component'
-        : component === 'nasal'
-          ? 'nose, muzzle, beak, or nasal species exception'
-          : component === 'oral'
-            ? 'mouth, jaw, beak, or oral species exception'
-            : `one exclusive ${component} component`
-    );
-  }
-  if (mouthState === 'absent') {
-    if (!excepted('oral') || has('oral') || has('jaw') || has('mouth-interior')) {
-      addIssue(
-        issues,
-        'face.mouthState',
-        'Absent mouth must match one oral species exception and no oral geometry.',
-        'mouthState absent + oral exception + no oral/jaw/mouth-interior component'
-      );
-    }
-  } else if (mouthState) {
-    const oral = components.find((entry) => entry.component === 'oral');
-    if (!oral || excepted('oral')) {
-      addIssue(
-        issues,
-        'face.components',
-        'Present mouth state requires an actual oral component.',
-        'one oral component and no oral exception'
-      );
-    }
-    if (mouthState === 'beak' && oral?.form !== 'beak') {
-      addIssue(
-        issues,
-        'face.mouthState',
-        'Beak mouth state requires a beak oral form.',
-        'oral form beak'
-      );
-    }
-    if (mouthState !== 'beak' && oral?.form === 'beak') {
-      addIssue(
-        issues,
-        'face.mouthState',
-        'Beak oral form requires mouthState beak.',
-        'mouthState beak'
-      );
-    }
-  }
-  if (
-    policy?.face.requireJawWhenMouthPresent &&
-    mouthState !== 'absent' &&
-    !has('jaw')
-  ) {
-    addIssue(
-      issues,
-      'face.components',
-      `${policy.label} full face requires a separate jaw.`,
-      'one jaw component'
-    );
-  }
-  if (
-    policy?.face.requireInteriorWhenMouthOpen &&
-    mouthState === 'open' &&
-    !has('mouth-interior')
-  ) {
-    addIssue(
-      issues,
-      'face.components',
-      `Open ${policy.label} face requires a separate mouth interior.`,
-      'one mouth-interior component'
-    );
-  }
-  if (mouthState !== 'open' && has('mouth-interior')) {
-    addIssue(
-      issues,
-      'face.components',
-      'Mouth interior is only valid for an open mouth state.',
-      'remove mouth-interior or set mouthState open'
-    );
-  }
 };
 
 export const readAuthoringFace = (
@@ -514,8 +447,18 @@ export const readAuthoringFace = (
     slotsById,
     issues
   );
-  const exceptions = readExceptions(value.exceptions, intent, issues);
-  validateFaceDeclarations(track, mouthState, components, exceptions, issues);
+  const exceptions = readAuthoringFaceExceptions(
+    value.exceptions,
+    intent,
+    issues
+  );
+  validateAuthoringFaceDeclarations(
+    track,
+    mouthState,
+    components,
+    exceptions,
+    issues
+  );
   if (!hostSlotId || !hostSlot || !mouthState) return null;
   return {
     hostSlotId,

@@ -62,6 +62,7 @@ const authorProject = (target: ExportPreset): ProjectDocument => {
         subject: `Export ${target}`,
         forward: 'north',
         grounding: 'free',
+        symmetry: { kind: 'asymmetric' },
         features: [
           'The exported plate remains visibly rectangular.'
         ]

@@ -32,6 +32,7 @@ import type {
 } from './authoringTypes';
 
 export type {
+  AuthoringPlanIssueCode,
   AuthoringPlanIssue,
   AuthoringSlotState,
   AuthoringSlotStatus
@@ -160,8 +161,8 @@ export const composeAuthoringSlots = (
         parentSlotIds: slot.parentSlotIds,
         spatialRelations: slot.spatialRelations,
         facing: slot.facing,
-        pairId: slot.pairId,
-        contact: slot.contact,
+        symmetry: slot.symmetry,
+        support: slot.support,
         authority: profile.archetype,
         authorityType: 'archetype' as const,
         attachmentPortId: null,
@@ -199,8 +200,8 @@ export const composeAuthoringSlots = (
         parentSlotIds: [binding.hostSlotId],
         spatialRelations: [],
         facing: null,
-        pairId: null,
-        contact: null,
+        symmetry: null,
+        support: null,
         authority: reference,
         authorityType: 'specialist' as const,
         attachmentPortId: binding.portId,
@@ -319,8 +320,8 @@ const statusForSlot = (
     parentSlotIds: definition.parentSlotIds,
     spatialRelations: definition.spatialRelations,
     facing: definition.facing,
-    pairId: definition.pairId,
-    contact: definition.contact,
+    symmetry: definition.symmetry,
+    support: definition.support,
     attachmentPortId: definition.attachmentPortId,
     hostSlotId: definition.hostSlotId,
     partIds,
@@ -482,6 +483,8 @@ export const evaluateAuthoringPlan = (
     }
   }
   issues.push(...assetQuality.structuralQuality.issues);
+  issues.push(...assetQuality.symmetryQuality.issues);
+  issues.push(...assetQuality.supportQuality.issues);
   issues.push(...assetQuality.intentCoverage.issues);
   issues.push(...assetQuality.faceQuality.issues);
   if (unassignedPartIds.length > 0) {

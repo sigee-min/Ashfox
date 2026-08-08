@@ -36,6 +36,7 @@ export {
   type ProjectIntent,
   type ProjectReferenceKind,
   type ProjectReferenceObservation,
+  type ProjectSymmetry,
   type SceneNode,
   type SurfacePixelDensity,
   type TextureAsset,
@@ -61,6 +62,7 @@ export {
   AUTHORING_REVIEW_CAMERAS,
   AUTHORING_REVIEW_ISSUES,
   AUTHORING_ROUTING_CONTRACT_VERSION,
+  AUTHORING_SLOT_SYMMETRY_KINDS,
   AUTHORING_SPATIAL_RELATIONS,
   AUTHORING_STRUCTURAL_ROLES,
   AUTHORING_TRACKS,
@@ -91,6 +93,7 @@ export {
   type AuthoringFaceForm,
   type AuthoringFaceMode,
   type AuthoringFeatureCoverage,
+  type AuthoringFootDigit,
   type AuthoringMotionBinding,
   type AuthoringMotionRole,
   type AuthoringMouthState,
@@ -105,8 +108,11 @@ export {
   type AuthoringRoutingSnapshot,
   type AuthoringSelectionInput,
   type AuthoringSlotAssignment,
+  type AuthoringSlotSymmetry,
+  type AuthoringSlotSymmetryKind,
   type AuthoringSpatialRelation,
   type AuthoringStructuralRole,
+  type AuthoringSupport,
   type AuthoringTrack,
   type CompatibilityClause,
   type ComposedAuthoringSlotDefinition,
@@ -141,6 +147,7 @@ export {
   composeAuthoringSlots,
   evaluateAuthoringPlan,
   type AuthoringPlanEvaluation,
+  type AuthoringPlanIssueCode,
   type AuthoringPlanIssue,
   type AuthoringSlotState,
   type AuthoringSlotStatus
@@ -172,6 +179,19 @@ export {
   type FaceComponentQualityStatus,
   type FaceQualityEvaluation
 } from './authoring/faceQuality';
+export {
+  evaluateSymmetryQuality,
+  type SymmetryQualityEvaluation,
+  type SymmetryQualityStatus
+} from './authoring/symmetryQuality';
+export {
+  evaluateSupportQuality,
+  type SupportQualityEvaluation,
+  type SupportQualityIssue,
+  type SupportQualityIssueCode,
+  type SupportQualityState,
+  type SupportQualityStatus
+} from './authoring/supportQuality';
 export {
   evaluateStructuralQuality,
   STRUCTURAL_QUALITY_STAGE_ORDER,
@@ -205,6 +225,18 @@ export {
   normalizeProjectIntent,
   readProjectIntent
 } from './project/projectIntent';
+export {
+  PROJECT_SYMMETRY_MAX_PLANE_TWICE,
+  projectCellLateralSide,
+  projectPointLateralSide,
+  projectSpatialFrame,
+  reflectProjectCell,
+  reflectProjectPoint,
+  type ProjectLateralAxis,
+  type ProjectLateralSide,
+  type ProjectLateralSign,
+  type ProjectSpatialFrame
+} from './project/projectSpatialFrame';
 export {
   evaluateProjectIntentRequirements,
   projectGroundingCorrection
@@ -251,6 +283,8 @@ export {
   CANONICAL_IDLE_CLIP_ID,
   evaluateProductionReadiness,
   isProductionIdleClipName,
+  type ProductionReadinessCode,
+  type ProductionReadinessCounts,
   type ProductionReadinessFinding,
   type ProductionReadinessReport
 } from './productionReadiness';

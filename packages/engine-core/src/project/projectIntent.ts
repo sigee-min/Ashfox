@@ -5,9 +5,13 @@ import type {
   ProjectGrounding,
   ProjectIntent,
   ProjectReferenceKind,
-  ProjectReferenceObservation
+  ProjectReferenceObservation,
+  ProjectSymmetry
 } from '../model';
 import { compareStableText } from '../stableOrder';
+import {
+  PROJECT_SYMMETRY_MAX_PLANE_TWICE
+} from './projectSpatialFrame';
 
 export const PROJECT_INTENT_LIMITS = Object.freeze({
   maxSubjectLength: 160,
@@ -62,6 +66,7 @@ const INTENT_KEYS = new Set([
   'subject',
   'forward',
   'grounding',
+  'symmetry',
   'features',
   'references'
 ]);
@@ -303,6 +308,72 @@ const normalizedReferences = (
   return references.sort((left, right) => compareStableText(left.id, right.id));
 };
 
+const normalizedSymmetry = (
+  value: unknown,
+  issues: ProjectIntentIssue[]
+): ProjectSymmetry | null => {
+  if (!isRecord(value)) {
+    issues.push({
+      path: 'symmetry',
+      message: 'Project symmetry must be an explicit object.',
+      expected:
+        '{kind:"asymmetric"} | {kind:"bilateral",planeTwice:safe integer}'
+    });
+    return null;
+  }
+  if (value.kind === 'asymmetric') {
+    const unknownKey = Object.keys(value).find((key) => key !== 'kind');
+    if (unknownKey) {
+      issues.push({
+        path: `symmetry.${unknownKey}`,
+        message: 'Unknown asymmetric symmetry property.',
+        expected: 'kind'
+      });
+      return null;
+    }
+    return { kind: 'asymmetric' };
+  }
+  if (value.kind !== 'bilateral') {
+    issues.push({
+      path: 'symmetry.kind',
+      message: 'Unknown project symmetry kind.',
+      expected: 'asymmetric | bilateral'
+    });
+    return null;
+  }
+  const unknownKey = Object.keys(value).find(
+    (key) => key !== 'kind' && key !== 'planeTwice'
+  );
+  if (unknownKey) {
+    issues.push({
+      path: `symmetry.${unknownKey}`,
+      message: 'Unknown bilateral symmetry property.',
+      expected: 'kind, planeTwice'
+    });
+  }
+  if (
+    !Number.isSafeInteger(value.planeTwice) ||
+    Math.abs(value.planeTwice as number) >
+      PROJECT_SYMMETRY_MAX_PLANE_TWICE
+  ) {
+    issues.push({
+      path: 'symmetry.planeTwice',
+      message: 'Bilateral reflection plane is outside the project lattice.',
+      expected:
+        `safe integer from -${PROJECT_SYMMETRY_MAX_PLANE_TWICE} through ` +
+        `${PROJECT_SYMMETRY_MAX_PLANE_TWICE}`
+    });
+    return null;
+  }
+  if (unknownKey) return null;
+  return {
+    kind: 'bilateral',
+    planeTwice: Object.is(value.planeTwice, -0)
+      ? 0
+      : value.planeTwice as number
+  };
+};
+
 export const normalizeProjectIntent = (
   value: unknown
 ): NormalizeProjectIntentResult => {
@@ -366,10 +437,12 @@ export const normalizeProjectIntent = (
     });
   }
 
+  const symmetry = normalizedSymmetry(value.symmetry, issues);
   const features = normalizedFeatures(value.features, issues);
   const references = normalizedReferences(value.references, issues);
   if (
     issues.length > 0 ||
+    symmetry === null ||
     features === null ||
     references === null ||
     typeof forward !== 'string' ||
@@ -386,6 +459,7 @@ export const normalizeProjectIntent = (
         subject,
         forward: forward as ProjectForwardDirection,
         grounding: grounding as ProjectGrounding,
+        symmetry,
         features,
         ...(references.length > 0 ? { references } : {})
       }

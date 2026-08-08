@@ -11,6 +11,7 @@ import type {
 } from './authoringPlanTypes';
 import { authoringPlanIssue } from './authoringIssueFactories';
 import { uniqueSortedAuthoringValues } from './authoringCollections';
+import { evaluateFaceEyeSpatialQuality } from './faceQualityEye';
 import type {
   AuthoringFaceComponent,
   AuthoringFaceException,
@@ -18,6 +19,7 @@ import type {
   AuthoringMouthState,
   AuthoringProfile
 } from './authoringTypes';
+import { authoringFaceComponentSlotIds } from './authoringTypes';
 
 export interface FaceComponentQualityStatus {
   component: AuthoringFaceComponent;
@@ -42,6 +44,7 @@ export interface FaceQualityEvaluation {
   components: readonly FaceComponentQualityStatus[];
   exceptions: readonly AuthoringFaceException[];
   issues: readonly AuthoringPlanIssue[];
+  violations: readonly AuthoringPlanIssue[];
   ready: boolean;
 }
 
@@ -61,13 +64,9 @@ const partDescendsFrom = (
 };
 
 const requiredEyeCount = (
-  configuration: 'single' | 'paired' | 'compound' | null
+  configuration: 'single' | 'paired'
 ): number => {
-  switch (configuration) {
-    case 'paired': return 2;
-    case 'compound': return 3;
-    default: return 1;
-  }
+  return configuration === 'paired' ? 2 : 1;
 };
 
 const realizesForm = (
@@ -100,6 +99,38 @@ const realizesForm = (
   }
 };
 
+const evaluateNoFaceQuality = (
+  profile: AuthoringProfile,
+  parts: readonly PartSpec[]
+): FaceQualityEvaluation => {
+  const facialFeaturePartIds = parts.flatMap((part) =>
+    part.kind === 'feature' &&
+    (part.motif === 'eye' || part.motif === 'nose' || part.motif === 'mouth')
+      ? [part.partId]
+      : []
+  );
+  const issues = facialFeaturePartIds.length === 0
+    ? []
+    : [authoringPlanIssue(
+        'authoring.plan.face_mode_invalid',
+        'authoringProfile.faceMode',
+        'Facial focal features exist while the profile explicitly declares no face.',
+        'remove eye/nose/mouth features or configure one full face contract before authoring them',
+        { authority: profile.archetype, partIds: facialFeaturePartIds }
+      )];
+  return {
+    mode: profile.faceMode,
+    hostSlotId: null,
+    mouthState: null,
+    hostReady: true,
+    components: [],
+    exceptions: [],
+    issues,
+    violations: issues,
+    ready: issues.length === 0
+  };
+};
+
 export const evaluateFaceQuality = (
   document: ProjectDocument,
   profile: AuthoringProfile,
@@ -108,16 +139,7 @@ export const evaluateFaceQuality = (
   materials: readonly PartMaterialDefinition[]
 ): FaceQualityEvaluation => {
   if (profile.faceMode === 'none' || profile.face === null) {
-    return {
-      mode: profile.faceMode,
-      hostSlotId: null,
-      mouthState: null,
-      hostReady: true,
-      components: [],
-      exceptions: [],
-      issues: [],
-      ready: true
-    };
+    return evaluateNoFaceQuality(profile, parts);
   }
   const face = profile.face;
   const archetypeSlots = slots.filter(
@@ -133,6 +155,7 @@ export const evaluateFaceQuality = (
   const hostPartIds = new Set(hostSlot?.partIds ?? []);
   const eyeAuditIssues = auditEyeVisibility(document);
   const issues: AuthoringPlanIssue[] = [];
+  const violations: AuthoringPlanIssue[] = [];
   if (!hostReady) {
     issues.push(authoringPlanIssue(
       'authoring.plan.face_host_incomplete',
@@ -146,7 +169,8 @@ export const evaluateFaceQuality = (
     ));
   }
   const components = face.components.map((declaration) => {
-    const mappedSlots = declaration.slotIds.flatMap((slotId) => {
+    const declarationSlotIds = authoringFaceComponentSlotIds(declaration);
+    const mappedSlots = declarationSlotIds.flatMap((slotId) => {
       const slot = slotsById.get(slotId);
       return slot ? [slot] : [];
     });
@@ -154,7 +178,7 @@ export const evaluateFaceQuality = (
       (slot) => slot.state === 'complete'
     );
     const completeSlotIds = completeSlots.map((slot) => slot.slotId);
-    const missingSlotIds = declaration.slotIds.filter(
+    const missingSlotIds = declarationSlotIds.filter(
       (slotId) => !completeSlotIds.includes(slotId)
     );
     const partIds = uniqueSortedAuthoringValues(
@@ -173,10 +197,8 @@ export const evaluateFaceQuality = (
       ? semanticParts.filter((part): part is EyeFeaturePartSpec =>
           part.kind === 'feature' &&
           part.motif === 'eye' &&
-          part.glyph !== undefined &&
-          part.glyph !== 'dot' &&
-          part.size[0] >= 2 &&
-          part.size[1] >= 2
+          part.size[0] >= 3 &&
+          part.size[1] >= 3
         )
       : [];
     const materialEligibleParts = declaration.component === 'eye'
@@ -197,11 +219,28 @@ export const evaluateFaceQuality = (
     const distinctEyeAnchors = new Set(
       readableEyes.map((eye) => eye.anchor.join(','))
     ).size;
-    const expectedEyeCount = requiredEyeCount(declaration.configuration);
+    const expectedEyeCount = declaration.component === 'eye'
+      ? requiredEyeCount(declaration.configuration.kind)
+      : 0;
+    const eyeSpatial = declaration.component === 'eye'
+      ? evaluateFaceEyeSpatialQuality(
+          document,
+          profile.archetype,
+          declaration,
+          readableEyes,
+          expectedEyeCount,
+          slotsById
+        )
+      : { ready: true, issue: null };
+    if (eyeSpatial.issue) {
+      issues.push(eyeSpatial.issue);
+      violations.push(eyeSpatial.issue);
+    }
     const eyeReady = declaration.component !== 'eye' || (
-      readableEyes.length >= expectedEyeCount &&
-      distinctEyeAnchors >= expectedEyeCount &&
-      relevantEyeIssues.length === 0
+      readableEyes.length === expectedEyeCount &&
+      distinctEyeAnchors === expectedEyeCount &&
+      relevantEyeIssues.length === 0 &&
+      eyeSpatial.ready
     );
     const state =
       hostReady &&
@@ -212,7 +251,7 @@ export const evaluateFaceQuality = (
         ? 'complete' as const
         : 'incomplete' as const;
     if (state === 'incomplete') {
-      issues.push(authoringPlanIssue(
+      const issue = authoringPlanIssue(
         declaration.component === 'eye'
           ? 'authoring.plan.face_eye_unreadable'
           : 'authoring.plan.face_component_incomplete',
@@ -221,24 +260,30 @@ export const evaluateFaceQuality = (
           ? 'Full-face eye configuration is not readable in the delivered model.'
           : `Full-face component "${declaration.component}" is not materially realized below its host.`,
         declaration.component === 'eye'
-          ? `${expectedEyeCount} spatially distinct non-dot eye feature(s), each at least 2x2, visible and contrasting on the compiled outer surface`
+          ? `${expectedEyeCount} spatially distinct eye feature(s), each at least 3x3, visible and contrasting on the compiled outer surface`
           : 'all declared component slots complete with descendant parts using every explicit component material',
         { authority: profile.archetype, partIds }
-      ));
+      );
+      issues.push(issue);
+      if (declaration.component === 'eye' && semanticParts.length > 0) {
+        violations.push(issue);
+      }
     }
     for (const eyeIssue of relevantEyeIssues) {
-      issues.push(authoringPlanIssue(
+      const issue = authoringPlanIssue(
         'authoring.plan.face_eye_visibility_invalid',
         `modeling.parts.${eyeIssue.eyePartId}`,
         eyeIssue.message,
         'eye fully supported, unobstructed, and contrasting on the delivered outer surface',
         { authority: profile.archetype, partIds: [eyeIssue.eyePartId] }
-      ));
+      );
+      issues.push(issue);
+      violations.push(issue);
     }
     return {
       component: declaration.component,
       form: declaration.form,
-      slotIds: declaration.slotIds,
+      slotIds: declarationSlotIds,
       completeSlotIds,
       missingSlotIds,
       partIds,
@@ -258,6 +303,7 @@ export const evaluateFaceQuality = (
     components,
     exceptions: face.exceptions,
     issues,
+    violations,
     ready: hostReady && components.every((component) =>
       component.state === 'complete'
     )

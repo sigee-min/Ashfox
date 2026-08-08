@@ -74,7 +74,7 @@ const unsupportedSchema = {
 assert.throws(
   () => parseProjectDocument(unsupportedSchema),
   ProjectInvariantError,
-  'pre-release documents must use the single v1 schema'
+  'hard-cut documents must use the single current schema'
 );
 
 const closedContractMutations: readonly [string, (value: any) => void][] = [

@@ -188,7 +188,12 @@ const normalizeProfileRecord = (
   const archetype = archetypeReference
     ? resolveArchetypeReference(archetypeReference)
     : undefined;
-  const slots = readAuthoringSlots(value.slots, archetype, issues);
+  const slots = readAuthoringSlots(
+    value.slots,
+    archetype,
+    context?.intent,
+    issues
+  );
   const face = readAuthoringFace(
     value.face,
     faceMode,

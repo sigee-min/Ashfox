@@ -43,10 +43,18 @@ defaults are invalid.
 
 Each structural slot declares one neutral role (`core`, `axis`, `articulated`,
 `span`, `focal-frame`, or `accent`), one quality stage, stable part IDs, parent
-slot IDs, spatial relations, optional pairing, facing, and contact intent.
+slot IDs, spatial relations, facing, a closed symmetry declaration, and typed
+support semantics.
 There is exactly one `core + silhouette` root and every other slot must connect
-to it through a DAG. A pair is declared by shared `pairId`; meaning never comes
-from a hyphenated combination name or slot-name convention.
+to it through a DAG. A pair is declared by `symmetry: {kind: "paired", pairId}`;
+centered and asymmetric slots are equally explicit. Meaning never comes from a
+hyphenated combination name or slot-name convention. Project intent owns the
+single forward/up/lateral frame and bilateral plane used by every evaluator.
+
+Support is a closed union: `none`, `base`, or `foot`. A foot owns its root,
+sole, and named toe/claw regions independently of grounded/free contact. The
+authoring plan evaluates support and symmetry from canonical compiled cells,
+not part names or authored control-point order.
 
 ## Provenance
 
@@ -108,14 +116,17 @@ clauses before the catalog can be exposed.
 
 The authoritative runtime path is:
 
-1. `project.intent.set` establishes requested and observed provenance.
+1. `project.intent.set` establishes requested and observed provenance plus
+   explicit forward, grounding, and symmetry frame.
 2. `project.authoring.configure` validates and stores the canonical profile.
 3. The compatibility evaluator validates the complete authority selection and
    bindings.
 4. The authoring plan evaluator checks routing, model ownership, topology,
-   spatial rules, facing, and bound motion clips.
+   spatial rules, exact compiled symmetry, typed support direction/contact,
+   centered eye gaze, and bound motion clips.
 5. Production readiness converts those findings into blocking findings.
-6. Exporters enforce only the receiving game's or tool's compatibility rules.
+6. Visual review binds decisions to pixel-derived rendered-frame evidence.
+7. Exporters enforce only the receiving game's or tool's compatibility rules.
 
 Concrete asset cases live only in `authoringRecipes.ts`. Each recipe is marked
 `role: "non-authoritative"` and can suggest authority selections, claims,
@@ -127,6 +138,6 @@ module.
 
 `Assembly` is intentionally not implemented in the current contract. There is
 no Assembly type, command, document field, evaluator, or compiler path. If
-multi-asset composition is later required, it must receive a separate
-versioned contract and cannot be smuggled into specialist ports, bindings, or
-recipes.
+multi-asset composition is later required, it must enter through one explicit
+hard cut of the current authority and cannot be smuggled into specialist ports,
+bindings, recipes, or a parallel compatibility path.

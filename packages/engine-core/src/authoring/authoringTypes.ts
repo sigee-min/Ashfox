@@ -128,6 +128,48 @@ export type AuthoringQualityStage =
 export const AUTHORING_CONTACTS = ['grounded', 'free'] as const;
 export type AuthoringContact = (typeof AUTHORING_CONTACTS)[number];
 
+export const AUTHORING_SLOT_SYMMETRY_KINDS = [
+  'centered',
+  'paired',
+  'asymmetric'
+] as const;
+export type AuthoringSlotSymmetryKind =
+  (typeof AUTHORING_SLOT_SYMMETRY_KINDS)[number];
+
+/**
+ * A slot is never "implicitly symmetric". Bilateral ownership is a closed,
+ * persisted contract so final compiled occupancy can be checked exactly.
+ */
+export type AuthoringSlotSymmetry =
+  | { kind: 'centered' }
+  | { kind: 'paired'; pairId: string }
+  | { kind: 'asymmetric' };
+
+export interface AuthoringFootDigit {
+  digitId: string;
+  toePartIds: readonly string[];
+  clawPartIds: readonly string[];
+}
+
+/**
+ * Support semantics stay above geometry primitives. This preserves a small
+ * geometric grammar while making base/sole/toe/claw intent machine-checkable.
+ */
+export type AuthoringSupport =
+  | { kind: 'none' }
+  | {
+      kind: 'base';
+      contact: AuthoringContact;
+      supportPartIds: readonly string[];
+    }
+  | {
+      kind: 'foot';
+      contact: AuthoringContact;
+      rootPartId: string;
+      solePartIds: readonly string[];
+      digits: readonly AuthoringFootDigit[];
+    };
+
 export const AUTHORING_TRACKS = ['essential', 'hero'] as const;
 export type AuthoringTrack = (typeof AUTHORING_TRACKS)[number];
 
@@ -158,13 +200,21 @@ export const AUTHORING_FACE_FORMS = [
 ] as const;
 export type AuthoringFaceForm = (typeof AUTHORING_FACE_FORMS)[number];
 
-export const AUTHORING_EYE_CONFIGURATIONS = [
-  'single',
-  'paired',
-  'compound'
-] as const;
-export type AuthoringEyeConfiguration =
+export const AUTHORING_EYE_CONFIGURATIONS = ['single', 'paired'] as const;
+export type AuthoringEyeConfigurationKind =
   (typeof AUTHORING_EYE_CONFIGURATIONS)[number];
+
+export const AUTHORING_EYE_PALETTES = ['high-contrast'] as const;
+export type AuthoringEyePalette =
+  (typeof AUTHORING_EYE_PALETTES)[number];
+
+export type AuthoringEyeConfiguration =
+  | { kind: 'single'; slotId: string }
+  | {
+      kind: 'paired';
+      leftSlotId: string;
+      rightSlotId: string;
+    };
 
 export const AUTHORING_MOUTH_STATES = [
   'closed',
@@ -326,8 +376,8 @@ export interface AuthoringSlotAssignment {
   parentSlotIds: readonly string[];
   spatialRelations: readonly AuthoringSpatialRelation[];
   facing: 'forward' | null;
-  pairId: string | null;
-  contact: AuthoringContact;
+  symmetry: AuthoringSlotSymmetry;
+  support: AuthoringSupport;
 }
 
 export interface AuthoringFeatureCoverage {
@@ -336,13 +386,41 @@ export interface AuthoringFeatureCoverage {
   materialIds: readonly string[];
 }
 
-export interface AuthoringFaceComponentDeclaration {
-  component: AuthoringFaceComponent;
-  form: AuthoringFaceForm;
-  configuration: AuthoringEyeConfiguration | null;
-  slotIds: readonly string[];
+interface AuthoringFaceComponentDeclarationBase {
   materialIds: readonly string[];
 }
+
+export interface AuthoringEyeFaceComponentDeclaration
+  extends AuthoringFaceComponentDeclarationBase {
+  component: 'eye';
+  form: 'eye';
+  configuration: AuthoringEyeConfiguration;
+  gaze: 'centered';
+  palette: AuthoringEyePalette;
+}
+
+export interface AuthoringNonEyeFaceComponentDeclaration
+  extends AuthoringFaceComponentDeclarationBase {
+  component: Exclude<AuthoringFaceComponent, 'eye'>;
+  form: Exclude<AuthoringFaceForm, 'eye'>;
+  slotIds: readonly string[];
+}
+
+export type AuthoringFaceComponentDeclaration =
+  | AuthoringEyeFaceComponentDeclaration
+  | AuthoringNonEyeFaceComponentDeclaration;
+
+export const authoringFaceComponentSlotIds = (
+  declaration: AuthoringFaceComponentDeclaration
+): readonly string[] => {
+  if (declaration.component !== 'eye') return declaration.slotIds;
+  return declaration.configuration.kind === 'single'
+    ? [declaration.configuration.slotId]
+    : [
+        declaration.configuration.leftSlotId,
+        declaration.configuration.rightSlotId
+      ];
+};
 
 export interface AuthoringFaceException {
   component: 'nasal' | 'oral';
@@ -416,8 +494,8 @@ export interface ComposedAuthoringSlotDefinition {
   parentSlotIds: readonly string[];
   spatialRelations: readonly AuthoringSpatialRelation[];
   facing: 'forward' | null;
-  pairId: string | null;
-  contact: AuthoringContact | null;
+  symmetry: AuthoringSlotSymmetry | null;
+  support: AuthoringSupport | null;
   authority: AuthoringAuthorityReference;
   authorityType: 'archetype' | 'specialist';
   attachmentPortId: string | null;

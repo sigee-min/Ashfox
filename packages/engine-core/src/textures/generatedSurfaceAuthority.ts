@@ -12,6 +12,11 @@ import {
 import {
   PART_CONTRACT_LIMITS
 } from '../modeling/partContract';
+import type { EyeFeaturePartSpec } from '../modeling/partContract';
+import {
+  centeredEyePupilBias
+} from '../modeling/eyeGaze';
+import type { EyePupilBias } from '../modeling/eyeGlyph';
 import {
   readPartRecipe
 } from '../modeling/partRecipe';
@@ -42,6 +47,7 @@ export interface GeneratedSurfaceMarking {
   id: string;
   motif: ModelFeaturePartSpec['motif'];
   glyph?: ModelFeaturePartSpec['glyph'];
+  eyePupilBias?: EyePupilBias;
   color: string;
   x: number;
   y: number;
@@ -370,6 +376,14 @@ const addSurfaceFeatureMarkings = (
         id: feature.partId,
         motif: feature.motif,
         ...(feature.glyph === undefined ? {} : { glyph: feature.glyph }),
+        ...(feature.motif === 'eye' && document.intent
+          ? {
+              eyePupilBias: centeredEyePupilBias(
+                document.intent,
+                feature as EyeFeaturePartSpec
+              )
+            }
+          : {}),
         color,
         x: clipped.x - faceRect.x,
         y: clipped.y - faceRect.y,

@@ -14,6 +14,7 @@ import type {
   EvidenceCriterionDefinition
 } from '@ashfox/engine-core';
 import type { CameraMode } from '../rendering/cameraPresets';
+import type { PixelFrameEvidence } from '../rendering/pixelFrameEvidence';
 
 export const VISUAL_REVIEW_ISSUES = AUTHORING_REVIEW_ISSUES;
 export type VisualReviewIssue = AuthoringReviewIssue;
@@ -67,6 +68,7 @@ export interface VisualReviewObservation {
     mode: 'frame' | 'cycle';
     camera: CameraMode;
     cameraMatrix: readonly number[];
+    frameEvidence: PixelFrameEvidence;
     clipId: string | null;
     playing: boolean;
     observedTimeSeconds: number;

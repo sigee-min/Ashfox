@@ -10,6 +10,7 @@ import {
 import {
   readAuthoringProfile
 } from '../authoring/authoringProfile';
+import { evaluateAuthoringPlan } from '../authoring/authoringPlan';
 import { readProjectIntent } from '../project/projectIntent';
 import { isNonEmptyString } from './shared/value';
 import type { FindingSink } from './types';
@@ -69,6 +70,31 @@ const validateAuthoringProfile = (
           : `authoringProfile.${issue.path}`,
       fix:
         'Replace the profile through project.authoring.configure using the current explicit module-graph contract.'
+    });
+  }
+};
+
+const validateMaterializedAuthoringInvariants = (
+  document: ProjectDocument,
+  add: FindingSink
+): void => {
+  if (!document.authoringProfile || !document.modeling) return;
+  const evaluation = evaluateAuthoringPlan(document);
+  const quality = evaluation.assetQuality;
+  if (!quality) return;
+  const violations = [
+    ...quality.symmetryQuality.violations,
+    ...quality.supportQuality.violations,
+    ...quality.faceQuality.violations
+  ];
+  for (const issue of violations) {
+    add({
+      code: 'document.invalid_authoring_invariant',
+      severity: 'error',
+      message: issue.message,
+      path: issue.path,
+      ...(issue.partIds ? { entityIds: issue.partIds } : {}),
+      fix: issue.expected
     });
   }
 };
@@ -147,4 +173,5 @@ export const validateDocument = (
   validateIntent(document, add);
   validateAuthoringProfile(document, add);
   validateSettings(document, add);
+  validateMaterializedAuthoringInvariants(document, add);
 };

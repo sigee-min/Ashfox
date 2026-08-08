@@ -81,6 +81,7 @@ export const inspectOverview = (
         subject: document.intent?.subject ?? null,
         forward: document.intent?.forward ?? null,
         grounding: document.intent?.grounding ?? null,
+        symmetry: document.intent?.symmetry ?? null,
         target: exportTarget.target,
         gameVersion: compatibility.gameVersion,
         animationSupport: compatibility.animationSupport,

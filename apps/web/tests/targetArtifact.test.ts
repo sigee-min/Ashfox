@@ -45,6 +45,7 @@ const authorProject = async (): Promise<ProjectDocument> => {
           subject: 'Export fixture',
           forward: 'north',
           grounding: 'free',
+          symmetry: { kind: 'bilateral', planeTwice: 0 },
           features: [
             'Fixture geometry remains visible in the exported target.'
           ]

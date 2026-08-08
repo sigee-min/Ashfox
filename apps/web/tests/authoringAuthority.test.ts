@@ -37,6 +37,7 @@ const intended = executeAgentCommandBatch(
         subject: 'Mossy pillar mob',
         forward: 'north',
         grounding: 'grounded',
+        symmetry: { kind: 'bilateral', planeTwice: 0 },
         features: ['Graphic face', 'One top sprout'],
         references: [{
           id: 'reference.pillar',
@@ -339,6 +340,10 @@ if (command.ok) {
   assert.match(schema, /facing/);
   assert.match(schema, /pairId/);
   assert.match(schema, /contact/);
+  assert.match(schema, /symmetry/);
+  assert.match(schema, /support/);
+  assert.match(schema, /solePartIds/);
+  assert.match(schema, /gaze/);
   assert.match(schema, /track/);
   assert.match(schema, /essential/);
   assert.match(schema, /hero/);
@@ -366,8 +371,9 @@ const configuredOverview = inspectProject(
 );
 assert.equal(configuredOverview.ok, true);
 if (configuredOverview.ok) {
-  const authoring = (configuredOverview.data as {
+  const project = (configuredOverview.data as {
     project: {
+      symmetry: { kind: string; planeTwice?: number };
       authoring: {
         track: string;
         faceMode: string;
@@ -380,7 +386,12 @@ if (configuredOverview.ok) {
         };
       };
     };
-  }).project.authoring;
+  }).project;
+  const authoring = project.authoring;
+  assert.deepEqual(project.symmetry, {
+    kind: 'bilateral',
+    planeTwice: 0
+  });
   assert.equal(authoring.track, 'hero');
   assert.equal(authoring.faceMode, 'none');
   assert.deepEqual(authoring.assetQuality, {
@@ -433,6 +444,17 @@ if (configuredInspect.ok) {
               structuralRoles: readonly string[];
             }[];
           };
+          symmetryQuality: {
+            required: boolean;
+            ready: boolean;
+            statusCount: number;
+            failingStatuses: readonly unknown[];
+          };
+          supportQuality: {
+            ready: boolean;
+            statusCount: number;
+            failingStatuses: readonly unknown[];
+          };
           intentCoverage: {
             ready: boolean;
             featureCount: number;
@@ -466,8 +488,14 @@ if (configuredInspect.ok) {
           parentSlotIds: readonly string[];
           spatialRelations: readonly string[];
           facing: string | null;
-          pairId: string | null;
-          contact: string | null;
+          symmetry: {
+            kind: string;
+            pairId?: string;
+          } | null;
+          support: {
+            kind: string;
+            contact?: string;
+          } | null;
         }[];
       };
     };
@@ -516,6 +544,17 @@ if (configuredInspect.ok) {
     ),
     ['silhouette', 'structure', 'focal']
   );
+  assert.deepEqual(authority.plan.assetQuality.symmetryQuality, {
+    required: true,
+    ready: true,
+    statusCount: 5,
+    failingStatuses: []
+  });
+  assert.deepEqual(authority.plan.assetQuality.supportQuality, {
+    ready: true,
+    statusCount: 2,
+    failingStatuses: []
+  });
   assert.equal(authority.plan.assetQuality.intentCoverage.ready, true);
   assert.equal(authority.plan.assetQuality.intentCoverage.featureCount, 3);
   assert.equal(
@@ -557,8 +596,14 @@ if (configuredInspect.ok) {
         Array.isArray(slot.parentSlotIds) &&
         Array.isArray(slot.spatialRelations) &&
         (slot.facing === null || slot.facing === 'forward') &&
-        (slot.pairId === null || slot.pairId.length > 0) &&
-        (slot.contact === null || ['grounded', 'free'].includes(slot.contact))
+        (slot.symmetry === null ||
+          ['centered', 'paired', 'asymmetric'].includes(
+            slot.symmetry.kind
+          )) &&
+        (slot.support === null ||
+          ['none', 'base', 'foot'].includes(slot.support.kind)) &&
+        (slot.support?.contact === undefined ||
+          ['grounded', 'free'].includes(slot.support.contact))
     )
   );
 }
@@ -623,7 +668,15 @@ if (essentialFullFaceInspect.ok) {
           components: readonly {
             component: string;
             form: string;
-            configuration: string | null;
+            configuration?: {
+              kind: string;
+              slotId?: string;
+              leftSlotId?: string;
+              rightSlotId?: string;
+            };
+            gaze?: string;
+            palette?: string;
+            slotIds?: readonly string[];
           }[];
           exceptionCount: number;
         };
@@ -662,14 +715,19 @@ if (essentialFullFaceInspect.ok) {
     authority.profile.face.components.map((component) => [
       component.component,
       component.form,
-      component.configuration
+      component.configuration ?? null
     ]),
     [
-      ['eye', 'eye', 'single'],
+      ['eye', 'eye', { kind: 'single', slotId: 'face.eye' }],
       ['nasal', 'nose', null],
       ['oral', 'mouth', null]
     ]
   );
+  const eyeDeclaration = authority.profile.face.components.find(
+    (component) => component.component === 'eye'
+  );
+  assert.equal(eyeDeclaration?.gaze, 'centered');
+  assert.equal(eyeDeclaration?.palette, 'high-contrast');
   assert.equal(authority.profile.face.exceptionCount, 0);
   assert.equal(authority.plan.ready, true);
   assert.equal(authority.plan.assetQuality.track, 'essential');
@@ -713,49 +771,20 @@ const collapsedFullFaceEye = executeAgentCommandBatch(
         parts: [{
           kind: 'feature',
           partId: 'face_eye',
-          glyph: 'dot',
-          size: [1, 1]
+          glyph: 'square',
+          size: [2, 2]
         }]
       }
     }]
   }
 );
-assert.equal(collapsedFullFaceEye.ok, true);
-if (!collapsedFullFaceEye.ok) {
-  throw new Error(collapsedFullFaceEye.error.message);
-}
-const collapsedFullFaceInspect = inspectProject(
-  collapsedFullFaceEye.document,
-  null,
-  validateProjectDocument(collapsedFullFaceEye.document),
-  { kind: 'authoring' }
+assert.equal(
+  collapsedFullFaceEye.ok,
+  false,
+  'the hard-cut eye contract rejects unreadable geometry atomically'
 );
-assert.equal(collapsedFullFaceInspect.ok, true);
-if (collapsedFullFaceInspect.ok) {
-  const faceQuality = (collapsedFullFaceInspect.data as {
-    authority: {
-      plan: {
-        assetQuality: {
-          faceQuality: {
-            ready: boolean;
-            incompleteComponentCount: number;
-            components: readonly {
-              component: string;
-              state: string;
-              readableEyePartIds?: readonly string[];
-            }[];
-          };
-        };
-      };
-    };
-  }).authority.plan.assetQuality.faceQuality;
-  assert.equal(faceQuality.ready, false);
-  assert.equal(faceQuality.incompleteComponentCount, 1);
-  const eye = faceQuality.components.find(
-    (component) => component.component === 'eye'
-  );
-  assert.equal(eye?.state, 'incomplete');
-  assert.equal(eye?.readableEyePartIds, undefined);
+if (!collapsedFullFaceEye.ok) {
+  assert.match(collapsedFullFaceEye.error.message, /glyph size|invalid/i);
 }
 
 const baseSelection = authoringSelectionFor(configured);
@@ -767,8 +796,8 @@ const additionalModules = Array.from({ length: 9 }, (_, index) => ({
   parentSlotIds: ['body.torso'],
   spatialRelations: [],
   facing: null,
-  pairId: null,
-  contact: 'free'
+  symmetry: { kind: 'asymmetric' as const },
+  support: { kind: 'none' as const }
 }));
 const expanded = executeAgentCommandBatch(
   configured,
@@ -849,6 +878,7 @@ const essentialConfigured = executeAgentCommandBatch(
         subject: configured.intent?.subject ?? 'Essential semantic asset',
         forward: configured.intent?.forward ?? 'north',
         grounding: configured.intent?.grounding ?? 'free',
+        symmetry: configured.intent?.symmetry ?? { kind: 'asymmetric' },
         features: essentialFeatures,
         references: configured.intent?.references ?? []
       }

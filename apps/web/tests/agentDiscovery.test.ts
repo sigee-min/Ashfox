@@ -113,6 +113,7 @@ assert.match(manifest.pageApi.present.reject, /review:"reject"/);
 assert.match(manifest.pageApi.present.reject, /issues/);
 assert.match(manifest.pageApi.present.reject, /failedCheckIds/);
 assert.match(manifest.pageApi.present.contract, /delivery ledger/);
+assert.match(manifest.pageApi.present.contract, /pixel-derived frameEvidence/);
 assert.match(manifest.pageApi.present.contract, /Stale frames/);
 assert.match(manifest.pageApi.capture.result, /window\.ashfox\.capture/);
 assert.match(manifest.pageApi.capture.result, /kind:"result"/);
@@ -145,7 +146,8 @@ assert.match(manifest.authoring.iconic, /formComposition is diagnostic/);
 assert.match(manifest.authoring.iconic, /system-generated surface clusters and noise/);
 assert.doesNotMatch(manifest.authoring.iconic, /maximum of 512/);
 assert.match(manifest.authoring.iconic, /no style escape hatch/i);
-assert.match(manifest.authoring.intent, /explicitly set forward/);
+assert.match(manifest.authoring.intent, /subject,forward,grounding,symmetry/);
+assert.match(manifest.authoring.intent, /no directional or symmetry defaults/);
 assert.match(manifest.authoring.intent, /references/);
 assert.match(manifest.authoring.authority, /project\.authoring\.configure/);
 assert.match(manifest.authoring.authority, /composable structural authority/);
@@ -159,8 +161,9 @@ assert.match(manifest.authoring.structuralAuthority, /open module graph/);
 assert.match(manifest.authoring.structuralAuthority, /parentSlotIds/);
 assert.match(manifest.authoring.structuralAuthority, /spatialRelations/);
 assert.match(manifest.authoring.structuralAuthority, /facing/);
-assert.match(manifest.authoring.structuralAuthority, /pairId/);
-assert.match(manifest.authoring.structuralAuthority, /contact/);
+assert.match(manifest.authoring.structuralAuthority, /symmetry/);
+assert.match(manifest.authoring.structuralAuthority, /support/);
+assert.match(manifest.authoring.structuralAuthority, /exact reflected occupancy/);
 assert.deepEqual(
   Object.keys(manifest.authoring.tracks),
   ['contract', 'essential', 'hero', 'coverage']
@@ -196,8 +199,9 @@ assert.match(manifest.authoring.face.tracks, /full hero.*reference proportions/)
 assert.match(manifest.authoring.face.tracks, /eye-frame orbital\|brow/);
 assert.match(manifest.authoring.face.tracks, /open mouth.*mouth-interior/);
 assert.match(manifest.authoring.face.review, /native gameplay size/);
-assert.match(manifest.authoring.face.review, /lone dot or 1px eye fails/);
-assert.match(manifest.authoring.face.review, /non-dot and at least 2x2/);
+assert.match(manifest.authoring.face.review, /square or slit glyphs at least 3x3/);
+assert.match(manifest.authoring.face.review, /compiler-owned sclera, iris, pupil/);
+assert.match(manifest.authoring.face.review, /gaze converges/);
 assert.match(manifest.authoring.face.review, /noise subordinate/);
 assert.match(manifest.authoring.face.review, /observed\/requested species evidence/);
 assert.deepEqual(
@@ -206,7 +210,9 @@ assert.deepEqual(
 );
 assert.match(manifest.authoring.motifs.core, /load-bearing/);
 assert.match(manifest.authoring.motifs.axis, /taper/);
-assert.match(manifest.authoring.motifs.articulated, /grounded\/free contact/);
+assert.match(manifest.authoring.motifs.articulated, /root, sole, toe groups/);
+assert.match(manifest.authoring.motifs.articulated, /project forward/);
+assert.match(manifest.authoring.motifs.articulated, /exact reflections/);
 assert.match(manifest.authoring.motifs.span, /segments.*plates/);
 assert.match(manifest.authoring.motifs['focal-frame'], /before projecting/);
 assert.match(manifest.authoring.motifs.accent, /silhouette-changing/);
@@ -272,10 +278,11 @@ assert.match(manifest.quality.review, /reversed feet/);
 assert.match(manifest.quality.review, /recognizability or appeal/);
 assert.match(manifest.authoring.parts.feature, /exposed mass or segment face/);
 assert.match(manifest.authoring.parts.feature, /billboard/);
-assert.match(manifest.authoring.parts.feature, /dot.*square.*slit/);
+assert.match(manifest.authoring.parts.feature, /eye glyph square\|slit/);
+assert.doesNotMatch(manifest.authoring.parts.feature, /eye glyph dot/);
 assert.match(manifest.authoring.parts.feature, /nose.*snout/);
 assert.match(manifest.authoring.parts.feature, /mouth.*fang.*beak/);
-assert.match(manifest.authoring.parts.feature, /outline\/iris\/pupil/);
+assert.match(manifest.authoring.parts.feature, /sclera\/iris\/pupil\/outline/);
 assert.match(manifest.authoring.parts.feature, /motif:"patch"/);
 assert.match(manifest.authoring.parts.feature, /automatic noise/);
 

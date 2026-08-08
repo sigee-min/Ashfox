@@ -132,16 +132,27 @@ assert.equal(
 
 const iris = { r: 230, g: 167, b: 47 };
 assert.equal(paintEyeMotifPixel(iris, 0, 0, 4, 3), null);
-assert.notDeepEqual(
+assert.deepEqual(
   paintEyeMotifPixel(iris, 1, 1, 4, 3),
   paintEyeMotifPixel(iris, 2, 1, 4, 3),
-  'the flat glyph must distinguish iris and pupil pixels'
+  'an unbiased even-width eye must keep its two center columns symmetric'
 );
-const flatIris = paintEyeMotifPixel(iris, 1, 1, 4, 3);
+assert.notDeepEqual(
+  paintEyeMotifPixel(iris, 1, 1, 4, 3, 'square', -1),
+  paintEyeMotifPixel(iris, 2, 1, 4, 3, 'square', -1),
+  'a biased even-width eye must distinguish its selected pupil and iris columns'
+);
+const flatIris = paintEyeMotifPixel(iris, 0, 1, 4, 3);
 assert.ok(flatIris);
 assert.ok(
   flatIris.r > flatIris.g && flatIris.g > flatIris.b,
   'the flat iris cluster must preserve the authored hue'
+);
+const sclera = paintEyeMotifPixel(iris, 1, 0, 3, 3);
+assert.ok(sclera);
+assert.ok(
+  sclera.r > 220 && sclera.g > 220 && sclera.b > 220,
+  'the eye field must reserve a white-ish sclera role'
 );
 assert.deepEqual(
   paintEyeMotifPixel(iris, 1, 1, 5, 4),
@@ -382,19 +393,13 @@ const outsideParent = execute(
     }
   }]
 );
-assert.equal(outsideParent.ok, true);
-if (outsideParent.ok) {
-  const projectedRecipe = readPartRecipe(outsideParent.document);
-  assert.equal(projectedRecipe.ok, true);
-  assert.deepEqual(
-    projectedRecipe.ok
-      ? projectedRecipe.recipe?.parts.find(
-          (part) => part.partId === 'eye.left'
-        )?.anchor
-      : null,
-    [3, 3, 5],
-    'an out-of-bounds preferred anchor must project deterministically'
-  );
+assert.equal(
+  outsideParent.ok,
+  false,
+  'eye anchors are exact gaze evidence and may not be independently projected'
+);
+if (!outsideParent.ok) {
+  assert.match(outsideParent.error.message, /never independently snapped/i);
 }
 
 const deleted = execute(

@@ -471,8 +471,7 @@ export const parseFeature = (
     const invalidSize =
       (motif === 'eye' && (
         width > 6 || height > 5 ||
-        (resolvedGlyph === 'dot' && (width > 2 || height > 2)) ||
-        (resolvedGlyph !== 'dot' && (width < 2 || height < 2))
+        width < 3 || height < 3
       )) ||
       (motif === 'nose' && (
         (resolvedGlyph === 'dot' && (width > 2 || height > 2)) ||

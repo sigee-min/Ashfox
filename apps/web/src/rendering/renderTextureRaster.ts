@@ -93,7 +93,8 @@ const markedSurfacePixel = (
       marking.motifY + y - marking.y,
       marking.motifWidth,
       marking.motifHeight,
-      marking.glyph
+      marking.glyph,
+      marking.eyePupilBias
     );
     if (motifPixel) return motifPixel;
   }

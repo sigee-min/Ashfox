@@ -53,7 +53,7 @@ const iconic = execute(
         motif: 'eye',
         face: 'north',
         anchor: [0, 0, -2],
-        size: [2, 2]
+        size: [4, 3]
       }],
       materials: [{ id: 'coat', baseColor: '#8A6A44' }, {
         id: 'eye',

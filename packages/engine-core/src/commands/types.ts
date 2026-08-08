@@ -10,6 +10,7 @@ import type {
   ProjectForwardDirection,
   ProjectGrounding,
   ProjectReferenceObservation,
+  ProjectSymmetry,
   ProjectId,
   Revision,
   SurfacePixelDensity,
@@ -72,8 +73,9 @@ export interface ProjectTargetInput {
 
 export interface ProjectIntentInput {
   subject: string;
-  forward?: ProjectForwardDirection;
-  grounding?: ProjectGrounding;
+  forward: ProjectForwardDirection;
+  grounding: ProjectGrounding;
+  symmetry: ProjectSymmetry;
   features?: readonly string[];
   references?: readonly ProjectReferenceObservation[];
 }

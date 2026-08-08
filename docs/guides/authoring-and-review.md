@@ -34,8 +34,8 @@ better hierarchy when it understands the final silhouette and motion first.
 For a new agent-authored asset, ashfox composes one subject-neutral module graph
 from request and reference provenance before modeling. The graph explicitly
 declares core masses, directed axes, articulated chains, spans, focal frames,
-and silhouette accents together with their parent, pair, direction, and contact
-relations. Focused specialists may add surface, silhouette, grounding, or
+and silhouette accents together with their parent, symmetry, direction, and
+typed base/foot support relations. Focused specialists may add surface, silhouette, grounding, or
 motion policy, but never manufacture body topology.
 
 The asset also declares one whole-asset representation track:
@@ -102,6 +102,9 @@ For directional creatures, also render the top view. Trace shoulder or hip,
 knee or elbow, ankle or wrist, foot, and toe in order. The foot and ordinary
 toes must continue toward the declared forward direction in both side and top
 views; mirroring left to right must never reverse the forward axis.
+The compiler checks these relations again from final occupied cells. Grounded
+soles must touch `y=0` without crossing it, and lifted or rear feet still keep
+their toes and claws pointed along the same project forward.
 
 ## Review textures and UVs
 
@@ -117,6 +120,9 @@ views; mirroring left to right must never reverse the forward axis.
   Ashfox chooses the deterministic role pixels, UV projection, and atlas
   result. Keep these features on exposed volumetric surfaces and do not replace
   them with sockets, pupils, highlights, masks, billboards, or overlay cubes.
+  Eyes use a 3x3-or-larger square/slit footprint. Ashfox derives a contrasting
+  sclera, iris, pupil, and outline; paired even-width pupils choose their inner
+  center pixel so the gaze converges instead of drifting outward.
   Review the compiled rest pose to ensure each focal glyph remains visible and
   contrasts with its host.
 - Let ashfox derive the tonal pixel surface pattern from each base color.

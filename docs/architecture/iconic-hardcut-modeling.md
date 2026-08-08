@@ -83,10 +83,18 @@ IDs.
 
 The current authority accepts an open graph of structural module instances. Each
 configured slot declares `structuralRole`, `qualityStage`, `partIds`,
-`parentSlotIds`, `spatialRelations`, `facing`, `pairId`, and `contact`. Together
-those fields encode parentage, pairing, direction, proportion, attachment, and
-grounded or free contact. A specialist may contribute bounded surface,
+`parentSlotIds`, `spatialRelations`, `facing`, `symmetry`, and typed `support`.
+Together those fields encode parentage, exact bilateral ownership, direction,
+proportion, attachment, and base/foot contact semantics. A specialist may contribute bounded surface,
 silhouette, grounding, or motion policy, but cannot manufacture body topology.
+
+Project intent declares `forward`, `grounding`, and either an asymmetric frame
+or a bilateral plane as `planeTwice`. Even `planeTwice` values place the plane
+between lattice cells; odd values place it through cell centers. Consequently,
+both even- and odd-width cores can be proven symmetric without a width rule.
+Centered slots must equal their own compiled reflection. A paired slot is
+either absent with its counterpart or both members materialize atomically as
+exact reflected compiled occupancy; asymmetric slots remain explicit exceptions.
 
 ### Asset-wide representation tracks and feature coverage
 
@@ -200,6 +208,20 @@ Derived occupancy is computed from emitted cuboids for:
 
 Occupancy verifies the chosen form. It no longer invents that form.
 
+A slot support contract is semantic and remains separate from geometry
+primitives. `none` means the slot is not a support. `base` declares a bounded
+set of support parts. `foot` declares one root, sole parts, and named digit
+groups containing toe and optional claw parts. Grounded support must contact
+the canonical `y=0` plane without crossing below it. Lifted feet keep the same
+foot contract and therefore still undergo direction checks. Every sole lies
+below its root with a downward-exposed surface; each toe extends along project
+forward from its sole, and each claw extends farther forward from its toe.
+Paired supports reflect root, sole/base, and every named toe/claw region
+independently, so swapping semantic regions cannot hide inside a symmetric
+whole-foot silhouette.
+These checks use post-compile canonical cells, so seams and snapping cannot
+hide a reversed rear foot or claw.
+
 ## Deterministic face templates
 
 Facial identity is a surface-language problem unless a feature changes the
@@ -208,8 +230,9 @@ heuristic or a named specialist. Every profile declares
 `faceMode: "none" | "full"`; a biological face uses `full`.
 
 A full face declares one `focal-frame` host, a `mouthState`, semantic
-components, and auditable exceptions. Every component owns non-empty
-`slotIds` and `materialIds`. Its slots must be exclusive descendants of the
+components, and auditable exceptions. Every component owns non-empty target
+slots and `materialIds`; an eye names those slots through its single/paired
+configuration. The slots must be exclusive descendants of the
 host, so an eye target cannot double as a nasal, oral, eye-frame, jaw, or
 mouth-interior target.
 
@@ -225,16 +248,26 @@ cite current observed or requested reference IDs and record a species
 rationale.
 
 At runtime, a full-face eye is an actual `feature` with `motif: "eye"`, a
-non-`dot` glyph, and an extent of at least 2x2. `single`, `paired`, and
-`compound` configurations require at least one, two, and three readable eye
-features respectively. Each must survive compiled outer-surface support,
-occlusion, and contrast audits. A lone one-pixel mark is not a finished eye.
+`square` or `slit` glyph, and an extent of at least 3x3. The eye declaration is
+either `single` with one centered/asymmetric slot or `paired` with the left and
+right members of one slot pair. Each must survive compiled outer-surface
+support, occlusion, exact footprint reflection, and contrast audits. There is
+no compound or dot-eye compatibility path.
+
+The compiler, rather than the agent, derives pupil placement. Odd widths use
+their unique center column. An even-width paired eye chooses the inner of its
+two center columns, so both pupils converge toward the bilateral plane; an
+even single centered eye uses both center columns and remains self-reflecting.
+The declared `high-contrast` palette treats the authored eye material as iris
+hue and deterministically derives distinct sclera, iris, pupil, and outline
+roles, including when the authored color is pure black or white.
 
 Eyes, noses, and mouths then use host-face templates. Each template is defined
 in face-local integer coordinates and contains color roles rather than RGB
 values. Typical roles include:
 
 - `outline`;
+- `sclera`;
 - `iris`;
 - `pupil`;
 - `nose`;
@@ -243,20 +276,21 @@ values. Typical roles include:
 - `beak`;
 - neutral `field` fill.
 
-The public focal motif families remain:
+The public focal motif families are:
 
-- `eye`: `dot`, `square`, and `slit` glyphs (`dot` is not sufficient for a
-  `full` face);
+- `eye`: `square` and `slit` glyphs;
 - `nose`: `dot` and `snout` glyphs;
 - `mouth`: `neutral`, `fang`, and `beak` glyphs;
 - `patch`: a bounded material region for muzzles, bellies, masks, panels,
   stripe blocks, and other color-only identity cues.
 
-Template selection may use only normalized semantic inputs, declared motif,
-host-face dimensions, facing direction, and authored extent. The public anchor is
-a preferred location; the compiler projects the full template rectangle onto
-the nearest valid uncovered host surface. It does not infer behavior from
-arbitrary `partId` wording or randomness.
+Template selection may use only normalized semantic inputs, the project spatial
+frame, declared motif, host-face dimensions, facing direction, and authored
+extent. A non-eye feature anchor is a placement preference that may project to
+the nearest valid uncovered host surface. An eye anchor is exact evidence: an
+invalid anchor fails instead of letting two eyes snap independently and lose
+their gaze or reflection. Behavior never comes from arbitrary `partId` wording
+or randomness.
 
 The public API does not expose the role grid, pixel coordinates, gradients,
 highlight positions, arbitrary expressions, or noise parameters. An additive
@@ -359,7 +393,9 @@ authoring plan reports the first three structural gates as `silhouette`,
    structure or meaning.
 
 Every accepted asset still requires native-size front, side, top, and
-three-quarter review. The review rejects lost silhouettes, incorrect body
+three-quarter review. A successful observation carries a SHA-256 fingerprint
+of the actual rendered RGBA framebuffer and its dimensions, and the review
+receipt binds that evidence to the revision and camera. The review rejects lost silhouettes, incorrect body
 plans, unreadable faces, reversed limbs, accidental symmetry, disconnected
 parts, and details that exist only when zoomed in.
 
@@ -389,7 +425,13 @@ The hardcut is complete only when tests prove:
   frequency;
 - segment bends and thickness changes produce stable intentional steps;
 - emitted cuboids pass contact, overlap, external-face, and export invariants;
+- integer- and half-cell bilateral planes prove centered and paired compiled
+  occupancy, features, and rig pivots without an odd-size restriction;
+- base/sole contact and every foot digit remain correct for all four forward
+  directions, including lifted and rear feet;
 - face templates produce exact role grids for every supported size bucket;
+- paired eye footprints and pupil texels are exact reflections; odd pupils are
+  centered and even pupils use the inward tie-break;
 - eyes, noses, mouths, and patches create no accidental geometry;
 - every requested or observed cue maps to geometry, a feature, or a distinct
   role material before automatic noise;
@@ -400,6 +442,8 @@ The hardcut is complete only when tests prove:
   structure and texture metadata;
 - golden native-size renders cover creature, humanoid, prop, furniture,
   vehicle, and radial-form subjects.
+- visual-review receipts are bound to pixel-derived frame evidence rather than
+  an unverified statement that a frame was seen.
 
 ## Non-goals
 

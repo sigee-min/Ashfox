@@ -3,6 +3,9 @@ import {
   normalizeProjectIntent,
   projectIntentsEqual
 } from '../../project/projectIntent';
+import {
+  PROJECT_SYMMETRY_MAX_PLANE_TWICE
+} from '../../project/projectSpatialFrame';
 import { defineCommand } from '../definition';
 import type { ProjectIntentInput } from '../types';
 
@@ -25,6 +28,36 @@ const inputSchema = {
       enum: ['grounded', 'airborne', 'free'],
       description:
         'Objective relation to lattice ground plane y=0.'
+    },
+    symmetry: {
+      anyOf: [
+        {
+          type: 'object',
+          properties: {
+            kind: { enum: ['asymmetric'] }
+          },
+          required: ['kind'],
+          additionalProperties: false
+        },
+        {
+          type: 'object',
+          properties: {
+            kind: { enum: ['bilateral'] },
+            planeTwice: {
+              type: 'number',
+              integer: true,
+              minimum: -PROJECT_SYMMETRY_MAX_PLANE_TWICE,
+              maximum: PROJECT_SYMMETRY_MAX_PLANE_TWICE,
+              description:
+                'Twice the bilateral reflection-plane coordinate on the asset lattice.'
+            }
+          },
+          required: ['kind', 'planeTwice'],
+          additionalProperties: false
+        }
+      ],
+      description:
+        'Explicitly declares whether the asset has a mathematically enforceable bilateral plane.'
     },
     features: {
       type: 'array',
@@ -81,7 +114,7 @@ const inputSchema = {
       }
     }
   },
-  required: ['subject'],
+  required: ['subject', 'forward', 'grounding', 'symmetry'],
   additionalProperties: false
 } as const;
 
@@ -89,8 +122,9 @@ const completeIntentInput = (
   input: ProjectIntentInput
 ): unknown => ({
   subject: input.subject,
-  forward: input.forward ?? 'north',
-  grounding: input.grounding ?? 'free',
+  forward: input.forward,
+  grounding: input.grounding,
+  symmetry: input.symmetry,
   features: input.features ?? [],
   references: input.references
 });

@@ -47,6 +47,7 @@ export const createAuthoringProject = (): ProjectDocument => {
       subject: 'Compact workshop mechanic',
       forward: 'north',
       grounding: 'free',
+      symmetry: { kind: 'bilateral', planeTwice: 0 },
       features: [
         'Oversized head',
         'Compact utility pack',
@@ -119,8 +120,8 @@ export const createAuthoringProject = (): ProjectDocument => {
         parentSlotIds: [],
         spatialRelations: [],
         facing: null,
-        pairId: null,
-        contact: 'free'
+        symmetry: { kind: 'centered' },
+        support: { kind: 'none' }
       }, {
         slotId: 'body.head',
         structuralRole: 'focal-frame',
@@ -129,8 +130,8 @@ export const createAuthoringProject = (): ProjectDocument => {
         parentSlotIds: ['body.torso'],
         spatialRelations: ['above'],
         facing: 'forward',
-        pairId: null,
-        contact: 'free'
+        symmetry: { kind: 'centered' },
+        support: { kind: 'none' }
       }, {
         slotId: 'body.arm-left',
         structuralRole: 'articulated',
@@ -139,8 +140,8 @@ export const createAuthoringProject = (): ProjectDocument => {
         parentSlotIds: ['body.torso'],
         spatialRelations: ['left'],
         facing: null,
-        pairId: 'body.arms',
-        contact: 'free'
+        symmetry: { kind: 'paired', pairId: 'body.arms' },
+        support: { kind: 'none' }
       }, {
         slotId: 'body.arm-right',
         structuralRole: 'articulated',
@@ -149,38 +150,68 @@ export const createAuthoringProject = (): ProjectDocument => {
         parentSlotIds: ['body.torso'],
         spatialRelations: ['right'],
         facing: null,
-        pairId: 'body.arms',
-        contact: 'free'
+        symmetry: { kind: 'paired', pairId: 'body.arms' },
+        support: { kind: 'none' }
       }, {
         slotId: 'body.leg-left',
         structuralRole: 'articulated',
         qualityStage: 'silhouette',
-        partIds: ['leg.left'],
+        partIds: [
+          'leg.left',
+          'sole.left',
+          'toe.left',
+          'claw.left'
+        ],
         parentSlotIds: ['body.torso'],
         spatialRelations: ['left', 'below'],
         facing: 'forward',
-        pairId: 'body.legs',
-        contact: 'grounded'
+        symmetry: { kind: 'paired', pairId: 'body.legs' },
+        support: {
+          kind: 'foot',
+          contact: 'free',
+          rootPartId: 'leg.left',
+          solePartIds: ['sole.left'],
+          digits: [{
+            digitId: 'front',
+            toePartIds: ['toe.left'],
+            clawPartIds: ['claw.left']
+          }]
+        }
       }, {
         slotId: 'body.leg-right',
         structuralRole: 'articulated',
         qualityStage: 'silhouette',
-        partIds: ['leg.right'],
+        partIds: [
+          'leg.right',
+          'sole.right',
+          'toe.right',
+          'claw.right'
+        ],
         parentSlotIds: ['body.torso'],
         spatialRelations: ['right', 'below'],
         facing: 'forward',
-        pairId: 'body.legs',
-        contact: 'grounded'
+        symmetry: { kind: 'paired', pairId: 'body.legs' },
+        support: {
+          kind: 'foot',
+          contact: 'free',
+          rootPartId: 'leg.right',
+          solePartIds: ['sole.right'],
+          digits: [{
+            digitId: 'front',
+            toePartIds: ['toe.right'],
+            clawPartIds: ['claw.right']
+          }]
+        }
       }, {
-        slotId: 'body.face',
+        slotId: 'body.front-mark',
         structuralRole: 'focal-frame',
         qualityStage: 'focal',
-        partIds: ['face.eye'],
+        partIds: ['front.mark'],
         parentSlotIds: ['body.head'],
         spatialRelations: ['front'],
         facing: 'forward',
-        pairId: null,
-        contact: 'free'
+        symmetry: { kind: 'centered' },
+        support: { kind: 'none' }
       }],
       coverage: [{
         featureRef: 'intent.features.0',
@@ -257,6 +288,30 @@ export const createAuthoringProject = (): ProjectDocument => {
         profile: 'block'
       }, {
         kind: 'mass',
+        partId: 'sole.left',
+        parentPartId: 'leg.left',
+        materialId: 'workwear',
+        center: [-1, 1, 0],
+        radii: [1, 1, 1],
+        profile: 'block'
+      }, {
+        kind: 'mass',
+        partId: 'toe.left',
+        parentPartId: 'sole.left',
+        materialId: 'workwear',
+        center: [-1, 1, -2],
+        radii: [1, 1, 1],
+        profile: 'block'
+      }, {
+        kind: 'mass',
+        partId: 'claw.left',
+        parentPartId: 'toe.left',
+        materialId: 'metal',
+        center: [-1, 1, -4],
+        radii: [1, 1, 1],
+        profile: 'hard'
+      }, {
+        kind: 'mass',
         partId: 'leg.right',
         parentPartId: 'torso',
         materialId: 'workwear',
@@ -264,12 +319,35 @@ export const createAuthoringProject = (): ProjectDocument => {
         radii: [1, 1, 1],
         profile: 'block'
       }, {
+        kind: 'mass',
+        partId: 'sole.right',
+        parentPartId: 'leg.right',
+        materialId: 'workwear',
+        center: [1, 1, 0],
+        radii: [1, 1, 1],
+        profile: 'block'
+      }, {
+        kind: 'mass',
+        partId: 'toe.right',
+        parentPartId: 'sole.right',
+        materialId: 'workwear',
+        center: [1, 1, -2],
+        radii: [1, 1, 1],
+        profile: 'block'
+      }, {
+        kind: 'mass',
+        partId: 'claw.right',
+        parentPartId: 'toe.right',
+        materialId: 'metal',
+        center: [1, 1, -4],
+        radii: [1, 1, 1],
+        profile: 'hard'
+      }, {
         kind: 'feature',
-        partId: 'face.eye',
+        partId: 'front.mark',
         parentPartId: 'head',
         materialId: 'face',
-        motif: 'eye',
-        glyph: 'square',
+        motif: 'patch',
         face: 'north',
         anchor: [0, 9, -2],
         size: [2, 2]
@@ -323,6 +401,7 @@ export const createEssentialFullFaceProject = (): ProjectDocument => {
       subject: 'Small game-piece animal icon',
       forward: 'south',
       grounding: 'free',
+      symmetry: { kind: 'bilateral', planeTwice: 0 },
       features: ['Readable closed-mouth expression'],
       references: []
     }
@@ -341,19 +420,18 @@ export const createEssentialFullFaceProject = (): ProjectDocument => {
         components: [{
           component: 'eye',
           form: 'eye',
-          configuration: 'single',
-          slotIds: ['face.eye'],
+          configuration: { kind: 'single', slotId: 'face.eye' },
+          gaze: 'centered',
+          palette: 'high-contrast',
           materialIds: ['eye_dark']
         }, {
           component: 'nasal',
           form: 'nose',
-          configuration: null,
           slotIds: ['face.nasal'],
           materialIds: ['nose_tone']
         }, {
           component: 'oral',
           form: 'mouth',
-          configuration: null,
           slotIds: ['face.oral'],
           materialIds: ['mouth_tone']
         }],
@@ -379,8 +457,8 @@ export const createEssentialFullFaceProject = (): ProjectDocument => {
         parentSlotIds: [],
         spatialRelations: [],
         facing: null,
-        pairId: null,
-        contact: 'free'
+        symmetry: { kind: 'centered' },
+        support: { kind: 'none' }
       }, {
         slotId: 'focal.host',
         structuralRole: 'focal-frame',
@@ -389,8 +467,8 @@ export const createEssentialFullFaceProject = (): ProjectDocument => {
         parentSlotIds: ['core.primary'],
         spatialRelations: ['above'],
         facing: 'forward',
-        pairId: null,
-        contact: 'free'
+        symmetry: { kind: 'centered' },
+        support: { kind: 'none' }
       }, ...(['eye', 'nasal', 'oral'] as const).map((component) => ({
         slotId: `face.${component}`,
         structuralRole: 'focal-frame' as const,
@@ -399,8 +477,8 @@ export const createEssentialFullFaceProject = (): ProjectDocument => {
         parentSlotIds: ['focal.host'],
         spatialRelations: [],
         facing: 'forward' as const,
-        pairId: null,
-        contact: 'free' as const
+        symmetry: { kind: 'centered' as const },
+        support: { kind: 'none' as const }
       }))],
       coverage: [{
         featureRef: 'intent.features.0',
@@ -438,7 +516,7 @@ export const createEssentialFullFaceProject = (): ProjectDocument => {
         glyph: 'square',
         face: 'south',
         anchor: [0, 6, 2],
-        size: [2, 2]
+        size: [4, 3]
       }, {
         kind: 'feature',
         partId: 'face_nasal',

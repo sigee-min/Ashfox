@@ -5,8 +5,14 @@ import {
   evaluateProjectIntentRequirements,
   executeSystemCommandBatch,
   normalizeProjectIntent,
+  PROJECT_SYMMETRY_MAX_PLANE_TWICE,
+  projectCellLateralSide,
   projectGroundingCorrection,
+  projectPointLateralSide,
+  projectSpatialFrame,
   readProjectIntent,
+  reflectProjectCell,
+  reflectProjectPoint,
   type CommandBatch,
   type ProjectDocument
 } from '../src';
@@ -42,6 +48,7 @@ const normalized = normalizeProjectIntent({
   subject: '  Golden   utility truck ',
   forward: 'east',
   grounding: 'grounded',
+  symmetry: { kind: 'bilateral', planeTwice: 1 },
   features: [
     'Readable cab silhouette',
     '  Connected   bonnet and cab ',
@@ -54,6 +61,7 @@ assert.deepEqual(normalized.intent, {
   subject: 'Golden utility truck',
   forward: 'east',
   grounding: 'grounded',
+  symmetry: { kind: 'bilateral', planeTwice: 1 },
   features: [
     'Connected bonnet and cab',
     'Readable cab silhouette'
@@ -64,6 +72,7 @@ const referenceDriven = normalizeProjectIntent({
   subject: '  Clockwork   hound ',
   forward: 'west',
   grounding: 'grounded',
+  symmetry: { kind: 'asymmetric' },
   features: ['Readable sensor head'],
   references: [{
     id: 'reference.front',
@@ -93,6 +102,7 @@ const duplicateReference = normalizeProjectIntent({
   subject: 'Clockwork hound',
   forward: 'west',
   grounding: 'grounded',
+  symmetry: { kind: 'asymmetric' },
   features: [],
   references: [
     {
@@ -123,6 +133,7 @@ const unknownContract = normalizeProjectIntent({
   subject: 'Truck',
   forward: 'north',
   grounding: 'free',
+  symmetry: { kind: 'asymmetric' },
   features: [],
   unexpected: true
 });
@@ -130,12 +141,146 @@ assert.equal(unknownContract.ok, false);
 if (unknownContract.ok) throw new Error('Expected unknown field rejection.');
 assert.equal(unknownContract.issues[0]?.path, 'unexpected');
 
+const missingSpatialDefaults = normalizeProjectIntent({
+  subject: 'No implicit frame',
+  features: []
+});
+assert.equal(missingSpatialDefaults.ok, false);
+if (missingSpatialDefaults.ok) {
+  throw new Error('Expected implicit forward, grounding, and symmetry rejection.');
+}
+assert.deepEqual(
+  new Set(missingSpatialDefaults.issues.map((issue) => issue.path)),
+  new Set(['forward', 'grounding', 'symmetry'])
+);
+
+for (const planeTwice of [
+  0.5,
+  PROJECT_SYMMETRY_MAX_PLANE_TWICE + 1
+]) {
+  const invalidPlane = normalizeProjectIntent({
+    subject: 'Invalid plane',
+    forward: 'north',
+    grounding: 'free',
+    symmetry: { kind: 'bilateral', planeTwice },
+    features: []
+  });
+  assert.equal(invalidPlane.ok, false);
+  if (invalidPlane.ok) {
+    throw new Error('Expected invalid planeTwice rejection.');
+  }
+  assert.ok(
+    invalidPlane.issues.some(
+      (issue) => issue.path === 'symmetry.planeTwice'
+    )
+  );
+}
+
+const directionFrames = [
+  {
+    forward: 'north',
+    vector: [0, 0, -1],
+    left: [-1, 0, 0],
+    right: [1, 0, 0],
+    axis: 'x',
+    sign: 1
+  },
+  {
+    forward: 'south',
+    vector: [0, 0, 1],
+    left: [1, 0, 0],
+    right: [-1, 0, 0],
+    axis: 'x',
+    sign: -1
+  },
+  {
+    forward: 'east',
+    vector: [1, 0, 0],
+    left: [0, 0, -1],
+    right: [0, 0, 1],
+    axis: 'z',
+    sign: 1
+  },
+  {
+    forward: 'west',
+    vector: [-1, 0, 0],
+    left: [0, 0, 1],
+    right: [0, 0, -1],
+    axis: 'z',
+    sign: -1
+  }
+] as const;
+for (const expected of directionFrames) {
+  const frame = projectSpatialFrame({
+    forward: expected.forward,
+    symmetry: { kind: 'bilateral', planeTwice: 0 }
+  });
+  assert.deepEqual(frame.forward, expected.vector);
+  assert.deepEqual(frame.up, [0, 1, 0]);
+  assert.deepEqual(frame.left, expected.left);
+  assert.deepEqual(frame.right, expected.right);
+  assert.equal(frame.lateralAxis, expected.axis);
+  assert.equal(frame.lateralSign, expected.sign);
+  assert.equal(frame.plane, 0);
+}
+
+const wholePlaneFrame = projectSpatialFrame({
+  forward: 'north',
+  symmetry: { kind: 'bilateral', planeTwice: 0 }
+});
+assert.deepEqual(
+  reflectProjectPoint([-3, 2, 4], wholePlaneFrame),
+  [3, 2, 4]
+);
+assert.deepEqual(
+  reflectProjectCell([-2, 2, 4], wholePlaneFrame),
+  [1, 2, 4]
+);
+assert.equal(
+  projectCellLateralSide([-1, 0, 0], wholePlaneFrame),
+  'left'
+);
+assert.equal(
+  projectCellLateralSide([0, 0, 0], wholePlaneFrame),
+  'right'
+);
+assert.equal(
+  projectPointLateralSide([0, 0, 0], wholePlaneFrame),
+  'center'
+);
+
+const halfPlaneFrame = projectSpatialFrame({
+  forward: 'north',
+  symmetry: { kind: 'bilateral', planeTwice: 1 }
+});
+assert.equal(halfPlaneFrame.plane, 0.5);
+assert.deepEqual(
+  reflectProjectPoint([-2, 2, 4], halfPlaneFrame),
+  [3, 2, 4]
+);
+assert.deepEqual(
+  reflectProjectCell([-2, 2, 4], halfPlaneFrame),
+  [2, 2, 4]
+);
+assert.deepEqual(
+  reflectProjectCell(
+    reflectProjectCell([-2, 2, 4], halfPlaneFrame),
+    halfPlaneFrame
+  ),
+  [-2, 2, 4]
+);
+assert.equal(
+  projectCellLateralSide([0, 0, 0], halfPlaneFrame),
+  'center'
+);
+
 const firstIntent = execute(empty, 'intent-first', [{
   name: 'project.intent.set',
   payload: {
     subject: 'Golden utility truck',
     forward: 'east',
     grounding: 'grounded',
+    symmetry: { kind: 'bilateral', planeTwice: 0 },
     features: ['Connected bonnet and cab'],
     references: [{
       id: 'reference.side',
@@ -152,6 +297,7 @@ assert.deepEqual(firstIntent.document.intent, {
   subject: 'Golden utility truck',
   forward: 'east',
   grounding: 'grounded',
+  symmetry: { kind: 'bilateral', planeTwice: 0 },
   features: ['Connected bonnet and cab'],
   references: [{
     id: 'reference.side',
@@ -162,13 +308,31 @@ assert.deepEqual(firstIntent.document.intent, {
   }]
 });
 
+const missingRequiredIntent = execute(
+  firstIntent.document,
+  'intent-missing-required',
+  [{
+    name: 'project.intent.set',
+    payload: {
+      subject: 'Cargo rocket'
+    }
+  } as unknown as CommandBatch['operations'][number]]
+);
+assert.equal(missingRequiredIntent.ok, false);
+if (missingRequiredIntent.ok) {
+  throw new Error('Expected required spatial intent fields to be rejected.');
+}
+
 const replacement = execute(
   firstIntent.document,
   'intent-replacement',
   [{
     name: 'project.intent.set',
     payload: {
-      subject: 'Cargo rocket'
+      subject: 'Cargo rocket',
+      forward: 'north',
+      grounding: 'free',
+      symmetry: { kind: 'asymmetric' }
     }
   }]
 );
@@ -180,6 +344,7 @@ assert.deepEqual(
     subject: 'Cargo rocket',
     forward: 'north',
     grounding: 'free',
+    symmetry: { kind: 'asymmetric' },
     features: []
   },
   'intent set must replace the complete current intent'
@@ -192,6 +357,9 @@ const unexpectedIntentInput = execute(
     name: 'project.intent.set',
     payload: {
       subject: 'Cargo rocket',
+      forward: 'north',
+      grounding: 'free',
+      symmetry: { kind: 'asymmetric' },
       unexpected: true
     }
   } as unknown as CommandBatch['operations'][number]]
@@ -228,7 +396,9 @@ const grounded = execute(modeled.document, 'intent-grounded', [{
   name: 'project.intent.set',
   payload: {
     subject: 'Golden utility truck',
+    forward: 'east',
     grounding: 'grounded',
+    symmetry: { kind: 'bilateral', planeTwice: 0 },
     features: ['Stable ground contact']
   }
 }]);
@@ -272,6 +442,7 @@ invalidPersistedIntent.intent = {
   subject: 'Invalid project',
   forward: 'north',
   grounding: 'free',
+  symmetry: { kind: 'asymmetric' },
   unexpected: true
 };
 const persistedResult = readProjectIntent(

@@ -16,6 +16,14 @@ import {
   evaluateStructuralQuality,
   type StructuralQualityEvaluation
 } from './structuralQuality';
+import {
+  evaluateSymmetryQuality,
+  type SymmetryQualityEvaluation
+} from './symmetryQuality';
+import {
+  evaluateSupportQuality,
+  type SupportQualityEvaluation
+} from './supportQuality';
 import type {
   AuthoringProfile,
   AuthoringQualityStage,
@@ -26,6 +34,8 @@ export const AUTHORING_ASSET_QUALITY_DIMENSIONS = [
   'silhouette',
   'structure',
   'focal',
+  'symmetry',
+  'support',
   'semantic-coverage',
   'face'
 ] as const;
@@ -50,6 +60,8 @@ export interface AssetQualityEvaluation {
   activeStage: AuthoringAssetQualityStage;
   dimensions: readonly AuthoringAssetQualityDimensionStatus[];
   structuralQuality: StructuralQualityEvaluation;
+  symmetryQuality: SymmetryQualityEvaluation;
+  supportQuality: SupportQualityEvaluation;
   intentCoverage: IntentCoverageEvaluation;
   faceQuality: FaceQualityEvaluation;
   ready: boolean;
@@ -64,6 +76,8 @@ export const evaluateAssetQuality = (
   materials: readonly PartMaterialDefinition[]
 ): AssetQualityEvaluation => {
   const structuralQuality = evaluateStructuralQuality(slots);
+  const symmetryQuality = evaluateSymmetryQuality(document, profile);
+  const supportQuality = evaluateSupportQuality(document, profile);
   const intentCoverage = evaluateIntentCoverage(
     profile,
     intent,
@@ -87,6 +101,30 @@ export const evaluateAssetQuality = (
         gate.incompleteSlotIds.length + Number(gate.state === 'violated')
     })),
     {
+      dimension: 'symmetry',
+      required: symmetryQuality.required,
+      state: !symmetryQuality.required
+        ? 'not-applicable'
+        : symmetryQuality.ready
+          ? 'passed'
+          : 'incomplete',
+      issueCount: symmetryQuality.issues.length
+    },
+    {
+      dimension: 'support',
+      required: supportQuality.statuses.some(
+        (status) => status.supportKind !== 'none'
+      ),
+      state: supportQuality.statuses.every(
+        (status) => status.supportKind === 'none'
+      )
+        ? 'not-applicable'
+        : supportQuality.ready
+          ? 'passed'
+          : 'incomplete',
+      issueCount: supportQuality.issues.length
+    },
+    {
       dimension: 'semantic-coverage',
       required: true,
       state: intentCoverage.ready ? 'passed' : 'incomplete',
@@ -106,6 +144,10 @@ export const evaluateAssetQuality = (
   const activeStage: AuthoringAssetQualityStage =
     structuralQuality.activeStage !== 'complete'
       ? structuralQuality.activeStage
+      : !symmetryQuality.ready
+        ? 'structure'
+      : !supportQuality.ready
+        ? 'structure'
       : !faceQuality.ready
         ? 'focal'
         : !intentCoverage.ready
@@ -116,10 +158,14 @@ export const evaluateAssetQuality = (
     activeStage,
     dimensions,
     structuralQuality,
+    symmetryQuality,
+    supportQuality,
     intentCoverage,
     faceQuality,
     ready:
       structuralQuality.ready &&
+      symmetryQuality.ready &&
+      supportQuality.ready &&
       intentCoverage.ready &&
       faceQuality.ready
   };

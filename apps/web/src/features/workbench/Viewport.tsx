@@ -14,6 +14,9 @@ import {
   applyViewportEnvironment,
   configureTransformControls
 } from './viewport/viewportRuntime';
+import {
+  reportViewportFrame
+} from './viewport/reportViewportFrame';
 import type { ViewportProps } from './viewport/viewportTypes';
 
 export function Viewport({
@@ -52,20 +55,16 @@ export function Viewport({
     timeSeconds: playhead
   });
   const pendingPresentationRef = useRef<number | null>(null);
+  const evidenceCaptureRef = useRef<number | null>(null);
   const framedProjectIdRef = useRef<string | null>(null);
   const onFrameRef = useLatestValue((frameNonce: number): void => {
-    const pending = pendingPresentationRef.current;
-    if (pending === null) return;
-    const runtime = runtimeRef.current;
-    const readiness = runtime?.projection?.readiness;
-    onPresentedRef.current({
-      presentationNonce: pending,
+    reportViewportFrame({
       frameNonce,
-      ...presentationStateRef.current,
-      cameraMatrix:
-        runtime?.camera.matrixWorld.elements.slice() ?? [],
-      projectionStatus: readiness?.status ?? 'pending',
-      projectionError: readiness?.error ?? null
+      presentationNonce: pendingPresentationRef.current,
+      presentation: presentationStateRef.current,
+      runtime: runtimeRef.current,
+      evidenceCaptureRef,
+      onPresented: onPresentedRef.current
     });
   });
 

@@ -16,6 +16,7 @@ export type InvariantCode =
   | 'document.invalid_setting'
   | 'document.invalid_intent'
   | 'document.invalid_authoring_profile'
+  | 'document.invalid_authoring_invariant'
   | 'identity.key_mismatch'
   | 'identity.duplicate'
   | 'scene.root_duplicate'

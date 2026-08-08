@@ -85,7 +85,7 @@ assert.equal(
   'project identity derivation must be deterministic'
 );
 
-const intent = execute(
+const missingSpatialIntent = execute(
   created.document,
   'minimal-project-intent',
   [{
@@ -95,12 +95,32 @@ const intent = execute(
     }
   }]
 );
+assert.equal(
+  missingSpatialIntent.ok,
+  false,
+  'project intent no longer invents forward, grounding, or symmetry defaults'
+);
+
+const intent = execute(
+  created.document,
+  'explicit-spatial-project-intent',
+  [{
+    name: 'project.intent.set',
+    payload: {
+      subject: 'Golden utility truck',
+      forward: 'north',
+      grounding: 'free',
+      symmetry: { kind: 'bilateral', planeTwice: 0 }
+    }
+  }]
+);
 assert.equal(intent.ok, true);
 if (!intent.ok) throw new Error(intent.error.message);
 assert.deepEqual(intent.document.intent, {
   subject: 'Golden utility truck',
   forward: 'north',
   grounding: 'free',
+  symmetry: { kind: 'bilateral', planeTwice: 0 },
   features: []
 });
 
@@ -111,7 +131,9 @@ const explicitIntent = execute(
     name: 'project.intent.set',
     payload: {
       subject: 'Golden utility truck',
+      forward: 'north',
       grounding: 'grounded',
+      symmetry: { kind: 'bilateral', planeTwice: 0 },
       features: ['Connected body']
     }
   }]
@@ -126,7 +148,10 @@ const renamedIntent = execute(
   [{
     name: 'project.intent.set',
     payload: {
-      subject: 'Golden cargo truck'
+      subject: 'Golden cargo truck',
+      forward: 'north',
+      grounding: 'free',
+      symmetry: { kind: 'bilateral', planeTwice: 0 }
     }
   }]
 );

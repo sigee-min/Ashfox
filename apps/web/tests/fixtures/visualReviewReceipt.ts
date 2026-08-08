@@ -15,6 +15,10 @@ import type {
 import {
   presentedReviewChecks
 } from '../../src/application/visualReviewContract';
+import type {
+  PixelFrameEvidence
+} from '../../src/rendering/pixelFrameEvidence';
+import { FRAME_EVIDENCE_FIXTURE } from './frameEvidence';
 
 const IDENTITY_MATRIX = [
   1, 0, 0, 0,
@@ -30,6 +34,7 @@ interface VisualReviewReceiptFixtureInput {
   mode?: 'frame' | 'cycle';
   camera?: PresentSuccess['data']['camera'];
   cameraMatrix?: readonly number[];
+  frameEvidence?: PixelFrameEvidence;
   clipId?: string | null;
   observedTimeSeconds?: number;
   completedCycles?: number;
@@ -94,6 +99,8 @@ export const createVisualReviewReceiptFixture = (
       mode,
       camera,
       cameraMatrix: input.cameraMatrix ?? IDENTITY_MATRIX,
+      frameEvidence:
+        input.frameEvidence ?? structuredClone(FRAME_EVIDENCE_FIXTURE),
       clipId,
       playing: false,
       observedTimeSeconds: input.observedTimeSeconds ?? 0,

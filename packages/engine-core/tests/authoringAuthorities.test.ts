@@ -83,7 +83,7 @@ assert.equal(resolveSpecialistReference({
 }), undefined);
 assert.equal(resolveArchetypeReference({
   id: 'archetype.composable-form',
-  version: 2
+  version: 999
 }), undefined);
 assert.ok(resolveArchetypeReference({
   id: 'archetype.composable-form',
@@ -292,7 +292,9 @@ const intended = execute(base, 'authoring-intent', [{
   name: 'project.intent.set',
   payload: {
     subject: 'Compact workshop character',
-    grounding: 'grounded',
+    forward: 'north',
+    grounding: 'free',
+    symmetry: { kind: 'bilateral', planeTwice: 0 },
     features: ['One practical tool'],
     references: [{
       id: 'reference.front',
@@ -390,7 +392,7 @@ const staleArchetypeCompatibility = evaluateAuthoringCompatibility({
   ...created.profile,
   archetype: {
     ...created.profile.archetype,
-    version: 2
+    version: 999
   }
 } as unknown as AuthoringProfile);
 assert.equal(staleArchetypeCompatibility.compatible, false);
@@ -402,7 +404,7 @@ assert.equal(
 const staleSpecialistCompatibility = evaluateAuthoringCompatibility({
   ...created.profile,
   specialists: created.profile.specialists.map((reference, index) =>
-    index === 0 ? { ...reference, version: 2 } : reference
+    index === 0 ? { ...reference, version: 999 } : reference
   )
 } as unknown as AuthoringProfile);
 assert.equal(staleSpecialistCompatibility.compatible, false);
@@ -414,7 +416,9 @@ const multiFeatureIntended = execute(base, 'multi-feature-intent', [{
   name: 'project.intent.set',
   payload: {
     subject: 'Integrated graphic form',
+    forward: 'north',
     grounding: 'free',
+    symmetry: { kind: 'bilateral', planeTwice: 0 },
     features: ['Primary mark', 'Secondary mark'],
     references: []
   }
@@ -500,8 +504,8 @@ const essentialFaceSlots: AuthoringSelectionInput['slots'] = [
     parentSlotIds: [],
     spatialRelations: [],
     facing: null,
-    pairId: null,
-    contact: 'free'
+    symmetry: { kind: 'centered' },
+    support: { kind: 'none' }
   },
   {
     slotId: 'focal.host',
@@ -511,8 +515,8 @@ const essentialFaceSlots: AuthoringSelectionInput['slots'] = [
     parentSlotIds: ['core.primary'],
     spatialRelations: [],
     facing: null,
-    pairId: null,
-    contact: 'free'
+    symmetry: { kind: 'centered' },
+    support: { kind: 'none' }
   },
   ...(['eye', 'nasal', 'oral'] as const).map((component) => ({
     slotId: `face.${component}`,
@@ -522,29 +526,28 @@ const essentialFaceSlots: AuthoringSelectionInput['slots'] = [
     parentSlotIds: ['focal.host'],
     spatialRelations: [],
     facing: null,
-    pairId: null,
-    contact: 'free' as const
+    symmetry: { kind: 'centered' as const },
+    support: { kind: 'none' as const }
   }))
 ];
 const essentialFaceComponents = [
   {
     component: 'eye',
     form: 'eye',
-    configuration: 'single',
-    slotIds: ['face.eye'],
+    configuration: { kind: 'single', slotId: 'face.eye' },
+    gaze: 'centered',
+    palette: 'high-contrast',
     materialIds: ['eye_dark']
   },
   {
     component: 'nasal',
     form: 'nose',
-    configuration: null,
     slotIds: ['face.nasal'],
     materialIds: ['nose_tone']
   },
   {
     component: 'oral',
     form: 'mouth',
-    configuration: null,
     slotIds: ['face.oral'],
     materialIds: ['mouth_tone']
   }
@@ -647,8 +650,8 @@ const heroFaceSlots: AuthoringSelectionInput['slots'] = [
     parentSlotIds: ['focal.host'],
     spatialRelations: [],
     facing: null,
-    pairId: null,
-    contact: 'free' as const
+    symmetry: { kind: 'centered' as const },
+    support: { kind: 'none' as const }
   }))
 ];
 const heroClosedFaceSelection: AuthoringSelectionInput = {
@@ -663,14 +666,12 @@ const heroClosedFaceSelection: AuthoringSelectionInput = {
       {
         component: 'eye-frame',
         form: 'brow',
-        configuration: null,
         slotIds: ['face.eye_frame'],
         materialIds: ['brow_tone']
       },
       {
         component: 'jaw',
         form: 'jaw',
-        configuration: null,
         slotIds: ['face.jaw'],
         materialIds: ['jaw_tone']
       }
@@ -724,7 +725,6 @@ const openHeroWithInterior = createAuthoringProfile(intended, {
       {
         component: 'mouth-interior',
         form: 'mouth-interior',
-        configuration: null,
         slotIds: ['face.mouth_interior'],
         materialIds: ['interior_tone']
       }
@@ -737,14 +737,114 @@ const asymmetricPair = createAuthoringProfile(intended, {
   ...selection,
   slots: selection.slots.map((slot) =>
     slot.slotId === 'span.right'
-      ? { ...slot, contact: 'grounded' as const }
+      ? {
+          ...slot,
+          support: {
+            kind: 'base' as const,
+            contact: 'free' as const,
+            supportPartIds: ['span_right']
+          }
+        }
       : slot
   )
 });
 assert.equal(asymmetricPair.ok, false);
 if (!asymmetricPair.ok) {
   assert.ok(asymmetricPair.issues.some((issue) =>
-    issue.message.includes('structurally symmetric')
+    issue.message.includes('isomorphic support')
+  ));
+}
+
+const typedFootPairSlots: AuthoringSelectionInput['slots'] =
+  selection.slots.map((slot) => {
+    if (slot.slotId !== 'span.left' && slot.slotId !== 'span.right') {
+      return slot;
+    }
+    const side = slot.slotId.endsWith('left') ? 'left' : 'right';
+    const prefix = `foot.${side}`;
+    const digits = [
+      {
+        digitId: 'inner',
+        toePartIds: [`${prefix}.toe.inner`],
+        clawPartIds: [`${prefix}.claw.inner`]
+      },
+      {
+        digitId: 'outer',
+        toePartIds: [`${prefix}.toe.outer`],
+        clawPartIds: [`${prefix}.claw.outer`]
+      }
+    ];
+    return {
+      ...slot,
+      partIds: [
+        `${prefix}.root`,
+        `${prefix}.sole`,
+        ...digits.flatMap((digit) => [
+          ...digit.toePartIds,
+          ...digit.clawPartIds
+        ])
+      ],
+      support: {
+        kind: 'foot' as const,
+        contact: 'free' as const,
+        rootPartId: `${prefix}.root`,
+        solePartIds: [`${prefix}.sole`],
+        digits: side === 'right' ? [...digits].reverse() : digits
+      }
+    };
+  });
+const canonicalTypedFootPair = createAuthoringProfile(intended, {
+  ...selection,
+  slots: typedFootPairSlots
+});
+assert.equal(
+  canonicalTypedFootPair.ok,
+  true,
+  canonicalTypedFootPair.ok
+    ? ''
+    : canonicalTypedFootPair.issues.map((issue) => issue.message).join('; ')
+);
+if (canonicalTypedFootPair.ok) {
+  const pairDigits = canonicalTypedFootPair.profile.slots
+    .filter((slot) => slot.symmetry.kind === 'paired')
+    .map((slot) => slot.support.kind === 'foot'
+      ? slot.support.digits.map((digit) => digit.digitId)
+      : []
+    );
+  assert.deepEqual(pairDigits, [
+    ['inner', 'outer'],
+    ['inner', 'outer']
+  ]);
+}
+
+const mismatchedTypedFootPair = createAuthoringProfile(intended, {
+  ...selection,
+  slots: typedFootPairSlots.map((slot) => {
+    if (slot.slotId !== 'span.right' || slot.support.kind !== 'foot') {
+      return slot;
+    }
+    const extraClawId = 'foot.right.claw.outer.secondary';
+    return {
+      ...slot,
+      partIds: [...slot.partIds, extraClawId],
+      support: {
+        ...slot.support,
+        digits: slot.support.digits.map((digit) =>
+          digit.digitId === 'outer'
+            ? {
+                ...digit,
+                clawPartIds: [...digit.clawPartIds, extraClawId]
+              }
+            : digit
+        )
+      }
+    };
+  })
+});
+assert.equal(mismatchedTypedFootPair.ok, false);
+if (!mismatchedTypedFootPair.ok) {
+  assert.ok(mismatchedTypedFootPair.issues.some((issue) =>
+    issue.message.includes('isomorphic support')
   ));
 }
 
@@ -869,9 +969,9 @@ const fullFaceAuthored = execute(fullFaceConfigured, 'author-full-face', [{
         materialId: 'eye_dark',
         motif: 'eye',
         glyph: 'square',
-        face: 'south',
-        anchor: [0, 6, 2],
-        size: [2, 2]
+        face: 'north',
+        anchor: [0, 6, -2],
+        size: [4, 3]
       },
       {
         kind: 'feature',
@@ -880,8 +980,8 @@ const fullFaceAuthored = execute(fullFaceConfigured, 'author-full-face', [{
         materialId: 'nose_tone',
         motif: 'nose',
         glyph: 'snout',
-        face: 'south',
-        anchor: [0, 4, 2],
+        face: 'north',
+        anchor: [0, 4, -2],
         size: [2, 2]
       },
       {
@@ -891,8 +991,8 @@ const fullFaceAuthored = execute(fullFaceConfigured, 'author-full-face', [{
         materialId: 'mouth_tone',
         motif: 'mouth',
         glyph: 'neutral',
-        face: 'south',
-        anchor: [0, 2, 2],
+        face: 'north',
+        anchor: [0, 2, -2],
         size: [2, 1]
       }
     ],
@@ -933,33 +1033,34 @@ const lowContrastFullFace = execute(
   }]
 );
 const lowContrastFacePlan = evaluateAuthoringPlan(lowContrastFullFace);
-assert.equal(lowContrastFacePlan.assetQuality?.faceQuality.ready, false);
-assert.ok(lowContrastFacePlan.issues.some((issue) =>
-  issue.code === 'authoring.plan.face_eye_visibility_invalid' &&
-  issue.partIds?.includes('face_eye')
-));
-const onePixelFullFace = execute(fullFaceAuthored, 'collapse-full-face-eye', [{
-  name: 'model.parts.upsert',
-  payload: {
-    parts: [{
-      kind: 'feature',
-      partId: 'face_eye',
-      glyph: 'dot',
-      size: [1, 1]
-    }]
-  }
-}]);
-const onePixelFacePlan = evaluateAuthoringPlan(onePixelFullFace);
-assert.equal(onePixelFacePlan.assetQuality?.faceQuality.ready, false);
-assert.deepEqual(
-  onePixelFacePlan.assetQuality?.faceQuality.components.find(
-    (component) => component.component === 'eye'
-  )?.readableEyePartIds,
-  []
+assert.equal(
+  lowContrastFacePlan.assetQuality?.faceQuality.ready,
+  true,
+  'compiler-owned sclera and pupil roles keep a black iris readable on a black host'
 );
-assert.ok(onePixelFacePlan.issues.some((issue) =>
-  issue.code === 'authoring.plan.face_eye_unreadable'
+assert.ok(!lowContrastFacePlan.issues.some((issue) =>
+  issue.code === 'authoring.plan.face_eye_visibility_invalid'
 ));
+const onePixelFullFace = executeSystemCommandBatch(fullFaceAuthored, {
+  batchId: 'collapse-full-face-eye',
+  baseProjectId: fullFaceAuthored.id,
+  baseRevision: fullFaceAuthored.revision,
+  operations: [{
+    name: 'model.parts.upsert',
+    payload: {
+      parts: [{
+        kind: 'feature',
+        partId: 'face_eye',
+        glyph: 'square',
+        size: [2, 2]
+      }]
+    }
+  }]
+});
+assert.equal(onePixelFullFace.ok, false);
+if (!onePixelFullFace.ok) {
+  assert.match(onePixelFullFace.error.message, /glyph size|invalid/i);
+}
 const mislabeledNasalFace = execute(
   fullFaceAuthored,
   'replace-nasal-form-with-mouth',

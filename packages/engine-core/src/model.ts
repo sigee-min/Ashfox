@@ -128,6 +128,14 @@ export type ProjectForwardDirection =
   | 'east'
   | 'west';
 
+export type ProjectSymmetry =
+  | {
+      kind: 'bilateral';
+      /** Twice the bilateral reflection-plane coordinate on the lattice. */
+      planeTwice: number;
+    }
+  | { kind: 'asymmetric' };
+
 export type ProjectGrounding =
   | 'grounded'
   | 'airborne'
@@ -147,6 +155,7 @@ export interface ProjectIntent {
   subject: string;
   forward: ProjectForwardDirection;
   grounding: ProjectGrounding;
+  symmetry: ProjectSymmetry;
   /** Human/agent review criteria. Their meaning is not machine-validated. */
   features: readonly string[];
   /** Auditable observations used to route and review authoring authorities. */
@@ -194,7 +203,7 @@ export type ModelPartFace =
 export type ModelPartProfile = 'soft' | 'balanced' | 'hard';
 export type ModelMassProfile = 'block' | ModelPartProfile;
 export type ModelFeatureMotif = 'eye' | 'nose' | 'mouth' | 'patch';
-export type ModelEyeGlyph = 'dot' | 'square' | 'slit';
+export type ModelEyeGlyph = 'square' | 'slit';
 export type ModelNoseGlyph = 'dot' | 'snout';
 export type ModelMouthGlyph = 'neutral' | 'fang' | 'beak';
 export type ModelFeatureGlyph =

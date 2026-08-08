@@ -6,6 +6,7 @@ import type {
 import {
   focalFeatureGlyphPixelRole
 } from '../modeling/focalFeatureGlyph';
+import type { EyePupilBias } from '../modeling/eyeGlyph';
 import {
   paintEyeMotifPixel
 } from './eyeMotif';
@@ -40,7 +41,8 @@ export const paintFeatureMotifPixel = (
   y: number,
   width: number,
   height: number,
-  glyph?: ModelFeatureGlyph
+  glyph?: ModelFeatureGlyph,
+  eyePupilBias: EyePupilBias = 0
 ): RgbColor | null => {
   if (motif === 'eye') {
     return paintEyeMotifPixel(
@@ -49,7 +51,8 @@ export const paintFeatureMotifPixel = (
       y,
       width,
       height,
-      glyph as ModelEyeGlyph | undefined
+      glyph as ModelEyeGlyph | undefined,
+      eyePupilBias
     );
   }
   const role = focalFeatureGlyphPixelRole(

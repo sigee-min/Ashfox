@@ -14,6 +14,7 @@ import {
 import type {
   ViewportPresentationFrame
 } from '../src/features/workbench/viewport/viewportTypes';
+import { FRAME_EVIDENCE_FIXTURE } from './fixtures/frameEvidence';
 
 const session = (
   mode: PresentationSession['mode'] = 'frame',
@@ -71,6 +72,8 @@ const frame = (
   revision: 'local-0001',
   camera: 'front',
   cameraMatrix: [1, 0, 0, 0],
+  frameEvidence: structuredClone(FRAME_EVIDENCE_FIXTURE),
+  frameEvidenceError: null,
   clipId: null,
   playing: false,
   timeSeconds: 0,
@@ -91,6 +94,10 @@ if (frameResult.result?.ok) {
   assert.equal(frameResult.result.data.milestone, null);
   assert.equal(frameResult.result.data.verdict, 'pending');
   assert.equal(frameResult.result.data.completedCycles, 0);
+  assert.deepEqual(
+    frameResult.result.data.frameEvidence,
+    FRAME_EVIDENCE_FIXTURE
+  );
   assert.deepEqual(
     frameResult.result.data.reviewChecks.map((check) => check.id),
     ['specialist.mechanic.role-read']
@@ -123,6 +130,17 @@ if (frameResult.result?.ok) {
     'criterion.role-cue',
     'the stored observation must deeply snapshot authority evidence'
   );
+}
+
+const missingEvidence = observePresentationFrame(
+  session(),
+  frame({ frameEvidence: null })
+);
+assert.equal(missingEvidence.session, null);
+assert.equal(missingEvidence.result?.ok, false);
+if (missingEvidence.result && !missingEvidence.result.ok) {
+  assert.equal(missingEvidence.result.error.code, 'preview_unavailable');
+  assert.equal(missingEvidence.result.error.path, 'frameEvidence');
 }
 
 const milestoneResult = observePresentationFrame(

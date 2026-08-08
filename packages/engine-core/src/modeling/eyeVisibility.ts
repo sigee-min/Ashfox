@@ -8,10 +8,9 @@ import {
   isSceneNodeEffectivelyVisible
 } from '../sceneVisibility';
 import type {
-  EyeFeaturePartSpec,
-  PartMaterialDefinition,
-  PartSpec
+  EyeFeaturePartSpec
 } from './partContract';
+import { centeredEyePupilBias } from './eyeGaze';
 import {
   readPartRecipe
 } from './partRecipe';
@@ -42,15 +41,12 @@ interface EyeSurfaceCell {
 
 export const EYE_VISIBILITY_POLICY = Object.freeze({
   minimumVisibleFraction: 0.75,
-  minimumColorDistance: 72,
-  minimumChannelDistance: 48
 });
 
 export type EyeVisibilityIssueCode =
   | 'surface-missing'
   | 'surface-occluded'
-  | 'center-occluded'
-  | 'low-contrast';
+  | 'center-occluded';
 
 export interface EyeVisibilityIssue {
   code: EyeVisibilityIssueCode;
@@ -78,6 +74,7 @@ const faceAxes = (face: ModelPartFace): FaceAxes => {
 };
 
 const eyeSurfaceCells = (
+  document: ProjectDocument,
   eye: EyeFeaturePartSpec,
   density: number
 ): readonly EyeSurfaceCell[] => {
@@ -85,14 +82,24 @@ const eyeSurfaceCells = (
   const minimumU = eye.anchor[axes.u] - Math.floor(eye.size[0] / 2);
   const minimumV = eye.anchor[axes.v] - Math.floor(eye.size[1] / 2);
   const cells: EyeSurfaceCell[] = [];
+  const pupilBias = document.intent
+    ? centeredEyePupilBias(document.intent, eye)
+    : 0;
   for (let y = 0; y < eye.size[1]; y += 1) {
     for (let x = 0; x < eye.size[0]; x += 1) {
+      const motifX = eye.face === 'north' || eye.face === 'east'
+        ? eye.size[0] - x - 1
+        : x;
+      const motifY = eye.face === 'up'
+        ? y
+        : eye.size[1] - y - 1;
       const role = eyeGlyphPixelRole(
         eye.glyph,
-        x,
-        y,
+        motifX,
+        motifY,
         eye.size[0],
-        eye.size[1]
+        eye.size[1],
+        pupilBias
       );
       if (role === null) continue;
       const point: [number, number, number] = [0, 0, 0];
@@ -146,34 +153,6 @@ const blocksSurfacePoint = (
   return cubeForward >= eyeDepth - epsilon;
 };
 
-const parseHex = (value: string): readonly [number, number, number] | null => {
-  const match = value.match(/^#([0-9a-f]{6})$/iu);
-  if (!match) return null;
-  return [
-    Number.parseInt(match[1].slice(0, 2), 16),
-    Number.parseInt(match[1].slice(2, 4), 16),
-    Number.parseInt(match[1].slice(4, 6), 16)
-  ];
-};
-
-const lowContrast = (
-  eye: PartMaterialDefinition | undefined,
-  host: PartMaterialDefinition | undefined
-): boolean => {
-  if (!eye || !host) return true;
-  const eyeColor = parseHex(eye.baseColor);
-  const hostColor = parseHex(host.baseColor);
-  if (!eyeColor || !hostColor) return true;
-  const deltas = eyeColor.map(
-    (channel, index) => Math.abs(channel - hostColor[index])
-  );
-  const distance = Math.hypot(...deltas);
-  return (
-    distance < EYE_VISIBILITY_POLICY.minimumColorDistance ||
-    Math.max(...deltas) < EYE_VISIBILITY_POLICY.minimumChannelDistance
-  );
-};
-
 const visibleCubes = (document: ProjectDocument): readonly CubeNode[] =>
   Object.values(document.scene.nodes).filter(
     (node): node is CubeNode =>
@@ -185,8 +164,6 @@ const visibleCubes = (document: ProjectDocument): readonly CubeNode[] =>
 const auditEye = (
   document: ProjectDocument,
   eye: EyeFeaturePartSpec,
-  partsById: ReadonlyMap<string, PartSpec>,
-  materialsById: ReadonlyMap<string, PartMaterialDefinition>,
   cubes: readonly CubeNode[],
   boundsById: ReadonlyMap<string, WorldAxisAlignedBounds>
 ): readonly EyeVisibilityIssue[] => {
@@ -200,6 +177,7 @@ const auditEye = (
     (cube) => cube.generation?.partId !== eye.parentPartId
   );
   const cells = eyeSurfaceCells(
+    document,
     eye,
     document.settings.surfacePixelDensity
   );
@@ -260,23 +238,6 @@ const auditEye = (
     });
   }
 
-  const host = eye.parentPartId === null
-    ? undefined
-    : partsById.get(eye.parentPartId);
-  if (
-    lowContrast(
-      materialsById.get(eye.materialId),
-      host ? materialsById.get(host.materialId) : undefined
-    )
-  ) {
-    issues.push({
-      code: 'low-contrast',
-      eyePartId: eye.partId,
-      message:
-        `Eye "${eye.partId}" does not contrast enough with its host ` +
-        'surface to remain readable in the delivered texture.'
-    });
-  }
   return issues;
 };
 
@@ -295,12 +256,6 @@ export const auditEyeVisibility = (
       part.kind === 'feature' && part.motif === 'eye'
   );
   if (eyes.length === 0) return [];
-  const partsById = new Map(
-    recipe.recipe.parts.map((part) => [part.partId, part])
-  );
-  const materialsById = new Map(
-    recipe.recipe.materials.map((material) => [material.id, material])
-  );
   const cubes = visibleCubes(document);
   const boundsById = new Map(
     cubes.map((cube) => [cube.id, worldCubeBounds(document, cube)])
@@ -308,8 +263,6 @@ export const auditEyeVisibility = (
   return eyes.flatMap((eye) => auditEye(
     document,
     eye,
-    partsById,
-    materialsById,
     cubes,
     boundsById
   ));

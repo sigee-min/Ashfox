@@ -20,6 +20,7 @@ import {
   resolvePresentationObservation,
   reviewPresentationObservation
 } from '../src/features/workbench/presentation/visualReviewDecision';
+import { FRAME_EVIDENCE_FIXTURE } from './fixtures/frameEvidence';
 
 const observation: PresentSuccess = {
   ok: true,
@@ -41,6 +42,7 @@ const observation: PresentSuccess = {
       0, 0, 1, 0,
       0, 0, 0, 1
     ],
+    frameEvidence: structuredClone(FRAME_EVIDENCE_FIXTURE),
     clipId: null,
     playing: false,
     observedTimeSeconds: 0,
@@ -370,6 +372,29 @@ if (rejected.ok) {
     ),
     null,
     'a decision payload from a different observed frame must be rejected'
+  );
+  const mismatchedPixels: PresentSuccess = {
+    ...semanticRejected,
+    data: {
+      ...semanticRejected.data,
+      frameEvidence: {
+        ...semanticRejected.data.frameEvidence,
+        pixelHash: `sha256:${'f'.repeat(64)}`
+      }
+    }
+  };
+  assert.equal(
+    visualReviewReceiptFrom(
+      document,
+      semanticObservation,
+      mismatchedPixels,
+      {
+        actorId: 'test-agent',
+        recordedAt: '2026-08-06T00:00:00.000Z'
+      }
+    ),
+    null,
+    'a decision cannot be attached to a different rendered pixel frame'
   );
   const incompleteObservation: PresentSuccess = {
     ...semanticObservation,

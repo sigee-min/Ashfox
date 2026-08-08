@@ -43,10 +43,16 @@ const isGuardedMotionMutation = (
 const isStrictPartResultMutation = (
   operation: ProjectCommandOperation
 ): operation is Extract<ProjectCommandOperation, {
-  name: 'model.parts.upsert' | 'model.parts.mirror';
+  name:
+    | 'model.parts.upsert'
+    | 'model.parts.mirror'
+    | 'model.parts.transform'
+    | 'model.parts.delete';
 }> =>
   operation.name === 'model.parts.upsert' ||
-  operation.name === 'model.parts.mirror';
+  operation.name === 'model.parts.mirror' ||
+  operation.name === 'model.parts.transform' ||
+  operation.name === 'model.parts.delete';
 
 export const validateAgentAuthoringMutation = (
   document: ProjectDocument,
@@ -196,7 +202,11 @@ export const validateAgentAuthoringResult = (
   const evaluation = evaluateAuthoringPlan(document);
   const resultPath = operation.name === 'model.parts.mirror'
     ? 'payload.targetRootPartId'
-    : 'payload.parts';
+    : operation.name === 'model.parts.transform'
+      ? 'payload.rootPartId'
+      : operation.name === 'model.parts.delete'
+        ? 'payload.partIds'
+        : 'payload.parts';
   const unassigned = evaluation.unassignedPartIds[0];
   if (unassigned) {
     return enforcementIssue(
@@ -219,11 +229,37 @@ export const validateAgentAuthoringResult = (
     );
   }
   const qualityIssue = evaluation.assetQuality?.structuralQuality.issues[0];
-  return qualityIssue
+  if (qualityIssue) {
+    return enforcementIssue(
+      qualityIssue.message,
+      resultPath,
+      qualityIssue.expected
+    );
+  }
+  const symmetryIssue =
+    evaluation.assetQuality?.symmetryQuality.violations[0];
+  if (symmetryIssue) {
+    return enforcementIssue(
+      symmetryIssue.message,
+      resultPath,
+      symmetryIssue.expected
+    );
+  }
+  const supportIssue =
+    evaluation.assetQuality?.supportQuality.violations[0];
+  if (supportIssue) {
+    return enforcementIssue(
+      supportIssue.message,
+      resultPath,
+      supportIssue.expected
+    );
+  }
+  const faceIssue = evaluation.assetQuality?.faceQuality.violations[0];
+  return faceIssue
     ? enforcementIssue(
-        qualityIssue.message,
+        faceIssue.message,
         resultPath,
-        qualityIssue.expected
+        faceIssue.expected
       )
     : null;
 };

@@ -52,7 +52,7 @@ export const agentManifest = {
       clip:
         'window.ashfox.inspect({kind:"clip",id:"<clipId>"}) returns paged authoring track summaries. Add trackId to page through exact keys for one track; follow nextCursor and never infer omitted keys.',
       catalog:
-        'Use kind authoring without id for the composable contract, neutral specialists, claims, progress, and recipes. Modules expose structuralRole, qualityStage, partIds, parentSlotIds, spatialRelations, facing, pairId, and contact; assetQuality nests structure, intent coverage, and conditional face gates. Role policies list allowed parts and stages. Recipes never decide commands. Use target for readiness, finding for blockers, and activity for receipts.'
+        'Use kind authoring without id for contract, specialists, claims, progress, and recipes. Modules expose structuralRole, qualityStage, parentSlotIds, spatialRelations, facing, symmetry, and typed support; assetQuality reports structure, exact symmetry, support, coverage, and face. Role policies list allowed parts and stages. Recipes never decide commands.'
     },
     run: {
       call:
@@ -72,7 +72,7 @@ export const agentManifest = {
       reject:
         'await window.ashfox.present({review:"reject",frameNonce:<returned frameNonce>,issues:["silhouette"|"proportion"|"connection"|"clipping"|"focal_detail"|"material"|"pivot"|"motion"|"other"],failedCheckIds:[...failed returned reviewChecks ids]})',
       contract:
-        'preview records evidence, not the delivery ledger; next renders one missing view or cycle. Results bind frameNonce and reviewChecks carrying evidenceCriteria and criterionId claims. Accept all check IDs; reject failed IDs and issues. Stale frames fail. Only accepted delivery frames complete review.'
+        'preview records evidence, not the delivery ledger; next renders one missing view or cycle. Results bind frameNonce, pixel-derived frameEvidence, and reviewChecks carrying evidenceCriteria and criterionId claims. Accept all check IDs; reject failed IDs and issues. Stale frames fail. Only accepted delivery frames complete review.'
     },
     capture: {
       result:
@@ -96,11 +96,11 @@ export const agentManifest = {
     iconic:
       'Iconic pixel is the only style. On a 1-unit lattice, geometry must change silhouette, depth, articulation, or identity. Preserve identity-bearing middle forms: neck break, muzzle plane, mass rhythm, span fold, joint, foot, or taper. Iconic does not mean childlike, uniform, or fewest parts. formComposition is diagnostic, never an artistic cube budget. Pixel variation belongs to system-generated surface clusters and noise, not detail cubes or painted texels. There is no style escape hatch.',
     intent:
-      'Set project.intent.set {subject,forward?,grounding?,features?,references?}. Normalize every requested or observed cue that must survive into one features entry. Each call replaces intent; explicitly set forward before directional geometry.',
+      'Set project.intent.set {subject,forward,grounding,symmetry,features?,references?}. symmetry is asymmetric or bilateral with integer planeTwice; even values lie between cells and odd values cross cell centers, so both core widths are exact. Normalize every requested or observed cue into features. Each call replaces intent; there are no directional or symmetry defaults.',
     authority:
       'After intent, inspect {kind:"authoring"} and the project.authoring.configure schema. Configure one composable structural authority from neutral module instances; do not select or invent a named body plan. Cover each evidenceCriterion with criterionId, basis:"observed"|"requested", referenceIds, and rationale. Optional modules require identity, silhouette, articulation, or target-format reason. Specialists add bounded policy and motion, never topology.',
     structuralAuthority:
-      'The authority is an open module graph. Each slot declares structuralRole, qualityStage, partIds, parentSlotIds, spatialRelations, facing, pairId, and contact through the inspected schema. Compose any number of core, axis, articulated, span, focal-frame, and accent instances. Missing or contradictory landmarks block the next gate.',
+      'The authority is an open module graph. Each slot declares structuralRole, qualityStage, partIds, parentSlotIds, spatialRelations, facing, symmetry, and support. centered slots self-reflect; paired slots are absent together or atomic exact reflected occupancy. Missing or contradictory landmarks block the next gate.',
     tracks: {
       contract:
         'Tracks are asset-wide representation contracts, never low/high quality. hero is default; face rules are a conditional part.',
@@ -117,7 +117,7 @@ export const agentManifest = {
       tracks:
         'full essential requires readable eye, nasal nose|muzzle|beak, and oral mouth. full hero preserves reference proportions with eye-frame orbital|brow, nasal, oral, and jaw; an open mouth requires mouth-interior.',
       review:
-        'At native gameplay size, gaze, mouth state, and expression must read. A lone dot or 1px eye fails; eyes are non-dot and at least 2x2. Keep noise subordinate. Nasal or oral omissions need observed/requested species evidence.'
+        'At native gameplay size, gaze and expression must read. Eyes use square or slit glyphs at least 3x3 with compiler-owned sclera, iris, pupil, and outline. Single eyes self-center; even-width paired pupils choose the inner center texel so gaze converges. Keep noise subordinate. Omissions need observed/requested species evidence.'
     },
     motifs: {
       core:
@@ -125,7 +125,7 @@ export const agentManifest = {
       axis:
         'Directed serial form such as neck, tail, branch, or boom. Preserve bends and taper; never sample path cells.',
       articulated:
-        'Jointed proximal-to-distal chain. Pairing, handedness, forward, and grounded/free contact are explicit.',
+        'Jointed chain with explicit pairing and handedness. Foot support owns root, sole, toe groups, and claws whether grounded or lifted; all extend toward project forward, and paired semantic regions are exact reflections.',
       span:
         'Rooted spread such as wing, fin, sail, or panel: segments form spars and plates form membranes; never use a grounded limb.',
       'focal-frame':
@@ -149,7 +149,7 @@ export const agentManifest = {
       radial:
         'Axis-aligned disk or ring: center, axis, outer radius, optional inner radius, depth. Radius changes proportion; the compiler keeps a small disk/ring template rather than sampling a curve.',
       feature:
-        'A feature is a zero-depth mark on one exposed mass or segment face; Ashfox projects anchor to a valid host. Use eye glyph dot|square|slit, nose dot|snout, or mouth neutral|fang|beak. Eyes derive outline/iris/pupil without gloss, eyeball, socket cube, face plate, or billboard. Use motif:"patch" for color-only regions without glyphs or pixel maps; Ashfox supplies tone and automatic noise. Geometry IDs describing eyes, irises, pupils, or glints are rejected.'
+        'A feature is a zero-depth mark on an exposed mass or segment face. Non-eyes may project; eye anchors are explicit so a pair cannot snap apart. Use eye glyph square|slit, nose dot|snout, or mouth neutral|fang|beak. Eyes derive high-contrast sclera/iris/pupil/outline without eyeball, socket, or billboard. motif:"patch" makes color-only regions; Ashfox supplies tone and automatic noise. Eye, iris, pupil, or glint geometry IDs are rejected.'
     },
     joints:
       'Omit joint for rigid attachment. A hinge declares one axis; a ball rotates in XYZ. Ashfox derives attachment and pivot.',
@@ -178,7 +178,7 @@ export const agentManifest = {
     structure:
       'Prioritize silhouette, construction, proportion, connection, focal features, and articulation. Keep macro and identity-bearing middle forms; remove only unreadable micro-geometry. Before noise, realize every requested or observed cue with explicit geometry, a feature, or a distinct role material. Automatic noise never invents semantic material boundaries. Delete filler, bevel stairs, scale cubes, and hidden ribs.',
     fidelity:
-      'Follow the configured module graph, policies, and bindings instead of a generic substitute. Preserve body plan, proportions, posture, maturity, and defining cues. Resolve intent.forward first. Faces use unobstructed surface glyphs on an intentional focal frame; gloss, eyeballs, sockets, layered faces, and decorative micro-cubes fail.',
+      'Follow the configured module graph; preserve body plan, proportion, posture, maturity, and defining cues. Resolve the spatial frame from forward and symmetry first. Faces use unobstructed focal-frame surface glyphs, never decorative micro-cubes. Feet declare sole/toe/claw regions: grounded soles contact y=0 and rear or lifted feet still point toward project forward.',
     gates: {
       silhouette:
         'Gate 1 — macro: establish core proportion, axes, span direction, reach, stance, and negative space. Reject an unreadable silhouette.',
@@ -201,7 +201,7 @@ export const agentManifest = {
     {
       stage: 'plan',
       instruction:
-        'Replace intent with subject, forward, grounding, normalized features, and references. Inspect contracts, then call project.authoring.configure with asset-wide track, conditional face contract, exact feature coverage, claims, and modules declaring role, stage, parts, hierarchy, direction, pair, and contact before coordinates.'
+        'Replace intent with subject, forward, grounding, symmetry, normalized features, and references. Inspect contracts, then call project.authoring.configure with asset-wide track, conditional face contract, exact feature coverage, claims, and modules declaring role, stage, parts, hierarchy, direction, symmetry, and typed support before coordinates.'
     },
     {
       stage: 'model',

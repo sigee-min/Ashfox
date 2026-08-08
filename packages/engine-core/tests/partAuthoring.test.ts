@@ -190,7 +190,7 @@ const newEye = complete({
   motif: 'eye',
   face: 'south',
   anchor: [0, 4, 2],
-  size: [2, 2]
+  size: [4, 3]
 });
 assert.equal(newEye.kind, 'feature');
 if (newEye.kind === 'feature') {

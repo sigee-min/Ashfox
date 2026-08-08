@@ -38,8 +38,8 @@ const recipes: readonly AuthoringRecipe[] = deepFreezeAuthoringValue([(() => {
         parentSlotIds: [],
         spatialRelations: [],
         facing: null,
-        pairId: null,
-        contact: 'free'
+        symmetry: { kind: 'centered' },
+        support: { kind: 'none' }
       },
       {
         slotId: 'axis.primary',
@@ -49,8 +49,8 @@ const recipes: readonly AuthoringRecipe[] = deepFreezeAuthoringValue([(() => {
         parentSlotIds: ['core.primary'],
         spatialRelations: ['front'],
         facing: null,
-        pairId: null,
-        contact: 'free'
+        symmetry: { kind: 'centered' },
+        support: { kind: 'none' }
       },
       {
         slotId: 'span.left',
@@ -60,8 +60,8 @@ const recipes: readonly AuthoringRecipe[] = deepFreezeAuthoringValue([(() => {
         parentSlotIds: ['core.primary'],
         spatialRelations: ['left'],
         facing: null,
-        pairId: 'pair.span',
-        contact: 'free'
+        symmetry: { kind: 'paired', pairId: 'pair.span' },
+        support: { kind: 'none' }
       },
       {
         slotId: 'span.right',
@@ -71,8 +71,8 @@ const recipes: readonly AuthoringRecipe[] = deepFreezeAuthoringValue([(() => {
         parentSlotIds: ['core.primary'],
         spatialRelations: ['right'],
         facing: null,
-        pairId: 'pair.span',
-        contact: 'free'
+        symmetry: { kind: 'paired', pairId: 'pair.span' },
+        support: { kind: 'none' }
       },
       {
         slotId: 'focal.host',
@@ -82,8 +82,8 @@ const recipes: readonly AuthoringRecipe[] = deepFreezeAuthoringValue([(() => {
         parentSlotIds: ['axis.primary'],
         spatialRelations: ['front'],
         facing: null,
-        pairId: null,
-        contact: 'free'
+        symmetry: { kind: 'centered' },
+        support: { kind: 'none' }
       },
       {
         slotId: 'focal.glyph',
@@ -93,8 +93,8 @@ const recipes: readonly AuthoringRecipe[] = deepFreezeAuthoringValue([(() => {
         parentSlotIds: ['focal.host'],
         spatialRelations: [],
         facing: 'forward',
-        pairId: null,
-        contact: 'free'
+        symmetry: { kind: 'centered' },
+        support: { kind: 'none' }
       }
     ],
     coverageSuggestions: [{

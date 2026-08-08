@@ -109,6 +109,7 @@ ready.intent = {
   subject: 'Crate',
   forward: 'north',
   grounding: 'free',
+  symmetry: { kind: 'asymmetric' },
   features: ['Human confirms the crate reads correctly.']
 };
 const readyClip = ready.animations.idle;
@@ -285,6 +286,7 @@ adaptedPreview.intent = {
   subject: 'Crate',
   forward: 'north',
   grounding: 'free',
+  symmetry: { kind: 'asymmetric' },
   features: ['Human confirms the crate reads correctly.']
 };
 const adaptedClip =

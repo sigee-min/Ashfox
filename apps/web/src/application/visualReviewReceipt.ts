@@ -27,6 +27,7 @@ import {
 } from './visualReviewContract';
 import { presentedReviewChecks } from './visualReviewContract';
 import { canonicalFingerprint } from './canonicalFingerprint';
+import { isPixelFrameEvidence } from '../rendering/pixelFrameEvidence';
 
 export const VISUAL_REVIEW_RECEIPT_SCHEMA_VERSION =
   INTERNAL_CONTRACT_VERSIONS.visualReviewReceipt;
@@ -80,6 +81,7 @@ const OBSERVATION_DATA_KEYS = new Set([
   'mode',
   'camera',
   'cameraMatrix',
+  'frameEvidence',
   'clipId',
   'playing',
   'observedTimeSeconds',
@@ -277,6 +279,7 @@ const isPendingObservation = (
       data.camera as (typeof VISUAL_REVIEW_CAMERAS)[number]
     ) &&
     isFiniteNumberArray(data.cameraMatrix, 16) &&
+    isPixelFrameEvidence(data.frameEvidence) &&
     clipIsValid &&
     data.playing === false &&
     typeof data.observedTimeSeconds === 'number' &&

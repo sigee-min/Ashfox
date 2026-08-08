@@ -26,6 +26,7 @@ import type {
 import {
   createOperationLease
 } from '../src/application/operationLease';
+import { FRAME_EVIDENCE_FIXTURE } from './fixtures/frameEvidence';
 
 const runRequest = (
   name = 'Port test'
@@ -200,6 +201,7 @@ export const test = (async (): Promise<void> => {
         mode: 'frame',
         camera: 'front',
         cameraMatrix: [1, 0, 0, 0],
+        frameEvidence: structuredClone(FRAME_EVIDENCE_FIXTURE),
         clipId: null,
         playing: false,
         observedTimeSeconds: 0,
@@ -273,6 +275,7 @@ export const test = (async (): Promise<void> => {
         mode: 'frame',
         camera: 'front',
         cameraMatrix: [1, 0, 0, 0],
+        frameEvidence: structuredClone(FRAME_EVIDENCE_FIXTURE),
         clipId: null,
         playing: false,
         observedTimeSeconds: 0,
@@ -771,6 +774,7 @@ for (const failure of [
       mode: 'frame',
       camera: 'front',
       cameraMatrix: [1, 0, 0, 0],
+      frameEvidence: structuredClone(FRAME_EVIDENCE_FIXTURE),
       clipId: null,
       playing: false,
       observedTimeSeconds: 0,
@@ -1018,6 +1022,7 @@ for (const failure of [
       mode: 'frame',
       camera: 'front',
       cameraMatrix: [1, 0, 0, 0],
+      frameEvidence: structuredClone(FRAME_EVIDENCE_FIXTURE),
       clipId: null,
       playing: false,
       observedTimeSeconds: 0,

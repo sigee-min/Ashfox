@@ -9,13 +9,14 @@ import {
 import {
   ARCHETYPE_IDS,
   AUTHORING_CONTACTS,
-  AUTHORING_EYE_CONFIGURATIONS,
+  AUTHORING_EYE_PALETTES,
   AUTHORING_FACE_COMPONENTS,
   AUTHORING_FACE_FORMS,
   AUTHORING_FACE_MODES,
   AUTHORING_MOUTH_STATES,
   AUTHORING_PROFILE_SCHEMA_VERSION,
   AUTHORING_QUALITY_STAGES,
+  AUTHORING_SLOT_SYMMETRY_KINDS,
   AUTHORING_SPATIAL_RELATIONS,
   AUTHORING_STRUCTURAL_ROLES,
   AUTHORING_TRACKS,
@@ -83,6 +84,111 @@ const canonicalIdSchema: CommandInputSchema = {
   pattern: PART_ID_PATTERN_SOURCE
 };
 
+const slotSymmetrySchema: CommandInputSchema = {
+  anyOf: [
+    ...AUTHORING_SLOT_SYMMETRY_KINDS
+      .filter((kind) => kind !== 'paired')
+      .map((kind) => ({
+        type: 'object' as const,
+        properties: { kind: { enum: [kind] } },
+        required: ['kind'],
+        additionalProperties: false
+      })),
+    {
+      type: 'object',
+      properties: {
+        kind: { enum: ['paired'] },
+        pairId: canonicalIdSchema
+      },
+      required: ['kind', 'pairId'],
+      additionalProperties: false
+    }
+  ]
+};
+
+const supportSchema: CommandInputSchema = {
+  anyOf: [
+    {
+      type: 'object',
+      properties: { kind: { enum: ['none'] } },
+      required: ['kind'],
+      additionalProperties: false
+    },
+    {
+      type: 'object',
+      properties: {
+        kind: { enum: ['base'] },
+        contact: { enum: AUTHORING_CONTACTS },
+        supportPartIds: partIdsSchema
+      },
+      required: ['kind', 'contact', 'supportPartIds'],
+      additionalProperties: false
+    },
+    {
+      type: 'object',
+      properties: {
+        kind: { enum: ['foot'] },
+        contact: { enum: AUTHORING_CONTACTS },
+        rootPartId: canonicalIdSchema,
+        solePartIds: partIdsSchema,
+        digits: {
+          type: 'array',
+          minItems: 1,
+          maxItems: AUTHORING_PROFILE_LIMITS.maxPartIdsPerOwner,
+          items: {
+            type: 'object',
+            properties: {
+              digitId: canonicalIdSchema,
+              toePartIds: partIdsSchema,
+              clawPartIds: {
+                type: 'array',
+                minItems: 0,
+                maxItems: AUTHORING_PROFILE_LIMITS.maxPartIdsPerOwner,
+                uniqueItems: true,
+                items: canonicalIdSchema
+              }
+            },
+            required: ['digitId', 'toePartIds', 'clawPartIds'],
+            additionalProperties: false
+          }
+        }
+      },
+      required: [
+        'kind',
+        'contact',
+        'rootPartId',
+        'solePartIds',
+        'digits'
+      ],
+      additionalProperties: false
+    }
+  ]
+};
+
+const eyeConfigurationSchema: CommandInputSchema = {
+  anyOf: [
+    {
+      type: 'object',
+      properties: {
+        kind: { enum: ['single'] },
+        slotId: canonicalIdSchema
+      },
+      required: ['kind', 'slotId'],
+      additionalProperties: false
+    },
+    {
+      type: 'object',
+      properties: {
+        kind: { enum: ['paired'] },
+        leftSlotId: canonicalIdSchema,
+        rightSlotId: canonicalIdSchema
+      },
+      required: ['kind', 'leftSlotId', 'rightSlotId'],
+      additionalProperties: false
+    }
+  ]
+};
+
 const inputSchema: CommandInputSchema = {
   type: 'object',
   description:
@@ -104,39 +210,70 @@ const inputSchema: CommandInputSchema = {
               minItems: 1,
               maxItems: AUTHORING_FACE_COMPONENTS.length,
               items: {
-                type: 'object',
-                properties: {
-                  component: { enum: AUTHORING_FACE_COMPONENTS },
-                  form: { enum: AUTHORING_FACE_FORMS },
-                  configuration: {
-                    anyOf: [
-                      { enum: AUTHORING_EYE_CONFIGURATIONS },
-                      { enum: [null] }
-                    ]
+                anyOf: [
+                  {
+                    type: 'object',
+                    properties: {
+                      component: { enum: ['eye'] },
+                      form: { enum: ['eye'] },
+                      configuration: eyeConfigurationSchema,
+                      gaze: { enum: ['centered'] },
+                      palette: { enum: AUTHORING_EYE_PALETTES },
+                      materialIds: {
+                        type: 'array',
+                        minItems: 1,
+                        maxItems: AUTHORING_PROFILE_LIMITS.maxPartIdsPerOwner,
+                        uniqueItems: true,
+                        items: canonicalIdSchema
+                      }
+                    },
+                    required: [
+                      'component',
+                      'form',
+                      'configuration',
+                      'gaze',
+                      'palette',
+                      'materialIds'
+                    ],
+                    additionalProperties: false
                   },
-                  slotIds: {
-                    type: 'array',
-                    minItems: 1,
-                    maxItems: AUTHORING_PROFILE_LIMITS.maxSlots,
-                    uniqueItems: true,
-                    items: canonicalIdSchema
-                  },
-                  materialIds: {
-                    type: 'array',
-                    minItems: 1,
-                    maxItems: AUTHORING_PROFILE_LIMITS.maxPartIdsPerOwner,
-                    uniqueItems: true,
-                    items: canonicalIdSchema
+                  {
+                    type: 'object',
+                    properties: {
+                      component: {
+                        enum: AUTHORING_FACE_COMPONENTS.filter(
+                          (component) => component !== 'eye'
+                        )
+                      },
+                      form: {
+                        enum: AUTHORING_FACE_FORMS.filter(
+                          (form) => form !== 'eye'
+                        )
+                      },
+                      slotIds: {
+                        type: 'array',
+                        minItems: 1,
+                        maxItems: AUTHORING_PROFILE_LIMITS.maxSlots,
+                        uniqueItems: true,
+                        items: canonicalIdSchema
+                      },
+                      materialIds: {
+                        type: 'array',
+                        minItems: 1,
+                        maxItems: AUTHORING_PROFILE_LIMITS.maxPartIdsPerOwner,
+                        uniqueItems: true,
+                        items: canonicalIdSchema
+                      }
+                    },
+                    required: [
+                      'component',
+                      'form',
+                      'slotIds',
+                      'materialIds'
+                    ],
+                    additionalProperties: false
                   }
-                },
-                required: [
-                  'component',
-                  'form',
-                  'configuration',
-                  'slotIds',
-                  'materialIds'
-                ],
-                additionalProperties: false
+                ]
               }
             },
             exceptions: {
@@ -263,8 +400,8 @@ const inputSchema: CommandInputSchema = {
             items: { enum: AUTHORING_SPATIAL_RELATIONS }
           },
           facing: { enum: ['forward', null] },
-          pairId: { anyOf: [canonicalIdSchema, { enum: [null] }] },
-          contact: { enum: AUTHORING_CONTACTS }
+          symmetry: slotSymmetrySchema,
+          support: supportSchema
         },
         required: [
           'slotId',
@@ -274,8 +411,8 @@ const inputSchema: CommandInputSchema = {
           'parentSlotIds',
           'spatialRelations',
           'facing',
-          'pairId',
-          'contact'
+          'symmetry',
+          'support'
         ],
         additionalProperties: false
       }

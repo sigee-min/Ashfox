@@ -19,6 +19,10 @@ import type {
 import type {
   ViewportPresentationFrame
 } from '../viewport/viewportTypes';
+import {
+  isPixelFrameEvidence,
+  type PixelFrameEvidence
+} from '../../../rendering/pixelFrameEvidence';
 
 const FRAME_EPSILON_SECONDS = 0.000001;
 
@@ -82,7 +86,8 @@ const failure = (
 const success = (
   session: PresentationSession,
   frame: ViewportPresentationFrame,
-  completedCycles: number
+  completedCycles: number,
+  frameEvidence: PixelFrameEvidence
 ): PresentationTransition => ({
   session: null,
   result: {
@@ -100,6 +105,7 @@ const success = (
       mode: session.mode,
       camera: frame.camera,
       cameraMatrix: frame.cameraMatrix,
+      frameEvidence,
       clipId: frame.clipId,
       playing: frame.playing,
       observedTimeSeconds: frame.timeSeconds,
@@ -110,6 +116,16 @@ const success = (
   },
   playbackEffect: 'none'
 });
+
+const missingFrameEvidence = (
+  frame: ViewportPresentationFrame
+): PresentationTransition => failure(
+  frame.revision,
+  'preview_unavailable',
+  'frameEvidence',
+  frame.frameEvidenceError ??
+    'a SHA-256 fingerprint derived from the rendered RGBA viewport pixels'
+);
 
 export const observePresentationFrame = (
   session: PresentationSession,
@@ -153,14 +169,20 @@ export const observePresentationFrame = (
     ) {
       return pending(session);
     }
-    return success(session, frame, 0);
+    if (!isPixelFrameEvidence(frame.frameEvidence)) {
+      return missingFrameEvidence(frame);
+    }
+    return success(session, frame, 0, frame.frameEvidence);
   }
   if (session.phase === 'closing') {
     if (frame.playing) return pending(session);
     if (frame.timeSeconds > FRAME_EPSILON_SECONDS) {
       return pending(session, 'rewind');
     }
-    return success(session, frame, 1);
+    if (!isPixelFrameEvidence(frame.frameEvidence)) {
+      return missingFrameEvidence(frame);
+    }
+    return success(session, frame, 1, frame.frameEvidence);
   }
   if (!session.cycle) return pending(session);
 

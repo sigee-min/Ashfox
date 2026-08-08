@@ -124,6 +124,18 @@ assert.equal(
   'tampered observation evidence fails its canonical fingerprint'
 );
 
+const tamperedPixels = structuredClone(visualReview);
+tamperedPixels.observation.data.frameEvidence.pixelHash =
+  `sha256:${'f'.repeat(64)}`;
+assert.equal(
+  isValidLocalProjectRecord(
+    { ...current, visualReviews: [tamperedPixels] },
+    document.id
+  ),
+  false,
+  'tampered rendered-frame pixels fail the receipt fingerprint'
+);
+
 assert.equal(
   isValidLocalProjectRecord(
     {
