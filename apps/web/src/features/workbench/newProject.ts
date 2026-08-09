@@ -25,9 +25,6 @@ export const createBlankWorkbenchProject = (
     {
       id: WORKBENCH_PLACEHOLDER_PROJECT_ID,
       name: 'Untitled project',
-      target: 'glb',
-      namespace: 'ashfox',
-      modelPath: 'untitled_project',
       createdAt
     },
     'local-0001'

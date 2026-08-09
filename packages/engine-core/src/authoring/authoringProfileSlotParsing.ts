@@ -15,6 +15,7 @@ import {
   readAuthoringSlotSymmetry
 } from './authoringProfileSlotContracts';
 import { readAuthoringPartIds } from './authoringProfilePrimitives';
+import { readAuthoringSlotSpan } from './authoringProfileSpanContract';
 import {
   AUTHORING_QUALITY_STAGES,
   AUTHORING_SPATIAL_RELATIONS,
@@ -32,7 +33,8 @@ const SLOT_KEYS = new Set([
   'spatialRelations',
   'facing',
   'symmetry',
-  'support'
+  'support',
+  'span'
 ]);
 const STRUCTURAL_ROLES = new Set<string>(AUTHORING_STRUCTURAL_ROLES);
 const QUALITY_STAGES = new Set<string>(AUTHORING_QUALITY_STAGES);
@@ -56,7 +58,7 @@ export const readAuthoringSlotEntry = (
       path,
       'Structural slot declaration must use the closed contract shape.',
       '{slotId,structuralRole,qualityStage,partIds,parentSlotIds,' +
-        'spatialRelations,facing,symmetry,support}'
+        'spatialRelations,facing,symmetry,support,span}'
     );
     return null;
   }
@@ -153,6 +155,13 @@ export const readAuthoringSlotEntry = (
     partIds,
     issues
   );
+  const span = readAuthoringSlotSpan(
+    value.span,
+    `${path}.span`,
+    structuralRole,
+    partIds,
+    issues
+  );
   if (
     !slotId ||
     !structuralRole ||
@@ -164,7 +173,8 @@ export const readAuthoringSlotEntry = (
     !spatialRelations ||
     !facingValid ||
     !symmetry ||
-    !support
+    !support ||
+    !span
   ) {
     return null;
   }
@@ -177,6 +187,7 @@ export const readAuthoringSlotEntry = (
     spatialRelations,
     facing: value.facing as AuthoringSlotAssignment['facing'],
     symmetry,
-    support
+    support,
+    span
   };
 };

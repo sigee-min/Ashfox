@@ -1,6 +1,7 @@
 import {
   createProjectFromInput,
-  executeSystemCommandBatch,
+  executeAgentCommandBatch,
+  executeWebCommandBatch,
   type ProjectDocument
 } from '@ashfox/engine-core';
 
@@ -10,69 +11,43 @@ const createUnitFixture = (): ProjectDocument => {
   const empty = createProjectFromInput({
     id: WORKBENCH_PROJECT_ID,
     name: 'Workbench unit fixture',
-    target: 'geckolib5',
-    gameVersion: '26.1',
-    namespace: 'ashfox',
-    modelPath: 'workbench_unit_fixture',
     createdAt: '2026-07-29T00:00:00.000Z'
   }, 'local-0001');
-  const result = executeSystemCommandBatch(empty, {
-    batchId: 'workbench-unit-fixture-content',
+  const source = [
+    'asset "Workbench unit fixture"',
+    'track essential',
+    'domain constructed',
+    'frame front north',
+    'symmetry bilateral',
+    'rest neutral base',
+    'body core body',
+    'face none',
+    'style palette ocean'
+  ].join('\n');
+  const proposed = executeAgentCommandBatch(empty, {
+    batchId: 'workbench-unit-fixture-proposal',
     baseProjectId: empty.id,
     baseRevision: empty.revision,
     operations: [{
-      name: 'model.parts.upsert',
-      payload: {
-        parts: [{
-          kind: 'mass',
-          partId: 'fixture.body',
-          materialId: 'fixture.material',
-          center: [0, 2, 0],
-          radii: [2, 2, 2],
-          profile: 'hard'
-        }],
-        materials: [{
-          id: 'fixture.material',
-          baseColor: '#5E748C'
-        }]
-      }
-    }, {
-      name: 'animation.clip.upsert',
-      payload: {
-        id: 'idle',
-        name: 'animation.workbench_fixture.idle',
-        durationSeconds: 1,
-        fps: 20,
-        loop: 'loop'
-      }
-    }, {
-      name: 'animation.channels.upsert',
-      payload: {
-        clipId: 'idle',
-        channels: [{
-          id: 'fixture.body.rotation',
-          targetNodeId: 'bone:fixture.body',
-          property: 'rotation',
-          keys: [{
-            id: 'fixture.body.rotation.start',
-            timeSeconds: 0,
-            value: [0, 0, 0]
-          }, {
-            id: 'fixture.body.rotation.middle',
-            timeSeconds: 0.5,
-            value: [0, 8, 0]
-          }, {
-            id: 'fixture.body.rotation.end',
-            timeSeconds: 1,
-            value: [0, 0, 0]
-          }]
-        }]
-      }
+      name: 'intent.program.propose',
+      payload: { source }
+    }]
+  });
+  if (!proposed.ok || !proposed.document.intentProgramProposal) {
+    throw new Error('Could not propose the workbench unit Intent Program.');
+  }
+  const result = executeWebCommandBatch(proposed.document, {
+    batchId: 'workbench-unit-fixture-compile',
+    baseProjectId: proposed.document.id,
+    baseRevision: proposed.document.revision,
+    operations: [{
+      name: 'intent.program.compile',
+      payload: { hash: proposed.document.intentProgramProposal.hash }
     }]
   });
   if (!result.ok) {
     throw new Error(
-      `Could not create the workbench unit fixture: ${result.error.message}`
+      `Could not compile the workbench unit fixture: ${result.error.message}`
     );
   }
   return result.document;

@@ -15,6 +15,9 @@ import {
   readPart,
   type CompiledPartNode
 } from './partReader';
+import {
+  validatePartSurfaceOwnership
+} from './surfaceOwnershipValidator';
 import type {
   CompiledPartState,
   PartInvariantIssue,
@@ -153,6 +156,7 @@ export const readCompiledParts = (
     validatePartHierarchy(parts, issues);
     validatePartMaterials(parts, issues);
     validatePartOccupancy(parts, issues);
+    validatePartSurfaceOwnership(document, parts, issues);
   }
   return issues.length === 0
     ? { ok: true, parts }

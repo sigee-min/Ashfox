@@ -1,16 +1,16 @@
-import type { ProjectFormatProfile } from '../../model';
+import type { ExportFormatProfile } from '../adapterTypes';
 import { exportCompatibilityFor } from './queries';
 import type {
   ExportPreset,
   MinecraftGameVersion
 } from './types';
 
-export const formatProfileForExport = (
+export const exportProfileForAdapter = (
   target: ExportPreset,
   gameVersion: MinecraftGameVersion | undefined,
   namespace: string,
   modelPath: string
-): ProjectFormatProfile | null => {
+): ExportFormatProfile | null => {
   const compatibility = exportCompatibilityFor(target, gameVersion);
   if (!compatibility) return null;
 
@@ -45,61 +45,5 @@ export const formatProfileForExport = (
         geometryIdentifier:
           `geometry.${modelPath.split('/').join('.')}`
       };
-  }
-};
-
-export const preserveFormatProfilePreferences = (
-  current: ProjectFormatProfile,
-  next: ProjectFormatProfile
-): ProjectFormatProfile => {
-  if (current.id !== next.id) return next;
-
-  switch (next.id) {
-    case 'ashfox.generic':
-      return next;
-    case 'minecraft.java_block': {
-      if (current.id !== next.id) return next;
-      return {
-        ...next,
-        ...(current.parent === undefined
-          ? {}
-          : { parent: current.parent }),
-        ...(current.ambientOcclusion === undefined
-          ? {}
-          : { ambientOcclusion: current.ambientOcclusion }),
-        ...(current.guiLight === undefined
-          ? {}
-          : { guiLight: current.guiLight })
-      };
-    }
-    case 'minecraft.bedrock': {
-      if (current.id !== next.id) return next;
-      return {
-        ...next,
-        geometryKind: current.geometryKind,
-        ...(current.visibleBounds === undefined
-          ? {}
-          : { visibleBounds: current.visibleBounds })
-      };
-    }
-    case 'minecraft.java.geckolib5': {
-      if (current.id !== next.id) return next;
-      return {
-        ...next,
-        assetKind: current.assetKind,
-        ...(current.visibleBounds === undefined
-          ? {}
-          : { visibleBounds: current.visibleBounds })
-      };
-    }
-    case 'gltf.2': {
-      if (current.id !== next.id) return next;
-      return {
-        ...next,
-        ...(current.copyright === undefined
-          ? {}
-          : { copyright: current.copyright })
-      };
-    }
   }
 };

@@ -4,10 +4,10 @@ import {
   effectivelyVisibleSceneNodeIds,
   isSceneNodeEffectivelyVisible
 } from '../src';
-import { createBedrockProject } from './helpers';
+import { createSceneProject } from './helpers';
 
 {
-  const project = createBedrockProject();
+  const project = createSceneProject();
   project.scene.nodes['bone-root'].visible = false;
   assert.equal(
     isSceneNodeEffectivelyVisible(project, 'cube-body'),
@@ -20,7 +20,7 @@ import { createBedrockProject } from './helpers';
 }
 
 {
-  const project = structuredClone(createBedrockProject());
+  const project = structuredClone(createSceneProject());
   const root = project.scene.nodes['bone-root'];
   const cube = project.scene.nodes['cube-body'];
   if (root.kind !== 'bone' || cube.kind !== 'cube') {
@@ -51,7 +51,7 @@ import { createBedrockProject } from './helpers';
 }
 
 {
-  const project = structuredClone(createBedrockProject());
+  const project = structuredClone(createSceneProject());
   const root = project.scene.nodes['bone-root'];
   const cube = project.scene.nodes['cube-body'];
   if (root.kind !== 'bone' || cube.kind !== 'cube') {

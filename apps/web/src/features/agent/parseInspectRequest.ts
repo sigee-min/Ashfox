@@ -2,9 +2,6 @@ import type {
   InspectFailure,
   InspectRequest
 } from './types';
-import {
-  CLIP_INSPECT_MAX_LIMIT
-} from './inspectClip';
 
 interface ParseInspectRequestSuccess {
   ok: true;
@@ -37,123 +34,19 @@ const failure = (
   }
 });
 
-const isStringArray = (value: unknown): value is readonly string[] =>
-  Array.isArray(value) &&
-  value.every((item) => typeof item === 'string');
-
-const unknownProperty = (
-  value: Readonly<Record<string, unknown>>,
-  allowed: readonly string[]
-): string | null =>
-  Object.keys(value).find((key) => !allowed.includes(key)) ?? null;
-
 const rejectUnknownProperties = (
   value: Readonly<Record<string, unknown>>,
   allowed: readonly string[]
 ): ParseInspectRequestFailure | null => {
-  const property = unknownProperty(value, allowed);
-  return property === null
+  const property = Object.keys(value).find(
+    (key) => !allowed.includes(key)
+  );
+  return property === undefined
     ? null
     : failure(property, 'no additional properties');
 };
 
-const pagedRequest = (
-  value: Readonly<Record<string, unknown>>,
-  kind: 'catalog' | 'activity'
-): ParseInspectRequestResult => {
-  const maximumLimit = kind === 'activity' ? 20 : 100;
-  const unknown = rejectUnknownProperties(
-    value,
-    ['kind', 'cursor', 'limit']
-  );
-  if (unknown) return unknown;
-  if (
-    value.cursor !== undefined &&
-    typeof value.cursor !== 'string'
-  ) {
-    return failure('cursor', 'page cursor string');
-  }
-  if (
-    value.limit !== undefined &&
-    (
-      typeof value.limit !== 'number' ||
-      !Number.isInteger(value.limit) ||
-      value.limit < 1 ||
-      value.limit > maximumLimit
-    )
-  ) {
-    return failure(
-      'limit',
-      `integer from 1 through ${maximumLimit}`
-    );
-  }
-  return {
-    ok: true,
-    request: {
-      kind,
-      ...(value.cursor === undefined
-        ? {}
-        : { cursor: value.cursor }),
-      ...(value.limit === undefined ? {} : { limit: value.limit })
-    }
-  };
-};
-
-const clipRequest = (
-  value: Readonly<Record<string, unknown>>
-): ParseInspectRequestResult => {
-  const unknown = rejectUnknownProperties(
-    value,
-    ['kind', 'id', 'trackId', 'cursor', 'limit']
-  );
-  if (unknown) return unknown;
-  if (typeof value.id !== 'string') {
-    return failure('id', 'clip ID');
-  }
-  if (
-    value.trackId !== undefined &&
-    typeof value.trackId !== 'string'
-  ) {
-    return failure('trackId', 'transform track ID');
-  }
-  if (
-    value.cursor !== undefined &&
-    typeof value.cursor !== 'string'
-  ) {
-    return failure('cursor', 'clip page cursor');
-  }
-  if (
-    value.limit !== undefined &&
-    (
-      typeof value.limit !== 'number' ||
-      !Number.isInteger(value.limit) ||
-      value.limit < 1 ||
-      value.limit > CLIP_INSPECT_MAX_LIMIT
-    )
-  ) {
-    return failure(
-      'limit',
-      `integer from 1 through ${CLIP_INSPECT_MAX_LIMIT}`
-    );
-  }
-  return {
-    ok: true,
-    request: {
-      kind: 'clip',
-      id: value.id,
-      ...(value.trackId === undefined
-        ? {}
-        : { trackId: value.trackId }),
-      ...(value.cursor === undefined
-        ? {}
-        : { cursor: value.cursor }),
-      ...(value.limit === undefined
-        ? {}
-        : { limit: value.limit })
-    }
-  };
-};
-
+/** The agent can inspect only public command schemas and compiler findings. */
 export const parseInspectRequest = (
   value: unknown
 ): ParseInspectRequestResult => {
@@ -162,90 +55,21 @@ export const parseInspectRequest = (
     return failure('$', 'inspect request object');
   }
 
-  switch (value.kind) {
-    case 'command': {
-      const unknown = rejectUnknownProperties(
-        value,
-        ['kind', 'name']
-      );
-      if (unknown) return unknown;
-      return typeof value.name === 'string'
-        ? {
-            ok: true,
-            request: {
-              kind: value.kind,
-              name: value.name
-            }
-          }
-        : failure('name', 'command name');
-    }
-    case 'parts':
-    case 'entity':
-    case 'texture': {
-      const unknown = rejectUnknownProperties(
-        value,
-        ['kind', 'ids']
-      );
-      if (unknown) return unknown;
-      return isStringArray(value.ids)
-        ? {
-            ok: true,
-            request: {
-              kind: value.kind,
-              ids: value.ids
-            }
-          }
-        : failure('ids', 'string ID array');
-    }
-    case 'clip':
-      return clipRequest(value);
-    case 'catalog':
-    case 'activity':
-      return pagedRequest(value, value.kind);
-    case 'target': {
-      const unknown = rejectUnknownProperties(value, ['kind']);
-      if (unknown) return unknown;
-      return {
-        ok: true,
-        request: {
-          kind: value.kind
-        }
-      };
-    }
-    case 'authoring': {
-      const unknown = rejectUnknownProperties(value, ['kind', 'id']);
-      if (unknown) return unknown;
-      if (value.id !== undefined && typeof value.id !== 'string') {
-        return failure('id', 'registered archetype, specialist, or recipe ID');
-      }
-      return {
-        ok: true,
-        request: {
-          kind: value.kind,
-          ...(value.id === undefined ? {} : { id: value.id })
-        }
-      };
-    }
-    case 'finding': {
-      const unknown = rejectUnknownProperties(
-        value,
-        ['kind', 'path']
-      );
-      if (unknown) return unknown;
-      return typeof value.path === 'string'
-        ? {
-            ok: true,
-            request: {
-              kind: value.kind,
-              path: value.path
-            }
-          }
-        : failure('path', 'finding path');
-    }
-    default:
-      return failure(
-        'kind',
-        'command, catalog, parts, entity, texture, clip, activity, target, authoring, or finding'
-      );
+  if (value.kind === 'command') {
+    const unknown = rejectUnknownProperties(value, ['kind', 'name']);
+    if (unknown) return unknown;
+    return typeof value.name === 'string'
+      ? { ok: true, request: { kind: 'command', name: value.name } }
+      : failure('name', 'command name');
   }
+
+  if (value.kind === 'finding') {
+    const unknown = rejectUnknownProperties(value, ['kind', 'path']);
+    if (unknown) return unknown;
+    return typeof value.path === 'string'
+      ? { ok: true, request: { kind: 'finding', path: value.path } }
+      : failure('path', 'finding path');
+  }
+
+  return failure('kind', 'command or finding');
 };

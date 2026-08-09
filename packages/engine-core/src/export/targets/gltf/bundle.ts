@@ -1,4 +1,4 @@
-import type { ProjectDocument } from '../../../model';
+import type { ExportAdaptedDocument } from '../../adapter';
 import type { InvariantFinding } from '../../../validation/types';
 import { createCompactJsonExportFile } from '../../json';
 import { createExportBundle } from '../../pipeline/createBundle';
@@ -10,7 +10,7 @@ import type { CompiledGltf } from './buildTypes';
 import { buildGlb } from './glb';
 
 export const createGltfBundle = (
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   compiled: CompiledGltf,
   findings: readonly InvariantFinding[]
 ): ExportBundle => {

@@ -1,4 +1,4 @@
-import type { ProjectDocument } from '../../model';
+import type { ExportAdaptedDocument } from '../adapter';
 import type { ExportAdaptationReceipt } from '../types';
 import {
   animationExportAdaptations
@@ -11,7 +11,7 @@ import {
 } from './sceneAdaptations';
 
 export const createExportAdaptationReceipt = (
-  document: ProjectDocument
+  document: ExportAdaptedDocument
 ): ExportAdaptationReceipt => {
   const animation = animationExportAdaptations(document);
   return {

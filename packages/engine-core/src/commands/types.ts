@@ -1,40 +1,13 @@
 import { INTERNAL_CONTRACT_VERSIONS } from '@ashfox/internal-contracts';
 
 import type {
-  AnimationEffect,
-  AnimationLoopMode,
-  AnimationVec3,
   EntityId,
-  KeyframeInterpolation,
   ProjectDocument,
-  ProjectForwardDirection,
-  ProjectGrounding,
-  ProjectReferenceObservation,
-  ProjectSymmetry,
   ProjectId,
   Revision,
-  SurfacePixelDensity,
-  TransformChannelProperty,
-  Transform,
-  Vec3
+  SurfacePixelDensity
 } from '../model';
 import type { InvariantFinding } from '../validation';
-import type {
-  PartAuthoringSpec,
-  PartMaterialDefinition,
-} from '../modeling/partContract';
-import type {
-  ExportPreset,
-  MinecraftGameVersion
-} from '../export/compatibility';
-import type {
-  AuthoringSelectionInput
-} from '../authoring/authoringTypes';
-
-export type {
-  ExportPreset,
-  MinecraftGameVersion
-} from '../export/compatibility';
 
 export const COMMAND_RECEIPT_SCHEMA_VERSION =
   INTERNAL_CONTRACT_VERSIONS.commandReceipt;
@@ -46,300 +19,40 @@ export const COMMAND_SOURCES = [
   'system'
 ] as const;
 export type CommandSource = (typeof COMMAND_SOURCES)[number];
-export type SceneAxis = 'x' | 'y' | 'z';
-export type AlignmentMode = 'minimum' | 'center' | 'maximum';
+
 export interface ProjectCreateInput {
   name: string;
-  target?: ExportPreset;
-  gameVersion?: MinecraftGameVersion;
   density?: 1;
 }
 
+/** Internal input used while creating a project from its canonical settings. */
 export interface ProjectDocumentCreateInput {
   id: ProjectId;
   name: string;
-  target: ExportPreset;
-  gameVersion?: MinecraftGameVersion;
-  namespace: string;
-  modelPath: string;
   createdAt: string;
   density?: SurfacePixelDensity;
 }
 
-export interface ProjectTargetInput {
-  target: ExportPreset;
-  gameVersion?: MinecraftGameVersion;
+export interface IntentProgramProposalInput {
+  source: string;
 }
 
-export interface ProjectIntentInput {
-  subject: string;
-  forward: ProjectForwardDirection;
-  grounding: ProjectGrounding;
-  symmetry: ProjectSymmetry;
-  features?: readonly string[];
-  references?: readonly ProjectReferenceObservation[];
+export interface IntentProgramCompileInput {
+  /** Hash shown with the pending draft, preventing compilation of another source. */
+  hash: string;
 }
 
-export interface BoneCreateInput {
-  id: EntityId;
-  name: string;
-  parentId: EntityId | null;
-  transform?: Partial<Transform>;
-}
-
-export interface LocatorCreateInput {
-  id: EntityId;
-  name: string;
-  parentId: EntityId | null;
-  transform?: Partial<Transform>;
-  ignoreInheritedScale?: boolean;
-}
-
-export interface LocatorUpdateInput {
-  id: EntityId;
-  name?: string;
-  parentId?: EntityId | null;
-  transform?: Partial<Transform>;
-  visible?: boolean;
-  ignoreInheritedScale?: boolean | null;
-}
-
-export interface CubeCreateInput {
-  id: EntityId;
-  name: string;
-  parentId: EntityId | null;
-  bounds: {
-    from: Vec3;
-    to: Vec3;
-  };
-  transform?: Partial<Transform>;
-  baseColor?: string;
-  inflate?: number;
-}
-
-export interface CubeDuplicateInput {
-  sourceId: EntityId;
-  id: EntityId;
-  name?: string;
-  offset?: Vec3;
-}
-
-export interface CubeGeometryUpdateInput {
-  nodeId: EntityId;
-  bounds?: {
-    from: Vec3;
-    to: Vec3;
-  };
-  inflate?: number;
-}
-
-export interface NodeRenameInput {
-  nodeId: EntityId;
-  name: string;
-}
-
-export interface TransformKeyInput {
-  id: string;
-  timeSeconds: number;
-  value: AnimationVec3;
-  interpolation?: KeyframeInterpolation;
-}
-
-export interface TransformChannelInput {
-  id: string;
-  targetNodeId: EntityId;
-  property: TransformChannelProperty;
-  keys: readonly TransformKeyInput[];
-}
-
-export interface AnimationEffectTriggerInput {
-  id: string;
-  type: 'sound' | 'particle';
-  keys: readonly {
-    id: string;
-    timeSeconds: number;
-    value: AnimationEffect;
-  }[];
-}
-
-export interface AnimationTimelineTriggerInput {
-  id: string;
-  type: 'timeline';
-  keys: readonly {
-    id: string;
-    timeSeconds: number;
-    value: string;
-  }[];
-}
-
-export type AnimationTriggerInput =
-  | AnimationEffectTriggerInput
-  | AnimationTimelineTriggerInput;
-
-export type AnimationMotionRole = 'idle' | 'loop' | 'once';
-
-export type AnimationRotationDegrees =
-  | number
-  | readonly [number, number, number];
-
-export interface AnimationPoseInput {
-  rotations: Readonly<Record<string, AnimationRotationDegrees>>;
-}
-
-export interface AnimationSpinInput {
-  partId: string;
-  turns: number;
-  direction?: 'positive' | 'negative';
-}
-
+/**
+ * The complete mutation surface. Geometry, materials, authoring profiles, and
+ * animation are compiler output, never commands that a caller can issue.
+ */
 export interface CommandPayloadMap {
   'project.create': ProjectCreateInput;
   'project.rename': {
     name: string;
   };
-  'project.target.set': ProjectTargetInput;
-  'project.resource.set': {
-    namespace: string;
-    modelPath: string;
-  };
-  'project.intent.set': ProjectIntentInput;
-  'project.authoring.configure': AuthoringSelectionInput;
-  'model.parts.upsert': {
-    parts: readonly PartAuthoringSpec[];
-    materials?: readonly PartMaterialDefinition[];
-  };
-  'model.parts.mirror': {
-    rootPartId: string;
-    axis: SceneAxis;
-    plane: number;
-    targetRootPartId?: string;
-  };
-  'model.parts.transform': {
-    rootPartId: string;
-    by: readonly [number, number, number];
-  };
-  'model.parts.material': {
-    partIds: readonly string[];
-    materialId?: string;
-    baseColor?: string;
-  };
-  'model.parts.delete': {
-    partIds: readonly string[];
-  };
-  'scene.bones.create': {
-    bones: readonly BoneCreateInput[];
-  };
-  'scene.locators.create': {
-    locators: readonly LocatorCreateInput[];
-  };
-  'scene.locators.update': {
-    locators: readonly LocatorUpdateInput[];
-  };
-  'scene.locators.delete': {
-    locatorIds: readonly EntityId[];
-  };
-  'scene.nodes.transform': {
-    nodeIds: readonly EntityId[];
-    transform: Partial<Transform>;
-  };
-  'scene.nodes.visibility': {
-    nodeIds: readonly EntityId[];
-    visible: boolean;
-  };
-  'scene.cubes.create': {
-    cubes: readonly CubeCreateInput[];
-  };
-  'scene.cubes.geometry.update': {
-    updates: readonly CubeGeometryUpdateInput[];
-  };
-  'scene.nodes.rename': {
-    renames: readonly NodeRenameInput[];
-  };
-  'scene.nodes.delete': {
-    nodeIds: readonly EntityId[];
-  };
-  'scene.cubes.duplicate': {
-    copies: readonly CubeDuplicateInput[];
-  };
-  'scene.cubes.mirror': {
-    nodeIds: readonly EntityId[];
-    axis: SceneAxis;
-  };
-  'scene.cubes.repeat': {
-    nodeIds: readonly EntityId[];
-    count: number;
-    step: Vec3;
-    idPrefix: string;
-  };
-  'scene.nodes.align': {
-    nodeIds: readonly EntityId[];
-    axis: SceneAxis;
-    mode: AlignmentMode;
-  };
-  'scene.nodes.pivot': {
-    nodeIds: readonly EntityId[];
-    pivot: Vec3;
-  };
-  'scene.nodes.reparent': {
-    nodeIds: readonly EntityId[];
-    parentId: EntityId | null;
-  };
-  'scene.cubes.material': {
-    nodeIds: readonly EntityId[];
-    baseColor: string;
-  };
-  'textures.density.set': {
-    density: SurfacePixelDensity;
-  };
-  'animation.clip.upsert': {
-    id: string;
-    name: string;
-    durationSeconds: number;
-    fps: number;
-    loop: AnimationLoopMode;
-  };
-  'animation.motion.upsert': {
-    clipId: string;
-    role?: AnimationMotionRole;
-    durationFrames?: number;
-    static?: boolean;
-    poses?: readonly AnimationPoseInput[];
-    spins?: readonly AnimationSpinInput[];
-    removePartIds?: readonly string[];
-  };
-  'animation.channels.upsert': {
-    clipId: string;
-    channels: readonly TransformChannelInput[];
-  };
-  'animation.triggers.upsert': {
-    clipId: string;
-    triggers: readonly AnimationTriggerInput[];
-  };
-  'animation.tracks.delete': {
-    clipId: string;
-    tracks: readonly {
-      kind: 'channel' | 'trigger';
-      id: string;
-    }[];
-  };
-  'animation.channels.phase': {
-    clipId: string;
-    channelIds: readonly string[];
-    offsetSeconds: number;
-    wrap: boolean;
-  };
-  'animation.channels.mirror': {
-    clipId: string;
-    channelIds: readonly string[];
-    axis: SceneAxis;
-  };
-  'animation.clip.closeLoop': {
-    clipId: string;
-    channelIds: readonly string[];
-  };
-  'animation.clip.delete': {
-    clipId: string;
-  };
+  'intent.program.propose': IntentProgramProposalInput;
+  'intent.program.compile': IntentProgramCompileInput;
 }
 
 export type CommandName = keyof CommandPayloadMap;

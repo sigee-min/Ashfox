@@ -1,5 +1,6 @@
 import {
   parseProjectDocument,
+  validateProjectDocument,
   type ProjectDocument,
   type TextureAsset
 } from '@ashfox/engine-core';
@@ -19,10 +20,13 @@ const MANIFEST_PATH = 'manifest.json';
 const PROJECT_PATH = 'project.json';
 const MAX_PROJECT_JSON_BYTES = 32 * 1024 * 1024;
 const MAX_TEXTURE_BYTES = 32 * 1024 * 1024;
+const SHA256_HASH = /^sha256:[a-f0-9]{64}$/;
 
 interface ArchiveAssetEntry {
   textureId: string;
   path: string;
+  contentHash: string;
+  byteLength: number;
 }
 
 interface ArchiveManifest {
@@ -61,18 +65,27 @@ const parseManifest = (bytes: Uint8Array): ArchiveManifest => {
     throw new Error('ashfox manifest has an invalid structure.');
   }
   const assets: ArchiveAssetEntry[] = value.assets.map((entry) => {
+    const byteLength = isRecord(entry) ? entry.byteLength : undefined;
     if (
       !isRecord(entry) ||
       typeof entry.textureId !== 'string' ||
       entry.textureId.length === 0 ||
       typeof entry.path !== 'string' ||
-      !entry.path.startsWith('assets/')
+      !entry.path.startsWith('assets/') ||
+      typeof entry.contentHash !== 'string' ||
+      !SHA256_HASH.test(entry.contentHash) ||
+      !Number.isSafeInteger(byteLength) ||
+      typeof byteLength !== 'number' ||
+      byteLength <= 0 ||
+      byteLength > MAX_TEXTURE_BYTES
     ) {
       throw new Error('ashfox manifest contains an invalid texture asset.');
     }
     return {
       textureId: entry.textureId,
-      path: entry.path
+      path: entry.path,
+      contentHash: entry.contentHash,
+      byteLength
     };
   });
   const textureIds = new Set(assets.map((asset) => asset.textureId));
@@ -137,6 +150,15 @@ export const createProjectArchive = async (
   document: ProjectDocument,
   resolveTexture: TextureAssetResolver
 ): Promise<Uint8Array> => {
+  const validation = validateProjectDocument(document);
+  const invalid = validation.findings.find(
+    (finding) => finding.severity === 'error'
+  );
+  if (invalid) {
+    throw new Error(
+      `Project archive requires a valid source-authoritative document: ${invalid.message}`
+    );
+  }
   const orderedTextures = Object.values(document.textures).sort(
     (left, right) => left.id.localeCompare(right.id)
   );
@@ -163,22 +185,10 @@ export const createProjectArchive = async (
     })
   );
 
-  const textures = { ...document.textures };
-  for (const entry of resolved) {
-    textures[entry.texture.id] = {
-      ...entry.texture,
-      source: {
-        ...entry.texture.source,
-        contentHash: entry.contentHash,
-        byteLength: entry.asset.bytes.length
-      }
-    };
-  }
-  const archivedDocument: ProjectDocument = {
-    ...document,
-    textures
-  };
-  const projectBytes = encodeJson(archivedDocument);
+  // Archive bytes are payload integrity, not compiler output. Rewriting the
+  // source metadata here would make a valid compiler result fail exact
+  // authority validation when it is opened again.
+  const projectBytes = encodeJson(document);
   if (projectBytes.length > MAX_PROJECT_JSON_BYTES) {
     throw new Error('ashfox project JSON exceeds the 32 MB limit.');
   }
@@ -187,7 +197,9 @@ export const createProjectArchive = async (
     project: PROJECT_PATH,
     assets: resolved.map((entry) => ({
       textureId: entry.texture.id,
-      path: entry.path
+      path: entry.path,
+      contentHash: entry.contentHash,
+      byteLength: entry.asset.bytes.length
     }))
   };
   return createStoredZip([
@@ -258,8 +270,8 @@ export const readProjectArchive = async (
     if (
       assetBytes.length === 0 ||
       assetBytes.length > MAX_TEXTURE_BYTES ||
-      texture.source.byteLength !== assetBytes.length ||
-      texture.source.contentHash !== await sha256(assetBytes)
+      manifestAsset.byteLength !== assetBytes.length ||
+      manifestAsset.contentHash !== await sha256(assetBytes)
     ) {
       throw new Error(
         `Texture "${manifestAsset.textureId}" failed archive integrity validation.`

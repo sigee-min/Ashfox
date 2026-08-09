@@ -19,6 +19,9 @@ import {
 import {
   nextVisualReview
 } from './visualReviewPlan';
+import {
+  pendingIntentProgramBlock
+} from './intentProgramProposalGate';
 
 interface PresentAgentProjectInput {
   request: PresentRequest;
@@ -47,6 +50,17 @@ export const presentAgentProject = ({
   review,
   present
 }: PresentAgentProjectInput): Promise<PresentResult> => {
+  const proposalBlock = pendingIntentProgramBlock(document);
+  if (proposalBlock) {
+    return Promise.resolve({
+      ok: false,
+      revision: document.revision,
+      error: {
+        code: 'invalid_state',
+        ...proposalBlock
+      }
+    });
+  }
   if (request.review === 'accept' || request.review === 'reject') {
     return review(request);
   }

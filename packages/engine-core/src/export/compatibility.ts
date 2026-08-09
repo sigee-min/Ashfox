@@ -1,16 +1,8 @@
 export {
-  formatProfileForExport,
-  preserveFormatProfilePreferences
-} from './compatibility/profiles';
-export {
   EXPORT_PRESETS,
   MINECRAFT_GAME_VERSIONS,
-  animationSupportForFormatProfile,
-  formatProfileSupportsAnimation,
   exportCompatibilityFor,
   exportCompatibilityOptions,
-  exportPresetForFormatProfile,
-  gameVersionForFormatProfile,
   supportsJavaBlockMultiAxisRotation
 } from './compatibility/queries';
 export {

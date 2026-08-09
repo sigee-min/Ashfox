@@ -57,7 +57,7 @@ const geometryFindings = (
       severity: 'error',
       message: 'The project has no effectively visible renderable geometry.',
       path: 'scene.nodes',
-      fix: 'Create one canonical root part with model.parts.upsert.'
+      fix: 'Compile one complete Intent Program source.'
     }];
   }
   if (faceCount === 0 || untexturedFaceCount > 0) {
@@ -69,9 +69,7 @@ const geometryFindings = (
         'resolve to a texture asset.',
       path: 'scene.nodes',
       entityIds: geometryIds,
-      fix:
-        'Reproject canonical parts with model.parts.upsert or assign ' +
-        'their base material with model.parts.material.'
+      fix: 'Correct the Intent Program and compile its generated material palette.'
     }];
   }
   return [];

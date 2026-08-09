@@ -1,5 +1,5 @@
 import {
-  blockingAnimationPreviewIssues,
+  blockingCanonicalAnimationPreviewIssues,
   type AnimationClip,
   type AnimationPreviewIssue,
   type ProjectDocument
@@ -57,10 +57,7 @@ export const resolvePresentationRequest = (
     };
   }
   const previewIssues = clip
-    ? blockingAnimationPreviewIssues(
-        clip,
-        document.formatProfile.id
-      )
+    ? blockingCanonicalAnimationPreviewIssues(clip)
     : [];
   if (previewIssues.length > 0) {
     return {

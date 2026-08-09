@@ -1,5 +1,4 @@
 import {
-  galleryContent,
   landingContent,
   sectionLabels,
   sectionOrder
@@ -67,7 +66,6 @@ const siteHeader = ({ active }) => `
     </a>
     <nav class="primary-nav" aria-label="Primary navigation">
       <a href="/#quick-start">Get started</a>
-      <a ${active === 'gallery' ? 'aria-current="page"' : ''} href="/gallery/">Gallery</a>
       <a ${active === 'docs' ? 'aria-current="page"' : ''} href="/docs/">Docs</a>
     </nav>
     <div class="header-actions">
@@ -135,7 +133,6 @@ const pageShell = ({
       </a>
       <p>AI-native low-poly workbench.</p>
       <div class="footer-links">
-        <a href="/gallery/">Gallery</a>
         <a href="/docs/">Documentation</a>
         <a href="${githubUrl}">GitHub</a>
         <span>© <span data-current-year></span> ashfox</span>
@@ -144,153 +141,6 @@ const pageShell = ({
   </body>
 </html>`;
 };
-
-const landingDemo = (demo) => `
-  <div
-    class="agent-demo"
-    id="demo"
-    data-agent-demo
-    data-sequences="${escapeHtml(JSON.stringify(demo.sequences))}"
-    data-empty-src="/media/empty-workspace.jpg"
-  >
-    <div
-      class="studio-capture"
-      data-demo-viewport
-      role="img"
-      aria-label="${escapeHtml(`${demo.sequences[0].name} completed in ashfox`)}"
-    >
-      <img
-        class="studio-poster"
-        src="${escapeHtml(demo.sequences[0].poster)}"
-        data-demo-poster
-        width="1280"
-        height="720"
-        alt=""
-        aria-hidden="true"
-        decoding="async"
-        fetchpriority="high"
-      >
-      <img
-        class="studio-playback"
-        data-demo-player
-        data-media-state="poster"
-        width="640"
-        height="360"
-        alt=""
-        decoding="async"
-        aria-hidden="true"
-      >
-      <span class="capture-live"><i></i> Live viewport</span>
-    </div>
-    <div class="agent-dock">
-      <div class="agent-work-status" aria-live="polite">
-        <span>Working…</span>
-        <i aria-hidden="true">›</i>
-      </div>
-      <div class="agent-composer" aria-label="Automated prompt preview">
-        <button class="agent-add" type="button" tabindex="-1" disabled aria-label="Add context">＋</button>
-        <label class="sr-only" for="demo-prompt">Ask anything</label>
-        <textarea
-          id="demo-prompt"
-          data-demo-input
-          rows="2"
-          readonly
-          tabindex="-1"
-          aria-readonly="true"
-          spellcheck="false"
-          placeholder="Ask anything"
-        >${escapeHtml(demo.sequences[0].prompt)}</textarea>
-        <span class="agent-model"><b>${escapeHtml(demo.sequences[0].model)}</b><em>${escapeHtml(demo.sequences[0].reasoning)}</em><i>⌄</i></span>
-        <span class="agent-mic" aria-hidden="true"></span>
-        <button class="agent-send" type="button" tabindex="-1" disabled aria-label="Prompt runs automatically">
-          <b aria-hidden="true">↑</b>
-        </button>
-      </div>
-    </div>
-  </div>
-`;
-
-const landingStory = ({ story }) => `
-  <section
-    class="story-section"
-    id="showcase"
-    data-scroll-story
-    data-sequences="${escapeHtml(JSON.stringify(story))}"
-  >
-    <div class="story-intro" data-reveal>
-      <p class="eyebrow"><span></span>From build to game-ready</p>
-      <h2><span>One request.</span><span>Three finished worlds.</span></h2>
-      <p>The build above becomes structured machines, motion, and character below.</p>
-    </div>
-    <div class="story-track">
-      <span class="story-axis" aria-hidden="true"><i></i></span>
-      <div class="story-stage">
-        <div
-          class="story-frame"
-          data-story-desktop-host
-          role="img"
-          aria-label="${escapeHtml(story[0].alt)}"
-        >
-          <img
-            class="story-poster"
-            src="${escapeHtml(story[0].poster)}"
-            data-story-desktop-poster
-            width="1280"
-            height="720"
-            alt=""
-            aria-hidden="true"
-          >
-          <img
-            class="story-playback"
-            data-story-player
-            data-media-state="poster"
-            width="640"
-            height="360"
-            alt=""
-            decoding="async"
-            aria-hidden="true"
-          >
-        </div>
-        <div class="story-stage-meta" aria-hidden="true">
-          <span data-story-position>01 / 0${story.length}</span>
-          <span>Actual ashfox output</span>
-        </div>
-      </div>
-      <div class="story-chapters">
-        ${story.map((chapter, index) => `
-          <article
-            class="story-chapter ${index % 2 === 0 ? 'story-chapter-left' : 'story-chapter-right'}"
-            data-story-chapter="${index}"
-            data-story-demo="${escapeHtml(chapter.id)}"
-          >
-            <div
-              class="story-mobile-media"
-              data-story-mobile-host="${index}"
-              role="img"
-              aria-label="${escapeHtml(chapter.alt)}"
-            >
-              <img
-                class="story-poster"
-                src="${escapeHtml(chapter.poster)}"
-                width="1280"
-                height="720"
-                alt=""
-                aria-hidden="true"
-                loading="lazy"
-              >
-            </div>
-            <div class="story-copy">
-              <span>0${index + 1} · ${escapeHtml(chapter.eyebrow)}</span>
-              <h3>${escapeHtml(chapter.title)}</h3>
-              <p>${escapeHtml(chapter.body)}</p>
-              <small>${escapeHtml(chapter.detail)}</small>
-            </div>
-          </article>
-        `).join('')}
-      </div>
-    </div>
-  </section>
-`;
 
 const landingQuickStart = (quickStart) => `
   <section class="quick-start-section" id="quick-start" data-reveal>
@@ -394,17 +244,14 @@ export const renderLandingPage = ({ assets, config }) => {
             aria-live="polite"
           >Paste into ChatGPT, Cursor, or Claude. Your agent will ask what you want to create.</p>
         </div>
-        <div class="hero-visual">${landingDemo(content.demo)}</div>
       </section>
-
-      ${landingStory({ story: content.story })}
 
       <section class="section output-section" id="outputs">
         <div class="output-copy" data-reveal>
           <p class="eyebrow"><span></span>Export</p>
           <h2>Editable source. Runtime-ready output.</h2>
           <p>Keep the complete .ashfox project, while target compilers remove hidden work, reduce animation data, and batch GLB geometry without changing the visible asset.</p>
-          <a class="text-link" href="/gallery/">Open editable demos <span>→</span></a>
+          <a class="text-link" href="/docs/guides/save-and-export/">Read the delivery guide <span>→</span></a>
         </div>
         <div class="format-grid">
           ${content.formats.map(([name, description], index) => `
@@ -507,144 +354,6 @@ export const renderLandingPage = ({ assets, config }) => {
       ]
     },
     title: 'ashfox'
-  });
-};
-
-const galleryCard = (item, index) => `
-  <article
-    class="gallery-card"
-    data-gallery-item
-    data-gallery-id="${escapeHtml(item.galleryId)}"
-    data-gallery-category="${escapeHtml(item.category)}"
-    data-gallery-search="${escapeHtml(item.searchText)}"
-  >
-    <a
-      class="gallery-preview"
-      href="${escapeHtml(item.workbench)}"
-      data-gallery-card
-      data-gif="${escapeHtml(item.gif)}"
-      data-preview-state="poster"
-      aria-label="Open ${escapeHtml(item.name)} in the ashfox workbench"
-    >
-      <span
-        class="gallery-media"
-        data-gallery-media
-        role="img"
-        aria-label="${escapeHtml(item.name)}"
-      >
-        <img
-          class="gallery-poster"
-          src="${escapeHtml(item.poster)}"
-          width="1280"
-          height="720"
-          alt=""
-          aria-hidden="true"
-          loading="${index === 0 ? 'eager' : 'lazy'}"
-          decoding="async"
-        >
-        ${index === 0 ? `
-          <img
-            class="gallery-animation"
-            data-gallery-player
-            width="640"
-            height="360"
-            alt=""
-            aria-hidden="true"
-            decoding="async"
-          >
-        ` : ''}
-        <span class="gallery-preview-state" aria-hidden="true">
-          <i></i><b>Open project</b>
-        </span>
-      </span>
-      <div class="gallery-card-copy">
-        <h2>${escapeHtml(item.name)}</h2>
-        <div class="gallery-model">
-          <b>Model</b><span>${escapeHtml(item.agent.model)}</span>
-        </div>
-        <div class="gallery-tags" aria-label="Tags">
-          ${item.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join('')}
-        </div>
-      </div>
-    </a>
-  </article>
-`;
-
-export const renderGalleryPage = ({ assets, config }) => {
-  const content = galleryContent;
-  const path = '/gallery/';
-  const body = `
-    <main class="gallery" id="main" data-gallery>
-      <header class="gallery-hero">
-        <p class="eyebrow"><span></span>${escapeHtml(content.eyebrow)}</p>
-        <h1>${escapeHtml(content.title)}</h1>
-      </header>
-      <section class="gallery-controls" aria-label="Filter gallery demos">
-        <label class="gallery-search">
-          <span class="sr-only">Search demos by name</span>
-          <span class="gallery-search-icon" aria-hidden="true"></span>
-          <input
-            type="search"
-            placeholder="Search demos by name"
-            autocomplete="off"
-            data-gallery-search-input
-          >
-        </label>
-        <div class="gallery-filters" aria-label="Asset categories">
-          <button type="button" data-gallery-filter="all" aria-pressed="true">All</button>
-          ${content.categories.map((category) => `
-            <button
-              type="button"
-              data-gallery-filter="${escapeHtml(category)}"
-              aria-pressed="false"
-            >${escapeHtml(category)}</button>
-          `).join('')}
-        </div>
-        <p class="gallery-results" data-gallery-results aria-live="polite">
-          ${content.items.length} demos
-        </p>
-      </section>
-      <section
-        class="gallery-grid"
-        aria-label="ashfox showcase assets"
-      >
-        ${content.items.map(galleryCard).join('')}
-      </section>
-      <section class="gallery-empty" data-gallery-empty hidden>
-        <p>No demos match this search.</p>
-        <button type="button" data-gallery-reset>Clear filters</button>
-      </section>
-    </main>
-  `;
-
-  return pageShell({
-    active: 'gallery',
-    assets,
-    body,
-    config,
-    description: content.summary,
-    path,
-    structuredData: {
-      '@context': 'https://schema.org',
-      '@type': 'CollectionPage',
-      name: 'ashfox gallery',
-      url: absoluteUrl(config.siteOrigin, path),
-      description: content.summary,
-      mainEntity: {
-        '@type': 'ItemList',
-        itemListElement: content.items.map((item, index) => ({
-          '@type': 'ListItem',
-          position: index + 1,
-          item: {
-            '@type': 'CreativeWork',
-            name: item.name,
-            image: absoluteUrl(config.siteOrigin, item.poster),
-            url: absoluteUrl(config.siteOrigin, item.workbench)
-          }
-        }))
-      }
-    },
-    title: 'Gallery'
   });
 };
 

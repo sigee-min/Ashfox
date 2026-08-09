@@ -6,7 +6,6 @@ import {
 import type { ProjectDocument } from '../model';
 import { validateAnimations } from './projectDocumentContract/animations';
 import {
-  validateFormatProfile,
   validateSettings
 } from './projectDocumentContract/formatSettings';
 import { validateScene } from './projectDocumentContract/scene';
@@ -26,10 +25,28 @@ const validateOptionalAuthorityRecords = (
   record: ContractRecord,
   context: ContractContext
 ): void => {
-  for (const key of ['intent', 'authoringProfile', 'modeling'] as const) {
+  for (const key of [
+    'intentProgram',
+    'intentProgramProposal',
+    'intent',
+    'authoringProfile',
+    'modeling'
+  ] as const) {
     if (!hasOwn(record, key)) continue;
     if (!isClosedContractRecord(record[key])) {
       reject(context, key, `${key} must be an object when present.`);
+      continue;
+    }
+    if (key === 'intentProgram' || key === 'intentProgramProposal') {
+      const program = record[key] as ContractRecord;
+      const allowed = new Set(['source', 'hash']);
+      Object.keys(program).forEach((programKey) => {
+        if (!allowed.has(programKey)) {
+          reject(context, `${key}.${programKey}`, 'Intent Program records only allow source and hash.');
+        }
+      });
+      expectString(program.source, `${key}.source`, context);
+      expectString(program.hash, `${key}.hash`, context);
     }
   }
 };
@@ -53,7 +70,6 @@ export const validateProjectDocumentContract = (
       'id',
       'name',
       'revision',
-      'formatProfile',
       'settings',
       'scene',
       'textures',
@@ -61,7 +77,13 @@ export const validateProjectDocumentContract = (
       'createdAt',
       'updatedAt'
     ],
-    ['intent', 'authoringProfile', 'modeling'],
+    [
+      'intentProgram',
+      'intentProgramProposal',
+      'intent',
+      'authoringProfile',
+      'modeling'
+    ],
     context
   );
   if (!record) return false;
@@ -79,7 +101,6 @@ export const validateProjectDocumentContract = (
       );
     }
   }
-  validateFormatProfile(record.formatProfile, context);
   validateSettings(record.settings, context);
   validateOptionalAuthorityRecords(record, context);
   validateScene(record.scene, context);

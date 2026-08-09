@@ -4,24 +4,51 @@ import type {
   TextureCompositionRegion
 } from '@ashfox/engine-core';
 import {
+  DEFAULT_GENERATED_TONE_CUTOFFS,
+  DEFAULT_PIXEL_SHADE_STYLE,
+  FOCAL_PIXEL_SHADE_STYLE,
+  generatedSurfacePixel,
   paintFeatureMotifPixel,
-  paintDirectionalSurfacePixel,
   stableTextureSeed
 } from '@ashfox/engine-core';
 
-import {
-  generatedSurfacePixel
-} from '../src/rendering/renderTextureRaster';
+type SurfacePattern = NonNullable<
+  TextureCompositionRegion['pattern']
+>;
 
-const pattern = {
-  seedKey: 'body:copper:north:0',
-  bounds: {
+const surfacePattern = (
+  seedKey: string,
+  origin: readonly [number, number],
+  bounds: SurfacePattern['bounds'],
+  tonePolicy: TextureCompositionRegion['tonePolicy']
+): SurfacePattern => ({
+  seedKey,
+  tonePolicy,
+  toneField: {
+    config: {
+      ...(tonePolicy === 'focal'
+        ? FOCAL_PIXEL_SHADE_STYLE
+        : DEFAULT_PIXEL_SHADE_STYLE),
+      seed: stableTextureSeed(seedKey, 0x41534846)
+    },
+    cutoffs: DEFAULT_GENERATED_TONE_CUTOFFS,
+    rect: { x: 0, y: 0, width: bounds.width, height: bounds.height }
+  },
+  origin,
+  bounds
+});
+
+const pattern = surfacePattern(
+  'body:copper:north:0',
+  [-1, 0],
+  {
     x: -1,
     y: 0,
     width: 2,
     height: 1
-  }
-} as const;
+  },
+  'regular'
+);
 
 const region = (
   nodeId: string,
@@ -30,6 +57,7 @@ const region = (
 ): TextureCompositionRegion => ({
   nodeId,
   face: 'north',
+  tonePolicy: 'regular',
   x: 0,
   y: 0,
   width,
@@ -56,9 +84,54 @@ assert.deepEqual(
   'gradient, edge, and noise coordinates must use the shared surface'
 );
 
+const largePattern = surfacePattern(
+  'body:copper:north:large',
+  [0, 0],
+  { x: 0, y: 0, width: 32, height: 32 },
+  'regular'
+);
+const largeRegion = (
+  nodeId: string,
+  origin: readonly [number, number],
+  width: number,
+  height: number
+): TextureCompositionRegion => ({
+  nodeId,
+  face: 'north',
+  tonePolicy: 'regular',
+  x: 0,
+  y: 0,
+  width,
+  height,
+  color: '#BE6E37',
+  pattern: { ...largePattern, origin }
+});
+const largeWhole = largeRegion('large-whole', [0, 0], 32, 32);
+const largeFragments = [
+  largeRegion('large-nw', [0, 0], 16, 16),
+  largeRegion('large-ne', [16, 0], 16, 16),
+  largeRegion('large-sw', [0, 16], 16, 16),
+  largeRegion('large-se', [16, 16], 16, 16)
+] as const;
+for (let y = 0; y < 32; y += 1) {
+  for (let x = 0; x < 32; x += 1) {
+    const fragmentIndex = Number(y >= 16) * 2 + Number(x >= 16);
+    assert.deepEqual(
+      generatedSurfacePixel(largeWhole, x, y),
+      generatedSurfacePixel(
+        largeFragments[fragmentIndex],
+        x % 16,
+        y % 16
+      ),
+      'a real multi-scale tone field must remain byte-identical across cuboid fragments'
+    );
+  }
+}
+
 const eyeRegion: TextureCompositionRegion = {
   nodeId: 'cube-eye-parent',
   face: 'south',
+  tonePolicy: 'focal',
   x: 0,
   y: 0,
   width: 6,
@@ -81,17 +154,12 @@ const eyeRegion: TextureCompositionRegion = {
 
 assert.deepEqual(
   generatedSurfacePixel(eyeRegion, 0, 0),
-  generatedSurfacePixel(eyeRegion, 0, 0),
-  'the quieter focal host synthesis must remain deterministic'
-);
-assert.notDeepEqual(
-  generatedSurfacePixel(eyeRegion, 0, 0),
   generatedSurfacePixel(
     { ...eyeRegion, markings: undefined },
     0,
     0
   ),
-  'a focal marking must reduce automatic noise across its host plane'
+  'focal host tone must come from compiled policy, not marking presence'
 );
 assert.notDeepEqual(
   generatedSurfacePixel(eyeRegion, 2, 2),
@@ -103,19 +171,77 @@ assert.notDeepEqual(
   'the eye motif must override only its projected surface pixels'
 );
 
+const focalPanel: TextureCompositionRegion = {
+  nodeId: 'cube-dark-focal-panel',
+  face: 'south',
+  tonePolicy: 'focal',
+  x: 0,
+  y: 0,
+  width: 16,
+  height: 16,
+  color: '#200B37',
+  pattern: surfacePattern(
+    'body:purple:south:0',
+    [0, 0],
+    { x: 0, y: 0, width: 16, height: 16 },
+    'focal'
+  ),
+  markings: [{
+    id: 'panel.eye',
+    motif: 'eye',
+    color: '#B47AE0',
+    x: 6,
+    y: 6,
+    width: 3,
+    height: 3,
+    motifX: 0,
+    motifY: 0,
+    motifWidth: 3,
+    motifHeight: 3
+  }]
+};
+
+let focalHostChangedPixelCount = 0;
+for (let y = 0; y < focalPanel.height; y += 1) {
+  for (let x = 0; x < focalPanel.width; x += 1) {
+    const insideEye = x >= 6 && x < 9 && y >= 6 && y < 9;
+    if (insideEye) continue;
+    const color = generatedSurfacePixel(focalPanel, x, y);
+    const regularColor = generatedSurfacePixel(
+      { ...focalPanel, markings: undefined },
+      x,
+      y
+    );
+    if (
+      color.r !== regularColor.r ||
+      color.g !== regularColor.g ||
+      color.b !== regularColor.b
+    ) {
+      focalHostChangedPixelCount += 1;
+    }
+  }
+}
+assert.equal(
+  focalHostChangedPixelCount,
+  0,
+  'removing focal markings must not change any non-motif host texel'
+);
+
 const patchRegion: TextureCompositionRegion = {
   nodeId: 'cube-patch-parent',
   face: 'south',
+  tonePolicy: 'regular',
   x: 0,
   y: 0,
   width: 8,
   height: 8,
   color: '#9B5D2E',
-  pattern: {
-    seedKey: 'body:coat:south:0',
-    origin: [0, 0],
-    bounds: { x: 0, y: 0, width: 8, height: 8 }
-  },
+  pattern: surfacePattern(
+    'body:coat:south:0',
+    [0, 0],
+    { x: 0, y: 0, width: 8, height: 8 },
+    'regular'
+  ),
   markings: [{
     id: 'belly.patch',
     motif: 'patch',
@@ -139,19 +265,16 @@ assert.deepEqual(
 );
 assert.deepEqual(
   patchPixel,
-  paintDirectionalSurfacePixel(
-    { r: 231, g: 201, b: 141 },
-    'south',
+  generatedSurfacePixel(
+    {
+      ...patchRegion,
+      color: '#E7C98D',
+      markings: undefined
+    },
     3,
-    4,
-    8,
-    8,
-    stableTextureSeed(
-      'body:coat:south:0:marking:belly.patch',
-      0x41534846
-    )
+    4
   ),
-  'a patch must inherit the system-owned directional cluster and noise field'
+  'a patch must reuse the host tone role and only replace its palette'
 );
 assert.notDeepEqual(
   patchPixel,
@@ -174,10 +297,21 @@ assert.ok(
   'the agent-provided base color must be expanded into generated pixel tones'
 );
 
-const layeredRegion: TextureCompositionRegion = {
+const focalPatchRegion: TextureCompositionRegion = {
   ...patchRegion,
+  tonePolicy: 'focal',
+  pattern: surfacePattern(
+    'body:coat:south:0',
+    [0, 0],
+    { x: 0, y: 0, width: 8, height: 8 },
+    'focal'
+  )
+};
+
+const layeredRegion: TextureCompositionRegion = {
+  ...focalPatchRegion,
   markings: [
-    ...(patchRegion.markings ?? []),
+    ...(focalPatchRegion.markings ?? []),
     {
       id: 'eye.left',
       motif: 'eye',
@@ -201,7 +335,7 @@ assert.notDeepEqual(
 );
 
 const focalOverPatchRegion: TextureCompositionRegion = {
-  ...patchRegion,
+  ...focalPatchRegion,
   markings: [{
     id: 'nose.center',
     motif: 'nose',
@@ -215,7 +349,7 @@ const focalOverPatchRegion: TextureCompositionRegion = {
     motifY: 0,
     motifWidth: 4,
     motifHeight: 2
-  }, ...(patchRegion.markings ?? [])]
+  }, ...(focalPatchRegion.markings ?? [])]
 };
 assert.deepEqual(
   generatedSurfacePixel(focalOverPatchRegion, 3, 3),
@@ -237,7 +371,7 @@ assert.notDeepEqual(
 );
 
 const fangOverPatchRegion: TextureCompositionRegion = {
-  ...patchRegion,
+  ...focalPatchRegion,
   markings: [{
     id: 'mouth.center',
     motif: 'mouth',
@@ -251,7 +385,7 @@ const fangOverPatchRegion: TextureCompositionRegion = {
     motifY: 0,
     motifWidth: 3,
     motifHeight: 2
-  }, ...(patchRegion.markings ?? [])]
+  }, ...(focalPatchRegion.markings ?? [])]
 };
 assert.deepEqual(
   generatedSurfacePixel(fangOverPatchRegion, 3, 3),

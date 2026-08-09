@@ -6,8 +6,7 @@ export type AgentCommandMethod =
   | 'inspect'
   | 'run'
   | 'present'
-  | 'capture'
-  | 'deliver';
+  | 'capture';
 
 export interface AgentCommandEnvelope {
   requestId: string;
@@ -25,8 +24,7 @@ const METHODS = new Set<unknown>([
   'inspect',
   'run',
   'present',
-  'capture',
-  'deliver'
+  'capture'
 ]);
 
 const isRecord = (

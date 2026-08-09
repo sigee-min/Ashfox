@@ -15,6 +15,14 @@ export interface SurfacePatternComponent {
     width: number;
     height: number;
   };
+  occupiedSpans: readonly SurfacePatternSpan[];
+  texelCount: number;
+}
+
+export interface SurfacePatternSpan {
+  y: number;
+  x: number;
+  width: number;
 }
 
 interface Edge {
@@ -161,6 +169,68 @@ const connectGroup = (
   unionOppositeEdges(top, bottom, sets);
 };
 
+interface HorizontalInterval {
+  minimum: number;
+  maximum: number;
+}
+
+const appendInterval = (
+  rows: Map<number, HorizontalInterval[]>,
+  y: number,
+  interval: HorizontalInterval
+): void => {
+  const intervals = rows.get(y) ?? [];
+  intervals.push(interval);
+  rows.set(y, intervals);
+};
+
+const occupiedSurfaceSpans = (
+  members: readonly SurfacePatternDraft[]
+): readonly SurfacePatternSpan[] => {
+  const rows = new Map<number, HorizontalInterval[]>();
+  for (const member of members) {
+    for (let y = member.y; y < member.y + member.height; y += 1) {
+      appendInterval(rows, y, {
+        minimum: member.x,
+        maximum: member.x + member.width
+      });
+    }
+  }
+  const spans: SurfacePatternSpan[] = [];
+  for (const [y, intervals] of [...rows].sort(
+    ([left], [right]) => left - right
+  )) {
+    const ordered = [...intervals].sort(
+      (left, right) =>
+        left.minimum - right.minimum ||
+        left.maximum - right.maximum
+    );
+    let active = ordered[0];
+    if (!active) continue;
+    for (const interval of ordered.slice(1)) {
+      if (interval.minimum <= active.maximum) {
+        active = {
+          minimum: active.minimum,
+          maximum: Math.max(active.maximum, interval.maximum)
+        };
+        continue;
+      }
+      spans.push({
+        y,
+        x: active.minimum,
+        width: active.maximum - active.minimum
+      });
+      active = interval;
+    }
+    spans.push({
+      y,
+      x: active.minimum,
+      width: active.maximum - active.minimum
+    });
+  }
+  return spans;
+};
+
 export const buildSurfacePatternComponents = (
   drafts: readonly SurfacePatternDraft[]
 ): ReadonlyMap<string, SurfacePatternComponent> => {
@@ -206,11 +276,17 @@ export const buildSurfacePatternComponents = (
       width: maximumX - minimumX,
       height: maximumY - minimumY
     };
+    const occupiedSpans = occupiedSurfaceSpans(members);
     const component = {
       seedKey:
         `${groupKey}:${minimumX},${minimumY}:` +
         `${bounds.width}x${bounds.height}`,
-      bounds
+      bounds,
+      occupiedSpans,
+      texelCount: occupiedSpans.reduce(
+        (count, span) => count + span.width,
+        0
+      )
     };
     for (const member of members) {
       components.set(member.id, component);

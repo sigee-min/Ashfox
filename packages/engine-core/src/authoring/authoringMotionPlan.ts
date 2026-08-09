@@ -4,6 +4,7 @@ import type {
   TransformChannel
 } from '../model';
 import { canonicalJsonString } from '../canonicalJson';
+import { idleClipNumericallyCloses } from '../animation/idleContract';
 import { authoringPlanIssue } from './authoringIssueFactories';
 import type {
   AuthoringMotionBinding,
@@ -38,7 +39,7 @@ export const motionIssues = (
         'authoring.plan.motion_clip_missing',
         `${path}.clipId`,
         `Bound motion clip "${binding.clipId}" is missing.`,
-        `animation.motion.upsert for ${binding.clipId}`,
+        'recompile the reviewed Intent Program source',
         { authority: binding.specialist, clipIds: [binding.clipId] }
       )];
     }
@@ -49,6 +50,15 @@ export const motionIssues = (
         `${path}.role`,
         `Clip "${clip.id}" does not realize bound role "${binding.role}".`,
         binding.role,
+        { authority: binding.specialist, clipIds: [clip.id] }
+      ));
+    }
+    if (binding.role === 'idle' && !idleClipNumericallyCloses(clip)) {
+      issues.push(authoringPlanIssue(
+        'authoring.plan.motion_idle_rest_invalid',
+        `animations.${clip.id}`,
+        `Canonical idle "${clip.id}" does not begin and end at identity rest rotation.`,
+        'numeric [0,0,0] opening and closing rotation deltas on every canonical idle rotation channel',
         { authority: binding.specialist, clipIds: [clip.id] }
       ));
     }

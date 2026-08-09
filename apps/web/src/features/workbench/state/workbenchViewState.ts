@@ -1,5 +1,3 @@
-import type { TransformControlsMode } from 'three/addons/controls/TransformControls.js';
-
 import type {
   CameraCommand,
   ViewportOptions
@@ -14,8 +12,6 @@ export type BottomWorkspaceMode = 'animation' | 'activity';
 export interface WorkbenchViewState {
   preferredNodeId: string | null;
   preferredClipId: string | null;
-  transformMode: TransformControlsMode;
-  snapEnabled: boolean;
   viewportOptions: ViewportOptions;
   environment: ViewportEnvironmentId;
   cameraCommand: CameraCommand;
@@ -26,8 +22,6 @@ export interface WorkbenchViewState {
 export type WorkbenchViewAction =
   | { type: 'node.select'; nodeId: string | null }
   | { type: 'clip.select'; clipId: string | null }
-  | { type: 'transform.set'; mode: TransformControlsMode }
-  | { type: 'snap.toggle' }
   | { type: 'viewport.toggle'; option: keyof ViewportOptions }
   | { type: 'environment.set'; environment: ViewportEnvironmentId }
   | { type: 'camera.set'; mode: CameraCommand['mode'] }
@@ -40,8 +34,6 @@ export const createWorkbenchViewState = (
 ): WorkbenchViewState => ({
   preferredNodeId,
   preferredClipId,
-  transformMode: 'translate',
-  snapEnabled: true,
   viewportOptions: {
     showGrid: true,
     showSkeleton: false,
@@ -65,10 +57,6 @@ export const workbenchViewReducer = (
       return { ...state, preferredNodeId: action.nodeId };
     case 'clip.select':
       return { ...state, preferredClipId: action.clipId };
-    case 'transform.set':
-      return { ...state, transformMode: action.mode };
-    case 'snap.toggle':
-      return { ...state, snapEnabled: !state.snapEnabled };
     case 'viewport.toggle':
       return {
         ...state,

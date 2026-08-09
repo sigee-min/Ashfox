@@ -1,8 +1,5 @@
-import type { ProjectDocument, Vec3 } from '../model';
-import {
-  cellKey,
-  worldToLattice
-} from '../modeling/lattice';
+import type { ProjectDocument } from '../model';
+import { cellKey } from '../modeling/lattice';
 import {
   readCompiledParts
 } from '../modeling/partInvariants';
@@ -19,8 +16,13 @@ import {
 import {
   projectCellLateralSide,
   projectSpatialFrame,
-  reflectProjectPoint
+  reflectProjectCell
 } from '../project/projectSpatialFrame';
+import {
+  compiledPartRigEntry,
+  exactAuthoringRigReflection,
+  type AuthoringRigEntry
+} from './authoringRigReflection';
 import { authoringPlanIssue } from './authoringIssueFactories';
 import type { AuthoringPlanIssue } from './authoringPlanTypes';
 import type {
@@ -36,6 +38,7 @@ export interface SymmetryQualityStatus {
   complete: boolean;
   geometryExact: boolean;
   featureExact: boolean;
+  materialExact: boolean;
   rigExact: boolean;
   lateralOwnershipExact: boolean;
 }
@@ -52,11 +55,7 @@ export interface SymmetryQualityEvaluation {
 interface SlotOccupancy {
   geometry: ReadonlySet<`${number},${number},${number}`>;
   features: ReadonlySet<`${number},${number},${number}`>;
-}
-
-interface RigEntry {
-  pivot: Vec3;
-  joint: string;
+  materials: ReadonlySet<string>;
 }
 
 const emptyCells = (): Set<`${number},${number},${number}`> => new Set();
@@ -68,10 +67,14 @@ const cellsForSlot = (
 ): SlotOccupancy => {
   const geometry = emptyCells();
   const features = emptyCells();
+  const materials = new Set<string>();
   if (compiled.ok) {
     for (const partId of slot.partIds) {
-      for (const key of compiled.parts.get(partId)?.occupancy.cells ?? []) {
+      const part = compiled.parts.get(partId);
+      if (!part) continue;
+      for (const key of part.occupancy.cells) {
         geometry.add(key);
+        materials.add(`${key}|geometry:${part.materialId}`);
       }
     }
   }
@@ -79,15 +82,17 @@ const cellsForSlot = (
     const feature = featureById.get(partId);
     if (!feature) continue;
     for (const pixel of surfaceFeaturePixels(feature)) {
-      features.add(cellKey(pixel.boundaryCell));
+      const key = cellKey(pixel.boundaryCell);
+      features.add(key);
+      materials.add(`${key}|feature:${feature.materialId}`);
     }
   }
-  return { geometry, features };
+  return { geometry, features, materials };
 };
 
 const mergeCells = (
   occupancies: readonly SlotOccupancy[],
-  key: keyof SlotOccupancy
+  key: 'geometry' | 'features'
 ): ReadonlySet<`${number},${number},${number}`> =>
   new Set(occupancies.flatMap((occupancy) => [...occupancy[key]]));
 
@@ -103,57 +108,44 @@ const exactReflection = (
   plane
 );
 
+const exactMaterialReflection = (
+  source: ReadonlySet<string>,
+  target: ReadonlySet<string>,
+  frame: ReturnType<typeof projectSpatialFrame>
+): boolean => {
+  if (source.size !== target.size) return false;
+  return [...source].every((entry) => {
+    const separator = entry.indexOf('|');
+    if (separator < 0) return false;
+    const coordinates = entry.slice(0, separator).split(',').map(Number);
+    if (coordinates.length !== 3 || coordinates.some(Number.isNaN)) {
+      return false;
+    }
+    const reflected = reflectProjectCell(
+      coordinates as [number, number, number],
+      frame
+    );
+    return target.has(
+      `${reflected.join(',')}${entry.slice(separator)}`
+    );
+  });
+};
+
 const rigEntriesForSlot = (
   slot: AuthoringSlotAssignment,
   compiled: ReturnType<typeof readCompiledParts>,
   document: ProjectDocument
-): readonly RigEntry[] => {
+): readonly AuthoringRigEntry[] => {
   if (!compiled.ok) return [];
-  return slot.partIds.flatMap((partId): readonly RigEntry[] => {
+  return slot.partIds.flatMap((partId): readonly AuthoringRigEntry[] => {
     const part = compiled.parts.get(partId);
     if (!part) return [];
     // A fixed root has no animation relationship, and the compiler deliberately
     // keeps its pivot at the project origin. It is not rig-bearing; enforcing it
     // would make valid half-cell centered cores impossible for no rig benefit.
     if (part.parentPartId === null && part.joint.kind === 'fixed') return [];
-    const pivot: Vec3 = [
-      worldToLattice(
-        part.bone.transform.pivot[0],
-        document.settings.surfacePixelDensity
-      ),
-      worldToLattice(
-        part.bone.transform.pivot[1],
-        document.settings.surfacePixelDensity
-      ),
-      worldToLattice(
-        part.bone.transform.pivot[2],
-        document.settings.surfacePixelDensity
-      )
-    ];
-    return [{
-      pivot,
-      joint: part.joint.kind === 'hinge'
-        ? `hinge:${part.joint.axis}`
-        : part.joint.kind
-    }];
+    return [compiledPartRigEntry(part, document)];
   });
-};
-
-const rigSignature = (entries: readonly RigEntry[]): readonly string[] =>
-  entries.map((entry) =>
-    `${entry.pivot.join(',')}|${entry.joint}`
-  ).sort((left, right) => left.localeCompare(right));
-
-const exactRigReflection = (
-  source: readonly RigEntry[],
-  target: readonly RigEntry[],
-  frame: ReturnType<typeof projectSpatialFrame>
-): boolean => {
-  if (source.length !== target.length) return false;
-  return JSON.stringify(rigSignature(source.map((entry) => ({
-    ...entry,
-    pivot: reflectProjectPoint(entry.pivot, frame)
-  })))) === JSON.stringify(rigSignature(target));
 };
 
 const lateralOwnershipExact = (
@@ -222,8 +214,13 @@ export const evaluateSymmetryQuality = (
       frame.lateralAxis,
       plane
     );
+    const materialExact = exactMaterialReflection(
+      occupancy.materials,
+      occupancy.materials,
+      frame
+    );
     const rig = rigEntriesForSlot(slot, compiled, document);
-    const rigExact = exactRigReflection(rig, rig, frame);
+    const rigExact = exactAuthoringRigReflection(rig, rig, frame);
     const status: SymmetryQualityStatus = {
       id: `centered:${slot.slotId}`,
       kind: 'centered',
@@ -232,16 +229,17 @@ export const evaluateSymmetryQuality = (
       complete,
       geometryExact,
       featureExact,
+      materialExact,
       rigExact,
       lateralOwnershipExact: true
     };
     statuses.push(status);
-    if (!geometryExact || !featureExact || !rigExact) {
+    if (!geometryExact || !featureExact || !materialExact || !rigExact) {
       const issue = authoringPlanIssue(
         'authoring.plan.symmetry_centered_invalid',
         `authoringProfile.slots.${slot.slotId}.symmetry`,
         `Centered slot "${slot.slotId}" is not invariant under the project bilateral plane.`,
-        'compiled geometry, feature footprints, and rig-bearing pivots/joints exactly equal their own reflection',
+        'compiled geometry, feature footprints, per-cell geometry/feature material roles, and rig-bearing pivots/joints exactly equal their own reflection',
         { authority: profile.archetype, partIds: slot.partIds }
       );
       issues.push(issue);
@@ -278,7 +276,12 @@ export const evaluateSymmetryQuality = (
       frame.lateralAxis,
       plane
     );
-    const rigExact = presentCount === 0 || exactRigReflection(
+    const materialExact = presentCount === 0 || exactMaterialReflection(
+      leftOccupancy.materials,
+      rightOccupancy.materials,
+      frame
+    );
+    const rigExact = presentCount === 0 || exactAuthoringRigReflection(
       rigEntriesForSlot(left, compiled, document),
       rigEntriesForSlot(right, compiled, document),
       frame
@@ -303,19 +306,21 @@ export const evaluateSymmetryQuality = (
       complete,
       geometryExact,
       featureExact,
+      materialExact,
       rigExact,
       lateralOwnershipExact: ownershipExact
     };
     statuses.push(status);
     if (presentCount > 0 && (
-      !complete || !geometryExact || !featureExact || !rigExact ||
+      !complete || !geometryExact || !featureExact ||
+      !materialExact || !rigExact ||
       !ownershipExact
     )) {
       const issue = authoringPlanIssue(
         'authoring.plan.symmetry_pair_invalid',
         `authoringProfile.slots.${pairId}.symmetry`,
         `Slot pair "${pairId}" must be absent or exist as one exact compiled reflection.`,
-        'atomically materialize both sides with reflected geometry, feature footprints, rig-bearing pivots/joints, and half-space ownership',
+        'atomically materialize both sides with reflected geometry, feature footprints, exact per-cell material roles, rig-bearing pivots/joints, and half-space ownership',
         { authority: profile.archetype, partIds }
       );
       issues.push(issue);
@@ -331,6 +336,7 @@ export const evaluateSymmetryQuality = (
       status.complete &&
       status.geometryExact &&
       status.featureExact &&
+      status.materialExact &&
       status.rigExact &&
       status.lateralOwnershipExact
     )

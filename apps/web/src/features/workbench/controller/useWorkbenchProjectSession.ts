@@ -37,46 +37,20 @@ import {
   createProjectSessionState,
   projectSessionReducer
 } from '../state/projectSessionReducer';
-import {
-  loadGalleryProject,
-  resolveGalleryProjectUrl
-} from './galleryProjectLoader';
 
-export type GalleryProjectLoadPhase =
-  'idle' | 'loading' | 'loaded' | 'error';
-
-interface GalleryProjectLoadStatus {
-  phase: GalleryProjectLoadPhase;
-  message: string;
-}
-
-const createInitialProject = () => {
-  const search =
-    typeof window === 'undefined' ? '' : window.location.search;
-  const projectUrl = typeof window === 'undefined'
-    ? null
-    : resolveGalleryProjectUrl(search, window.location.origin);
-  return {
-    projectUrl,
-    history: createHistoryState(
-      createBlankWorkbenchProject(new Date().toISOString())
-    ),
-    isShowcase: projectUrl !== null
-  };
-};
+const createInitialProject = () => ({
+  history: createHistoryState(
+    createBlankWorkbenchProject(new Date().toISOString())
+  )
+});
 
 export const useWorkbenchProjectSession = () => {
   const [operationLease] = useState(createOperationLease);
   const [initialProject] = useState(createInitialProject);
-  const [galleryProjectStatus, setGalleryProjectStatus] =
-    useState<GalleryProjectLoadStatus>(() => initialProject.projectUrl
-      ? { phase: 'loading', message: 'Opening demo project…' }
-      : { phase: 'idle', message: '' });
   const [project, dispatchProject] = useReducer(
     projectSessionReducer,
     initialProject,
-    ({ history, isShowcase }) =>
-      createProjectSessionState(history, {}, !isShowcase)
+    ({ history }) => createProjectSessionState(history, {})
   );
   const { history, assets, visualReviews, storage } = project;
   const document = history.present;
@@ -112,7 +86,7 @@ export const useWorkbenchProjectSession = () => {
   }, [operationLease]);
 
   const storageStatus = useLocalProjectPersistence({
-    enabled: !initialProject.isShowcase,
+    enabled: true,
     projectId: document.id,
     projectGeneration: storage.generation,
     restoreFromStorage: storage.restoreFromStorage,
@@ -146,39 +120,6 @@ export const useWorkbenchProjectSession = () => {
     dispatchProject({ type: 'visualReview.record', receipt });
   }, []);
 
-  useEffect(() => {
-    if (!initialProject.projectUrl) return undefined;
-    const controller = new AbortController();
-    setGalleryProjectStatus({
-      phase: 'loading',
-      message: 'Opening demo project…'
-    });
-    void loadGalleryProject(
-      initialProject.projectUrl,
-      controller.signal
-    ).then((archive) => {
-      replaceProject(archive);
-      setGalleryProjectStatus({
-        phase: 'loaded',
-        message: 'Demo project opened.'
-      });
-    }).catch((error: unknown) => {
-      if (
-        controller.signal.aborted ||
-        (error instanceof DOMException && error.name === 'AbortError')
-      ) {
-        return;
-      }
-      setGalleryProjectStatus({
-        phase: 'error',
-        message: error instanceof Error
-          ? `Could not open demo: ${error.message}`
-          : 'Could not open demo project.'
-      });
-    });
-    return () => controller.abort();
-  }, [initialProject.projectUrl, replaceProject]);
-
   return {
     initialSelectionId: null,
     initialClipId:
@@ -191,7 +132,6 @@ export const useWorkbenchProjectSession = () => {
     report,
     buildCaptureDocuments,
     storageStatus,
-    galleryProjectStatus,
     operationLease,
     dispatchProject,
     dispatchUserMutation,

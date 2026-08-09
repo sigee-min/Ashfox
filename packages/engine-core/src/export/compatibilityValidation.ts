@@ -1,6 +1,4 @@
-import type {
-  ProjectDocument
-} from '../model';
+import type { ExportAdaptedDocument } from './adapter';
 import type {
   InvariantFinding
 } from '../validation/types';
@@ -21,7 +19,7 @@ const supportedGameVersionText = (
     .join(' | ');
 
 export const validateExportCompatibilityProfile = (
-  document: ProjectDocument
+  document: ExportAdaptedDocument
 ): readonly InvariantFinding[] => {
   const findings: InvariantFinding[] = [];
   const profile = document.formatProfile;

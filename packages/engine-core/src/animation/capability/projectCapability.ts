@@ -41,6 +41,18 @@ export const blockingAnimationPreviewIssues = (
   );
 };
 
+/**
+ * The workbench previews the canonical asset, before any target adapter has
+ * converted or omitted data.  Its review contract must therefore not depend
+ * on a delivery format.
+ */
+export const blockingCanonicalAnimationPreviewIssues = (
+  clip: AnimationClip
+): readonly AnimationPreviewIssue[] =>
+  analyzeAnimationPreview(clip).filter(
+    (item) => !NON_TRANSFORM_PREVIEW_ISSUES.has(item.code)
+  );
+
 export const analyzeClipAnimationCapability = (
   clip: AnimationClip,
   targetId: AnimationExportTarget
@@ -62,9 +74,9 @@ export const analyzeClipAnimationCapability = (
 };
 
 export const analyzeProjectAnimationCapabilities = (
-  document: ProjectDocument
+  document: ProjectDocument,
+  targetId: AnimationExportTarget
 ): ProjectAnimationCapabilityReport => {
-  const targetId = document.formatProfile.id;
   const clips = Object.values(document.animations)
     .sort((left, right) => left.id.localeCompare(right.id))
     .map((clip) => analyzeClipAnimationCapability(clip, targetId));
@@ -91,9 +103,10 @@ export class AnimationExportCapabilityError extends Error {
 }
 
 export const assertProjectAnimationsExportable = (
-  document: ProjectDocument
+  document: ProjectDocument,
+  targetId: AnimationExportTarget
 ): void => {
-  const report = analyzeProjectAnimationCapabilities(document);
+  const report = analyzeProjectAnimationCapabilities(document, targetId);
   const issues = report.clips.flatMap((clip) => clip.exportIssues);
   if (issues.length > 0) {
     throw new AnimationExportCapabilityError(issues);

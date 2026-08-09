@@ -5,7 +5,10 @@ import {
   type DragEvent
 } from 'react';
 
-import type { ProjectDocument } from '@ashfox/engine-core';
+import type {
+  ExportAdapterInput,
+  ProjectDocument
+} from '@ashfox/engine-core';
 
 import type {
   OperationLease,
@@ -39,9 +42,6 @@ import type { GifCaptureRequest } from '../capture/gifCaptureRequest';
 import type {
   CaptureArtifactRequest
 } from './captureArtifactRequest';
-import {
-  projectExportTargetFor
-} from '../../application/projectExportTarget';
 
 interface UseProjectFileActionsInput {
   document: ProjectDocument;
@@ -58,6 +58,7 @@ interface ProjectFileActions {
   drop: (event: DragEvent<HTMLElement>) => void;
   save: () => void;
   exportTarget: (
+    adapter: ExportAdapterInput,
     lease?: OperationLeaseToken
   ) => Promise<FileOperationRunResult<TargetArtifactFile>>;
   capture: (
@@ -141,12 +142,14 @@ export const useProjectFileActions = ({
     });
   }, [assets, document, run]);
 
-  const exportTarget = useCallback((lease?: OperationLeaseToken) => {
-    const target = projectExportTargetFor(document);
+  const exportTarget = useCallback((
+    adapter: ExportAdapterInput,
+    lease?: OperationLeaseToken
+  ) => {
     return run<TargetArtifactFile, TargetArtifactFile>({
       kind: 'export',
-      pendingMessage: `Building ${target.target} export`,
-      execute: () => createTargetArtifact(document, assets),
+      pendingMessage: `Building ${adapter.target} export`,
+      execute: () => createTargetArtifact(document, assets, adapter),
       complete: (artifact) => {
         const adaptations = adaptationNotice(artifact);
         return {

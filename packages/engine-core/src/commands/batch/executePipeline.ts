@@ -1,4 +1,3 @@
-import { MOTION_AUTHORING_LIMITS } from '../../animation/motionContract';
 import type { ProjectDocument } from '../../model';
 import { validateProjectDocument } from '../../validation';
 import type {
@@ -7,8 +6,7 @@ import type {
   CommandSource
 } from '../types';
 import {
-  applyCommandOperation,
-  changedMotionKeyCount
+  applyCommandOperation
 } from './applyOperation';
 import { deriveBatchTextures } from './deriveTextures';
 import {
@@ -32,10 +30,8 @@ export const executeCommandBatchPipeline = (
 
   let workingDocument = document;
   let effects = emptyCommandEffects();
-  let motionKeyCount = 0;
   const summaries: string[] = [];
   for (let index = 0; index < batch.operations.length; index += 1) {
-    const beforeOperation = workingDocument;
     const applied = applyCommandOperation(
       workingDocument,
       batch,
@@ -43,22 +39,6 @@ export const executeCommandBatchPipeline = (
       source
     );
     if ('ok' in applied) return applied;
-    motionKeyCount += changedMotionKeyCount(
-      beforeOperation,
-      applied.document,
-      batch.operations[index]
-    );
-    if (motionKeyCount > MOTION_AUTHORING_LIMITS.maxKeysPerBatch) {
-      return commandBatchFailure(document, {
-        code: 'invalid_batch',
-        message:
-          `Animation operations compile to ${motionKeyCount} changed keys, ` +
-          `exceeding the ${MOTION_AUTHORING_LIMITS.maxKeysPerBatch}-key batch budget.`,
-        path: 'operations',
-        expected:
-          `at most ${MOTION_AUTHORING_LIMITS.maxKeysPerBatch} changed animation keys`
-      });
-    }
     workingDocument = applied.document;
     effects = mergeCommandEffects(effects, applied.effects);
     summaries.push(applied.summary);

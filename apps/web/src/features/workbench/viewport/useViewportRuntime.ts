@@ -7,12 +7,6 @@ import {
 } from 'react';
 import * as THREE from 'three';
 
-import type {
-  ProjectDocument,
-  Transform
-} from '@ashfox/engine-core';
-
-import { objectTransformToCanonical } from '../../../rendering/sceneTransform';
 import {
   createViewportRuntime,
   disposeViewportRuntime,
@@ -21,12 +15,7 @@ import {
 import type { ViewportStats } from './viewportTypes';
 
 interface ViewportRuntimeRefs {
-  document: RefObject<ProjectDocument>;
-  selectedNodeId: RefObject<string | null>;
   onSelectNode: RefObject<(nodeId: string | null) => void>;
-  onCommitTransform: RefObject<
-    (nodeId: string, transform: Transform) => void
-  >;
   onStats: RefObject<(stats: ViewportStats) => void>;
   onFrame: RefObject<(frameNonce: number) => void>;
 }
@@ -48,10 +37,7 @@ export const useViewportRuntime = (
   refs: ViewportRuntimeRefs
 ): RefObject<ViewportRuntime | null> => {
   const runtimeRef = useRef<ViewportRuntime | null>(null);
-  const documentRef = refs.document;
-  const selectedNodeIdRef = refs.selectedNodeId;
   const onSelectNodeRef = refs.onSelectNode;
-  const onCommitTransformRef = refs.onCommitTransform;
   const onStatsRef = refs.onStats;
   const onFrameRef = refs.onFrame;
 
@@ -63,35 +49,13 @@ export const useViewportRuntime = (
     const runtime = createViewportRuntime(canvas);
     runtimeRef.current = runtime;
 
-    const handleTransformDragging = (event: { value?: unknown }): void => {
-      runtime.transformDragging = Boolean(event.value);
-      runtime.orbit.enabled = !runtime.transformDragging;
-    };
-    const handleTransformCommit = (): void => {
-      const nodeId = selectedNodeIdRef.current;
-      const projection = runtime.projection;
-      if (!nodeId || !projection) return;
-      const object = projection.objectsByNodeId.get(nodeId);
-      const node = documentRef.current.scene.nodes[nodeId];
-      if (!object || !node) return;
-      onCommitTransformRef.current(
-        nodeId,
-        objectTransformToCanonical(documentRef.current, node, object)
-      );
-    };
-    runtime.transform.addEventListener(
-      'dragging-changed',
-      handleTransformDragging
-    );
-    runtime.transform.addEventListener('mouseUp', handleTransformCommit);
-
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     const handlePointerDown = (event: PointerEvent): void => {
       runtime.pointerStart.set(event.clientX, event.clientY);
     };
     const handlePointerUp = (event: PointerEvent): void => {
-      if (runtime.transformDragging || !runtime.projection) return;
+      if (!runtime.projection) return;
       const distance = runtime.pointerStart.distanceTo(
         new THREE.Vector2(event.clientX, event.clientY)
       );
@@ -144,26 +108,15 @@ export const useViewportRuntime = (
       resizeObserver.disconnect();
       canvas.removeEventListener('pointerdown', handlePointerDown);
       canvas.removeEventListener('pointerup', handlePointerUp);
-      runtime.transform.removeEventListener(
-        'dragging-changed',
-        handleTransformDragging
-      );
-      runtime.transform.removeEventListener(
-        'mouseUp',
-        handleTransformCommit
-      );
       disposeViewportRuntime(runtime);
       runtimeRef.current = null;
     };
   }, [
     canvasRef,
-    documentRef,
     hostRef,
-    onCommitTransformRef,
     onFrameRef,
     onSelectNodeRef,
-    onStatsRef,
-    selectedNodeIdRef
+    onStatsRef
   ]);
 
   return runtimeRef;

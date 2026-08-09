@@ -10,6 +10,9 @@ import {
   worldToLattice
 } from '../modeling/lattice';
 import {
+  classifySurfaceFace
+} from '../modeling/surfaceOwnership';
+import {
   PART_CONTRACT_LIMITS
 } from '../modeling/partContract';
 import type { EyeFeaturePartSpec } from '../modeling/partContract';
@@ -25,15 +28,27 @@ import {
   surfaceFeaturePlane
 } from '../modeling/surfaceFeature';
 import type {
-  LatticeBounds,
-  LatticePoint
+  CellKey,
+  LatticeBounds
 } from '../modeling/types';
 import {
   buildSurfacePatternComponents
 } from './surfacePatternComponents';
+import type {
+  SurfacePatternComponent
+} from './surfacePatternComponents';
+import {
+  buildGeneratedSurfaceToneField,
+  type GeneratedSurfaceToneField,
+  type GeneratedSurfaceTonePolicy
+} from './generatedToneField';
+
+export type { GeneratedSurfaceTonePolicy } from './generatedToneField';
 
 export interface GeneratedSurfacePattern {
   seedKey: string;
+  tonePolicy: GeneratedSurfaceTonePolicy;
+  toneField: GeneratedSurfaceToneField;
   origin: readonly [number, number];
   bounds: {
     x: number;
@@ -61,6 +76,7 @@ export interface GeneratedSurfaceMarking {
 
 export interface CompiledFaceAuthority {
   external: boolean;
+  tonePolicy: GeneratedSurfaceTonePolicy;
   pattern?: GeneratedSurfacePattern;
   markings?: readonly GeneratedSurfaceMarking[];
 }
@@ -81,15 +97,65 @@ export interface GeneratedSurfaceGrid {
 interface PatternDraft {
   faceKey: string;
   groupKey: string;
+  tonePolicy: GeneratedSurfaceTonePolicy;
   origin: readonly [number, number];
   width: number;
   height: number;
+}
+
+interface SurfaceFeatureContext {
+  colors: ReadonlyMap<string, string>;
+  features: readonly ModelFeaturePartSpec[];
+  focalHostKeys: ReadonlySet<string>;
 }
 
 export const generatedSurfaceFaceKey = (
   nodeId: string,
   direction: CubeFaceDirection
 ): string => `${nodeId}:${direction}`;
+
+const surfaceHostKey = (
+  partId: string,
+  face: CubeFaceDirection,
+  plane: number
+): string => JSON.stringify([partId, face, plane]);
+
+const readSurfaceFeatureContext = (
+  document: ProjectDocument
+): SurfaceFeatureContext => {
+  const result = readPartRecipe(document);
+  if (!result.ok || result.recipe === null) {
+    return {
+      colors: new Map(),
+      features: [],
+      focalHostKeys: new Set()
+    };
+  }
+  const features = result.recipe.parts
+    .filter(
+      (part): part is ModelFeaturePartSpec => part.kind === 'feature'
+    )
+    .sort((left, right) => left.partId.localeCompare(right.partId));
+  return {
+    colors: new Map(result.recipe.materials.map((material) => [
+      material.id,
+      material.baseColor
+    ])),
+    features,
+    focalHostKeys: new Set(
+      features
+        .flatMap((feature) =>
+          feature.motif === 'patch' || feature.parentPartId === null
+            ? []
+            : [surfaceHostKey(
+                feature.parentPartId,
+                feature.face,
+                surfaceFeaturePlane(feature)
+              )]
+        )
+    )
+  };
+};
 
 const compiledLatticeBounds = (
   document: ProjectDocument,
@@ -130,126 +196,6 @@ const addBoundsCells = (
       }
     }
   }
-};
-
-const faceCellRanges = (
-  bounds: LatticeBounds,
-  direction: CubeFaceDirection
-): {
-  firstAxis: 'x' | 'y' | 'z';
-  firstMin: number;
-  firstMax: number;
-  secondAxis: 'x' | 'y' | 'z';
-  secondMin: number;
-  secondMax: number;
-  boundary: LatticePoint;
-  neighbor: LatticePoint;
-} => {
-  switch (direction) {
-    case 'north':
-      return {
-        firstAxis: 'x',
-        firstMin: bounds.min.x,
-        firstMax: bounds.max.x,
-        secondAxis: 'y',
-        secondMin: bounds.min.y,
-        secondMax: bounds.max.y,
-        boundary: { x: 0, y: 0, z: bounds.min.z },
-        neighbor: { x: 0, y: 0, z: -1 }
-      };
-    case 'south':
-      return {
-        firstAxis: 'x',
-        firstMin: bounds.min.x,
-        firstMax: bounds.max.x,
-        secondAxis: 'y',
-        secondMin: bounds.min.y,
-        secondMax: bounds.max.y,
-        boundary: { x: 0, y: 0, z: bounds.max.z - 1 },
-        neighbor: { x: 0, y: 0, z: 1 }
-      };
-    case 'east':
-      return {
-        firstAxis: 'z',
-        firstMin: bounds.min.z,
-        firstMax: bounds.max.z,
-        secondAxis: 'y',
-        secondMin: bounds.min.y,
-        secondMax: bounds.max.y,
-        boundary: { x: bounds.max.x - 1, y: 0, z: 0 },
-        neighbor: { x: 1, y: 0, z: 0 }
-      };
-    case 'west':
-      return {
-        firstAxis: 'z',
-        firstMin: bounds.min.z,
-        firstMax: bounds.max.z,
-        secondAxis: 'y',
-        secondMin: bounds.min.y,
-        secondMax: bounds.max.y,
-        boundary: { x: bounds.min.x, y: 0, z: 0 },
-        neighbor: { x: -1, y: 0, z: 0 }
-      };
-    case 'up':
-      return {
-        firstAxis: 'x',
-        firstMin: bounds.min.x,
-        firstMax: bounds.max.x,
-        secondAxis: 'z',
-        secondMin: bounds.min.z,
-        secondMax: bounds.max.z,
-        boundary: { x: 0, y: bounds.max.y - 1, z: 0 },
-        neighbor: { x: 0, y: 1, z: 0 }
-      };
-    case 'down':
-      return {
-        firstAxis: 'x',
-        firstMin: bounds.min.x,
-        firstMax: bounds.max.x,
-        secondAxis: 'z',
-        secondMin: bounds.min.z,
-        secondMax: bounds.max.z,
-        boundary: { x: 0, y: bounds.min.y, z: 0 },
-        neighbor: { x: 0, y: -1, z: 0 }
-      };
-  }
-};
-
-const faceIsExternal = (
-  bounds: LatticeBounds,
-  direction: CubeFaceDirection,
-  occupancy: ReadonlySet<string>
-): boolean => {
-  // CubeFace owns one rectangular UV. A partially covered face must remain
-  // enabled; only a face whose every boundary cell has a neighbor is hidden.
-  const ranges = faceCellRanges(bounds, direction);
-  for (
-    let first = ranges.firstMin;
-    first < ranges.firstMax;
-    first += 1
-  ) {
-    for (
-      let second = ranges.secondMin;
-      second < ranges.secondMax;
-      second += 1
-    ) {
-      const boundary = { ...ranges.boundary };
-      boundary[ranges.firstAxis] = first;
-      boundary[ranges.secondAxis] = second;
-      if (
-        !occupancy.has(
-          cellKey({
-            x: boundary.x + ranges.neighbor.x,
-            y: boundary.y + ranges.neighbor.y,
-            z: boundary.z + ranges.neighbor.z
-          })
-        )
-      ) {
-        return true;
-      }
-    }
-  }
-  return false;
 };
 
 const facePlane = (
@@ -321,29 +267,16 @@ const intersection = (
 
 const addSurfaceFeatureMarkings = (
   document: ProjectDocument,
+  context: SurfaceFeatureContext,
   cubes: readonly CubeNode[],
   boundsByNode: ReadonlyMap<string, LatticeBounds>,
   grid: GeneratedSurfaceGrid,
   faces: Map<string, CompiledFaceAuthority>
 ): void => {
-  const recipe = readPartRecipe(document);
-  if (!recipe.ok || recipe.recipe === null) return;
-  const colors = new Map(
-    recipe.recipe.materials.map((material) => [
-      material.id,
-      material.baseColor
-    ])
-  );
-  const features = recipe.recipe.parts
-    .filter(
-      (part): part is ModelFeaturePartSpec =>
-        part.kind === 'feature'
-    )
-    .sort((left, right) => left.partId.localeCompare(right.partId));
-  for (const feature of features) {
+  for (const feature of context.features) {
     const featureRect = orientedSurfaceFeatureRect(feature);
     const plane = surfaceFeaturePlane(feature);
-    const color = colors.get(feature.materialId);
+    const color = context.colors.get(feature.materialId);
     if (!color) continue;
     for (const cube of cubes) {
       if (cube.generation?.partId !== feature.parentPartId) continue;
@@ -417,9 +350,10 @@ export const buildCompiledSurfaceAuthority = (
   );
   if (cubes.length === 0) return emptyAuthority();
   const nodeIds = new Set(cubes.map((cube) => cube.id));
+  const featureContext = readSurfaceFeatureContext(document);
 
   const boundsByNode = new Map<string, LatticeBounds>();
-  const occupancy = new Set<string>();
+  const occupancy = new Set<CellKey>();
   let cellCount = 0;
   for (const cube of cubes) {
     const bounds = compiledLatticeBounds(document, cube);
@@ -455,19 +389,29 @@ export const buildCompiledSurfaceAuthority = (
     if (!bounds || !generation) continue;
     for (const direction of CUBE_FACE_DIRECTIONS) {
       const key = generatedSurfaceFaceKey(cube.id, direction);
-      const external = faceIsExternal(bounds, direction, occupancy);
-      faces.set(key, { external });
+      const external =
+        classifySurfaceFace(bounds, direction, occupancy) === 'external';
+      const plane = facePlane(bounds, direction);
+      const tonePolicy: GeneratedSurfaceTonePolicy =
+        featureContext.focalHostKeys.has(
+          surfaceHostKey(generation.partId, direction, plane)
+        )
+          ? 'focal'
+          : 'regular';
+      faces.set(key, { external, tonePolicy });
       if (!external) continue;
       const size = grid.faceSize(cube, direction);
       if (!size) continue;
       const groupKey = [
         generation.materialId,
         direction,
-        facePlane(bounds, direction)
+        plane,
+        tonePolicy
       ].join(':');
       drafts.push({
         faceKey: key,
         groupKey,
+        tonePolicy,
         origin: patternOrigin(
           cube,
           direction,
@@ -489,13 +433,23 @@ export const buildCompiledSurfaceAuthority = (
       height: draft.height
     }))
   );
+  const toneFields = new Map<
+    SurfacePatternComponent,
+    GeneratedSurfaceToneField
+  >();
   for (const draft of drafts) {
     const component = components.get(draft.faceKey);
     if (!component) continue;
+    const toneField = toneFields.get(component) ??
+      buildGeneratedSurfaceToneField(component, draft.tonePolicy);
+    toneFields.set(component, toneField);
     faces.set(draft.faceKey, {
       external: true,
+      tonePolicy: draft.tonePolicy,
       pattern: {
         seedKey: component.seedKey,
+        tonePolicy: draft.tonePolicy,
+        toneField,
         origin: draft.origin,
         bounds: component.bounds
       }
@@ -503,6 +457,7 @@ export const buildCompiledSurfaceAuthority = (
   }
   addSurfaceFeatureMarkings(
     document,
+    featureContext,
     cubes,
     boundsByNode,
     grid,

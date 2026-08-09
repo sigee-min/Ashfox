@@ -1,10 +1,10 @@
-import type { ProjectDocument } from '../../model';
+import type { ExportAdaptedDocument } from '../adapter';
 import { resourceToken } from '../../resourceToken';
 
 const MINECRAFT_ANIMATION_NAME = /^animation\.[a-z0-9_.-]+$/;
 
 export const minecraftActorAnimationNames = (
-  document: ProjectDocument
+  document: ExportAdaptedDocument
 ): ReadonlyMap<string, string> => {
   const profile = document.formatProfile;
   if (

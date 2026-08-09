@@ -34,8 +34,16 @@ export {
   type ProjectDocument,
   type ProjectForwardDirection,
   type ProjectIntent,
+  type IntentProgramSource,
+  type ProjectCanonicalSupport,
   type ProjectReferenceKind,
   type ProjectReferenceObservation,
+  type ProjectSemanticContract,
+  type ProjectSemanticFace,
+  type ProjectSubjectDomain,
+  type ProjectSupportedSurfaceObligation,
+  type ProjectSupportedSurfaceExtension,
+  type ProjectSupportedSurfaceRole,
   type ProjectSymmetry,
   type SceneNode,
   type SurfacePixelDensity,
@@ -100,8 +108,8 @@ export {
   type AuthoringPartKind,
   type AuthoringProfile,
   type AuthoringQualityStage,
-  type AuthoringRecipe,
-  type AuthoringRecipeSummary,
+  type AuthoringRestPose,
+  type AuthoringRestPoseMode,
   type AuthoringReviewCamera,
   type AuthoringReviewCheck,
   type AuthoringReviewIssue,
@@ -124,6 +132,7 @@ export {
   type SpecialistId,
   type SpecialistReference
 } from './authoring/authoringTypes';
+export { AUTHORING_REST_POSE_MODES } from './authoring/authoringTypes';
 export {
   authoringAuthorityLabel,
   authoringReviewChecks,
@@ -143,6 +152,12 @@ export {
   type NormalizeAuthoringProfileResult,
   type ReadAuthoringProfileResult
 } from './authoring/authoringProfile';
+export { deriveAuthoringRestPoseMode } from './authoring/authoringProfileRestPose';
+export {
+  type AuthoringSpan,
+  type AuthoringSpanMembrane,
+  type AuthoringSpanSpar
+} from './authoring/authoringSpanTypes';
 export {
   composeAuthoringSlots,
   evaluateAuthoringPlan,
@@ -160,6 +175,21 @@ export {
   type AuthoringAssetQualityDimensionStatus,
   type AuthoringAssetQualityStage
 } from './authoring/assetQuality';
+export {
+  CANONICAL_STANDING_EXTENSION_POLICY,
+  evaluateRestPoseQuality,
+  type RestPoseQualityEvaluation,
+  type RestPoseQualityState,
+  type RestPoseQualityStatus
+} from './authoring/restPoseQuality';
+export {
+  evaluateSpanQuality,
+  type SpanQualityEvaluation,
+  type SpanQualityIssue,
+  type SpanQualityIssueCode,
+  type SpanQualityState,
+  type SpanQualityStatus
+} from './authoring/spanQuality';
 export {
   AUTHORING_TRACK_POLICIES,
   authoringTrackPolicy,
@@ -204,10 +234,6 @@ export {
   validateAuthoringCatalog,
   type AuthoringCatalogIssue
 } from './authoring/compatibilityEvaluator';
-export {
-  getAuthoringRecipe,
-  listAuthoringRecipes
-} from './authoring/authoringRecipes';
 
 export { canonicalJsonString } from './canonicalJson';
 export {
@@ -225,6 +251,27 @@ export {
   normalizeProjectIntent,
   readProjectIntent
 } from './project/projectIntent';
+export {
+  parseIntentProgram,
+  type IntentProgramAst,
+  type IntentProgramDiagnostic,
+  type IntentProgramFace,
+  type IntentProgramIr,
+  type IntentProgramModule,
+  type IntentProgramParseResult,
+  type IntentProgramRest,
+  type IntentProgramSpan,
+  type IntentProgramStyle,
+  type IntentProgramSurface
+} from './project/intentProgram';
+export {
+  compileIntentProgram,
+  type CompileIntentProgramResult,
+  type IntentProgramCompilerPlan,
+  type IntentProgramGraphNode,
+  type IntentProgramLoweringInput,
+  type IntentProgramStructuralGraph
+} from './compiler/intentProgram';
 export {
   PROJECT_SYMMETRY_MAX_PLANE_TWICE,
   projectCellLateralSide,
@@ -247,17 +294,12 @@ export {
   commandAllowedForSource,
   createProjectFromInput,
   executeAgentCommandBatch,
-  executeImportCommandBatch,
   executeSystemCommandBatch,
   executeWebCommandBatch,
   getAgentCommandDefinition,
-  getCommandDefinition,
   isValidCommandReceipt,
   isValidCommandReceiptLedger,
   listAgentCommandDefinitions,
-  listCommandDefinitions,
-  type AnimationTriggerInput,
-  type BoneCreateInput,
   type CommandBatch,
   type CommandBatchResult,
   type CommandEffects,
@@ -265,11 +307,10 @@ export {
   type CommandReceipt,
   type CommandReceiptLedgerOptions,
   type CommandSource,
-  type CubeCreateInput,
   type ProjectCommandOperation,
   type ProjectCreateInput,
-  type ProjectIntentInput,
-  type TransformChannelInput
+  type IntentProgramCompileInput,
+  type IntentProgramProposalInput
 } from './commands';
 
 export {
@@ -294,6 +335,7 @@ export {
   analyzeAnimationPreview,
   analyzeProjectAnimationCapabilities,
   animationPreviewIssues,
+  blockingCanonicalAnimationPreviewIssues,
   blockingAnimationPreviewIssues,
   type AnimationPreviewIssue
 } from './animation/capability';
@@ -378,11 +420,23 @@ export {
 } from './textures/pixelSurfacePattern';
 export {
   DEFAULT_PIXEL_SHADE_STYLE,
+  pixelTonePalette,
   shadePixelRect,
+  type PixelTonePalette,
+  type PixelToneRole,
   type RgbColor
 } from './textures/pixelRectShade';
+export {
+  DEFAULT_GENERATED_TONE_CUTOFFS,
+  generatedSurfaceTonePalette,
+  generatedToneRole,
+  generatedToneScore,
+  paintGeneratedTonePixel,
+  type GeneratedToneCutoffs
+} from './textures/generatedPixelShade';
 export { paintEyeMotifPixel } from './textures/eyeMotif';
 export { paintFeatureMotifPixel } from './textures/featureMotif';
+export { generatedSurfacePixel } from './textures/generatedSurfacePixel';
 export {
   composeTextureRaster,
   staleGeneratedTextureIds,
@@ -404,13 +458,8 @@ export {
   EXPORT_COMPATIBILITY_REGISTRY,
   EXPORT_PRESETS,
   MINECRAFT_GAME_VERSIONS,
-  animationSupportForFormatProfile,
-  formatProfileSupportsAnimation,
   exportCompatibilityFor,
   exportCompatibilityOptions,
-  exportPresetForFormatProfile,
-  formatProfileForExport,
-  gameVersionForFormatProfile,
   isExportModelPathValid,
   isExportNamespaceValid,
   normalizeExportModelPath,
@@ -423,24 +472,14 @@ export {
   exportProductionProject,
   exportProductionProjectResolved
 } from './export/exportProject';
-
 export {
-  buildMinecraftJavaModel,
-  type MinecraftJavaModel
-} from './export/targets/javaBlock/exporter';
-export {
-  buildMinecraftJavaBlockState,
-  buildMinecraftJavaPackMetadata
-} from './export/targets/javaBlock/resourcePack';
-export {
-  buildMinecraftBedrockAnimations,
-  buildMinecraftBedrockGeometry
-} from './export/targets/bedrock/exporter';
-export {
-  buildGeckoLib5Animations,
-  buildGeckoLib5Geometry
-} from './export/targets/geckolib5/exporter';
-export {
-  buildGltf,
-  type CompiledGltf
-} from './export/targets/gltf/exporter';
+  adaptProjectForExport,
+  resolveExportAdapter,
+  type ExportAdaptedDocument,
+  type ExportAdapterInput,
+  type ExportTextureAsset,
+  type ResolvedExportAdapter
+} from './export/adapter';
+export type {
+  ExportFormatProfile
+} from './export/adapterTypes';

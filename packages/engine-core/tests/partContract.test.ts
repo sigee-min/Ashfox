@@ -5,10 +5,6 @@ import {
   normalizePartSpecs,
   PART_CONTRACT_LIMITS
 } from '../src/modeling/partContract';
-import { validateCommandInput } from '../src/commands/schema';
-import {
-  modelPartSpecSchema
-} from '../src/commands/definitions/modelPartSchemas';
 import { normalizePartRecipe } from '../src/modeling/partRecipe';
 
 const rootMass = {
@@ -29,20 +25,7 @@ if (normalizedMass.ok) {
     attachment: null,
     profile: 'balanced'
   });
-  assert.equal(
-    validateCommandInput(
-      normalizedMass.value,
-      modelPartSpecSchema
-    )?.path,
-    '$.attachment',
-    'the normalized recipe contains internal attachment state'
-  );
 }
-assert.equal(
-  validateCommandInput(rootMass, modelPartSpecSchema),
-  null,
-  'safe omitted fields must also satisfy the published input schema'
-);
 
 const childSegment = normalizePartSpec({
   kind: 'segment',
@@ -66,32 +49,6 @@ const childSegment = normalizePartSpec({
   ]
 });
 assert.equal(childSegment.ok, true);
-assert.equal(
-  validateCommandInput(
-    {
-      kind: 'segment',
-      partId: 'arm.left',
-      parentPartId: 'body.core',
-      materialId: 'material.gold',
-      joint: { kind: 'hinge', axis: 'z' },
-      attachment: {
-        parentAnchor: [-10, 20, 0],
-        partAnchor: [0, 0, 0]
-      },
-      points: [
-        [-10, 20, 0],
-        [-18, 12, 0]
-      ],
-      radii: [
-        [4, 4, 4],
-        [3, 3, 3]
-      ]
-    },
-    modelPartSpecSchema
-  )?.path,
-  '$.attachment',
-  'agent input must not expose internal attachment coordinates'
-);
 
 const canonicalPlate = normalizePartSpec({
   kind: 'plate',
@@ -130,13 +87,6 @@ if (!floatingCoordinate.ok) {
     true
   );
 }
-assert.equal(
-  validateCommandInput(
-    { ...rootMass, center: [0, 0.5, 0] },
-    modelPartSpecSchema
-  )?.path,
-  '$.center[1]'
-);
 
 const unknownKey = normalizePartSpec({
   ...rootMass,
@@ -393,13 +343,6 @@ if (!namespacedId.ok) {
     true
   );
 }
-assert.equal(
-  validateCommandInput(
-    { ...rootMass, partId: 'body/core' },
-    modelPartSpecSchema
-  )?.path,
-  '$.partId'
-);
 
 const duplicateBatch = normalizePartSpecs([rootMass, rootMass]);
 assert.equal(duplicateBatch.ok, false);

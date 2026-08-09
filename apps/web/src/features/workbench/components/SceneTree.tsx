@@ -20,7 +20,6 @@ interface SceneTreeProps {
   document: ProjectDocument;
   selectedNodeId: string | null;
   onSelect: (nodeId: string) => void;
-  onToggleVisibility: (nodeId: string) => void;
 }
 
 const indexChildrenByParent = (
@@ -41,8 +40,7 @@ const indexChildrenByParent = (
 export function SceneTree({
   document,
   selectedNodeId,
-  onSelect,
-  onToggleVisibility
+  onSelect
 }: SceneTreeProps) {
   const childrenByParent = useMemo(
     () => indexChildrenByParent(document.scene.nodes),
@@ -107,17 +105,12 @@ export function SceneTree({
               </span>
             ) : null}
           </button>
-          <button
-            type="button"
-            className={`visibility-toggle${node.visible ? '' : ' is-hidden'}`}
-            aria-label={`${node.name} ${node.visible ? '숨기기' : '표시하기'}`}
-            disabled={
-              node.generation?.authority === 'ashfox.part-compiler'
-            }
-            onClick={() => onToggleVisibility(node.id)}
+          <span
+            className={`visibility-toggle is-readonly${node.visible ? '' : ' is-hidden'}`}
+            aria-label={node.visible ? 'Visible compiled output' : 'Hidden compiled output'}
           >
             <Icon name={node.visible ? 'eye' : 'eyeOff'} />
-          </button>
+          </span>
         </div>
         {visibleChildren.map((child) => renderNode(child, depth + 1))}
         {featureParts.map((feature) => (

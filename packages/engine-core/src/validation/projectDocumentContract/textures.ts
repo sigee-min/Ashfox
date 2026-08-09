@@ -36,37 +36,6 @@ const validateBlobRef = (
   }
 };
 
-const validateMinecraftBinding = (
-  value: unknown,
-  path: string,
-  context: ContractContext
-): void => {
-  const record = closedRecord(
-    value,
-    path,
-    ['key', 'resource', 'extension'],
-    ['particle'],
-    context
-  );
-  if (!record) return;
-  expectString(record.key, `${path}.key`, context);
-  expectLiteral(record.extension, ['png'], `${path}.extension`, context);
-  const resource = closedRecord(
-    record.resource,
-    `${path}.resource`,
-    ['namespace', 'path'],
-    [],
-    context
-  );
-  if (resource) {
-    expectString(resource.namespace, `${path}.resource.namespace`, context);
-    expectString(resource.path, `${path}.resource.path`, context);
-  }
-  if (hasOwn(record, 'particle')) {
-    expectBoolean(record.particle, `${path}.particle`, context);
-  }
-};
-
 const validateTextureRaster = (
   value: unknown,
   path: string,
@@ -148,7 +117,7 @@ const validateTexture = (
       'renderMode',
       'renderSides'
     ],
-    ['atlasMode', 'pbrChannel', 'minecraft', 'raster', 'metadata'],
+    ['atlasMode', 'pbrChannel', 'raster', 'metadata'],
     context
   );
   if (!record) return;
@@ -197,9 +166,6 @@ const validateTexture = (
       `${path}.pbrChannel`,
       context
     );
-  }
-  if (hasOwn(record, 'minecraft')) {
-    validateMinecraftBinding(record.minecraft, `${path}.minecraft`, context);
   }
   if (hasOwn(record, 'raster')) {
     validateTextureRaster(record.raster, `${path}.raster`, context);

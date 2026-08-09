@@ -1,9 +1,9 @@
 import {
   exportProductionProject,
   exportProductionProjectResolved,
-  gameVersionForFormatProfile,
   staleGeneratedTextureIds,
   type BlobRef,
+  type ExportAdapterInput,
   type ExportAdaptationReceipt,
   type ExportBundle,
   type ExportFile,
@@ -195,7 +195,8 @@ const withoutGeneratedRasterLengths = (
 
 const createExportBundle = async (
   document: ProjectDocument,
-  assets: ProjectAssets
+  assets: ProjectAssets,
+  adapter: ExportAdapterInput
 ): Promise<{
   document: ProjectDocument;
   bundle: ExportBundle;
@@ -204,12 +205,12 @@ const createExportBundle = async (
   const exportDocument = withoutGeneratedRasterLengths(
     document
   );
-  const bundle = exportDocument.formatProfile.id === 'gltf.2'
-    ? await exportProductionProjectResolved(exportDocument, {
+  const bundle = adapter.target === 'gltf' || adapter.target === 'glb'
+    ? await exportProductionProjectResolved(exportDocument, adapter, {
         resolveBlob: (source) =>
           resolveTexture(exportDocument, assets, source)
       })
-    : exportProductionProject(exportDocument);
+    : exportProductionProject(exportDocument, adapter);
   return {
     document: exportDocument,
     bundle
@@ -248,13 +249,12 @@ const adaptationCount = (
 
 export const createTargetArtifact = async (
   document: ProjectDocument,
-  assets: ProjectAssets
+  assets: ProjectAssets,
+  adapter: ExportAdapterInput
 ): Promise<TargetArtifactFile> => {
-  const prepared = await createExportBundle(document, assets);
+  const prepared = await createExportBundle(document, assets, adapter);
   const { bundle } = prepared;
-  const gameVersion = gameVersionForFormatProfile(
-    prepared.document.formatProfile
-  );
+  const gameVersion = adapter.gameVersion ?? null;
   const entries = await Promise.all(
     bundle.files.map(async (file) => ({
       path: file.path,
@@ -266,7 +266,7 @@ export const createTargetArtifact = async (
     const file = bundle.files[0];
     const bytes = entries[0].bytes;
     return {
-      ...await createArtifactBinding(prepared.document, bytes),
+      ...await createArtifactBinding(prepared.document, bytes, adapter.target),
       kind: 'target',
       name: `${name}.${extensionForBundle(bundle)}`,
       bytes,
@@ -279,7 +279,7 @@ export const createTargetArtifact = async (
   }
   const bytes = createStoredZip(entries);
   return {
-    ...await createArtifactBinding(prepared.document, bytes),
+    ...await createArtifactBinding(prepared.document, bytes, adapter.target),
     kind: 'target',
     name:
       `${name}-${safeArtifactName(bundle.target.id)}` +

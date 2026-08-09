@@ -1,15 +1,11 @@
 import type { ProjectDocument } from '../model';
 import { validateProjectDocument } from './projectDocumentValidator';
-import {
-  ProjectInvariantError,
-  type ValidateProjectOptions
-} from './types';
+import { ProjectInvariantError } from './types';
 
 export const assertProjectDocument = (
-  document: ProjectDocument,
-  options?: ValidateProjectOptions
+  document: ProjectDocument
 ): void => {
-  const report = validateProjectDocument(document, options);
+  const report = validateProjectDocument(document);
   if (!report.valid) {
     throw new ProjectInvariantError(report);
   }

@@ -1,5 +1,7 @@
 import { INTERNAL_CONTRACT_VERSIONS } from '@ashfox/internal-contracts';
 
+import type { AuthoringSpan } from './authoringSpanTypes';
+
 export const AUTHORING_PROFILE_SCHEMA_VERSION =
   INTERNAL_CONTRACT_VERSIONS.authoringProfile;
 export const AUTHORING_ROUTING_CONTRACT_VERSION =
@@ -169,6 +171,24 @@ export type AuthoringSupport =
       solePartIds: readonly string[];
       digits: readonly AuthoringFootDigit[];
     };
+
+export const AUTHORING_REST_POSE_MODES = [
+  'standing',
+  'supported',
+  'airborne',
+  'free'
+] as const;
+export type AuthoringRestPoseMode =
+  (typeof AUTHORING_REST_POSE_MODES)[number];
+
+/**
+ * The materialized PartRecipe is always authored in this canonical neutral
+ * pose. Sitting and other expressive poses belong to animation clips.
+ */
+export interface AuthoringRestPose {
+  kind: 'canonical-neutral';
+  mode: AuthoringRestPoseMode;
+}
 
 export const AUTHORING_TRACKS = ['essential', 'hero'] as const;
 export type AuthoringTrack = (typeof AUTHORING_TRACKS)[number];
@@ -378,6 +398,7 @@ export interface AuthoringSlotAssignment {
   facing: 'forward' | null;
   symmetry: AuthoringSlotSymmetry;
   support: AuthoringSupport;
+  span: AuthoringSpan;
 }
 
 export interface AuthoringFeatureCoverage {
@@ -467,6 +488,7 @@ export type AuthoringBinding =
 export interface AuthoringSelectionInput {
   archetype: ArchetypeReference;
   track: AuthoringTrack;
+  restPose: AuthoringRestPose;
   faceMode: AuthoringFaceMode;
   face: AuthoringFaceContract | null;
   specialists: readonly SpecialistReference[];
@@ -496,6 +518,7 @@ export interface ComposedAuthoringSlotDefinition {
   facing: 'forward' | null;
   symmetry: AuthoringSlotSymmetry | null;
   support: AuthoringSupport | null;
+  span: AuthoringSpan | null;
   authority: AuthoringAuthorityReference;
   authorityType: 'archetype' | 'specialist';
   attachmentPortId: string | null;
@@ -513,23 +536,4 @@ export interface AuthoringCompatibilityIssue {
 export interface AuthoringCompatibilityResult {
   compatible: boolean;
   issues: readonly AuthoringCompatibilityIssue[];
-}
-
-export interface AuthoringRecipeSummary {
-  id: string;
-  label: string;
-  summary: string;
-  role: 'non-authoritative';
-  archetype: ArchetypeReference;
-  specialists: readonly SpecialistReference[];
-}
-
-export interface AuthoringRecipe extends AuthoringRecipeSummary {
-  track: AuthoringTrack;
-  faceMode: AuthoringFaceMode;
-  face: AuthoringFaceContract | null;
-  claimSuggestions: readonly AuthoringAuthorityClaim[];
-  slotSuggestions: readonly AuthoringSlotAssignment[];
-  coverageSuggestions: readonly AuthoringFeatureCoverage[];
-  bindingSuggestions: readonly AuthoringBinding[];
 }

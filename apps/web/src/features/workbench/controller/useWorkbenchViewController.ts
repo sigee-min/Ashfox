@@ -5,7 +5,6 @@ import {
   useReducer,
   useState
 } from 'react';
-import type { TransformControlsMode } from 'three/addons/controls/TransformControls.js';
 
 import type { ProjectDocument } from '@ashfox/engine-core';
 
@@ -100,12 +99,6 @@ export const useWorkbenchViewController = ({
     dispatchView({ type: 'bottom.set', mode });
   }, []);
 
-  const changeTransformMode = useCallback((
-    mode: TransformControlsMode
-  ): void => {
-    dispatchView({ type: 'transform.set', mode });
-  }, []);
-
   const closePanels = useCallback((): void => {
     dispatchView({ type: 'overlay.set', overlay: null });
   }, []);
@@ -120,10 +113,6 @@ export const useWorkbenchViewController = ({
     option: keyof ViewportOptions
   ): void => {
     dispatchView({ type: 'viewport.toggle', option });
-  }, []);
-
-  const toggleSnap = useCallback((): void => {
-    dispatchView({ type: 'snap.toggle' });
   }, []);
 
   const changeActiveClip = useCallback((
@@ -170,11 +159,9 @@ export const useWorkbenchViewController = ({
     setEnvironment,
     setActiveOverlay,
     setBottomMode,
-    changeTransformMode,
     closePanels,
     setCamera,
     toggleViewportOption,
-    toggleSnap,
     changeActiveClip,
     togglePlayback,
     prepareAgentView,

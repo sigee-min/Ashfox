@@ -28,13 +28,65 @@ const featureFootprint = (
   surfaceFeaturePixels(eye).map((pixel) => cellKey(pixel.boundaryCell))
 );
 
+const lateralSide = (
+  slot: AuthoringSlotStatus
+): 'left' | 'right' | null => {
+  const left = slot.spatialRelations.includes('left');
+  const right = slot.spatialRelations.includes('right');
+  return left === right ? null : left ? 'left' : 'right';
+};
+
+const semanticParentSlotsReflect = (
+  left: AuthoringSlotStatus,
+  right: AuthoringSlotStatus
+): boolean => {
+  if (left.slotId === right.slotId) {
+    return left.symmetry?.kind === 'centered';
+  }
+  return left.symmetry?.kind === 'paired' &&
+    right.symmetry?.kind === 'paired' &&
+    left.symmetry.pairId === right.symmetry.pairId &&
+    lateralSide(left) === 'left' &&
+    lateralSide(right) === 'right';
+};
+
+interface EyeSurfaceBinding {
+  eye: EyeFeaturePartSpec;
+  eyeSlot: AuthoringSlotStatus;
+  surfaceHost: AuthoringSlotStatus;
+}
+
+const eyeSurfaceBinding = (
+  eye: EyeFeaturePartSpec | undefined,
+  eyeSlot: AuthoringSlotStatus | undefined,
+  slotsById: ReadonlyMap<string, AuthoringSlotStatus>,
+  permittedSurfaceHostSlotIds: ReadonlySet<string>
+): EyeSurfaceBinding | null => {
+  if (!eye || !eyeSlot || eyeSlot.parentSlotIds.length !== 1) return null;
+  const surfaceHostId = eyeSlot.parentSlotIds[0] as string;
+  if (!permittedSurfaceHostSlotIds.has(surfaceHostId)) return null;
+  const surfaceHost = slotsById.get(surfaceHostId);
+  if (
+    !surfaceHost ||
+    surfaceHost.partIds.length !== 1 ||
+    surfaceHost.presentPartIds.length !== 1 ||
+    surfaceHost.partIds[0] !== surfaceHost.presentPartIds[0] ||
+    eye.parentPartId === null ||
+    eye.parentPartId !== surfaceHost.presentPartIds[0]
+  ) {
+    return null;
+  }
+  return { eye, eyeSlot, surfaceHost };
+};
+
 export const evaluateFaceEyeSpatialQuality = (
   document: ProjectDocument,
   authority: ArchetypeReference,
   declaration: AuthoringEyeFaceComponentDeclaration,
   readableEyes: readonly EyeFeaturePartSpec[],
   expectedEyeCount: number,
-  slotsById: ReadonlyMap<string, AuthoringSlotStatus>
+  slotsById: ReadonlyMap<string, AuthoringSlotStatus>,
+  permittedSurfaceHostSlotIds: ReadonlySet<string>
 ): FaceEyeSpatialQuality => {
   if (readableEyes.length !== expectedEyeCount || !document.intent) {
     return { ready: true, issue: null };
@@ -48,6 +100,7 @@ export const evaluateFaceEyeSpatialQuality = (
     );
   let footprintReady = true;
   let pupilReady = true;
+  let parentSurfaceReady = true;
   if (declaration.configuration.kind === 'paired') {
     if (document.intent.symmetry.kind !== 'bilateral') {
       footprintReady = false;
@@ -66,6 +119,25 @@ export const evaluateFaceEyeSpatialQuality = (
       const rightEye = readableEyes.find((eye) =>
         rightSlot?.partIds.includes(eye.partId)
       );
+      const leftBinding = eyeSurfaceBinding(
+        leftEye,
+        leftSlot,
+        slotsById,
+        permittedSurfaceHostSlotIds
+      );
+      const rightBinding = eyeSurfaceBinding(
+        rightEye,
+        rightSlot,
+        slotsById,
+        permittedSurfaceHostSlotIds
+      );
+      parentSurfaceReady = leftBinding !== null &&
+        rightBinding !== null &&
+        semanticParentSlotsReflect(
+          leftBinding.surfaceHost,
+          rightBinding.surfaceHost
+        ) &&
+        leftEye?.face === rightEye?.face;
       footprintReady = Boolean(leftEye && rightEye) &&
         areLatticeCellSetsExactReflections(
           featureFootprint(leftEye as EyeFeaturePartSpec),
@@ -84,6 +156,14 @@ export const evaluateFaceEyeSpatialQuality = (
   } else if (document.intent.symmetry.kind === 'bilateral') {
     const frame = projectSpatialFrame(document.intent);
     const eye = readableEyes[0] as EyeFeaturePartSpec;
+    const eyeSlot = slotsById.get(declaration.configuration.slotId);
+    const binding = eyeSurfaceBinding(
+      eye,
+      eyeSlot,
+      slotsById,
+      permittedSurfaceHostSlotIds
+    );
+    parentSurfaceReady = binding?.surfaceHost.symmetry?.kind === 'centered';
     footprintReady = areLatticeCellSetsExactReflections(
       featureFootprint(eye),
       featureFootprint(eye),
@@ -97,19 +177,28 @@ export const evaluateFaceEyeSpatialQuality = (
       frame.lateralAxis,
       frame.plane as number
     );
+  } else {
+    const eye = readableEyes[0] as EyeFeaturePartSpec;
+    parentSurfaceReady = eyeSurfaceBinding(
+      eye,
+      slotsById.get(declaration.configuration.slotId),
+      slotsById,
+      permittedSurfaceHostSlotIds
+    ) !== null;
   }
   const ready = directionReady &&
     paletteReady &&
     footprintReady &&
-    pupilReady;
+    pupilReady &&
+    parentSurfaceReady;
   if (ready) return { ready, issue: null };
   return {
     ready,
     issue: authoringPlanIssue(
       'authoring.plan.face_eye_gaze_invalid',
       'authoringProfile.face.components.eye',
-      'Eye footprints, pupil texels, forward face, or contrast palette violate the centered gaze contract.',
-      'forward-facing 3x3+ eyes with exact reflected footprints and compiler-derived centered pupils using one declared iris material',
+      'Eye parent surfaces, footprints, pupil texels, forward face, or contrast palette violate the centered gaze contract.',
+      'eyes directly parented to actual parts of the declared face host or reflected eye-frame hosts, with forward-facing exact reflected footprints and compiler-derived centered pupils using one declared iris material',
       {
         authority,
         partIds: readableEyes.map((eye) => eye.partId)

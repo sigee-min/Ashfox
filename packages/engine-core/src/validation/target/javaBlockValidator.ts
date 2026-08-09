@@ -2,6 +2,7 @@ import {
   CUBE_FACE_DIRECTIONS,
   type ProjectDocument
 } from '../../model';
+import type { ExportAdaptedDocument } from '../../export/adapter';
 import { isSceneNodeEffectivelyVisible } from '../../sceneVisibility';
 import { supportsJavaBlockMultiAxisRotation } from '../../export/compatibility';
 import {
@@ -21,7 +22,7 @@ const JAVA_MODEL_PATH_PATTERN = /^[a-z0-9_./-]+$/;
 const JAVA_ROTATION_ANGLES = [-45, -22.5, 0, 22.5, 45] as const;
 
 const validateProfileIdentity = (
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   add: FindingSink
 ): void => {
   const profile = document.formatProfile;
@@ -60,7 +61,7 @@ const validateProfileIdentity = (
 };
 
 const validateTextureBindings = (
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   add: FindingSink
 ): void => {
   const textureKeys = new Map<string, string>();
@@ -171,7 +172,7 @@ const validateJavaCube = (
   >,
   nodeId: string,
   path: string,
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   add: FindingSink
 ): void => {
   const profile = document.formatProfile;
@@ -260,7 +261,7 @@ const validateJavaCube = (
 };
 
 const validateSceneNodes = (
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   add: FindingSink
 ): void => {
   for (const [nodeId, node] of Object.entries(document.scene.nodes)) {
@@ -299,7 +300,7 @@ const validateSceneNodes = (
 };
 
 export const validateJavaBlockProfile = (
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   add: FindingSink
 ): void => {
   if (document.formatProfile.id !== 'minecraft.java_block') return;

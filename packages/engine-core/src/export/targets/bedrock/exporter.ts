@@ -1,4 +1,4 @@
-import type { ProjectDocument, TextureAsset } from '../../../model';
+import type { ExportAdaptedDocument, ExportTextureAsset } from '../../adapter';
 import { createCompactJsonExportFile } from '../../json';
 import { createExportBundle } from '../../pipeline/createBundle';
 import { validateExportTarget } from '../../pipeline/validateTarget';
@@ -9,7 +9,7 @@ import {
   type ExportBundle
 } from '../../types';
 
-const createTextureCopy = (texture: TextureAsset): BlobCopyExportFile => {
+const createTextureCopy = (texture: ExportTextureAsset): BlobCopyExportFile => {
   if (!texture.minecraft) {
     throw new Error(`Texture "${texture.id}" has no Minecraft binding.`);
   }
@@ -22,7 +22,7 @@ const createTextureCopy = (texture: TextureAsset): BlobCopyExportFile => {
   };
 };
 
-export const buildMinecraftBedrockGeometry = (document: ProjectDocument) => {
+export const buildMinecraftBedrockGeometry = (document: ExportAdaptedDocument) => {
   const profile = document.formatProfile;
   if (profile.id !== 'minecraft.bedrock') {
     throw new Error('Project does not use the minecraft.bedrock profile.');
@@ -34,7 +34,7 @@ export const buildMinecraftBedrockGeometry = (document: ProjectDocument) => {
   });
 };
 
-export const buildMinecraftBedrockAnimations = (document: ProjectDocument) => {
+export const buildMinecraftBedrockAnimations = (document: ExportAdaptedDocument) => {
   const profile = document.formatProfile;
   if (profile.id !== 'minecraft.bedrock') {
     throw new Error('Project does not use the minecraft.bedrock profile.');
@@ -45,7 +45,7 @@ export const buildMinecraftBedrockAnimations = (document: ProjectDocument) => {
   });
 };
 
-export const exportMinecraftBedrock = (document: ProjectDocument): ExportBundle => {
+export const exportMinecraftBedrock = (document: ExportAdaptedDocument): ExportBundle => {
   const validation = validateExportTarget(document, {
     profileId: 'minecraft.bedrock',
     errorMessage: 'Minecraft Bedrock export validation failed.'

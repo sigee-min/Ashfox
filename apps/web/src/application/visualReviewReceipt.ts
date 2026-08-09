@@ -1,6 +1,5 @@
 import {
-  animationSupportForFormatProfile,
-  blockingAnimationPreviewIssues,
+  blockingCanonicalAnimationPreviewIssues,
   canonicalJsonString,
   INTERNAL_CONTRACT_VERSIONS,
   isCurrentInternalContractVersion,
@@ -252,17 +251,15 @@ const isPendingObservation = (
   const previewPathIsValid = data.clipId === null || (
     clipId !== null &&
     document.animations[clipId] !== undefined &&
-    blockingAnimationPreviewIssues(
-      document.animations[clipId],
-      document.formatProfile.id
+    blockingCanonicalAnimationPreviewIssues(
+      document.animations[clipId]
     ).length === 0
   );
   const generatedPathIsValid = data.review === 'preview'
     ? data.mode === 'frame' && data.clipId === null
     : data.mode === 'frame'
       ? data.clipId === null
-      : data.camera === 'perspective' &&
-        animationSupportForFormatProfile(document.formatProfile) !== 'none';
+      : data.camera === 'perspective';
   return reviewIsValid &&
     purposeIsValid &&
     milestoneIsValid &&

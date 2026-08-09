@@ -8,7 +8,6 @@ export declare const INTERNAL_CONTRACT_VERSIONS: Readonly<{
   readonly visualReviewReceipt: 1;
   readonly sidecarIpc: 1;
   readonly traceLog: 1;
-  readonly galleryCatalog: 1;
   readonly skillReleaseDescriptor: 1;
 }>;
 

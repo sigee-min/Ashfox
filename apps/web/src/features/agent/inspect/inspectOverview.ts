@@ -1,23 +1,15 @@
 import {
-  CANONICAL_IDLE_CLIP_ID,
-  evaluateAuthoringCompatibility,
-  evaluateAuthoringPlan,
   evaluateProductionReadiness,
-  isSceneNodeEffectivelyVisible,
-  measureDocumentFormComposition,
   type ProjectDocument,
   type ValidationReport
 } from '@ashfox/engine-core';
 
 import {
-  projectExportTargetFor
-} from '../../../application/projectExportTarget';
+  boundedSuccess
+} from '../boundedResult';
 import {
   agentCommandProtocol
 } from '../agentCommandProtocol';
-import {
-  boundedSuccess
-} from '../boundedResult';
 import {
   deriveInspectWorkflow
 } from '../inspectWorkflow';
@@ -28,21 +20,17 @@ import type {
   InspectResult
 } from '../types';
 import {
-  exportCompatibilitySummary
-} from './exportCompatibilitySummary';
-import {
   DEFAULT_INSPECT_LIMIT
 } from './inspectResult';
 
+/** The agent sees source authority and readiness, never editable compiler internals. */
 export const inspectOverview = (
   document: ProjectDocument,
-  selectedNodeId: string | null,
+  _selectedNodeId: string | null,
   report: ValidationReport,
   visualReviews: readonly VisualReviewReceipt[],
   operationOwner: string | null
 ): InspectResult => {
-  const nodes = Object.values(document.scene.nodes);
-  const clips = Object.values(document.animations);
   const readiness = evaluateProductionReadiness(document, report);
   const workflow = deriveInspectWorkflow(
     document,
@@ -50,15 +38,8 @@ export const inspectOverview = (
     readiness,
     visualReviews
   );
-  const idleClip = document.animations[CANONICAL_IDLE_CLIP_ID];
-  const exportTarget = projectExportTargetFor(document);
-  const compatibility = exportCompatibilitySummary(document);
-  const formComposition = measureDocumentFormComposition(document);
-  const authoringPlan = evaluateAuthoringPlan(document);
-  const authoringProfile = document.authoringProfile ?? null;
-  const authoringCompatibility = authoringProfile
-    ? evaluateAuthoringCompatibility(authoringProfile)
-    : null;
+  const confirmed = document.intentProgram;
+  const proposal = document.intentProgramProposal;
   return boundedSuccess(
     document.revision,
     {
@@ -74,105 +55,24 @@ export const inspectOverview = (
           name: '<commands entry>'
         }
       },
-      project: {
-        id: document.id,
-        name: document.name.slice(0, 120),
-        revision: document.revision,
-        subject: document.intent?.subject ?? null,
-        forward: document.intent?.forward ?? null,
-        grounding: document.intent?.grounding ?? null,
-        symmetry: document.intent?.symmetry ?? null,
-        target: exportTarget.target,
-        gameVersion: compatibility.gameVersion,
-        animationSupport: compatibility.animationSupport,
-        supportedGameVersions:
-          compatibility.supportedGameVersions,
-        profileId: document.formatProfile.id,
+      intentProgram: {
+        confirmed: confirmed
+          ? { hash: confirmed.hash, source: confirmed.source }
+          : null,
+        proposal: proposal
+          ? { hash: proposal.hash, source: proposal.source }
+          : null
+      },
+      compilation: {
+        status: confirmed === null || confirmed === undefined
+          ? 'no-confirmed-source'
+          : readiness.structurallyValid
+            ? 'ready'
+            : 'blocked',
         structurallyValid: readiness.structurallyValid,
         mechanicallyReady: readiness.mechanicallyReady,
-        semanticReviewRequired:
-          readiness.semanticReviewRequired,
-        surfacePixelDensity:
-          document.settings.surfacePixelDensity,
-        authoringStyle: 'iconic-pixel',
-        authoring: authoringProfile
-          ? {
-              archetype: authoringProfile.archetype.id,
-              track: authoringProfile.track,
-              faceMode: authoringProfile.faceMode,
-              specialists: authoringProfile.specialists.map(
-                (reference) => reference.id
-              ),
-              evidence: authoringProfile.claims.map((claim) => ({
-                authority: claim.authority.id,
-                criterionId: claim.criterionId,
-                basis: claim.basis
-              })),
-              compatible: authoringCompatibility?.compatible ?? false,
-              ready: authoringPlan.ready,
-              assetQuality: authoringPlan.assetQuality === null
-                ? null
-                : {
-                    activeStage: authoringPlan.assetQuality.activeStage,
-                    ready: authoringPlan.assetQuality.ready,
-                    incompleteDimensions:
-                      authoringPlan.assetQuality.dimensions.flatMap(
-                        (dimension) => dimension.state === 'incomplete'
-                          ? [dimension.dimension]
-                          : []
-                      ),
-                    incompleteFeatureCount:
-                      authoringPlan.assetQuality.intentCoverage.features.filter(
-                        (feature) => feature.state === 'incomplete'
-                      ).length,
-                    faceReady: authoringPlan.assetQuality.faceQuality.ready
-                  }
-            }
-          : null,
-        textureResolution:
-          document.settings.textureResolution
-      },
-      selection: selectedNodeId,
-      counts: {
-        nodes: nodes.length,
-        parts: new Set(
-          nodes.flatMap((node) =>
-            node.generation?.authority === 'ashfox.part-compiler'
-              ? [node.generation.partId]
-              : []
-          )
-        ).size,
-        bones: nodes.filter((node) => node.kind === 'bone').length,
-        cubes: nodes.filter((node) => node.kind === 'cube').length,
-        visibleCubes: nodes.filter(
-          (node) =>
-            node.kind === 'cube' &&
-            isSceneNodeEffectivelyVisible(document, node.id)
-        ).length,
-        meshes: nodes.filter((node) => node.kind === 'mesh').length,
-        locators: nodes.filter((node) => node.kind === 'locator').length,
-        enabledVisibleFaces: readiness.counts.enabledVisibleFaces,
-        texturedVisibleFaces: readiness.counts.texturedVisibleFaces,
-        untexturedVisibleFaces:
-          readiness.counts.untexturedVisibleFaces,
-        textures: Object.keys(document.textures).length,
-        clips: clips.length,
-        channels: clips.reduce(
-          (count, clip) => count + Object.keys(clip.channels).length,
-          0
-        ),
-        triggers: clips.reduce(
-          (count, clip) => count + Object.keys(clip.triggers).length,
-          0
-        ),
-        idleClips: idleClip ? 1 : 0,
-        idleChannels:
-          idleClip ? Object.keys(idleClip.channels).length : 0
-      },
-      formComposition: {
-        semanticParts: formComposition.semanticParts,
-        compiledCuboids: formComposition.compiledCuboids,
-        cellScaleCuboids: formComposition.cellScaleCuboids
+        semanticReviewRequired: readiness.semanticReviewRequired,
+        firstBlockingFinding: readiness.firstBlockingFinding ?? null
       },
       workflow
     },

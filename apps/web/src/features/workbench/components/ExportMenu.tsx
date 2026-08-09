@@ -1,30 +1,61 @@
-import type { FormEvent } from 'react';
-
-import type { ProjectDocument } from '@ashfox/engine-core';
+import {
+  useEffect,
+  useState,
+  type FormEvent
+} from 'react';
 
 import {
+  isExportModelPathValid,
+  isExportNamespaceValid,
+  type ExportAdapterInput,
+  type ProjectDocument
+} from '@ashfox/engine-core';
+
+import {
+  defaultExportAdapterFor,
+  defaultProjectGameVersionFor,
+  exportAdapterInputFor,
+  isMinecraftExportTarget,
   projectExportTargetLabel,
-  projectExportTargetFor
+  type ExportAdapterDraft
 } from '../../../application/projectExportTarget';
+import { ProjectTargetFields } from './ProjectTargetFields';
 
 interface ExportMenuProps {
   document: ProjectDocument;
   busy: boolean;
-  onExport: () => void;
+  onExport: (adapter: ExportAdapterInput) => void;
 }
+
+const adapterIsValid = (adapter: ExportAdapterDraft): boolean =>
+  isExportModelPathValid(adapter.target, adapter.modelPath.trim()) &&
+  (
+    !isMinecraftExportTarget(adapter.target) ||
+    (
+      adapter.gameVersion !== null &&
+      isExportNamespaceValid(adapter.target, adapter.namespace.trim())
+    )
+  );
 
 export function ExportMenu({
   document,
   busy,
   onExport
 }: ExportMenuProps) {
-  const current = projectExportTargetFor(document);
-  const label = projectExportTargetLabel(current.target);
+  const [adapter, setAdapter] = useState<ExportAdapterDraft>(() =>
+    defaultExportAdapterFor(document)
+  );
 
+  useEffect(() => {
+    setAdapter(defaultExportAdapterFor(document));
+  }, [document.id]);
+
+  const valid = adapterIsValid(adapter);
+  const label = projectExportTargetLabel(adapter.target);
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
-    if (busy) return;
-    onExport();
+    if (busy || !valid) return;
+    onExport(exportAdapterInputFor(adapter));
   };
 
   return (
@@ -34,38 +65,41 @@ export function ExportMenu({
       onSubmit={submit}
     >
       <div className="popover-heading">
-        <strong>Export</strong>
-        <span>Uses the project target</span>
+        <strong>Export adapter</strong>
+        <span>Does not change this project</span>
       </div>
-      <div
-        className={`project-facts${
-          current.gameVersion === null ? '' : ' has-game-version'
-        }`}
-      >
-        <span>
-          <small>Format</small>
-          <strong>{label}</strong>
-        </span>
-        {current.gameVersion === null ? null : (
-          <span>
-            <small>Game version</small>
-            <strong>{current.gameVersion}</strong>
-          </span>
-        )}
-        <span>
-          <small>Asset</small>
-          <strong>{current.modelPath}</strong>
-        </span>
-      </div>
+      <ProjectTargetFields
+        target={adapter.target}
+        gameVersion={adapter.gameVersion}
+        namespace={adapter.namespace}
+        modelPath={adapter.modelPath}
+        onTargetChange={(target) => {
+          setAdapter((current) => ({
+            ...current,
+            target,
+            gameVersion: defaultProjectGameVersionFor(target)
+          }));
+        }}
+        onGameVersionChange={(gameVersion) => {
+          setAdapter((current) => ({ ...current, gameVersion }));
+        }}
+        onNamespaceChange={(namespace) => {
+          setAdapter((current) => ({ ...current, namespace }));
+        }}
+        onModelPathChange={(modelPath) => {
+          setAdapter((current) => ({ ...current, modelPath }));
+        }}
+      />
       <p className="export-adaptation-note">
-        Data this target cannot represent may be converted or omitted.
-        Your project stays unchanged.
+        Target, game version, namespace, and path are delivery settings. The
+        canonical model, textures, rig, animation, and Intent Program remain
+        unchanged.
       </p>
       <button
         type="submit"
         className="popover-primary"
         data-ashfox-action="project.export.submit"
-        disabled={busy}
+        disabled={busy || !valid}
       >
         {busy ? 'Exporting…' : `Export ${label}`}
       </button>

@@ -1,10 +1,6 @@
-import type { TransformControlsMode } from 'three/addons/controls/TransformControls.js';
-
 import type {
   ProjectDocument,
-  Transform,
-  ValidationReport,
-  Vec3
+  ValidationReport
 } from '@ashfox/engine-core';
 
 import { Icon } from '../Icon';
@@ -32,8 +28,6 @@ interface ViewportWorkspaceProps {
   assets: ProjectAssets;
   report: ValidationReport;
   selectedNodeId: string | null;
-  transformMode: TransformControlsMode;
-  snapEnabled: boolean;
   viewportOptions: ViewportOptions;
   environment: ViewportEnvironmentId;
   cameraCommand: CameraCommand;
@@ -46,12 +40,6 @@ interface ViewportWorkspaceProps {
   onEnvironmentChange: (environment: ViewportEnvironmentId) => void;
   onOverlayChange: (overlay: WorkbenchOverlay) => void;
   onSelectNode: (nodeId: string | null) => void;
-  onToggleVisibility: (nodeId: string) => void;
-  onTransformProperty: (
-    property: keyof Transform,
-    value: Vec3
-  ) => void;
-  onCommitTransform: (nodeId: string, transform: Transform) => void;
   onStats: (stats: ViewportStats) => void;
   onPresented: (frame: ViewportPresentationFrame) => void;
 }
@@ -61,8 +49,6 @@ export function ViewportWorkspace({
   assets,
   report,
   selectedNodeId,
-  transformMode,
-  snapEnabled,
   viewportOptions,
   environment,
   cameraCommand,
@@ -75,9 +61,6 @@ export function ViewportWorkspace({
   onEnvironmentChange,
   onOverlayChange,
   onSelectNode,
-  onToggleVisibility,
-  onTransformProperty,
-  onCommitTransform,
   onStats,
   onPresented
 }: ViewportWorkspaceProps) {
@@ -97,9 +80,6 @@ export function ViewportWorkspace({
         <Viewport
           document={document}
           assets={assets}
-          selectedNodeId={selectedNodeId}
-          transformMode={transformMode}
-          snapEnabled={snapEnabled}
           options={viewportOptions}
           environment={environment}
           cameraCommand={cameraCommand}
@@ -108,7 +88,6 @@ export function ViewportWorkspace({
           playing={playing}
           presentationNonce={presentationNonce}
           onSelectNode={onSelectNode}
-          onCommitTransform={onCommitTransform}
           onStats={onStats}
           onPresented={onPresented}
         />
@@ -154,7 +133,6 @@ export function ViewportWorkspace({
             selectedNodeId={selectedNodeId}
             report={report}
             onSelectNode={onSelectNode}
-            onToggleVisibility={onToggleVisibility}
           />
         ) : null}
 
@@ -163,16 +141,9 @@ export function ViewportWorkspace({
             document={document}
             node={selectedNode}
             report={report}
-            onToggleVisibility={onToggleVisibility}
-            onTransformProperty={onTransformProperty}
           />
         ) : null}
 
-        <div className="axis-cube" aria-hidden="true">
-          <span className="axis-cube-top">Y</span>
-          <span className="axis-cube-front">Z</span>
-          <span className="axis-cube-side">X</span>
-        </div>
       </section>
     </section>
   );

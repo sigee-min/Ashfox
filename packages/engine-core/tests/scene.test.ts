@@ -8,9 +8,9 @@ import {
   transformsEqual,
   updateSceneNode
 } from '../src/scene';
-import { createJavaProject } from './helpers';
+import { createSceneProject } from './helpers';
 
-const project = createJavaProject();
+const project = createSceneProject();
 const updated = updateSceneNode(project, 'cube-body', (node) => ({
   ...node,
   visible: false

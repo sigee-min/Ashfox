@@ -1,11 +1,11 @@
-import type { ProjectDocument } from '../../model';
+import type { ExportAdaptedDocument } from '../adapter';
 import {
   minecraftActorAnimationNames
 } from '../shared/minecraftAnimation';
 import type { ExportAdaptation } from '../types';
 
 export const minecraftNameAdaptations = (
-  document: ProjectDocument
+  document: ExportAdaptedDocument
 ): readonly ExportAdaptation[] => {
   if (
     document.formatProfile.id !== 'minecraft.bedrock' &&

@@ -1,19 +1,10 @@
 import {
-  CANONICAL_IDLE_CLIP_ID,
-  isProductionIdleClipName,
   listAgentCommandDefinitions,
-  projectGroundingCorrection,
-  readCompiledParts,
   type ProjectCommandOperation,
   type ProjectDocument
 } from '@ashfox/engine-core';
 
-import type {
-  VisualReviewReceipt
-} from '../../../application/visualReviewReceipt';
-import {
-  findingHasCode
-} from './classifyWorkflowFinding';
+import type { VisualReviewReceipt } from '../../../application/visualReviewReceipt';
 import type {
   InspectWorkflowAction,
   InspectWorkflowStage,
@@ -26,248 +17,49 @@ interface DerivedWorkflowActions {
 }
 
 const registeredAgentCommands = new Set(
-  listAgentCommandDefinitions().map(
-    (definition): string => definition.name
-  )
+  listAgentCommandDefinitions().map((definition) => definition.name)
 );
 
-const commandActions = (
-  names: readonly string[]
+const command = (
+  name: ProjectCommandOperation['name']
 ): readonly InspectWorkflowAction[] =>
-  names
-    .flatMap((name) =>
-      registeredAgentCommands.has(name)
-        ? [{ kind: 'command' as const, name }]
-        : []
-    )
-    .slice(0, 3);
+  registeredAgentCommands.has(name)
+    ? [{ kind: 'command', name }]
+    : [];
 
-const canonicalStaticIdleOperation = (
-  document: ProjectDocument
-): ProjectCommandOperation | null => {
-  const compiled = readCompiledParts(document);
-  if (
-    !compiled.ok ||
-    ![...compiled.parts.values()].some(
-      (part) => part.parentPartId === null
-    )
-  ) {
-    return null;
-  }
-  return {
-    name: 'animation.motion.upsert',
-    payload: {
-      clipId: CANONICAL_IDLE_CLIP_ID,
-      role: 'idle',
-      durationFrames: 20,
-      static: true
-    }
-  };
-};
-
-const idleRequiresReplacement = (
-  document: ProjectDocument,
-  blocker: ReadinessFinding
-): boolean => {
-  if (blocker.code === 'production.idle_channels_missing') {
-    return true;
-  }
-  if (blocker.code !== 'production.idle_loop_invalid') {
-    return false;
-  }
-  const clip = document.animations[CANONICAL_IDLE_CLIP_ID];
-  const compiled = readCompiledParts(document);
-  if (!clip || !compiled.ok) return true;
-  const partsByBoneId = new Map(
-    [...compiled.parts.values()].map(
-      (part) => [part.bone.id, part]
-    )
-  );
-  return Object.values(clip.channels).some((channel) => {
-    const part = partsByBoneId.get(channel.targetNodeId);
-    return (
-      channel.property !== 'rotation' ||
-      part === undefined ||
-      (
-        part.parentPartId !== null &&
-        part.joint.kind === 'fixed'
-      )
-    );
-  });
-};
-
-const exactOperationFor = (
-  document: ProjectDocument,
-  blocker: ReadinessFinding | null
-): ProjectCommandOperation | null => {
-  if (!blocker) return null;
-  if (blocker.code === 'production.idle_missing') {
-    const nonCanonicalIdle = Object.values(
-      document.animations
-    ).find(
-      (clip) =>
-        clip.id !== CANONICAL_IDLE_CLIP_ID &&
-        isProductionIdleClipName(clip.name)
-    );
-    return nonCanonicalIdle
-      ? {
-          name: 'animation.clip.delete',
-          payload: { clipId: nonCanonicalIdle.id }
-        }
-      : canonicalStaticIdleOperation(document);
-  }
-  if (
-    idleRequiresReplacement(document, blocker) &&
-    document.animations[CANONICAL_IDLE_CLIP_ID]
-  ) {
-    return {
-      name: 'animation.clip.delete',
-      payload: { clipId: CANONICAL_IDLE_CLIP_ID }
-    };
-  }
-  if (
-    (
-      blocker.code === 'production.animation_loop_invalid' ||
-      blocker.code === 'production.animation_preview_unfaithful' ||
-      blocker.code === 'production.animation_export_unsupported'
-    ) &&
-    blocker.clipIds?.length === 1 &&
-    document.animations[blocker.clipIds[0]]
-  ) {
-    return {
-      name: 'animation.clip.delete',
-      payload: { clipId: blocker.clipIds[0] }
-    };
-  }
-  const locatorIds = (blocker.entityIds ?? []).filter(
-    (id) => document.scene.nodes[id]?.kind === 'locator'
-  );
-  if (locatorIds.length > 0) {
-    return {
-      name: 'scene.locators.delete',
-      payload: { locatorIds }
-    };
-  }
-  if (blocker.code === 'production.intent_grounding_mismatch') {
-    const correction = projectGroundingCorrection(document);
-    if (correction) {
-      return {
-        name: 'model.parts.transform',
-        payload: correction
-      };
-    }
-  }
-  return null;
-};
-
-const commandNamesFor = (
-  stage: InspectWorkflowStage,
-  blocker: ReadinessFinding | null
-): readonly string[] => {
-  const code = blocker?.code ?? '';
-  if (stage === 'start') {
-    return blocker?.path === 'settings.surfacePixelDensity'
-      ? ['textures.density.set']
-      : blocker?.path.startsWith('formatProfile.')
-        ? ['project.target.set']
-        : ['project.create'];
-  }
-  if (stage === 'plan') {
-    return findingHasCode(
-      blocker ?? { code },
-      'document.invalid_authoring_profile',
-      'production.authoring_profile_',
-      'production.authoring_routing_',
-      'production.authoring_compatibility_'
-    )
-      ? ['project.authoring.configure']
-      : ['project.intent.set'];
-  }
-  if (code === 'production.intent_grounding_mismatch') {
-    return ['model.parts.transform'];
-  }
-  if (code === 'production.intent_grounding_unverifiable') {
-    return ['project.intent.set'];
-  }
-  if (
-    code === 'production.intent_grounding_unstable' ||
-    code === 'production.intent_evaluation_unavailable'
-  ) {
-    return ['model.parts.upsert'];
-  }
-  if (
-    findingHasCode(
-      blocker ?? { code },
-      'production.authoring_slot_',
-      'production.authoring_attachment_'
-    )
-  ) {
-    return ['model.parts.upsert'];
-  }
-  if (findingHasCode(
-    blocker ?? { code },
-    'production.authoring_part_unassigned'
-  )) {
-    return ['project.authoring.configure', 'model.parts.delete'];
-  }
-  if (
-    findingHasCode(
-      blocker ?? { code },
-      'production.texture_',
-      'texture.',
-      'cube.texture_',
-      'format.texture_',
-      'format.uv_'
-    )
-  ) {
-    return ['model.parts.upsert', 'model.parts.material'];
-  }
-  if (
-    stage === 'animate' ||
-    findingHasCode(
-      blocker ?? { code },
-      'animation.',
-      'production.idle_',
-      'production.animation_',
-      'production.authoring_motion_'
-    )
-  ) {
-    return ['animation.motion.upsert'];
-  }
-  if (stage === 'model') return ['model.parts.upsert'];
-  return [];
-};
-
-const commandsForRejectedReview = (
-  receipt: VisualReviewReceipt
-): readonly string[] => {
-  const issues = new Set(receipt.decision.issues);
-  if (issues.has('motion') || issues.has('pivot')) {
-    return ['animation.motion.upsert', 'model.parts.upsert'];
-  }
-  if (issues.has('material')) {
-    return ['model.parts.material', 'model.parts.upsert'];
-  }
-  return ['model.parts.upsert'];
-};
+const startAction = (): readonly InspectWorkflowAction[] =>
+  command('project.create');
 
 export const deriveWorkflowActions = (
   document: ProjectDocument,
   stage: InspectWorkflowStage,
-  blocker: ReadinessFinding | null,
-  rejectedReview: VisualReviewReceipt | null
+  _blocker: ReadinessFinding | null,
+  _rejectedReview: VisualReviewReceipt | null
 ): DerivedWorkflowActions => {
-  const exactOperation = exactOperationFor(document, blocker);
-  const nextActions: readonly InspectWorkflowAction[] = rejectedReview
-    ? commandActions(commandsForRejectedReview(rejectedReview))
-    : stage === 'review'
-      ? [{ kind: 'present', request: { review: 'next' } }]
-      : stage === 'deliver'
-        ? [{ kind: 'deliver' }]
-        : exactOperation
-          ? [{ kind: 'operation', operation: exactOperation }]
-          : commandActions(commandNamesFor(stage, blocker));
-  return { exactOperation, nextActions };
+  if (document.intentProgramProposal) {
+    return {
+      exactOperation: null,
+      nextActions: [{
+        kind: 'user-confirmation',
+        action: 'confirm-intent-program',
+        subject: document.intentProgramProposal.source
+      }]
+    };
+  }
+  if (stage === 'start') {
+    return { exactOperation: null, nextActions: startAction() };
+  }
+  if (stage === 'review') {
+    return {
+      exactOperation: null,
+      nextActions: [{ kind: 'present', request: { review: 'next' } }]
+    };
+  }
+  if (stage === 'deliver') return { exactOperation: null, nextActions: [] };
+  return {
+    exactOperation: null,
+    nextActions: command('intent.program.propose')
+  };
 };
 
 export const fallbackWorkflowFix = (
@@ -275,14 +67,20 @@ export const fallbackWorkflowFix = (
   actions: readonly InspectWorkflowAction[]
 ): string => {
   const first = actions[0];
-  if (first?.kind === 'operation') {
-    return `Apply the returned ${first.operation.name} operation, then inspect again.`;
+  if (first?.kind === 'user-confirmation') {
+    return 'Wait for the user to confirm the intent program and for the workbench to compile it.';
+  }
+  if (first?.kind === 'command' && first.name === 'intent.program.propose') {
+    return 'Revise the complete intent-program source, submit it, then wait for compilation.';
   }
   if (first?.kind === 'command') {
-    return `Correct the reported path with ${first.name}, then inspect again.`;
+    return `Correct the project setup with ${first.name}, then inspect again.`;
   }
   if (stage === 'review') {
-    return 'Observe and explicitly accept or reject the next review frame.';
+    return 'Observe and explicitly accept or reject the next compiled review frame.';
   }
-  return 'Correct the reported path, then inspect again.';
+  if (stage === 'deliver') {
+    return 'Tell the user to choose an export adapter in the Export menu. Target delivery settings are user-owned and never change the canonical asset.';
+  }
+  return 'Inspect the blocker and revise the intent-program source if compiled output is incomplete.';
 };

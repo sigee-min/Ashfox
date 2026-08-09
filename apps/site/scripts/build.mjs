@@ -12,16 +12,9 @@ import { fileURLToPath } from 'node:url';
 import { loadDocumentation } from '../src/docs.mjs';
 import {
   renderDocumentationPage,
-  renderGalleryPage,
   renderLandingPage,
   renderNotFoundPage
 } from '../src/templates.mjs';
-import { galleryContent } from '../src/content.mjs';
-import {
-  GALLERY_CATALOG_SCHEMA_VERSION,
-  gallerySourceRoot,
-  showcaseCatalog
-} from '../src/showcaseCatalog.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = path.resolve(siteRoot, '..', '..');
@@ -73,35 +66,14 @@ ${routes.map((route) => `  <url><loc>${escapeXml(new URL(route, siteOrigin).toSt
 await rm(outputRoot, { recursive: true, force: true });
 await mkdir(path.join(outputRoot, 'assets'), { recursive: true });
 
-const playbackAsset = await hashedAsset('landingPlayback.js');
-const playbackSpecifier = `./${path.basename(playbackAsset)}`;
-const galleryAsset = await hashedAsset('gallery.js');
-const gallerySpecifier = `./${path.basename(galleryAsset)}`;
 const assets = {
   css: await hashedAsset('site.css'),
-  js: await hashedAsset('site.js', (source) => {
-    const replacements = [
-      ['./landingPlayback.js', playbackSpecifier],
-      ['./gallery.js', gallerySpecifier]
-    ];
-    for (const [sourceSpecifier] of replacements) {
-      if (!source.includes(sourceSpecifier)) {
-        throw new Error(`Site module import is missing: ${sourceSpecifier}`);
-      }
-    }
-    return replacements.reduce(
-      (output, [sourceSpecifier, destinationSpecifier]) =>
-        output.replace(sourceSpecifier, destinationSpecifier),
-      source
-    );
-  })
+  js: await hashedAsset('site.js')
 };
 const config = { siteOrigin, workbenchUrl };
 const documents = await loadDocumentation(docsRoot);
-const galleryRoute = '/gallery/';
 
 await writeRoute('/', renderLandingPage({ assets, config }));
-await writeRoute(galleryRoute, renderGalleryPage({ assets, config }));
 for (const document of documents) {
   await writeRoute(
     document.route,
@@ -114,16 +86,6 @@ await writeFile(
 );
 await cp(publicRoot, outputRoot, { recursive: true });
 await cp(brandRoot, path.join(outputRoot, 'brand'), { recursive: true });
-await cp(gallerySourceRoot, path.join(outputRoot, 'demos'), {
-  recursive: true
-});
-await writeFile(
-  path.join(outputRoot, 'demos', 'index.json'),
-  `${JSON.stringify({
-    schemaVersion: GALLERY_CATALOG_SCHEMA_VERSION,
-    demos: showcaseCatalog
-  }, null, 2)}\n`
-);
 await writeFile(
   path.join(outputRoot, '_headers'),
   `/*
@@ -156,18 +118,11 @@ await writeFile(
 /media/*
   Cache-Control: public, max-age=604800
 
-/demos/*
-  Cache-Control: public, max-age=3600, must-revalidate
-
-/demos/*.ashfox
-  Content-Type: application/vnd.ashfox.project+zip
 `
 );
 await writeFile(
   path.join(outputRoot, '_redirects'),
   `/docs /docs/ 301
-/gallery /gallery/ 301
-/gallery/page/* /gallery/ 301
 `
 );
 await writeFile(
@@ -183,12 +138,10 @@ await writeFile(
   sitemap([
     '/',
     '/workbench/',
-    galleryRoute,
     ...documents.map((document) => document.route)
   ])
 );
 
 console.log(
-  `ashfox static site built: ${documents.length} docs, ` +
-  `${galleryContent.items.length} gallery demos, ${outputRoot}`
+  `ashfox static site built: ${documents.length} docs, ${outputRoot}`
 );

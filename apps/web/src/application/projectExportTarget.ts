@@ -1,27 +1,14 @@
-import type {
-  ExportPreset,
-  MinecraftGameVersion,
-  ProjectDocument
-} from '@ashfox/engine-core';
 import {
   exportCompatibilityOptions,
-  gameVersionForFormatProfile
+  type ExportAdapterInput,
+  type ExportPreset,
+  type MinecraftGameVersion,
+  type ProjectDocument
 } from '@ashfox/engine-core';
 
 export type VisibleExportPreset = ExportPreset;
 
-export type ProjectArtifactTarget =
-  | VisibleExportPreset
-  | 'ashfox.generic';
-
-export interface ProjectExportTarget {
-  target: ProjectArtifactTarget;
-  namespace: string;
-  modelPath: string;
-  gameVersion: MinecraftGameVersion | null;
-}
-
-export interface EditableProjectTarget {
+export interface ExportAdapterDraft {
   target: VisibleExportPreset;
   namespace: string;
   modelPath: string;
@@ -97,69 +84,33 @@ export const projectResourceToken = (value: string): string =>
     .replace(/[^a-z0-9_.-]+/g, '_')
     .replace(/^[._-]+|[._-]+$/g, '') || 'asset';
 
-const targetFor = (
+export const defaultExportAdapterFor = (
   document: ProjectDocument
-): ProjectArtifactTarget => {
-  switch (document.formatProfile.id) {
-    case 'minecraft.bedrock':
-      return 'bedrock';
-    case 'minecraft.java.geckolib5':
-      return 'geckolib5';
-    case 'minecraft.java_block':
-      return 'java_block';
-    case 'gltf.2':
-      return document.formatProfile.container;
-    case 'ashfox.generic':
-      return document.formatProfile.id;
-  }
-};
+): ExportAdapterDraft => ({
+  target: 'glb',
+  gameVersion: null,
+  namespace: 'ashfox',
+  modelPath: projectResourceToken(document.name)
+});
 
-export const projectExportTargetFor = (
-  document: ProjectDocument
-): ProjectExportTarget => {
-  const profile = document.formatProfile;
-  return {
-    target: targetFor(document),
-    namespace:
-      profile.id === 'minecraft.bedrock' ||
-      profile.id === 'minecraft.java.geckolib5' ||
-      profile.id === 'minecraft.java_block'
-        ? profile.namespace
-        : 'ashfox',
-    modelPath:
-      profile.id === 'ashfox.generic'
-        ? projectResourceToken(document.name)
-        : profile.modelPath,
-    gameVersion: gameVersionForFormatProfile(profile)
-  };
-};
-
-export const editableProjectTargetFor = (
-  document: ProjectDocument
-): EditableProjectTarget | null => {
-  const target = projectExportTargetFor(document);
-  return PROJECT_EXPORT_TARGETS.some(
-    (option) => option.id === target.target
-  )
-    ? {
-        target: target.target as VisibleExportPreset,
-        namespace: target.namespace,
-        modelPath: target.modelPath,
-        gameVersion: target.gameVersion
-      }
-    : null;
-};
+export const exportAdapterInputFor = (
+  draft: ExportAdapterDraft
+): ExportAdapterInput => ({
+  target: draft.target,
+  ...(draft.gameVersion === null
+    ? {}
+    : { gameVersion: draft.gameVersion }),
+  ...(isMinecraftExportTarget(draft.target)
+    ? { namespace: draft.namespace.trim() }
+    : {}),
+  modelPath: draft.modelPath.trim()
+});
 
 export const projectExportTargetLabel = (
-  target: ProjectArtifactTarget
+  target: VisibleExportPreset
 ): string =>
   PROJECT_EXPORT_TARGETS.find((option) => option.id === target)
-    ?.label ??
-  (
-    target === 'ashfox.generic'
-      ? 'ashfox JSON'
-      : target
-  );
+    ?.label ?? target;
 
 export const isMinecraftExportTarget = (
   target: VisibleExportPreset | null

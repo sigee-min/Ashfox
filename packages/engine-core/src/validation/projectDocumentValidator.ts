@@ -5,10 +5,8 @@ import { validateModelParts } from './modelPartsValidator';
 import { validateProjectDocumentContract } from './projectDocumentContract';
 import { validateSceneOcclusion } from './scene/occlusionValidator';
 import { validateScene } from './scene/sceneValidator';
-import { validateFormatProfile } from './target/formatValidator';
 import { validateTextures } from './textureValidator';
 import type {
-  ValidateProjectOptions,
   ValidationReport
 } from './types';
 
@@ -22,8 +20,7 @@ const sortedByPathAndCode = (
   });
 
 export const validateProjectDocument = (
-  value: unknown,
-  options: ValidateProjectOptions = {}
+  value: unknown
 ): ValidationReport => {
   const context = createValidationContext();
   if (validateProjectDocumentContract(value, context.add)) {
@@ -33,9 +30,6 @@ export const validateProjectDocument = (
     validateSceneOcclusion(value, context.add);
     validateTextures(value, context.add, context.registerId);
     validateAnimations(value, context.add, context.registerId);
-    if (options.includeFormatProfile !== false) {
-      validateFormatProfile(value, context.add);
-    }
   }
 
   const findings = sortedByPathAndCode(context.findings);

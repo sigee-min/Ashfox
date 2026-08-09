@@ -37,9 +37,6 @@ import type {
   ArtifactFile
 } from '../../files/artifactFile';
 import type {
-  TargetArtifactFile
-} from '../../files/browserFileWorkflow';
-import type {
   CaptureArtifactRequest
 } from '../../files/captureArtifactRequest';
 import type {
@@ -69,9 +66,6 @@ interface UseWorkbenchAgentControllerInput {
   }) => void;
   setPlayhead: Dispatch<SetStateAction<number>>;
   setPlaying: Dispatch<SetStateAction<boolean>>;
-  deliver: (
-    lease: OperationLeaseToken
-  ) => Promise<FileOperationRunResult<TargetArtifactFile>>;
   capture: (
     request: CaptureArtifactRequest,
     lease: OperationLeaseToken
@@ -95,7 +89,6 @@ export const useWorkbenchAgentController = ({
   prepareView,
   setPlayhead,
   setPlaying,
-  deliver,
   capture
 }: UseWorkbenchAgentControllerInput) => {
   const {
@@ -125,7 +118,6 @@ export const useWorkbenchAgentController = ({
     onFocusEntity: selectNode,
     onPresent: present,
     onReview: review,
-    onDeliver: deliver,
     onCapture: capture,
     buildDocuments,
     getVisualReviews,

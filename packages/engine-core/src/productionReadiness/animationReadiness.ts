@@ -1,5 +1,5 @@
 import {
-  analyzeProjectAnimationCapabilities
+  blockingCanonicalAnimationPreviewIssues
 } from '../animation/capability';
 import {
   CANONICAL_IDLE_CLIP_ID,
@@ -8,9 +8,6 @@ import {
 import {
   loopClipTransformChannelsClose
 } from '../animation/loopClosure';
-import {
-  formatProfileSupportsAnimation
-} from '../export/compatibility';
 import type {
   AnimationClip,
   ProjectDocument,
@@ -25,7 +22,6 @@ export interface AnimationReadiness {
     idleChannels: number;
     animationClips: number;
     previewableAnimationClips: number;
-    exportableAnimationClips: number;
   };
 }
 
@@ -66,9 +62,7 @@ const missingIdleFinding = (
         }
       : {}),
     fix:
-      clipIds.length > 0
-        ? 'Delete the non-canonical Idle-named clips, then create animation.motion.upsert {clipId:"idle",role:"idle",durationFrames:20,static:true} in the same atomic batch.'
-        : 'Create animation.motion.upsert {clipId:"idle",role:"idle",durationFrames:20,static:true}, or author a moving idle with closed poses.'
+      'Correct the reviewed Intent Program source and compile it again.'
   };
 };
 
@@ -86,7 +80,7 @@ const idleClipFindings = (
       path: `animations.${clip.id}.channels`,
       clipIds: [clip.id],
       fix:
-        'Patch this clip with animation.motion.upsert using static:true or ordered poses.'
+        'Correct the reviewed Intent Program source and compile it again.'
     }];
   }
   if (!idleClipNumericallyCloses(clip)) {
@@ -94,24 +88,22 @@ const idleClipFindings = (
       code: 'production.idle_loop_invalid',
       severity: 'error',
       message:
-        `Every channel in Idle clip "${clip.name}" must be a numeric, ` +
-        'closed loop from time 0 through the clip duration.',
+        `Every channel in Idle clip "${clip.name}" must be numeric and ` +
+        'closed from the identity rest rotation at time 0 through the clip duration.',
       path: `animations.${clip.id}`,
       clipIds: [clip.id],
       fix:
-        'Patch this clip with animation.motion.upsert so ashfox derives its 20 FPS loop closure.'
+        'Correct the reviewed Intent Program source and compile it again.'
     }];
   }
   return [];
 };
 
 const loopFindings = (
-  document: ProjectDocument,
-  targetSupportsAnimations: boolean
+  document: ProjectDocument
 ): readonly ProductionReadinessFinding[] =>
   Object.values(document.animations).flatMap((clip) => {
     if (
-      !targetSupportsAnimations ||
       clip.id === CANONICAL_IDLE_CLIP_ID ||
       clip.loop !== 'loop' ||
       loopClipTransformChannelsClose(clip)
@@ -127,64 +119,34 @@ const loopFindings = (
       path: `animations.${clip.id}`,
       clipIds: [clip.id],
       fix:
-        'Delete this clip with animation.clip.delete, then recreate it with animation.motion.upsert.'
+        'Correct the reviewed Intent Program source and compile it again.'
     }];
   });
 
-const capabilityFindings = (
-  document: ProjectDocument,
-  targetSupportsAnimations: boolean,
-  capability: ReturnType<typeof analyzeProjectAnimationCapabilities>
+const canonicalPreviewFindings = (
+  document: ProjectDocument
 ): readonly ProductionReadinessFinding[] =>
-  capability.clips.flatMap((clipCapability) => {
-    const clip = document.animations[clipCapability.clipId];
-    if (!clip || !targetSupportsAnimations) return [];
-    const findings: ProductionReadinessFinding[] = [];
-    if (!clipCapability.previewable) {
-      const issueCodes = [
-        ...new Set(
-          clipCapability.previewIssues.map((issue) => issue.code)
-        )
-      ];
-      findings.push({
-        code: 'production.animation_preview_unfaithful',
-        severity: 'error',
-        message:
-          `Animation "${clip.name}" uses semantics the live numeric ` +
-          `renderer cannot faithfully preview: ${issueCodes.join(', ')}.`,
-        path: `animations.${clip.id}`,
-        clipIds: [clip.id],
-        fix:
-          'Delete this clip, then recreate it with animation.motion.upsert poses or hinge spins.'
-      });
-    }
-    if (!clipCapability.exportable) {
-      const issueCodes = [
-        ...new Set(
-          clipCapability.exportIssues.map((issue) => issue.code)
-        )
-      ];
-      findings.push({
-        code: 'production.animation_export_unsupported',
-        severity: 'error',
-        message:
-          `Animation "${clip.name}" cannot be represented by ` +
-          `${capability.targetId}: ${issueCodes.join(', ')}.`,
-        path: `animations.${clip.id}`,
-        clipIds: [clip.id],
-        fix:
-          'Delete and recreate this clip with animation.motion.upsert, or choose another target with project.target.set.'
-      });
-    }
-    return findings;
+  Object.values(document.animations).flatMap((clip) => {
+    const previewIssues = blockingCanonicalAnimationPreviewIssues(clip);
+    if (previewIssues.length === 0) return [];
+    const issueCodes = [...new Set(previewIssues.map((issue) => issue.code))];
+    return [{
+      code: 'production.animation_preview_unfaithful',
+      severity: 'error',
+      message:
+        `Animation "${clip.name}" uses semantics the live numeric ` +
+        `renderer cannot faithfully preview: ${issueCodes.join(', ')}.`,
+      path: `animations.${clip.id}`,
+      clipIds: [clip.id],
+      fix:
+        'Correct the reviewed Intent Program source and compile it again.'
+    }];
   });
 
 export const evaluateAnimationReadiness = (
   document: ProjectDocument,
   visibleNodeIds: ReadonlySet<string>
 ): AnimationReadiness => {
-  const targetSupportsAnimations =
-    formatProfileSupportsAnimation(document.formatProfile);
   const canonicalIdle = document.animations[CANONICAL_IDLE_CLIP_ID];
   const idleClips = canonicalIdle ? [canonicalIdle] : [];
   const visibleIdleChannels = idleClips.map((clip) =>
@@ -192,21 +154,22 @@ export const evaluateAnimationReadiness = (
       visibleNodeIds.has(channel.targetNodeId)
     )
   );
-  const capability = analyzeProjectAnimationCapabilities(document);
+  const clips = Object.values(document.animations);
+  const previewableClips = clips.filter((clip) =>
+    blockingCanonicalAnimationPreviewIssues(clip).length === 0
+  );
   const findings: ProductionReadinessFinding[] = [];
-  if (targetSupportsAnimations && idleClips.length === 0) {
+  if (idleClips.length === 0) {
     findings.push(missingIdleFinding(document));
   }
-  if (targetSupportsAnimations) {
-    idleClips.forEach((clip, index) => {
-      findings.push(
-        ...idleClipFindings(clip, visibleIdleChannels[index] ?? [])
-      );
-    });
-  }
+  idleClips.forEach((clip, index) => {
+    findings.push(
+      ...idleClipFindings(clip, visibleIdleChannels[index] ?? [])
+    );
+  });
   findings.push(
-    ...loopFindings(document, targetSupportsAnimations),
-    ...capabilityFindings(document, targetSupportsAnimations, capability)
+    ...loopFindings(document),
+    ...canonicalPreviewFindings(document)
   );
   return {
     findings,
@@ -216,11 +179,8 @@ export const evaluateAnimationReadiness = (
         (count, channels) => count + channels.length,
         0
       ),
-      animationClips: capability.clips.length,
-      previewableAnimationClips:
-        capability.clips.filter((clip) => clip.previewable).length,
-      exportableAnimationClips:
-        capability.clips.filter((clip) => clip.exportable).length
+      animationClips: clips.length,
+      previewableAnimationClips: previewableClips.length
     }
   };
 };

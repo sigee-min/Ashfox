@@ -1,5 +1,9 @@
-import type { MinecraftResourceLocation } from '../../model';
 import type { FindingSink } from '../types';
+
+interface MinecraftResourceLocation {
+  namespace: string;
+  path: string;
+}
 
 export const RESOURCE_NAMESPACE_PATTERN = /^[a-z0-9_.-]+$/;
 export const RESOURCE_PATH_PATTERN = /^[a-z0-9_./-]+$/;

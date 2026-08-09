@@ -5,6 +5,5 @@ export {
   type InvariantCode,
   type InvariantFinding,
   type InvariantSeverity,
-  type ValidateProjectOptions,
   type ValidationReport
 } from './validation/types';

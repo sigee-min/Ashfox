@@ -23,6 +23,10 @@ import {
 import { readAuthoringBindings } from './authoringProfileBindings';
 import { readAuthoringCoverage } from './authoringProfileCoverage';
 import { readAuthoringFace } from './authoringProfileFace';
+import { readAuthoringRestPose } from './authoringProfileRestPose';
+import {
+  validateAuthoringSemanticRealization
+} from './authoringProfileSemanticContract';
 import { readAuthoringSlots } from './authoringProfileSlots';
 import { authoringRoutingSnapshot } from './authoringRouting';
 import {
@@ -54,13 +58,14 @@ export type ReadAuthoringProfileResult =
 
 type AuthoringContext = Pick<
   ProjectDocument,
-  'intent' | 'formatProfile'
+  'intent'
 >;
 
 const PROFILE_KEYS = new Set([
   'schemaVersion',
   'archetype',
   'track',
+  'restPose',
   'faceMode',
   'face',
   'specialists',
@@ -73,6 +78,7 @@ const PROFILE_KEYS = new Set([
 const SELECTION_KEYS = new Set([
   'archetype',
   'track',
+  'restPose',
   'faceMode',
   'face',
   'specialists',
@@ -194,6 +200,12 @@ const normalizeProfileRecord = (
     context?.intent,
     issues
   );
+  const restPose = readAuthoringRestPose(
+    value.restPose,
+    context?.intent,
+    slots ?? [],
+    issues
+  );
   const face = readAuthoringFace(
     value.face,
     faceMode,
@@ -214,12 +226,21 @@ const normalizeProfileRecord = (
     specialists ?? [],
     issues
   );
+  validateAuthoringSemanticRealization(
+    context?.intent,
+    restPose,
+    faceMode,
+    face,
+    slots,
+    issues
+  );
   if (
     !archetypeReference ||
     !specialists ||
     !claims ||
     !routing ||
     !track ||
+    !restPose ||
     !faceMode ||
     (faceMode === 'full' && !face) ||
     !slots ||
@@ -233,6 +254,7 @@ const normalizeProfileRecord = (
     schemaVersion: AUTHORING_PROFILE_SCHEMA_VERSION,
     archetype: archetypeReference,
     track,
+    restPose,
     faceMode,
     face,
     specialists,
@@ -260,7 +282,7 @@ export const normalizeAuthoringProfile = (
     return failure(
       'authoringProfile',
       'Authoring profile must use the closed contract shape.',
-      '{schemaVersion,archetype,track,faceMode,face,specialists,claims,routing,' +
+      '{schemaVersion,archetype,track,restPose,faceMode,face,specialists,claims,routing,' +
         'slots,coverage,bindings}'
     );
   }
@@ -292,7 +314,7 @@ export const createAuthoringProfile = (
     return failure(
       'intent',
       'Authoring selection requires a current project intent.',
-      'project.intent.set before project.authoring.configure'
+      'one confirmed Intent Program source compiled into derived authoring authority'
     );
   }
   if (
@@ -302,7 +324,7 @@ export const createAuthoringProfile = (
     return failure(
       'authoringProfile',
       'Authoring selection must use the closed contract shape.',
-      '{archetype,track,faceMode,face,specialists,claims,slots,coverage,bindings}'
+      '{archetype,track,restPose,faceMode,face,specialists,claims,slots,coverage,bindings}'
     );
   }
   const routing = authoringRoutingSnapshot(document);
@@ -317,6 +339,7 @@ export const createAuthoringProfile = (
     schemaVersion: AUTHORING_PROFILE_SCHEMA_VERSION,
     archetype: input.archetype,
     track: input.track,
+    restPose: input.restPose,
     faceMode: input.faceMode,
     face: input.face,
     specialists: input.specialists,
@@ -346,7 +369,7 @@ export const readAuthoringProfile = (
     return failure(
       'authoringProfile',
       'Stored authoring profile is not in canonical contract form.',
-      'replace it through project.authoring.configure'
+      'recompile the confirmed Intent Program source'
     );
   }
   return result;

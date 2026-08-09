@@ -66,38 +66,3 @@ export const applyNodeTransform = (
   );
   object.scale.fromArray(transform.scale);
 };
-
-export const objectTransformToCanonical = (
-  document: ProjectDocument,
-  node: SceneNode,
-  object: THREE.Object3D
-): Transform => {
-  const parent = parentOrigin(document, node);
-  const origin =
-    node.kind === 'locator'
-      ? [object.position.x, object.position.y, object.position.z]
-      : [
-          object.position.x + parent[0],
-          object.position.y + parent[1],
-          object.position.z + parent[2]
-        ];
-  const position =
-    node.kind === 'locator'
-      ? origin
-      : [
-          origin[0] - node.transform.pivot[0],
-          origin[1] - node.transform.pivot[1],
-          origin[2] - node.transform.pivot[2]
-        ];
-
-  return {
-    position: position as [number, number, number],
-    rotation: [
-      THREE.MathUtils.radToDeg(object.rotation.x),
-      THREE.MathUtils.radToDeg(object.rotation.y),
-      THREE.MathUtils.radToDeg(object.rotation.z)
-    ],
-    scale: [object.scale.x, object.scale.y, object.scale.z],
-    pivot: node.transform.pivot
-  };
-};

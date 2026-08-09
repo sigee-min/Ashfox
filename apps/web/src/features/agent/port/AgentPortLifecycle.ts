@@ -10,7 +10,6 @@ import type {
   AgentCaptureRequest,
   AgentRunRequest,
   CaptureResult,
-  DeliverResult,
   PresentRequest,
   PresentResult,
   RunResult
@@ -54,7 +53,6 @@ export class AgentPortLifecycle {
   private activeRun: ActiveRun | null = null;
   private activePresentation: Promise<PresentResult> | null = null;
   private activeCapture: ActiveCapture | null = null;
-  private activeDelivery: Promise<DeliverResult> | null = null;
   private readonly completedRuns = new Map<string, CompletedRun>();
   private readonly operationLease: OperationLease;
   private readonly executor: AgentOperationExecutor;
@@ -82,7 +80,6 @@ export class AgentPortLifecycle {
     }
     if (
       this.activeRun ||
-      this.activeDelivery ||
       this.activeCapture ||
       this.activePresentation
     ) {
@@ -146,8 +143,7 @@ export class AgentPortLifecycle {
     }
     if (
       this.activeRun ||
-      this.activePresentation ||
-      this.activeDelivery
+      this.activePresentation
     ) {
       return Promise.resolve({
         ok: false,
@@ -174,53 +170,6 @@ export class AgentPortLifecycle {
       this.activeCapture = null;
     });
     this.activeCapture = { signature, result };
-    return result;
-  }
-
-  deliver(): Promise<DeliverResult> {
-    const revision = this.dependencies.currentRevision();
-    if (!this.dependencies.deliver) {
-      return Promise.resolve({
-        ok: false,
-        revision,
-        error: {
-          code: 'invalid_state',
-          path: '$',
-          expected: 'connected delivery adapter'
-        }
-      });
-    }
-    if (this.activeDelivery) return this.activeDelivery;
-    if (
-      this.activeRun ||
-      this.activePresentation ||
-      this.activeCapture
-    ) {
-      return Promise.resolve({
-        ok: false,
-        revision,
-        error: {
-          code: 'busy',
-          message: 'A project change is still running.'
-        }
-      });
-    }
-    const lease = this.operationLease.tryAcquire('agent.deliver');
-    if (!lease) {
-      return Promise.resolve({
-        ok: false,
-        revision,
-        error: {
-          code: 'busy',
-          message:
-            `Another operation is still running (${this.operationLease.currentOwner() ?? 'unknown'}).`
-        }
-      });
-    }
-    const result = this.executor.deliver(lease, () => {
-      this.activeDelivery = null;
-    });
-    this.activeDelivery = result;
     return result;
   }
 
@@ -299,11 +248,6 @@ export class AgentPortLifecycle {
               'Another command batch is already running.'
             )
           );
-    }
-    if (this.activeDelivery) {
-      return Promise.resolve(
-        terminalRunFailure(revision, 'Project delivery is still running.')
-      );
     }
     if (this.activePresentation) {
       return Promise.resolve(

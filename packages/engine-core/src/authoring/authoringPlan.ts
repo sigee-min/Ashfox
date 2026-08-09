@@ -163,6 +163,7 @@ export const composeAuthoringSlots = (
         facing: slot.facing,
         symmetry: slot.symmetry,
         support: slot.support,
+        span: slot.span,
         authority: profile.archetype,
         authorityType: 'archetype' as const,
         attachmentPortId: null,
@@ -202,6 +203,7 @@ export const composeAuthoringSlots = (
         facing: null,
         symmetry: null,
         support: null,
+        span: null,
         authority: reference,
         authorityType: 'specialist' as const,
         attachmentPortId: binding.portId,
@@ -322,6 +324,7 @@ const statusForSlot = (
     facing: definition.facing,
     symmetry: definition.symmetry,
     support: definition.support,
+    span: definition.span,
     attachmentPortId: definition.attachmentPortId,
     hostSlotId: definition.hostSlotId,
     partIds,
@@ -380,7 +383,7 @@ export const evaluateAuthoringPlan = (
         'authoring.plan.profile_missing',
         'authoringProfile',
         'No canonical authoring authority profile is selected.',
-        'project.authoring.configure before authored model work'
+        'compile one confirmed Intent Program before generated model work'
       )],
       ready: false
     };
@@ -433,8 +436,8 @@ export const evaluateAuthoringPlan = (
     issues.push(authoringPlanIssue(
       'authoring.plan.routing_stale',
       'authoringProfile.routing',
-      'Authoring authority routing no longer matches intent, references, or delivery target.',
-      'replace the profile through project.authoring.configure'
+      'Authoring authority routing no longer matches intent or references.',
+      'recompile the confirmed Intent Program source'
     ));
   }
   if (!compatibility.compatible) {
@@ -485,6 +488,8 @@ export const evaluateAuthoringPlan = (
   issues.push(...assetQuality.structuralQuality.issues);
   issues.push(...assetQuality.symmetryQuality.issues);
   issues.push(...assetQuality.supportQuality.issues);
+  issues.push(...assetQuality.spanQuality.issues);
+  issues.push(...assetQuality.restPoseQuality.issues);
   issues.push(...assetQuality.intentCoverage.issues);
   issues.push(...assetQuality.faceQuality.issues);
   if (unassignedPartIds.length > 0) {

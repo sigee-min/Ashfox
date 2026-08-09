@@ -3,13 +3,6 @@ import {
   type FormEvent
 } from 'react';
 
-import {
-  defaultProjectGameVersionFor,
-  isMinecraftExportTarget,
-  PROJECT_EXPORT_TARGETS,
-  projectGameVersionOptionsFor,
-  type VisibleExportPreset
-} from '../../../application/projectExportTarget';
 import type { NewProjectInput } from '../newProject';
 
 interface NewProjectMenuProps {
@@ -20,24 +13,15 @@ export function NewProjectMenu({
   onCreate
 }: NewProjectMenuProps) {
   const [name, setName] = useState('Untitled project');
-  const [target, setTarget] = useState<VisibleExportPreset>('glb');
-  const [gameVersion, setGameVersion] = useState(
-    defaultProjectGameVersionFor('glb')
-  );
-  const gameVersions = projectGameVersionOptionsFor(target);
 
   const trimmedName = name.trim();
-  const valid =
-    trimmedName.length > 0 &&
-    (!isMinecraftExportTarget(target) || gameVersion !== null);
+  const valid = trimmedName.length > 0;
 
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     if (!valid) return;
     onCreate({
-      name: trimmedName,
-      target,
-      ...(gameVersion === null ? {} : { gameVersion })
+      name: trimmedName
     });
   };
 
@@ -67,52 +51,9 @@ export function NewProjectMenu({
           Fixed 1-unit forms · semantic parts · generated pixel surfaces
         </span>
       </div>
-      <div
-        className="export-target-list"
-        role="radiogroup"
-        aria-label="Format"
-      >
-        {PROJECT_EXPORT_TARGETS.map((option) => (
-          <button
-            key={option.id}
-            type="button"
-            role="radio"
-            aria-checked={target === option.id}
-            className={target === option.id ? 'is-selected' : ''}
-            onClick={() => {
-              setTarget(option.id);
-              setGameVersion(defaultProjectGameVersionFor(option.id));
-            }}
-          >
-            <strong>{option.label}</strong>
-            <small>{option.detail}</small>
-          </button>
-        ))}
-      </div>
-      {isMinecraftExportTarget(target) ? (
-        <label className="popover-field">
-          <span>Game version</span>
-          <select
-            aria-label="New project Minecraft game version"
-            value={gameVersion ?? ''}
-            onChange={(event) => {
-              const next = gameVersions.find(
-                (option) => option.value === event.target.value
-              );
-              if (next) setGameVersion(next.value);
-            }}
-          >
-            {gameVersions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
       <p className="new-project-note">
-        Form grammar and generated surface style are fixed. Your current
-        project remains in local browser storage.
+        The project starts as one target-independent canonical asset. Choose
+        an export adapter only when you export.
       </p>
       <button
         type="submit"
@@ -120,9 +61,7 @@ export function NewProjectMenu({
         data-ashfox-action="project.new.create"
         disabled={!valid}
       >
-        Create {PROJECT_EXPORT_TARGETS.find(
-          (option) => option.id === target
-        )?.label ?? target} project
+        Create project
       </button>
     </form>
   );

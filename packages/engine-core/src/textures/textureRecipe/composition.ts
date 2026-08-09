@@ -45,6 +45,7 @@ export const composeTextureRaster = (
         regions.push({
           nodeId: node.id,
           face,
+          tonePolicy: compiledFace?.tonePolicy ?? 'regular',
           x: uv[0],
           y: uv[1],
           width: uv[2] - uv[0],

@@ -1,4 +1,4 @@
-import type { ProjectDocument } from '../../model';
+import type { ExportAdaptedDocument } from '../adapter';
 import type { InvariantFinding } from '../../validation/types';
 import { createExportAdaptationReceipt } from '../adaptations';
 import type {
@@ -19,7 +19,7 @@ export interface ExportBundleContent {
 }
 
 export const createExportBundle = (
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   findings: readonly InvariantFinding[],
   content: ExportBundleContent
 ): ExportBundle => ({

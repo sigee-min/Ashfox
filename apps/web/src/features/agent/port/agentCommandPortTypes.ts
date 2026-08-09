@@ -12,7 +12,6 @@ import type {
 import type {
   AgentCaptureRequest,
   CaptureResult,
-  DeliverResult,
   InspectRequest,
   InspectResult,
   PresentRequest,
@@ -32,7 +31,6 @@ export interface AgentCommandPortDependencies {
     request: AgentCaptureRequest,
     lease: OperationLeaseToken
   ) => Promise<CaptureResult>;
-  deliver?: (lease: OperationLeaseToken) => Promise<DeliverResult>;
   operationLease?: OperationLease;
   onStatusChange?: (status: AgentCommandPortStatus) => void;
 }

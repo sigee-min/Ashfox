@@ -53,8 +53,7 @@ http.createServer((request, response) => {
   }
   if (
     url.pathname === '/workbench' ||
-    url.pathname === '/docs' ||
-    url.pathname === '/gallery'
+    url.pathname === '/docs'
   ) {
     response.writeHead(301, { Location: `${url.pathname}/` });
     response.end();

@@ -61,8 +61,8 @@ const validateChannelKeys = (
   path: string,
   context: ClipValidationContext
 ): void => {
-  const { clip, document, add, registerId } = context;
-  if (channel.keys.length === 0 && document.formatProfile.id !== 'gltf.2') {
+  const { clip, add, registerId } = context;
+  if (channel.keys.length === 0) {
     add({
       code: 'animation.invalid_timing',
       severity: 'error',

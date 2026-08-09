@@ -1,9 +1,5 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import {
-  TransformControls,
-  type TransformControlsMode
-} from 'three/addons/controls/TransformControls.js';
 
 import type { ProjectSceneProjection } from '../../../rendering/sceneTypes';
 import type { CameraCommand } from './viewportTypes';
@@ -20,13 +16,10 @@ export interface ViewportRuntime {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   orbit: OrbitControls;
-  transform: TransformControls;
   projection: ProjectSceneProjection | null;
   environment: ViewportEnvironment;
   grid: THREE.GridHelper;
-  axes: THREE.AxesHelper;
   pointerStart: THREE.Vector2;
-  transformDragging: boolean;
 }
 
 export const createViewportRuntime = (
@@ -59,26 +52,13 @@ export const createViewportRuntime = (
   orbit.enableDamping = true;
   orbit.dampingFactor = 0.08;
   orbit.minDistance = 8;
-  // Large gallery creatures need the object-framing camera distance to win.
-  // A 90-unit clamp forced their heads, tails, and antlers off-screen after
-  // applyCameraPreset had correctly computed a wider shot.
   orbit.maxDistance = 240;
   orbit.update();
-
-  const transform = new TransformControls(camera, canvas);
-  transform.setMode('translate');
-  transform.setSpace('local');
-  transform.size = 0.78;
-  scene.add(transform.getHelper());
 
   const grid = new THREE.GridHelper(64, 64, '#49515a', '#2b3138');
   grid.material.transparent = true;
   grid.material.opacity = 0.62;
   scene.add(grid);
-
-  const axes = new THREE.AxesHelper(2.25);
-  axes.position.set(-10, 0.03, 10);
-  scene.add(axes);
 
   addViewportLighting(scene);
 
@@ -87,13 +67,10 @@ export const createViewportRuntime = (
     scene,
     camera,
     orbit,
-    transform,
     projection: null,
     environment,
     grid,
-    axes,
-    pointerStart: new THREE.Vector2(),
-    transformDragging: false
+    pointerStart: new THREE.Vector2()
   };
 };
 
@@ -107,14 +84,10 @@ const disposeMaterials = (
 export const disposeViewportRuntime = (
   runtime: ViewportRuntime
 ): void => {
-  runtime.transform.detach();
-  runtime.transform.dispose();
   runtime.orbit.dispose();
   runtime.projection?.dispose();
   runtime.grid.geometry.dispose();
   disposeMaterials(runtime.grid.material);
-  runtime.axes.geometry.dispose();
-  disposeMaterials(runtime.axes.material);
   runtime.environment.dispose();
   runtime.renderer.dispose();
 };
@@ -129,19 +102,6 @@ export const applyViewportEnvironment = (
   runtime.scene.background = runtime.environment.background;
   runtime.scene.fog = runtime.environment.fog;
   runtime.grid.material.opacity = environmentId === 'studio' ? 0.62 : 0.14;
-};
-
-export const configureTransformControls = (
-  runtime: ViewportRuntime,
-  mode: TransformControlsMode,
-  snapEnabled: boolean
-): void => {
-  runtime.transform.setMode(mode);
-  runtime.transform.translationSnap = snapEnabled ? 0.5 : null;
-  runtime.transform.rotationSnap = snapEnabled
-    ? THREE.MathUtils.degToRad(15)
-    : null;
-  runtime.transform.scaleSnap = snapEnabled ? 0.1 : null;
 };
 
 export const applyCameraCommand = (

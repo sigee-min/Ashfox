@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 
 import {
-  gameVersionForFormatProfile,
   type CommandReceipt,
+  type ExportAdapterInput,
   type ProjectDocument
 } from '@ashfox/engine-core';
 
@@ -41,34 +41,11 @@ interface WorkbenchHeaderProps {
   onOpen: (file: File) => void;
   onSave: () => void;
   onUpdateProject: (input: ProjectSettingsInput) => void;
-  onExport: () => void;
+  onExport: (adapter: ExportAdapterInput) => void;
   onActiveClipChange: (clipId: string | null) => void;
   onCapture: (request: GifCaptureRequest) => void;
   onCancelFileOperation: () => void;
 }
-
-const targetLabel = (
-  document: ProjectDocument
-): readonly [string, string] => {
-  const gameVersion = gameVersionForFormatProfile(
-    document.formatProfile
-  );
-  switch (document.formatProfile.id) {
-    case 'ashfox.generic':
-      return ['ashfox', 'JSON'];
-    case 'minecraft.java_block':
-      return ['Java', gameVersion ?? document.formatProfile.modelKind];
-    case 'minecraft.bedrock':
-      return ['Bedrock', gameVersion ?? document.formatProfile.geometryKind];
-    case 'minecraft.java.geckolib5':
-      return ['GeckoLib 5', gameVersion ?? document.formatProfile.assetKind];
-    case 'gltf.2':
-      return [
-        document.formatProfile.container.toUpperCase(),
-        document.formatProfile.imageStorage
-      ];
-  }
-};
 
 export function WorkbenchHeader({
   document,
@@ -93,7 +70,6 @@ export function WorkbenchHeader({
   const openInputRef = useRef<HTMLInputElement>(null);
   const artifactAnchorRef = useRef<HTMLAnchorElement>(null);
   const artifactUrl = useArtifactUrl(artifactFile);
-  const target = targetLabel(document);
   const fileBusy = fileOperation.phase === 'running';
 
   useEffect(() => {
@@ -145,16 +121,6 @@ export function WorkbenchHeader({
       >
         {fileOperation.message}
       </span>
-      <button
-        type="button"
-        className="target-badge"
-        aria-label="Export project target"
-        aria-expanded={activeMenu === 'export'}
-        onClick={() => toggleMenu('export')}
-      >
-        <span>{target[0]}</span>
-        <span className="target-detail">{target[1]}</span>
-      </button>
       {activeMenu === 'new' ? (
         <NewProjectMenu
           onCreate={(input) => {
@@ -176,8 +142,8 @@ export function WorkbenchHeader({
         <ExportMenu
           document={document}
           busy={fileBusy}
-          onExport={() => {
-            onExport();
+          onExport={(adapter) => {
+            onExport(adapter);
             setActiveMenu(null);
           }}
         />

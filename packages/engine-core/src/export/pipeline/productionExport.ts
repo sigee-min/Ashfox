@@ -1,4 +1,5 @@
 import type { ProjectDocument } from '../../model';
+import type { ExportAdapterInput } from '../adapter';
 import {
   evaluateProductionReadiness,
   type ProductionReadinessReport
@@ -32,16 +33,18 @@ const assertProductionReady = (document: ProjectDocument): void => {
 };
 
 export const exportProductionProject = (
-  document: ProjectDocument
+  document: ProjectDocument,
+  adapter: ExportAdapterInput
 ): ExportBundle => {
   assertProductionReady(document);
-  return compileProjectBundle(document);
+  return compileProjectBundle(document, adapter);
 };
 
 export const exportProductionProjectResolved = async (
   document: ProjectDocument,
+  adapter: ExportAdapterInput,
   options: GltfResolvedExportOptions
 ): Promise<ExportBundle> => {
   assertProductionReady(document);
-  return compileProjectBundleResolved(document, options);
+  return compileProjectBundleResolved(document, adapter, options);
 };

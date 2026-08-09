@@ -3,11 +3,10 @@ import {
   type BlobRef,
   type CubeFaceDirection,
   type CubeNode,
-  type MinecraftJavaBlockFormatProfile,
-  type ProjectDocument,
-  type TextureAsset,
   type Vec3
 } from '../../../model';
+import type { ExportAdaptedDocument, ExportTextureAsset } from '../../adapter';
+import type { MinecraftJavaBlockExportProfile } from '../../adapterTypes';
 import {
   effectivelyVisibleSceneNodeIds
 } from '../../../sceneVisibility';
@@ -76,7 +75,7 @@ const addPosition = (value: Vec3, position: Vec3): [number, number, number] => [
 
 const compileJavaRotation = (
   cube: CubeNode,
-  profile: MinecraftJavaBlockFormatProfile
+  profile: MinecraftJavaBlockExportProfile
 ): MinecraftJavaAxisRotation | MinecraftJavaEulerRotation | undefined => {
   const rotation = cube.transform.rotation;
   const activeAxes = rotation
@@ -112,7 +111,9 @@ const compileJavaRotation = (
   };
 };
 
-const textureBindingFor = (texture: TextureAsset): NonNullable<TextureAsset['minecraft']> => {
+const textureBindingFor = (
+  texture: ExportTextureAsset
+): NonNullable<ExportTextureAsset['minecraft']> => {
   if (!texture.minecraft) {
     throw new Error(`Texture "${texture.id}" has no Minecraft binding.`);
   }
@@ -120,8 +121,8 @@ const textureBindingFor = (texture: TextureAsset): NonNullable<TextureAsset['min
 };
 
 const compileJavaElement = (
-  document: ProjectDocument,
-  profile: MinecraftJavaBlockFormatProfile,
+  document: ExportAdaptedDocument,
+  profile: MinecraftJavaBlockExportProfile,
   cube: CubeNode
 ): MinecraftJavaElement => {
   const from = addPosition(cube.bounds.from, cube.transform.position);
@@ -165,7 +166,7 @@ const compileJavaElement = (
   };
 };
 
-const compileTextureMap = (document: ProjectDocument): Record<string, string> => {
+const compileTextureMap = (document: ExportAdaptedDocument): Record<string, string> => {
   const textures: Record<string, string> = {};
   const orderedTextures = Object.values(document.textures).sort((left, right) =>
     left.id.localeCompare(right.id)
@@ -180,7 +181,7 @@ const compileTextureMap = (document: ProjectDocument): Record<string, string> =>
   return textures;
 };
 
-const createTextureCopy = (texture: TextureAsset): BlobCopyExportFile => {
+const createTextureCopy = (texture: ExportTextureAsset): BlobCopyExportFile => {
   const binding = textureBindingFor(texture);
   return {
     kind: 'blob-copy',
@@ -191,7 +192,7 @@ const createTextureCopy = (texture: TextureAsset): BlobCopyExportFile => {
   };
 };
 
-export const buildMinecraftJavaModel = (document: ProjectDocument): MinecraftJavaModel => {
+export const buildMinecraftJavaModel = (document: ExportAdaptedDocument): MinecraftJavaModel => {
   const profile = document.formatProfile;
   if (profile.id !== 'minecraft.java_block') {
     throw new Error('Project does not use the minecraft.java_block profile.');
@@ -224,7 +225,7 @@ export const buildMinecraftJavaModel = (document: ProjectDocument): MinecraftJav
   return model;
 };
 
-export const exportMinecraftJavaBlock = (document: ProjectDocument): ExportBundle => {
+export const exportMinecraftJavaBlock = (document: ExportAdaptedDocument): ExportBundle => {
   const validation = validateExportTarget(document, {
     profileId: 'minecraft.java_block',
     errorMessage: 'Minecraft Java export validation failed.'

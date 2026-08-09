@@ -13,6 +13,14 @@ import {
 } from './intentCoverage';
 import type { AuthoringSlotStatus } from './authoringPlanTypes';
 import {
+  evaluateRestPoseQuality,
+  type RestPoseQualityEvaluation
+} from './restPoseQuality';
+import {
+  evaluateSpanQuality,
+  type SpanQualityEvaluation
+} from './spanQuality';
+import {
   evaluateStructuralQuality,
   type StructuralQualityEvaluation
 } from './structuralQuality';
@@ -36,6 +44,8 @@ export const AUTHORING_ASSET_QUALITY_DIMENSIONS = [
   'focal',
   'symmetry',
   'support',
+  'span',
+  'rest-pose',
   'semantic-coverage',
   'face'
 ] as const;
@@ -62,6 +72,8 @@ export interface AssetQualityEvaluation {
   structuralQuality: StructuralQualityEvaluation;
   symmetryQuality: SymmetryQualityEvaluation;
   supportQuality: SupportQualityEvaluation;
+  spanQuality: SpanQualityEvaluation;
+  restPoseQuality: RestPoseQualityEvaluation;
   intentCoverage: IntentCoverageEvaluation;
   faceQuality: FaceQualityEvaluation;
   ready: boolean;
@@ -78,6 +90,8 @@ export const evaluateAssetQuality = (
   const structuralQuality = evaluateStructuralQuality(slots);
   const symmetryQuality = evaluateSymmetryQuality(document, profile);
   const supportQuality = evaluateSupportQuality(document, profile);
+  const spanQuality = evaluateSpanQuality(document, profile);
+  const restPoseQuality = evaluateRestPoseQuality(document, profile);
   const intentCoverage = evaluateIntentCoverage(
     profile,
     intent,
@@ -125,6 +139,26 @@ export const evaluateAssetQuality = (
       issueCount: supportQuality.issues.length
     },
     {
+      dimension: 'span',
+      required: spanQuality.statuses.some(
+        (status) => status.spanKind === 'supported-surface'
+      ),
+      state: spanQuality.statuses.every(
+        (status) => status.spanKind === 'none'
+      )
+        ? 'not-applicable'
+        : spanQuality.ready
+          ? 'passed'
+          : 'incomplete',
+      issueCount: spanQuality.issues.length
+    },
+    {
+      dimension: 'rest-pose',
+      required: true,
+      state: restPoseQuality.ready ? 'passed' : 'incomplete',
+      issueCount: restPoseQuality.issues.length
+    },
+    {
       dimension: 'semantic-coverage',
       required: true,
       state: intentCoverage.ready ? 'passed' : 'incomplete',
@@ -146,13 +180,17 @@ export const evaluateAssetQuality = (
       ? structuralQuality.activeStage
       : !symmetryQuality.ready
         ? 'structure'
-      : !supportQuality.ready
-        ? 'structure'
-      : !faceQuality.ready
-        ? 'focal'
-        : !intentCoverage.ready
-          ? 'surface'
-          : 'complete';
+        : !supportQuality.ready
+          ? 'structure'
+          : !spanQuality.ready
+            ? 'structure'
+            : !restPoseQuality.ready
+              ? 'structure'
+              : !faceQuality.ready
+                ? 'focal'
+                : !intentCoverage.ready
+                  ? 'surface'
+                  : 'complete';
   return {
     track: profile.track,
     activeStage,
@@ -160,12 +198,16 @@ export const evaluateAssetQuality = (
     structuralQuality,
     symmetryQuality,
     supportQuality,
+    spanQuality,
+    restPoseQuality,
     intentCoverage,
     faceQuality,
     ready:
       structuralQuality.ready &&
       symmetryQuality.ready &&
       supportQuality.ready &&
+      spanQuality.ready &&
+      restPoseQuality.ready &&
       intentCoverage.ready &&
       faceQuality.ready
   };

@@ -16,15 +16,13 @@ interface SceneOverlayProps {
   selectedNodeId: string | null;
   report: ValidationReport;
   onSelectNode: (nodeId: string) => void;
-  onToggleVisibility: (nodeId: string) => void;
 }
 
 export function SceneOverlay({
   document,
   selectedNodeId,
   report,
-  onSelectNode,
-  onToggleVisibility
+  onSelectNode
 }: SceneOverlayProps) {
   const formComposition = measureDocumentFormComposition(document);
   const archivedCubeCount = Object.values(document.scene.nodes).filter(
@@ -47,7 +45,6 @@ export function SceneOverlay({
           document={document}
           selectedNodeId={selectedNodeId}
           onSelect={onSelectNode}
-          onToggleVisibility={onToggleVisibility}
         />
         <div className="panel-section-divider" />
         <div className="panel-heading compact">

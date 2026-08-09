@@ -1,9 +1,7 @@
 import type {
   ProjectDocument,
   SceneNode,
-  Transform,
-  ValidationReport,
-  Vec3
+  ValidationReport
 } from '@ashfox/engine-core';
 import {
   measureDocumentFormComposition,
@@ -13,58 +11,19 @@ import {
 import { Icon } from '../Icon';
 import {
   nodeIcon,
-  nodeKindLabel,
-  roundProjectValue
+  nodeKindLabel
 } from '../presentation/nodePresentation';
-import { VectorEditor } from './VectorEditor';
 
 interface InspectorOverlayProps {
   document: ProjectDocument;
   node: SceneNode | undefined;
   report: ValidationReport;
-  onToggleVisibility: (nodeId: string) => void;
-  onTransformProperty: (
-    property: keyof Transform,
-    value: Vec3
-  ) => void;
-}
-
-function CubeGeometrySummary({
-  node
-}: {
-  node: Extract<SceneNode, { kind: 'cube' }>;
-}) {
-  const size = node.bounds.to.map((value, index) =>
-    roundProjectValue(value - node.bounds.from[index])
-  );
-  const enabledFaceCount = Object.values(node.faces).filter(
-    (face) => face.enabled
-  ).length;
-
-  return (
-    <section className="property-section">
-      <div className="property-heading">
-        <span>Geometry</span>
-        <span className="space-label">Cube</span>
-      </div>
-      <div className="property-grid">
-        <span>Size</span>
-        <strong>{size.join(' × ')}</strong>
-        <span>Inflate</span>
-        <strong>{node.inflate}</strong>
-        <span>Faces</span>
-        <strong>{enabledFaceCount} / 6</strong>
-      </div>
-    </section>
-  );
 }
 
 export function InspectorOverlay({
   document,
   node,
-  report,
-  onToggleVisibility,
-  onTransformProperty
+  report
 }: InspectorOverlayProps) {
   if (!node) {
     return (
@@ -107,19 +66,16 @@ export function InspectorOverlay({
             {' · '}{node.id}
           </small>
         </span>
-        <button
-          type="button"
-          className={`visibility-large${node.visible ? ' is-active' : ''}`}
-          aria-label="Toggle visibility"
-          disabled={compilerOwned}
-          onClick={() => onToggleVisibility(node.id)}
+        <span
+          className={`visibility-large is-readonly${node.visible ? ' is-active' : ''}`}
+          aria-label={node.visible ? 'Visible compiled output' : 'Hidden compiled output'}
         >
           <Icon name={node.visible ? 'eye' : 'eyeOff'} />
-        </button>
+        </span>
       </div>
       <div className="inspector-tabs">
-        <button type="button" className="is-active">Transform</button>
-        <span>{compilerOwned ? 'Compiler owned' : 'Live document'}</span>
+        <span className="is-active">Compiled details</span>
+        <span>{compilerOwned ? 'Intent Program owned' : 'Imported output'}</span>
       </div>
       <div className="inspector-scroll">
         {semanticPart ? (
@@ -150,47 +106,6 @@ export function InspectorOverlay({
         ) : null}
         <section className="property-section">
           <div className="property-heading">
-            <span>Transform</span>
-            <span className="space-label">Local</span>
-          </div>
-          <VectorEditor
-            label="Position"
-            value={node.transform.position}
-            step={0.5}
-            disabled={compilerOwned}
-            onChange={(value) => onTransformProperty('position', value)}
-          />
-          <VectorEditor
-            label="Rotation"
-            value={node.transform.rotation}
-            step={1}
-            disabled={compilerOwned}
-            onChange={(value) => onTransformProperty('rotation', value)}
-          />
-          <VectorEditor
-            label="Scale"
-            value={node.transform.scale}
-            step={0.1}
-            disabled={compilerOwned}
-            onChange={(value) => onTransformProperty('scale', value)}
-          />
-        </section>
-        <section className="property-section">
-          <div className="property-heading">
-            <span>Pivot</span>
-            <span className="space-label">Model</span>
-          </div>
-          <VectorEditor
-            label="Origin"
-            value={node.transform.pivot}
-            step={0.5}
-            disabled={compilerOwned}
-            onChange={(value) => onTransformProperty('pivot', value)}
-          />
-        </section>
-        {node.kind === 'cube' ? <CubeGeometrySummary node={node} /> : null}
-        <section className="property-section">
-          <div className="property-heading">
             <span>Diagnostics</span>
             <span className={`status-tiny${report.valid ? ' is-valid' : ''}`}>
               {report.valid ? 'Clean' : 'Review'}
@@ -199,8 +114,8 @@ export function InspectorOverlay({
           <div className="diagnostic-row">
             <span className="diagnostic-dot" />
             <span>
-              <strong>Transform is target-safe</strong>
-              <small>glTF 2.0 · right-handed Y-up</small>
+              <strong>Derived from the confirmed intent program</strong>
+              <small>Revise the program, then compile a complete replacement.</small>
             </span>
           </div>
         </section>

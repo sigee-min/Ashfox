@@ -1,31 +1,11 @@
 import type {
-  MinecraftGameVersion,
   ProjectCommandOperation,
-  ProjectDocument,
-  SurfacePixelDensity
+  ProjectDocument
 } from '@ashfox/engine-core';
-import {
-  type EditableProjectTarget,
-  editableProjectTargetFor
-} from '../../application/projectExportTarget';
 
 export interface ProjectSettingsInput {
   name: string;
-  surfacePixelDensity: SurfacePixelDensity;
-  exportTarget: EditableProjectTarget | null;
 }
-
-const targetPayload = (
-  target: EditableProjectTarget
-): {
-  target: EditableProjectTarget['target'];
-  gameVersion?: MinecraftGameVersion;
-} => ({
-  target: target.target,
-  ...(target.gameVersion === null
-    ? {}
-    : { gameVersion: target.gameVersion })
-});
 
 export const createProjectSettingsOperations = (
   document: ProjectDocument,
@@ -36,53 +16,6 @@ export const createProjectSettingsOperations = (
     operations.push({
       name: 'project.rename',
       payload: { name: input.name }
-    });
-  }
-  if (
-    input.surfacePixelDensity !==
-    document.settings.surfacePixelDensity
-  ) {
-    operations.push({
-      name: 'textures.density.set',
-      payload: {
-        density: input.surfacePixelDensity
-      }
-    });
-  }
-  const currentTarget = editableProjectTargetFor(document);
-  const targetPresetChanged =
-    input.exportTarget !== null &&
-    (
-      currentTarget === null ||
-      currentTarget.target !== input.exportTarget.target
-    );
-  const targetVersionChanged =
-    input.exportTarget !== null &&
-    currentTarget?.gameVersion !== input.exportTarget.gameVersion;
-  if (
-    input.exportTarget !== null &&
-    (targetPresetChanged || targetVersionChanged)
-  ) {
-    operations.push({
-      name: 'project.target.set',
-      payload: targetPayload(input.exportTarget)
-    });
-  }
-  if (
-    input.exportTarget !== null &&
-    (
-      targetPresetChanged ||
-      currentTarget === null ||
-      currentTarget.namespace !== input.exportTarget.namespace ||
-      currentTarget.modelPath !== input.exportTarget.modelPath
-    )
-  ) {
-    operations.push({
-      name: 'project.resource.set',
-      payload: {
-        namespace: input.exportTarget.namespace,
-        modelPath: input.exportTarget.modelPath
-      }
     });
   }
   return operations;

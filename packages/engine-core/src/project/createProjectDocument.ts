@@ -1,5 +1,4 @@
 import {
-  ASHFOX_GENERIC_FORMAT_VERSION,
   PROJECT_DOCUMENT_SCHEMA_VERSION,
   type ProjectDocument,
   type Revision
@@ -30,10 +29,6 @@ export const createProjectDocument = ({
     id: requiredText(id, 'Project ID'),
     name: requiredText(name, 'Project name'),
     revision: requiredText(revision, 'Project revision'),
-    formatProfile: {
-      id: 'ashfox.generic',
-      version: ASHFOX_GENERIC_FORMAT_VERSION
-    },
     settings: {
       textureResolution: {
         width: 16,

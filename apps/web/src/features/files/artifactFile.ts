@@ -2,8 +2,7 @@ import type {
   ProjectDocument
 } from '@ashfox/engine-core';
 import {
-  projectExportTargetFor,
-  type ProjectArtifactTarget
+  type VisibleExportPreset
 } from '../../application/projectExportTarget';
 
 export type ArtifactKind =
@@ -13,7 +12,7 @@ export type ArtifactKind =
   | 'build'
   | 'animation';
 
-export type ArtifactTarget = ProjectArtifactTarget;
+export type ArtifactTarget = VisibleExportPreset | 'project' | 'capture';
 
 export interface ArtifactBinding {
   projectId: string;
@@ -41,11 +40,12 @@ export const artifactContentHash = async (
 
 export const createArtifactBinding = async (
   document: ProjectDocument,
-  bytes: Uint8Array
+  bytes: Uint8Array,
+  target: ArtifactTarget = 'project'
 ): Promise<ArtifactBinding> => ({
   projectId: document.id,
   sourceRevision: document.revision,
-  target: projectExportTargetFor(document).target,
+  target,
   contentHash: await artifactContentHash(bytes)
 });
 
@@ -54,8 +54,7 @@ export const isArtifactCurrent = (
   artifact: ArtifactFile
 ): boolean =>
   artifact.projectId === document.id &&
-  artifact.sourceRevision === document.revision &&
-  artifact.target === projectExportTargetFor(document).target;
+  artifact.sourceRevision === document.revision;
 
 export const safeArtifactName = (value: string): string => {
   const normalized = value.trim().replace(/[^A-Za-z0-9_.-]+/g, '-');

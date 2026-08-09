@@ -7,6 +7,9 @@ import type {
   GeneratedSurfaceMarking,
   GeneratedSurfacePattern
 } from '../generatedSurfaceAuthority';
+import type {
+  GeneratedSurfaceTonePolicy
+} from '../generatedToneField';
 import type { UvAtlasPlacement } from '../uvAtlas';
 
 export interface TextureDerivationSuccess {
@@ -49,6 +52,7 @@ export interface AtlasPlan {
 export interface TextureCompositionRegion {
   nodeId: string;
   face: CubeFaceDirection;
+  tonePolicy: GeneratedSurfaceTonePolicy;
   x: number;
   y: number;
   width: number;

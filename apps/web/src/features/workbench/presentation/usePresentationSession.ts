@@ -175,7 +175,6 @@ export const usePresentationSession = ({
     });
   }, [
     document.animations,
-    document.formatProfile.id,
     document.id,
     document.revision,
     finish,

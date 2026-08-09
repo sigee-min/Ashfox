@@ -1,5 +1,4 @@
 import {
-  animationSupportForFormatProfile,
   type ProjectDocument,
   type ProductionReadinessReport
 } from '@ashfox/engine-core';
@@ -10,17 +9,11 @@ import {
   type VisualReviewReceipt
 } from '../../application/visualReviewReceipt';
 
-/*
- * Reviews follow the configured delivery profile, while the document remains
- * the canonical authoring source. Static targets therefore keep source clips
- * without asking the user to review motion that cannot appear in the artifact.
- */
+/* Reviews always cover canonical motion before an export adapter derives it. */
 const animationReviewClipIds = (
   document: ProjectDocument
 ): readonly string[] =>
-  animationSupportForFormatProfile(document.formatProfile) === 'none'
-    ? []
-    : Object.keys(document.animations).sort();
+  Object.keys(document.animations).sort();
 
 export type VisualReviewCamera =
   | 'perspective'

@@ -6,46 +6,25 @@ import type {
   ProjectCreateInput,
   ProjectDocumentCreateInput
 } from '../types';
-import {
-  configureProjectTarget
-} from './setProjectTarget';
-import {
-  EXPORT_COMPATIBILITY_REGISTRY
-} from '../../export/compatibility';
 import type {
   CommandInputSchema
 } from '../schema';
 
 const inputSchema: CommandInputSchema = {
-  anyOf: EXPORT_COMPATIBILITY_REGISTRY.map((compatibility) => ({
-    type: 'object' as const,
-    properties: {
-      name: {
-        type: 'string' as const,
-        minLength: 1
-      },
-      target: {
-        enum: [compatibility.target]
-      },
-      ...(compatibility.gameVersion === null
-        ? {}
-        : {
-            gameVersion: {
-              enum: [compatibility.gameVersion]
-            }
-          }),
-      density: {
-        enum: [1],
-        description:
-          'Iconic projects use the fixed 1-unit form grid. Surface character comes from flat texture clusters, not smaller geometry cells.'
-      }
+  type: 'object',
+  properties: {
+    name: {
+      type: 'string',
+      minLength: 1
     },
-    required:
-      compatibility.gameVersion === null
-        ? ['name']
-        : ['name', 'target'],
-    additionalProperties: false
-  }))
+    density: {
+      enum: [1],
+      description:
+        'Iconic projects use the fixed 1-unit form grid. Surface character comes from flat texture clusters, not smaller geometry cells.'
+    }
+  },
+  required: ['name'],
+  additionalProperties: false
 };
 
 const normalizeProjectInput = (
@@ -54,8 +33,6 @@ const normalizeProjectInput = (
   ...input,
   id: input.id.trim(),
   name: input.name.trim(),
-  namespace: input.namespace.trim(),
-  modelPath: input.modelPath.trim(),
   createdAt: input.createdAt.trim()
 });
 
@@ -79,17 +56,7 @@ export const createProjectFromInput = (
           surfacePixelDensity: normalized.density
         }
       };
-  const configured = configureProjectTarget(
-    document,
-    normalized.target,
-    normalized.namespace,
-    normalized.modelPath,
-    normalized.gameVersion
-  );
-  if (!configured.ok) {
-    throw new Error(configured.error.message);
-  }
-  return configured.value.document;
+  return document;
 };
 
 const stableProjectSuffix = (value: string): string => {
@@ -106,8 +73,6 @@ const deriveProjectInput = (
   payload: ProjectCreateInput
 ): ProjectDocumentCreateInput => {
   const name = payload.name.trim();
-  const target = payload.target ?? 'glb';
-  const gameVersion = payload.gameVersion;
   const density = payload.density ?? 1;
   const identitySeed = [
     document.id,
@@ -124,10 +89,6 @@ const deriveProjectInput = (
         ? `${candidateId}-next`
         : candidateId,
     name,
-    target,
-    gameVersion,
-    namespace: 'ashfox',
-    modelPath: resourceToken(name, 'asset'),
     createdAt: document.updatedAt,
     density
   };
@@ -136,7 +97,7 @@ const deriveProjectInput = (
 export const createProjectCommand = defineCommand({
   name: 'project.create',
   label: 'Create project',
-  purpose: 'Start one empty project with a canonical target and compatible game version.',
+  purpose: 'Start one empty project with a target-independent canonical asset.',
   inputSchema,
   apply: (document, payload) => {
     const input = deriveProjectInput(document, payload);

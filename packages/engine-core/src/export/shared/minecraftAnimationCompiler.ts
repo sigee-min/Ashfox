@@ -2,9 +2,9 @@ import {
   assertProjectAnimationsExportable
 } from '../../animation/capability';
 import type {
-  AnimationClip,
-  ProjectDocument
+  AnimationClip
 } from '../../model';
+import type { ExportAdaptedDocument } from '../adapter';
 import {
   effectivelyVisibleSceneNodeIds
 } from '../../sceneVisibility';
@@ -20,7 +20,7 @@ import type {
 import { serializeAnimationScalar } from './minecraftAnimationValues';
 
 const compileClip = (
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   clip: AnimationClip,
   options: MinecraftAnimationCompileOptions,
   visibleNodeIds: ReadonlySet<string>
@@ -96,10 +96,10 @@ const compileClip = (
 };
 
 export const buildMinecraftActorAnimation = (
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   options: MinecraftAnimationCompileOptions
 ): MinecraftActorAnimationFile => {
-  assertProjectAnimationsExportable(document);
+  assertProjectAnimationsExportable(document, document.formatProfile.id);
   const visibleNodeIds = effectivelyVisibleSceneNodeIds(document);
   const animationNames = minecraftActorAnimationNames(document);
   const animations: Record<string, MinecraftActorAnimation> = {};

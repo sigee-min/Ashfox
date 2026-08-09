@@ -2,13 +2,14 @@ import {
   CUBE_FACE_DIRECTIONS,
   type ProjectDocument
 } from '../../model';
+import type { ExportAdaptedDocument } from '../../export/adapter';
 import { isSceneNodeEffectivelyVisible } from '../../sceneVisibility';
 import type { FindingSink } from '../types';
 
 const MODEL_PATH_PATTERN = /^[A-Za-z0-9_./-]+$/;
 
 const validateProfile = (
-  profile: Extract<ProjectDocument['formatProfile'], { id: 'gltf.2' }>,
+  profile: Extract<ExportAdaptedDocument['formatProfile'], { id: 'gltf.2' }>,
   add: FindingSink
 ): void => {
   if (profile.version !== '2.0') {
@@ -65,7 +66,7 @@ const validateProfile = (
 };
 
 const validateTextures = (
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   add: FindingSink
 ): void => {
   for (const [assetId, texture] of Object.entries(document.textures)) {
@@ -168,7 +169,7 @@ const validateCube = (
 };
 
 const validateScene = (
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   add: FindingSink
 ): void => {
   for (const [nodeId, node] of Object.entries(document.scene.nodes)) {
@@ -197,7 +198,7 @@ const validateScene = (
 };
 
 const validateAnimationChannels = (
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   add: FindingSink
 ): void => {
   for (const [clipId, clip] of Object.entries(document.animations)) {
@@ -224,7 +225,7 @@ const validateAnimationChannels = (
 };
 
 export const validateGltfProfile = (
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   add: FindingSink
 ): void => {
   const profile = document.formatProfile;

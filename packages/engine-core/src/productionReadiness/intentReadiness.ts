@@ -43,16 +43,31 @@ export const evaluateIntentReadiness = (
   document: ProjectDocument
 ): IntentReadiness => {
   const report = evaluateProjectIntentRequirements(document);
+  const pending: readonly ProductionReadinessFinding[] =
+    document.intentProgramProposal
+      ? [{
+          code: 'production.intent_confirmation_pending',
+          severity: 'error',
+          message:
+            'An Intent Program proposal is awaiting user review and compilation.',
+          path: 'intentProgramProposal',
+          fix:
+            'The user must review the pending program and compile its displayed hash before delivery.'
+        }]
+      : [];
   return {
-    findings: report.issues.map((issue) => ({
-      code: productionIntentCode(issue.code),
-      severity: 'error',
-      message: issue.message,
-      path: issue.path,
-      entityIds: issue.entityIds,
-      idsTruncated: issue.idsTruncated,
-      fix: issue.fix
-    })),
+    findings: [
+      ...pending,
+      ...report.issues.map((issue) => ({
+        code: productionIntentCode(issue.code),
+        severity: 'error' as const,
+        message: issue.message,
+        path: issue.path,
+        entityIds: issue.entityIds,
+        idsTruncated: issue.idsTruncated,
+        fix: issue.fix
+      }))
+    ],
     counts: {
       intentPresent: report.intentPresent,
       ...report.counts

@@ -7,6 +7,7 @@ export {
   analyzeClipAnimationCapability,
   analyzeProjectAnimationCapabilities,
   assertProjectAnimationsExportable,
+  blockingCanonicalAnimationPreviewIssues,
   blockingAnimationPreviewIssues
 } from './capability/projectCapability';
 export {

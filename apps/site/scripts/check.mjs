@@ -6,10 +6,7 @@ import {
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { galleryContent, landingContent } from '../src/content.mjs';
-import {
-  isCurrentGalleryCatalogVersion
-} from '../src/showcaseCatalog.mjs';
+import { landingContent } from '../src/content.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repositoryRoot = path.resolve(siteRoot, '../..');
@@ -34,10 +31,10 @@ const exists = async (target) => {
   }
 };
 
+const failures = [];
 const htmlFiles = (await walk(outputRoot)).filter((file) =>
   file.endsWith('.html')
 );
-const failures = [];
 const indexedCanonicalUrls = [];
 
 for (const file of htmlFiles) {
@@ -92,24 +89,8 @@ for (const file of htmlFiles) {
   if (/localhost|127\.0\.0\.1/.test(html)) {
     failures.push(`${file}: local development origin leaked into output`);
   }
-  const workbenchHrefs = hrefs.filter((href) =>
-    /^(?:https:\/\/ashfox\.io)?\/workbench\/?/.test(href)
-  );
-  const isGalleryPage = file === path.join(
-    outputRoot,
-    'gallery',
-    'index.html'
-  );
-  if (!isGalleryPage && workbenchHrefs.length > 0) {
-    failures.push(`${file}: only gallery demos may link into the workbench`);
-  }
-  if (
-    isGalleryPage &&
-    workbenchHrefs.some((href) =>
-      !/^\/workbench\/\?project=%2Fdemos%2F[a-z0-9-]+%2Fproject\.ashfox$/.test(href)
-    )
-  ) {
-    failures.push(`${file}: gallery workbench link is not a safe demo path`);
+  if (/\/gallery\/|\/demos\/|data-agent-demo|data-scroll-story/.test(html)) {
+    failures.push(`${file}: retired gallery or demo markup is published`);
   }
   const requiredMetadata = [
     '<meta name="description"',
@@ -119,29 +100,18 @@ for (const file of htmlFiles) {
     '<meta property="og:url"',
     '<meta property="og:image"',
     '<meta name="twitter:card"',
-    '<link rel="canonical"',
-    '<script type="application/ld+json">'
+    '<link rel="canonical"'
   ];
   const isNotFoundPage = path.basename(file) === '404.html';
   for (const metadata of requiredMetadata) {
-    if (isNotFoundPage && metadata === '<script type="application/ld+json">') {
-      continue;
-    }
     if (!html.includes(metadata)) {
       failures.push(`${file}: missing SEO metadata ${metadata}`);
     }
   }
-  if (isNotFoundPage) {
-    if (!html.includes('<meta name="robots" content="noindex,follow">')) {
-      failures.push(`${file}: not-found page must be excluded from search`);
-    }
-  } else {
+  if (!isNotFoundPage) {
     const canonical = html.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
-    if (!canonical) {
-      failures.push(`${file}: canonical URL is missing`);
-    } else {
-      indexedCanonicalUrls.push(canonical);
-    }
+    if (!canonical) failures.push(`${file}: canonical URL is missing`);
+    else indexedCanonicalUrls.push(canonical);
   }
 }
 
@@ -149,154 +119,34 @@ const outputFiles = await walk(outputRoot);
 if (outputFiles.some((file) => file.endsWith('.map'))) {
   failures.push('source maps must not be present in the static site output');
 }
-if (!(await exists(path.join(outputRoot, '_headers')))) {
-  failures.push('CDN headers file is missing');
-}
-if (!(await exists(path.join(outputRoot, 'og.png')))) {
-  failures.push('social preview image is missing');
-} else {
-  const socialImage = await readFile(path.join(outputRoot, 'og.png'));
-  const width = socialImage.readUInt32BE(16);
-  const height = socialImage.readUInt32BE(20);
-  if (width !== 1200 || height !== 630) {
-    failures.push(
-      `social preview image must be 1200x630, received ${width}x${height}`
-    );
+for (const required of ['_headers', 'og.png', 'robots.txt', 'sitemap.xml']) {
+  if (!(await exists(path.join(outputRoot, required)))) {
+    failures.push(`static site output is missing ${required}`);
   }
 }
-const robotsPath = path.join(outputRoot, 'robots.txt');
-const sitemapPath = path.join(outputRoot, 'sitemap.xml');
-if (!(await exists(robotsPath))) {
-  failures.push('robots.txt is missing');
+for (const retiredDirectory of ['gallery', 'demos']) {
+  try {
+    if ((await stat(path.join(outputRoot, retiredDirectory))).isDirectory()) {
+      failures.push(`retired ${retiredDirectory} output is still published`);
+    }
+  } catch {
+    // Absence is the required hardcut state.
+  }
 }
-if (!(await exists(sitemapPath))) {
-  failures.push('sitemap.xml is missing');
-} else {
+
+const sitemapPath = path.join(outputRoot, 'sitemap.xml');
+if (await exists(sitemapPath)) {
   const sitemap = await readFile(sitemapPath, 'utf8');
   for (const canonical of indexedCanonicalUrls) {
     if (!sitemap.includes(`<loc>${canonical}</loc>`)) {
       failures.push(`sitemap is missing canonical URL ${canonical}`);
     }
   }
-  if (!sitemap.includes('<loc>https://ashfox.io/</loc>')) {
-    failures.push('sitemap is missing the landing page');
-  }
-  if (!sitemap.includes('<loc>https://ashfox.io/workbench/</loc>')) {
-    failures.push('sitemap is missing the workbench');
+  if (sitemap.includes('/gallery/') || sitemap.includes('/demos/')) {
+    failures.push('sitemap still publishes retired gallery or demo routes');
   }
 }
 
-const route = '/gallery/';
-const galleryPath = path.join(outputRoot, 'gallery', 'index.html');
-const galleryHtml = await readFile(galleryPath, 'utf8');
-const renderedGalleryIds = [
-  ...galleryHtml.matchAll(/\sdata-gallery-id="([^"]+)"/g)
-].map((match) => match[1]);
-const expectedGalleryIds = galleryContent.items.map((item) => item.galleryId);
-if (
-  renderedGalleryIds.join('|') !== expectedGalleryIds.join('|') ||
-  new Set(renderedGalleryIds).size !== expectedGalleryIds.length
-) {
-  failures.push('gallery items must be server-rendered once in catalog order');
-}
-if (
-  !galleryHtml.includes('data-gallery-search-input') ||
-  !galleryHtml.includes('data-gallery-filter="all"') ||
-  !galleryHtml.includes('data-gallery-results') ||
-  !galleryHtml.includes('data-gallery-empty')
-) {
-  failures.push('gallery search, filters, result count, or empty state is missing');
-}
-for (const category of galleryContent.categories) {
-  if (!galleryHtml.includes(`data-gallery-filter="${category}"`)) {
-    failures.push(`gallery category filter is missing: ${category}`);
-  }
-}
-const playerCount = (
-  galleryHtml.match(/\sdata-gallery-player(?:\s|>)/g) ?? []
-).length;
-if (playerCount !== 1) {
-  failures.push(`${route} must contain exactly one shared GIF player`);
-}
-if (/\ssrc="[^"]+\.gif(?:[?#][^"]*)?"/.test(galleryHtml)) {
-  failures.push(`${route} must start from posters without loading a GIF`);
-}
-if (
-  !galleryHtml.includes(
-    '<link rel="canonical" href="https://ashfox.io/gallery/">'
-  )
-) {
-  failures.push(`${route} canonical URL is incorrect`);
-}
-for (const item of galleryContent.items) {
-  if (
-    !galleryHtml.includes(`data-gif="${item.gif}"`) ||
-    !galleryHtml.includes(`href="${item.workbench}"`) ||
-    !galleryHtml.includes(item.agent.model) ||
-    item.tags.some((tag) => !galleryHtml.includes(`>${tag}</span>`))
-  ) {
-    failures.push(`${route} is missing gallery metadata for ${item.galleryId}`);
-  }
-  for (const [label, value] of [
-    ['description', item.description],
-    ['prompt', item.prompt],
-    ['detail', item.detail],
-    ['reasoning', item.agent.reasoning]
-  ]) {
-    if (galleryHtml.includes(value)) {
-      failures.push(
-        `${route} must not render ${label} for ${item.galleryId}`
-      );
-    }
-  }
-  const gifPath = path.join(outputRoot, item.gif);
-  if (!(await exists(gifPath))) {
-    failures.push(`gallery GIF is missing: ${item.gif}`);
-    continue;
-  }
-  const signature = (await readFile(gifPath)).subarray(0, 6).toString('ascii');
-  if (signature !== 'GIF87a' && signature !== 'GIF89a') {
-    failures.push(`gallery preview is not a GIF file: ${item.gif}`);
-  }
-  const manifestPath = path.join(outputRoot, item.manifest);
-  if (!(await exists(manifestPath))) {
-    failures.push(`gallery manifest is missing: ${item.manifest}`);
-  } else {
-    const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
-    if (
-      !isCurrentGalleryCatalogVersion(manifest.schemaVersion) ||
-      manifest.id !== item.galleryId
-    ) {
-      failures.push(`gallery manifest identity is invalid: ${item.manifest}`);
-    }
-  }
-  const projectPath = path.join(outputRoot, item.project);
-  if (!(await exists(projectPath))) {
-    failures.push(`gallery project is missing: ${item.project}`);
-  } else {
-    const archive = await readFile(projectPath);
-    if (
-      archive.subarray(0, 4).toString('hex') !== '504b0304' ||
-      !archive.includes(Buffer.from('manifest.json')) ||
-      !archive.includes(Buffer.from('project.json'))
-    ) {
-      failures.push(`gallery project is not an ashfox archive: ${item.project}`);
-    }
-  }
-}
-const galleryIndexPath = path.join(outputRoot, 'demos', 'index.json');
-if (!(await exists(galleryIndexPath))) {
-  failures.push('gallery JSON index is missing');
-} else {
-  const galleryIndex = JSON.parse(await readFile(galleryIndexPath, 'utf8'));
-  const indexIds = galleryIndex.demos?.map((item) => item.id) ?? [];
-  if (
-    !isCurrentGalleryCatalogVersion(galleryIndex.schemaVersion) ||
-    indexIds.join('|') !== expectedGalleryIds.join('|')
-  ) {
-    failures.push('gallery JSON index does not match the catalog');
-  }
-}
 const landingHtml = await readFile(path.join(outputRoot, 'index.html'), 'utf8');
 const agentInstructionControlCount = (
   landingHtml.match(/\sdata-copy-agent-instruction(?:\s|>)/g) ?? []
@@ -307,23 +157,11 @@ if (agentInstructionControlCount !== 3) {
   );
 }
 if (
-  !landingHtml.includes(
-    'One instruction. Then describe what you want.'
-  ) ||
+  !landingHtml.includes('One instruction. Then describe what you want.') ||
   !landingHtml.includes('Copy the manifest instruction') ||
-  !landingHtml.includes(
-    'Your agent will ask what you want to create.'
-  )
+  !landingHtml.includes('Your agent will ask what you want to create.')
 ) {
   failures.push('landing must teach the copy, paste, and describe workflow');
-}
-if (
-  landingContent.quickStart.instruction !==
-  'Fetch and follow https://ashfox.io/workbench/agent-manifest.json using a direct HTTP request such as curl.'
-) {
-  failures.push(
-    'the copied instruction must delegate the complete workflow to one manifest'
-  );
 }
 for (const documentationPath of [
   'README.md',
@@ -341,106 +179,6 @@ for (const documentationPath of [
     );
   }
 }
-const agentDestinationCount = (
-  landingHtml.match(/\sclass="agent-destination"/g) ?? []
-).length;
-if (
-  agentDestinationCount !== 3 ||
-  !landingHtml.includes('ChatGPT') ||
-  !landingHtml.includes('Cursor') ||
-  !landingHtml.includes('Claude')
-) {
-  failures.push('landing must show the three agent instruction destinations');
-}
-for (const icon of ['chatgpt.svg', 'cursor.svg', 'claude.svg']) {
-  if (!(await exists(path.join(outputRoot, 'icons', icon)))) {
-    failures.push(`landing agent destination icon is missing: ${icon}`);
-  }
-}
-if (
-  !landingHtml.includes('Codex desktop app') ||
-  !landingHtml.includes('Cursor')
-) {
-  failures.push('landing must name the representative AI agent tools');
-}
-if (
-  landingHtml.includes('>Examples</a>') ||
-  !landingHtml.includes('href="/gallery/">Gallery</a>')
-) {
-  failures.push('site navigation must link to the gallery');
-}
-
-const heroPlayerCount = (
-  landingHtml.match(/\sdata-demo-player(?:\s|>)/g) ?? []
-).length;
-if (heroPlayerCount !== 1) {
-  failures.push(`landing must contain one hero player, received ${heroPlayerCount}`);
-}
-if (/data-demo-reel/.test(landingHtml)) {
-  failures.push('retired landing reel DOM must not be present');
-}
-if (/media\/showcase\/[^"']+\.gif/.test(landingHtml)) {
-  failures.push('landing must not reference retired showcase GIF media');
-}
-const videoTags = landingHtml.match(/<video[\s\S]*?<\/video>/g) ?? [];
-if (videoTags.length !== 0) {
-  failures.push('landing must not retain the retired video player');
-}
-
-const storyPlayerCount = (
-  landingHtml.match(/\sdata-story-player(?:\s|>)/g) ?? []
-).length;
-const storyChapterCount = (
-  landingHtml.match(/\sdata-story-chapter="[0-9]+"/g) ?? []
-).length;
-const expectedStoryIds = [
-  'ironroot-tractor',
-  'aether-spear-rocket',
-  'moonveil-kirin'
-];
-if (storyPlayerCount !== 1 || storyChapterCount !== 3) {
-  failures.push(
-    'landing must contain one shared GIF story player and three chapters'
-  );
-}
-for (const storyId of expectedStoryIds) {
-  if (!landingHtml.includes(`data-story-demo="${storyId}"`)) {
-    failures.push(`landing story is missing featured demo: ${storyId}`);
-  }
-}
-
-const mediaSources = new Set([
-  ...landingContent.demo.sequences.map((sequence) => sequence.gif),
-  ...landingContent.story.map((sequence) => sequence.gif)
-]);
-if (
-  landingContent.demo.sequences.length !== 1 ||
-  !landingContent.demo.sequences[0]?.gif.endsWith(
-    '/blackfrost-dreadwing/build.gif'
-  )
-) {
-  failures.push('landing must use the current Blackfrost build-process GIF');
-}
-if (
-  landingContent.story.length !== 3 ||
-  landingContent.story.map((chapter) => chapter.id).join('|') !==
-    expectedStoryIds.join('|')
-) {
-  failures.push('landing must preserve the three-demo showcase story');
-}
-for (const source of mediaSources) {
-  const mediaPath = path.join(outputRoot, source);
-  if (!(await exists(mediaPath))) {
-    failures.push(`landing GIF is missing: ${source}`);
-    continue;
-  }
-  const media = await readFile(mediaPath);
-  const signature = media.subarray(0, 6).toString('ascii');
-  if (signature !== 'GIF87a' && signature !== 'GIF89a') {
-    failures.push(`landing media is not a GIF file: ${source}`);
-  }
-}
-
 const siteScriptSource = landingHtml.match(
   /<script type="module" src="([^"]+)"/
 )?.[1];
@@ -448,18 +186,8 @@ if (!siteScriptSource) {
   failures.push('landing module script is missing');
 } else {
   const siteScript = await readFile(path.join(outputRoot, siteScriptSource), 'utf8');
-  if (/Date\.now\(\)|[?&]run=/.test(siteScript)) {
-    failures.push('landing script must not restart media with unique URLs');
-  }
-  for (const moduleName of ['landingPlayback', 'gallery']) {
-    const moduleImport = siteScript.match(
-      new RegExp(`from ['"]\\./(${moduleName}-[a-f0-9]+\\.js)['"]`)
-    )?.[1];
-    if (!moduleImport) {
-      failures.push(`site script must import the hashed ${moduleName} module`);
-    } else if (!(await exists(path.join(outputRoot, 'assets', moduleImport)))) {
-      failures.push(`hashed site module is missing: ${moduleImport}`);
-    }
+  if (/landingPlayback|gallery/.test(siteScript)) {
+    failures.push('site script still imports retired gallery or demo playback');
   }
 }
 

@@ -11,9 +11,14 @@ import type {
 } from './authoringPlanTypes';
 import { authoringPlanIssue } from './authoringIssueFactories';
 import { uniqueSortedAuthoringValues } from './authoringCollections';
+import {
+  evaluateCanonicalFaceGeometry,
+  realizesFaceForm
+} from './faceQualityGeometry';
 import { evaluateFaceEyeSpatialQuality } from './faceQualityEye';
 import type {
   AuthoringFaceComponent,
+  AuthoringFaceContract,
   AuthoringFaceException,
   AuthoringFaceMode,
   AuthoringMouthState,
@@ -63,40 +68,122 @@ const partDescendsFrom = (
   return false;
 };
 
+const canonicalSurfacePart = (
+  slot: AuthoringSlotStatus | undefined,
+  partsById: ReadonlyMap<string, PartSpec>
+): PartSpec | null => {
+  if (
+    !slot ||
+    slot.partIds.length !== 1 ||
+    slot.presentPartIds.length !== 1 ||
+    slot.partIds[0] !== slot.presentPartIds[0]
+  ) {
+    return null;
+  }
+  const part = partsById.get(slot.partIds[0] as string);
+  return part && part.kind !== 'feature' ? part : null;
+};
+
+const hasFocalFrameAncestor = (
+  slot: AuthoringSlotStatus | undefined,
+  slotsById: ReadonlyMap<string, AuthoringSlotStatus>
+): boolean => {
+  if (!slot) return false;
+  const pending = [...slot.parentSlotIds];
+  const visited = new Set<string>();
+  while (pending.length > 0) {
+    const candidateId = pending.pop();
+    if (!candidateId || visited.has(candidateId)) continue;
+    visited.add(candidateId);
+    const candidate = slotsById.get(candidateId);
+    if (!candidate) continue;
+    if (candidate.structuralRole === 'focal-frame') return true;
+    pending.push(...candidate.parentSlotIds);
+  }
+  return false;
+};
+
 const requiredEyeCount = (
   configuration: 'single' | 'paired'
 ): number => {
   return configuration === 'paired' ? 2 : 1;
 };
 
-const realizesForm = (
-  part: PartSpec,
-  form: string
-): boolean => {
-  switch (form) {
-    case 'eye':
-      return part.kind === 'feature' && part.motif === 'eye';
-    case 'nose':
-      return part.kind === 'feature' && part.motif === 'nose';
-    case 'mouth':
-      return part.kind === 'feature' &&
-        part.motif === 'mouth' &&
-        part.glyph !== 'beak';
-    case 'beak':
-      return (
-        part.kind === 'feature' &&
-        part.motif === 'mouth' &&
-        part.glyph === 'beak'
-      ) || part.kind !== 'feature';
-    case 'muzzle':
-    case 'jaw':
-    case 'orbital':
-    case 'brow':
-    case 'mouth-interior':
-      return part.kind !== 'feature' || part.motif === 'patch';
-    default:
-      return false;
-  }
+const incompleteComponentIsViolation = (
+  component: AuthoringFaceComponent,
+  materializedPartCount: number,
+  semanticPartCount: number,
+  missingMaterialCount: number
+): boolean => materializedPartCount > 0 && (
+  component === 'eye' ||
+  semanticPartCount !== materializedPartCount ||
+  (semanticPartCount > 0 && missingMaterialCount > 0)
+);
+
+const permittedEyeSurfaceHosts = (
+  face: AuthoringFaceContract,
+  slotsById: ReadonlyMap<string, AuthoringSlotStatus>,
+  partsById: ReadonlyMap<string, PartSpec>
+): ReadonlySet<string> => {
+  const host = slotsById.get(face.hostSlotId);
+  const actualHostPart = canonicalSurfacePart(host, partsById);
+  if (!actualHostPart) return new Set();
+  const directEyeFrames = face.components.flatMap((component) =>
+    component.component === 'eye-frame' ? component.slotIds : []
+  ).filter((slotId) => {
+    const slot = slotsById.get(slotId);
+    const actualFramePart = canonicalSurfacePart(slot, partsById);
+    return slot?.parentSlotIds.length === 1 &&
+      slot.parentSlotIds[0] === face.hostSlotId &&
+      actualFramePart?.parentPartId === actualHostPart.partId;
+  });
+  return new Set([face.hostSlotId, ...directEyeFrames]);
+};
+
+interface CanonicalFaceHostEvaluation {
+  ready: boolean;
+  partId: string | null;
+  partIds: ReadonlySet<string>;
+  permittedEyeSurfaceHostSlotIds: ReadonlySet<string>;
+  issues: readonly AuthoringPlanIssue[];
+  violations: readonly AuthoringPlanIssue[];
+}
+
+const evaluateCanonicalFaceHost = (
+  face: AuthoringFaceContract,
+  profile: AuthoringProfile,
+  slotsById: ReadonlyMap<string, AuthoringSlotStatus>,
+  partsById: ReadonlyMap<string, PartSpec>
+): CanonicalFaceHostEvaluation => {
+  const slot = slotsById.get(face.hostSlotId);
+  const surfacePart = canonicalSurfacePart(slot, partsById);
+  const ready = slot?.state === 'complete' &&
+    surfacePart !== null &&
+    !hasFocalFrameAncestor(slot, slotsById);
+  const issue = ready
+    ? null
+    : authoringPlanIssue(
+        'authoring.plan.face_host_incomplete',
+        'authoringProfile.face.hostSlotId',
+        `Full-face host "${face.hostSlotId}" is not one complete canonical surface part.`,
+        'one materialized non-feature host part outside every other focal-frame subtree; nasal, muzzle, oral, and eye-frame parts use separate descendant slots',
+        {
+          authority: profile.archetype,
+          partIds: slot?.partIds ?? []
+        }
+      );
+  return {
+    ready,
+    partId: surfacePart?.partId ?? null,
+    partIds: new Set(surfacePart ? [surfacePart.partId] : []),
+    permittedEyeSurfaceHostSlotIds: permittedEyeSurfaceHosts(
+      face,
+      slotsById,
+      partsById
+    ),
+    issues: issue ? [issue] : [],
+    violations: issue && (slot?.presentPartIds.length ?? 0) > 0 ? [issue] : []
+  };
 };
 
 const evaluateNoFaceQuality = (
@@ -150,24 +237,30 @@ export const evaluateFaceQuality = (
   );
   const partsById = new Map(parts.map((part) => [part.partId, part]));
   const explicitMaterialIds = new Set(materials.map((material) => material.id));
-  const hostSlot = slotsById.get(face.hostSlotId);
-  const hostReady = hostSlot?.state === 'complete';
-  const hostPartIds = new Set(hostSlot?.partIds ?? []);
+  const host = evaluateCanonicalFaceHost(
+    face,
+    profile,
+    slotsById,
+    partsById
+  );
+  const geometry = evaluateCanonicalFaceGeometry({
+    document,
+    authority: profile.archetype,
+    face,
+    hostPartId: host.partId,
+    slotsById,
+    partsById,
+    permittedEyeSurfaceHostSlotIds: host.permittedEyeSurfaceHostSlotIds
+  });
   const eyeAuditIssues = auditEyeVisibility(document);
-  const issues: AuthoringPlanIssue[] = [];
-  const violations: AuthoringPlanIssue[] = [];
-  if (!hostReady) {
-    issues.push(authoringPlanIssue(
-      'authoring.plan.face_host_incomplete',
-      'authoringProfile.face.hostSlotId',
-      `Full-face host "${face.hostSlotId}" is not materialized.`,
-      'one complete focal-frame host before facial components',
-      {
-        authority: profile.archetype,
-        partIds: hostSlot?.partIds ?? []
-      }
-    ));
-  }
+  const issues: AuthoringPlanIssue[] = [
+    ...host.issues,
+    ...geometry.issues
+  ];
+  const violations: AuthoringPlanIssue[] = [
+    ...host.violations,
+    ...geometry.violations
+  ];
   const components = face.components.map((declaration) => {
     const declarationSlotIds = authoringFaceComponentSlotIds(declaration);
     const mappedSlots = declarationSlotIds.flatMap((slotId) => {
@@ -184,14 +277,17 @@ export const evaluateFaceQuality = (
     const partIds = uniqueSortedAuthoringValues(
       mappedSlots.flatMap((slot) => slot.partIds)
     );
+    const materializedPartIds = partIds.filter((partId) =>
+      partsById.has(partId)
+    );
     const realizedParts = partIds.flatMap((partId) => {
       const part = partsById.get(partId);
-      return part && partDescendsFrom(part, hostPartIds, partsById)
+      return part && partDescendsFrom(part, host.partIds, partsById)
         ? [part]
         : [];
     });
     const semanticParts = realizedParts.filter((part) =>
-      realizesForm(part, declaration.form)
+      realizesFaceForm(part, declaration.form)
     );
     const readableEyes = declaration.component === 'eye'
       ? semanticParts.filter((part): part is EyeFeaturePartSpec =>
@@ -229,7 +325,8 @@ export const evaluateFaceQuality = (
           declaration,
           readableEyes,
           expectedEyeCount,
-          slotsById
+          slotsById,
+          host.permittedEyeSurfaceHostSlotIds
         )
       : { ready: true, issue: null };
     if (eyeSpatial.issue) {
@@ -243,9 +340,12 @@ export const evaluateFaceQuality = (
       eyeSpatial.ready
     );
     const state =
-      hostReady &&
+      host.ready &&
+      geometry.hostReady &&
+      !geometry.invalidComponents.has(declaration.component) &&
       missingSlotIds.length === 0 &&
       semanticParts.length > 0 &&
+      semanticParts.length === materializedPartIds.length &&
       missingMaterialIds.length === 0 &&
       eyeReady
         ? 'complete' as const
@@ -265,7 +365,12 @@ export const evaluateFaceQuality = (
         { authority: profile.archetype, partIds }
       );
       issues.push(issue);
-      if (declaration.component === 'eye' && semanticParts.length > 0) {
+      if (incompleteComponentIsViolation(
+        declaration.component,
+        materializedPartIds.length,
+        semanticParts.length,
+        missingMaterialIds.length
+      )) {
         violations.push(issue);
       }
     }
@@ -299,12 +404,12 @@ export const evaluateFaceQuality = (
     mode: profile.faceMode,
     hostSlotId: face.hostSlotId,
     mouthState: face.mouthState,
-    hostReady,
+    hostReady: host.ready && geometry.hostReady,
     components,
     exceptions: face.exceptions,
     issues,
     violations,
-    ready: hostReady && components.every((component) =>
+    ready: host.ready && geometry.ready && components.every((component) =>
       component.state === 'complete'
     )
   };

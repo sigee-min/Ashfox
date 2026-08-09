@@ -1,4 +1,4 @@
-import type { ProjectFormatProfile } from '../../model';
+import type { ExportFormatProfile } from '../../export/adapterTypes';
 
 export type AnimationPreviewIssueCode =
   | 'molang'
@@ -22,7 +22,7 @@ export interface AnimationPreviewIssue {
   keyframeId?: string;
 }
 
-export type AnimationExportTarget = ProjectFormatProfile['id'];
+export type AnimationExportTarget = ExportFormatProfile['id'];
 
 export type AnimationExportIssueCode =
   | 'animations_unsupported'

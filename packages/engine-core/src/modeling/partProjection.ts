@@ -1,7 +1,4 @@
-import {
-  CUBE_FACE_DIRECTIONS,
-  type ProjectDocument
-} from '../model';
+import { type ProjectDocument } from '../model';
 import { compareStableText } from '../stableOrder';
 import { latticeToWorld } from './lattice';
 import {
@@ -17,6 +14,10 @@ import {
 import {
   canonicalizePartOccupancies
 } from './partOccupancyCanonicalization';
+import {
+  partitionSurfaceOwnedCuboids
+} from './surfaceOwnership';
+import { matchesSurfaceProjection } from './partProjectionSurface';
 import type {
   CompiledPartState,
   PartInvariantIssue
@@ -82,10 +83,34 @@ export const validatePartRecipeProjection = (
       entityIds: []
     }];
   }
+  const surfaceOwnership = partitionSurfaceOwnedCuboids(
+    canonicalized.parts.flatMap((part) =>
+      part.cuboids.map((cuboid) => ({
+        ownerId: part.spec.partId,
+        cuboid
+      }))
+    )
+  );
+  if (!surfaceOwnership.ok) {
+    return [{
+      code: 'projection',
+      path: 'modeling.parts',
+      message: surfaceOwnership.message,
+      entityIds: []
+    }];
+  }
   const canonicalByPart = new Map(
     canonicalized.parts.map((part) => [
       part.spec.partId,
       part
+    ])
+  );
+  const surfaceCuboidsByPart = new Map(
+    canonicalized.parts.map((part) => [
+      part.spec.partId,
+      surfaceOwnership.cuboids.filter(
+        (cuboid) => cuboid.ownerId === part.spec.partId
+      )
     ])
   );
   const generatedTextureId = Object.values(document.textures)
@@ -116,12 +141,33 @@ export const validatePartRecipeProjection = (
       continue;
     }
     const expectedOccupancy = expectedCanonical.canonical;
-    const expectedIds = new Set(
-      expectedCanonical.cuboids.map((cuboid) =>
+    const expectedSurfaceCuboids = surfaceCuboidsByPart.get(spec.partId);
+    if (!expectedSurfaceCuboids) {
+      issues.push({
+        code: 'projection',
+        path: `modeling.parts.${spec.partId}`,
+        message:
+          `Canonical part "${spec.partId}" has no surface-owned projection.`,
+        entityIds: [compiledPartBoneId(spec.partId)]
+      });
+      continue;
+    }
+    const expectedSurfaceById = new Map(
+      expectedSurfaceCuboids.map((cuboid) => [
         compiledPartCubeId(
           spec.partId,
           document.settings.surfacePixelDensity,
-          cuboid.bounds
+          cuboid.cuboid.bounds
+        ),
+        cuboid
+      ])
+    );
+    const expectedIds = new Set(
+      expectedSurfaceCuboids.map((cuboid) =>
+        compiledPartCubeId(
+          spec.partId,
+          document.settings.surfacePixelDensity,
+          cuboid.cuboid.bounds
         )
       )
     );
@@ -156,19 +202,12 @@ export const validatePartRecipeProjection = (
         (coordinate, axis) =>
           coordinate === expectedPivot[axis]
       );
-    const surfacesMatch =
-      material !== undefined &&
-      generatedTextureId !== undefined &&
-      actual.cubes.every(
-        (cube) =>
-          cube.baseColor.toUpperCase() === material.baseColor &&
-          cube.mirror === false &&
-          cube.boxUv === false &&
-          CUBE_FACE_DIRECTIONS.every(
-            (direction) =>
-              cube.faces[direction].textureId === generatedTextureId
-          )
-      );
+    const surfacesMatch = matchesSurfaceProjection({
+      actual,
+      expectedSurfaceById,
+      material,
+      generatedTextureId
+    });
     if (
       metadataMatches &&
       surfacesMatch &&

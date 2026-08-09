@@ -1,7 +1,7 @@
 import {
   analyzeProjectAnimationCapabilities
 } from '../../animation/capability';
-import type { ProjectDocument } from '../../model';
+import type { ExportAdaptedDocument } from '../adapter';
 import type {
   ExportAdaptation,
   ExportAdaptationReceipt
@@ -30,9 +30,12 @@ const toExportAdaptation = (
 });
 
 export const animationExportAdaptations = (
-  document: ProjectDocument
+  document: ExportAdaptedDocument
 ): ExportAdaptationReceipt => {
-  const adaptations = analyzeProjectAnimationCapabilities(document)
+  const adaptations = analyzeProjectAnimationCapabilities(
+    document,
+    document.formatProfile.id
+  )
     .clips
     .flatMap((clip) => clip.exportAdaptations);
   return {

@@ -130,7 +130,13 @@ export class ProjectExportError extends Error {
   readonly findings: readonly InvariantFinding[];
 
   constructor(message: string, findings: readonly InvariantFinding[]) {
-    super(message);
+    const first = findings.find((finding) => finding.severity === 'error') ??
+      findings[0];
+    super(
+      first
+        ? `${message} ${first.path}: ${first.message}`
+        : message
+    );
     this.name = 'ProjectExportError';
     this.findings = findings;
   }

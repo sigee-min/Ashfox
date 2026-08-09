@@ -1,4 +1,3 @@
-import type { ProjectFormatProfile } from '../../model';
 import {
   EXPORT_COMPATIBILITY_REGISTRY,
   type ExportCompatibilityEntry
@@ -51,69 +50,6 @@ export const exportCompatibilityFor = <TTarget extends ExportPreset>(
     )
   ) as Extract<ExportCompatibilityEntry, { target: TTarget }> | undefined) ??
   null;
-
-const compatibilityForFormatProfile = (
-  profile: ProjectFormatProfile
-): ExportCompatibilityEntry | null =>
-  EXPORT_COMPATIBILITY_REGISTRY.find((entry) => {
-    if (entry.profile.id !== profile.id) return false;
-    switch (entry.target) {
-      case 'gltf':
-      case 'glb':
-        return (
-          profile.id === 'gltf.2' &&
-          profile.version === entry.profile.version &&
-          profile.container === entry.profile.container
-        );
-      case 'java_block':
-        return (
-          profile.id === 'minecraft.java_block' &&
-          profile.minecraftVersion === entry.profile.minecraftVersion &&
-          profile.resourcePackFormat === entry.profile.resourcePackFormat
-        );
-      case 'bedrock':
-        return (
-          profile.id === 'minecraft.bedrock' &&
-          profile.minecraftVersion === entry.profile.minecraftVersion &&
-          profile.geometryFormatVersion ===
-            entry.profile.geometryFormatVersion &&
-          profile.animationFormatVersion ===
-            entry.profile.animationFormatVersion
-        );
-      case 'geckolib5':
-        return (
-          profile.id === 'minecraft.java.geckolib5' &&
-          profile.version === entry.profile.version &&
-          profile.minecraftVersion === entry.profile.minecraftVersion &&
-          profile.geometryFormatVersion ===
-            entry.profile.geometryFormatVersion &&
-          profile.animationFormatVersion ===
-            entry.profile.animationFormatVersion
-        );
-    }
-  }) ?? null;
-
-export const exportPresetForFormatProfile = (
-  profile: ProjectFormatProfile
-): ExportPreset | null =>
-  compatibilityForFormatProfile(profile)?.target ?? null;
-
-export const gameVersionForFormatProfile = (
-  profile: ProjectFormatProfile
-): MinecraftGameVersion | null =>
-  compatibilityForFormatProfile(profile)?.gameVersion ?? null;
-
-export const animationSupportForFormatProfile = (
-  profile: ProjectFormatProfile
-): ExportCompatibilityOption['animationSupport'] | null =>
-  compatibilityForFormatProfile(profile)?.animationSupport ?? null;
-
-export const formatProfileSupportsAnimation = (
-  profile: ProjectFormatProfile
-): boolean => {
-  const support = animationSupportForFormatProfile(profile);
-  return support === 'actor' || support === 'scene';
-};
 
 export const supportsJavaBlockMultiAxisRotation = (
   gameVersion: JavaGameVersion

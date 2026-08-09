@@ -193,7 +193,7 @@ export const compileGltfAnimations = (
   document: ProjectDocument,
   options: GltfAnimationCompileOptions
 ): GltfAnimation[] => {
-  assertProjectAnimationsExportable(document);
+  assertProjectAnimationsExportable(document, 'gltf.2');
   const animations: GltfAnimation[] = [];
   const timeAccessorByValues = new Map<string, number>();
   const outputAccessorByValues = new Map<string, number>();

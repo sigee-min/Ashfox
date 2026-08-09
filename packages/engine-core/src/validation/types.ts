@@ -33,6 +33,7 @@ export type InvariantCode =
   | 'model.part_connectivity'
   | 'model.part_attachment'
   | 'model.part_overlap'
+  | 'model.part_surface'
   | 'model.part_silhouette'
   | 'model.part_rig'
   | 'model.part_budget'
@@ -89,10 +90,6 @@ export interface InvariantFinding {
 export interface ValidationReport {
   valid: boolean;
   findings: readonly InvariantFinding[];
-}
-
-export interface ValidateProjectOptions {
-  includeFormatProfile?: boolean;
 }
 
 export type FindingSink = (finding: InvariantFinding) => void;

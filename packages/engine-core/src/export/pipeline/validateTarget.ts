@@ -1,44 +1,56 @@
-import type {
-  ProjectDocument,
-  ProjectFormatProfile
-} from '../../model';
+import type { ExportFormatProfile } from '../adapterTypes';
+import {
+  canonicalProjectFromExportAdapter,
+  type ExportAdaptedDocument
+} from '../adapter';
 import {
   validateProjectDocument
 } from '../../validation';
+import { validateFormatProfile } from '../../validation/target/formatValidator';
+import { createValidationContext } from '../../validation/context';
 import type {
-  InvariantFinding,
-  ValidateProjectOptions
+  InvariantFinding
 } from '../../validation/types';
 import { ProjectExportError } from '../types';
 
 export interface ExportTargetValidation {
-  profileId: ProjectFormatProfile['id'];
+  profileId: ExportFormatProfile['id'];
   errorMessage: string;
-  options?: ValidateProjectOptions;
 }
 
 export interface ValidatedExportTarget<
-  TProfileId extends ProjectFormatProfile['id']
+  TProfileId extends ExportFormatProfile['id']
 > {
-  profile: Extract<ProjectFormatProfile, { id: TProfileId }>;
+  profile: Extract<ExportFormatProfile, { id: TProfileId }>;
   findings: readonly InvariantFinding[];
 }
 
 export const validateExportTarget = <
-  TProfileId extends ProjectFormatProfile['id']
+  TProfileId extends ExportFormatProfile['id']
 >(
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   target: ExportTargetValidation & { profileId: TProfileId }
 ): ValidatedExportTarget<TProfileId> => {
-  const report = validateProjectDocument(document, target.options);
-  if (!report.valid || document.formatProfile.id !== target.profileId) {
-    throw new ProjectExportError(target.errorMessage, report.findings);
+  const canonicalReport = validateProjectDocument(
+    canonicalProjectFromExportAdapter(document)
+  );
+  const adapterContext = createValidationContext();
+  validateFormatProfile(document, adapterContext.add);
+  const findings = [
+    ...canonicalReport.findings,
+    ...adapterContext.findings
+  ].sort((left, right) =>
+    left.path.localeCompare(right.path) || left.code.localeCompare(right.code)
+  );
+  const valid = !findings.some((finding) => finding.severity === 'error');
+  if (!valid || document.formatProfile.id !== target.profileId) {
+    throw new ProjectExportError(target.errorMessage, findings);
   }
   return {
     profile: document.formatProfile as Extract<
-      ProjectFormatProfile,
+      ExportFormatProfile,
       { id: TProfileId }
     >,
-    findings: report.findings
+    findings
   };
 };

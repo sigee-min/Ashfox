@@ -1,5 +1,3 @@
-import type { TransformControlsMode } from 'three/addons/controls/TransformControls.js';
-
 import { Icon, type IconName } from '../Icon';
 import type {
   CameraCommand,
@@ -40,14 +38,10 @@ function IconButton({
 interface WorkbenchToolbarProps {
   canUndo: boolean;
   canRedo: boolean;
-  transformMode: TransformControlsMode;
-  snapEnabled: boolean;
   cameraMode: CameraCommand['mode'];
   viewportOptions: ViewportOptions;
   onUndo: () => void;
   onRedo: () => void;
-  onTransformMode: (mode: TransformControlsMode) => void;
-  onToggleSnap: () => void;
   onSetCamera: (mode: CameraCommand['mode']) => void;
   onToggleViewportOption: (option: keyof ViewportOptions) => void;
 }
@@ -55,14 +49,10 @@ interface WorkbenchToolbarProps {
 export function WorkbenchToolbar({
   canUndo,
   canRedo,
-  transformMode,
-  snapEnabled,
   cameraMode,
   viewportOptions,
   onUndo,
   onRedo,
-  onTransformMode,
-  onToggleSnap,
   onSetCamera,
   onToggleViewportOption
 }: WorkbenchToolbarProps) {
@@ -84,37 +74,6 @@ export function WorkbenchToolbar({
           onClick={onRedo}
         />
       </div>
-      <div className="tool-separator" />
-      <div className="tool-group">
-        <IconButton
-          label="Move"
-          icon="move"
-          shortcut="W"
-          active={transformMode === 'translate'}
-          onClick={() => onTransformMode('translate')}
-        />
-        <IconButton
-          label="Rotate"
-          icon="rotate"
-          shortcut="E"
-          active={transformMode === 'rotate'}
-          onClick={() => onTransformMode('rotate')}
-        />
-        <IconButton
-          label="Scale"
-          icon="scale"
-          shortcut="R"
-          active={transformMode === 'scale'}
-          onClick={() => onTransformMode('scale')}
-        />
-      </div>
-      <button
-        type="button"
-        className={`snap-control${snapEnabled ? ' is-active' : ''}`}
-        onClick={onToggleSnap}
-      >
-        Snap <kbd>{snapEnabled ? '0.5' : 'Off'}</kbd>
-      </button>
       <div className="toolbar-spacer" />
       <div className="view-label">View</div>
       <div className="camera-presets" aria-label="Camera presets">

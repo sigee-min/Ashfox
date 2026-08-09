@@ -1,10 +1,13 @@
 'use client';
 
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
+
+import type { ExportAdapterInput } from '@ashfox/engine-core';
 
 import { agentCommandProtocol } from '../agent/agentCommandProtocol';
 import { useProjectFileActions } from '../files/useProjectFileActions';
 import { BottomWorkspace } from './components/BottomWorkspace';
+import { IntentProposalBanner } from './components/IntentProposalBanner';
 import { ViewportWorkspace } from './components/ViewportWorkspace';
 import { WorkbenchHeader } from './components/WorkbenchHeader';
 import { WorkbenchToolbar } from './components/WorkbenchToolbar';
@@ -40,20 +43,8 @@ export function Workbench() {
   });
   const commands = useWorkbenchProjectCommands({
     document: project.document,
-    selectedNodeId: view.selectedNodeId,
     dispatch: project.dispatchUserMutation
   });
-
-  useEffect(() => {
-    if (project.galleryProjectStatus.phase !== 'loaded') return;
-    view.changeActiveClip(
-      Object.keys(project.document.animations)[0] ?? null
-    );
-  }, [
-    project.document.animations,
-    project.galleryProjectStatus.phase,
-    view.changeActiveClip
-  ]);
 
   const createProject = useCallback((input: NewProjectInput): void => {
     if (project.operationLease.currentOwner() !== null) return;
@@ -68,7 +59,6 @@ export function Workbench() {
   useWorkbenchShortcuts({
     onUndo: commands.undo,
     onRedo: commands.redo,
-    onTransformMode: view.changeTransformMode,
     onTogglePlayback: view.togglePlayback,
     onClosePanels: view.closePanels
   });
@@ -90,20 +80,20 @@ export function Workbench() {
     prepareView: view.prepareAgentView,
     setPlayhead: view.setPlayhead,
     setPlaying: view.setPlaying,
-    deliver: files.exportTarget,
     capture: files.capture
   });
 
   return (
     <main
-      className="workbench-shell"
+      className={`workbench-shell${
+        project.document.intentProgramProposal ? ' has-intent-proposal' : ''
+      }`}
       data-agent-command-port={agent.status}
       data-ashfox-agent-manifest={agentCommandProtocol.href}
       data-ashfox-revision={project.document.revision}
       data-ashfox-file-operation={files.operation.phase}
       data-ashfox-file-kind={files.operation.kind ?? ''}
       data-ashfox-file-operation-id={files.operation.operationId}
-      data-ashfox-project-load={project.galleryProjectStatus.phase}
       onDragOver={(event) => event.preventDefault()}
       onDrop={files.drop}
     >
@@ -121,7 +111,9 @@ export function Workbench() {
         onOpen={files.open}
         onSave={files.save}
         onUpdateProject={commands.updateProjectSettings}
-        onExport={files.exportTarget}
+        onExport={(adapter: ExportAdapterInput) => {
+          void files.exportTarget(adapter);
+        }}
         onActiveClipChange={view.changeActiveClip}
         onCapture={files.captureGif}
         onCancelFileOperation={files.cancel}
@@ -129,34 +121,26 @@ export function Workbench() {
       <WorkbenchToolbar
         canUndo={project.history.past.length > 0}
         canRedo={project.history.future.length > 0}
-        transformMode={view.transformMode}
-        snapEnabled={view.snapEnabled}
         cameraMode={view.cameraCommand.mode}
         viewportOptions={view.viewportOptions}
         onUndo={commands.undo}
         onRedo={commands.redo}
-        onTransformMode={view.changeTransformMode}
-        onToggleSnap={view.toggleSnap}
         onSetCamera={view.setCamera}
         onToggleViewportOption={view.toggleViewportOption}
       />
-      {(project.galleryProjectStatus.phase === 'loading' ||
-        project.galleryProjectStatus.phase === 'error') && (
-        <div
-          className="gallery-project-status"
-          data-phase={project.galleryProjectStatus.phase}
-          role="status"
-        >
-          {project.galleryProjectStatus.message}
-        </div>
-      )}
+      <IntentProposalBanner
+        document={project.document}
+        activeOperationOwner={project.operationLease.currentOwner()}
+        onConfirm={() => {
+          if (project.operationLease.currentOwner() !== null) return;
+          commands.compileIntentProgram();
+        }}
+      />
       <ViewportWorkspace
         document={project.document}
         assets={project.assets}
         report={project.report}
         selectedNodeId={view.selectedNodeId}
-        transformMode={view.transformMode}
-        snapEnabled={view.snapEnabled}
         viewportOptions={view.viewportOptions}
         environment={view.environment}
         cameraCommand={view.cameraCommand}
@@ -169,9 +153,6 @@ export function Workbench() {
         onEnvironmentChange={view.setEnvironment}
         onOverlayChange={view.setActiveOverlay}
         onSelectNode={view.selectNode}
-        onToggleVisibility={commands.toggleVisibility}
-        onTransformProperty={commands.updateTransformProperty}
-        onCommitTransform={commands.commitNodeTransform}
         onStats={view.setViewportStats}
         onPresented={agent.onPresented}
       />

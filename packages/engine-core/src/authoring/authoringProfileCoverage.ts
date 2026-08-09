@@ -91,7 +91,7 @@ export const readAuthoringCoverage = (
       issues,
       'coverage',
       'Intent feature coverage requires a current normalized intent.',
-      'project.intent.set before project.authoring.configure'
+      'one confirmed Intent Program source compiled into derived authoring authority'
     );
     return null;
   }

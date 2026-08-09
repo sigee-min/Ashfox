@@ -1,21 +1,24 @@
 import {
   ASHFOX_GENERIC_FORMAT_VERSION,
-  type ProjectDocument
 } from '../../../model';
+import {
+  canonicalProjectFromExportAdapter,
+  type ExportAdaptedDocument
+} from '../../adapter';
 import { createJsonExportFile } from '../../json';
 import { createExportBundle } from '../../pipeline/createBundle';
 import { validateExportTarget } from '../../pipeline/validateTarget';
 import type { ExportBundle } from '../../types';
 
 export const exportGenericProject = (
-  document: ProjectDocument
+  document: ExportAdaptedDocument
 ): ExportBundle => {
   const validation = validateExportTarget(document, {
     profileId: 'ashfox.generic',
-    errorMessage: 'Generic ashfox export validation failed.',
-    options: { includeFormatProfile: false }
+    errorMessage: 'Generic ashfox export validation failed.'
   });
   const path = 'project.json';
+  const canonical = canonicalProjectFromExportAdapter(document);
   return createExportBundle(document, validation.findings, {
     target: {
       id: 'ashfox.generic',
@@ -23,6 +26,6 @@ export const exportGenericProject = (
     },
     rootPath: 'ashfox-project',
     entrypoints: [path],
-    files: [createJsonExportFile('model', path, document)]
+    files: [createJsonExportFile('model', path, canonical)]
   });
 };

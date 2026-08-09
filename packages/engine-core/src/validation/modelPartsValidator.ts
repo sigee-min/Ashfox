@@ -18,6 +18,7 @@ const FINDING_CODES: Readonly<Record<PartInvariantCode, InvariantCode>> = {
   connectivity: 'model.part_connectivity',
   attachment: 'model.part_attachment',
   overlap: 'model.part_overlap',
+  surface: 'model.part_surface',
   silhouette: 'model.part_silhouette',
   rig: 'model.part_rig',
   budget: 'model.part_budget',
@@ -38,7 +39,7 @@ export const validateModelParts = (
         path: issue.path,
         entityIds: issue.entityIds,
         clipIds: issue.clipIds,
-        fix: 'Use model.parts.upsert, model.parts.material, or model.parts.delete instead of raw scene edits.'
+        fix: 'Correct and recompile the confirmed Intent Program source.'
       });
     }
     return;

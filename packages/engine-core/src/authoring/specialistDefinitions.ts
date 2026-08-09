@@ -243,7 +243,7 @@ export const specialistDefinitions: readonly SpecialistDefinition[] = [
     version: AUTHORING_PROFILE_SCHEMA_VERSION,
     label: 'Held presentation loop',
     summary: 'Defines a deliberate held or minimally moving presentation loop.',
-    useWhen: 'Use when the delivery target supports animation and needs a canonical presentation clip.',
+    useWhen: 'Use when the canonical source needs a held presentation clip; static delivery may omit it without changing authority.',
     instruction: 'Preserve a balanced readable pose with no resting intersections.',
     facets: ['motion'],
     capabilities: ['animation.idle'],
@@ -262,7 +262,6 @@ export const specialistDefinitions: readonly SpecialistDefinition[] = [
       maxBindings: 1
     }],
     compatibility: [
-      { op: 'equals', path: 'routing.animationSupported', value: true },
       { op: 'provides-capability', capability: 'animation.anchor' }
     ],
     reviewChecks: [{
@@ -297,7 +296,6 @@ export const specialistDefinitions: readonly SpecialistDefinition[] = [
       maxBindings: 1
     }],
     compatibility: [
-      { op: 'equals', path: 'routing.animationSupported', value: true },
       { op: 'provides-capability', capability: 'locomotion.paired' },
       { op: 'forbids', path: 'selection.specialistIds', value: 'specialist.rotary-cycle' }
     ],
@@ -333,7 +331,6 @@ export const specialistDefinitions: readonly SpecialistDefinition[] = [
       maxBindings: 1
     }],
     compatibility: [
-      { op: 'equals', path: 'routing.animationSupported', value: true },
       { op: 'provides-capability', capability: 'rotary.drive' },
       { op: 'forbids', path: 'selection.specialistIds', value: 'specialist.alternating-gait' }
     ],

@@ -1,8 +1,8 @@
-import type { ProjectDocument } from '../../model';
+import type { ExportAdaptedDocument } from '../adapter';
 import type { ExportAdaptation } from '../types';
 
 export const sceneExportAdaptations = (
-  document: ProjectDocument
+  document: ExportAdaptedDocument
 ): readonly ExportAdaptation[] =>
   document.formatProfile.id === 'minecraft.java_block'
     ? Object.values(document.scene.nodes)

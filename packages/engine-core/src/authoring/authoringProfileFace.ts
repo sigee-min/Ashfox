@@ -122,6 +122,24 @@ const slotDescendsFrom = (
   return false;
 };
 
+const focalFrameAncestorSlotId = (
+  slot: AuthoringSlotAssignment,
+  slotsById: ReadonlyMap<string, AuthoringSlotAssignment>
+): string | null => {
+  const pending = [...slot.parentSlotIds];
+  const visited = new Set<string>();
+  while (pending.length > 0) {
+    const candidateId = pending.pop();
+    if (!candidateId || visited.has(candidateId)) continue;
+    visited.add(candidateId);
+    const candidate = slotsById.get(candidateId);
+    if (!candidate) continue;
+    if (candidate.structuralRole === 'focal-frame') return candidateId;
+    pending.push(...candidate.parentSlotIds);
+  }
+  return null;
+};
+
 const readEyeConfiguration = (
   value: unknown,
   path: string,
@@ -200,6 +218,73 @@ const validateComponentSlots = (
   }
   return true;
 });
+
+const validateEyeSurfaceHosts = (
+  components: readonly AuthoringFaceComponentDeclaration[],
+  hostSlotId: string | null,
+  slotsById: ReadonlyMap<string, AuthoringSlotAssignment>,
+  issues: AuthoringProfileIssue[]
+): void => {
+  const eye = components.find((entry) => entry.component === 'eye');
+  if (!eye) return;
+  const eyeFrameSlotIds = new Set(components.flatMap((entry) =>
+    entry.component === 'eye-frame' ? entry.slotIds : []
+  ));
+  const permittedHostSlotIds = new Set([
+    ...(hostSlotId === null ? [] : [hostSlotId]),
+    ...eyeFrameSlotIds
+  ]);
+  for (const eyeFrameSlotId of eyeFrameSlotIds) {
+    const eyeFrameSlot = slotsById.get(eyeFrameSlotId);
+    if (
+      !eyeFrameSlot ||
+      hostSlotId === null ||
+      eyeFrameSlot.parentSlotIds.length !== 1 ||
+      eyeFrameSlot.parentSlotIds[0] !== hostSlotId
+    ) {
+      addIssue(
+        issues,
+        `face.components.eye-frame.${eyeFrameSlotId}`,
+        `Eye-frame slot "${eyeFrameSlotId}" must be a direct member of the face host.`,
+        'exactly one parentSlotId equal to face.hostSlotId; never a nasal, oral, jaw, or mouth-interior descendant'
+      );
+    }
+    if (eyeFrameSlot && eyeFrameSlot.partIds.length !== 1) {
+      addIssue(
+        issues,
+        `face.components.eye-frame.${eyeFrameSlotId}`,
+        `Eye-frame slot "${eyeFrameSlotId}" must own exactly one canonical surface part.`,
+        'one non-feature partId directly parented to the single face host part'
+      );
+    }
+  }
+  const eyeSlotIds = eye.configuration.kind === 'single'
+    ? [eye.configuration.slotId]
+    : [eye.configuration.leftSlotId, eye.configuration.rightSlotId];
+  for (const eyeSlotId of eyeSlotIds) {
+    const eyeSlot = slotsById.get(eyeSlotId);
+    if (!eyeSlot) continue;
+    if (eyeSlot.partIds.length !== 1) {
+      addIssue(
+        issues,
+        `face.components.eye.configuration.${eyeSlotId}`,
+        `Eye configuration slot "${eyeSlotId}" must own exactly one eye part.`,
+        'one canonical eye partId'
+      );
+    }
+    const directParentId = eyeSlot.parentSlotIds.length === 1
+      ? eyeSlot.parentSlotIds[0]
+      : undefined;
+    if (!directParentId || !permittedHostSlotIds.has(directParentId)) {
+      addIssue(
+        issues,
+        `face.components.eye.configuration.${eyeSlotId}`,
+        `Eye configuration slot "${eyeSlotId}" must be a direct member of the face host or a declared eye-frame component slot.`,
+        'exactly one direct parentSlotId equal to face.hostSlotId or an eye-frame slotId; never a nasal, oral, jaw, or mouth-interior descendant'
+      );
+    }
+  }
+};
 
 const readComponents = (
   value: unknown,
@@ -429,6 +514,37 @@ export const readAuthoringFace = (
       'one focal-frame slot ID from this profile'
     );
   }
+  if (hostSlot && hostSlot.partIds.length !== 1) {
+    addIssue(
+      issues,
+      'face.hostSlotId',
+      'Full face host must own exactly one canonical surface part.',
+      'one non-feature partId; nasal, muzzle, oral, and eye-frame parts belong to separate descendant component slots'
+    );
+  }
+  const nestedFocalFrameId = hostSlot
+    ? focalFrameAncestorSlotId(hostSlot, slotsById)
+    : null;
+  if (nestedFocalFrameId) {
+    addIssue(
+      issues,
+      'face.hostSlotId',
+      `Full face host cannot be nested below focal-frame slot "${nestedFocalFrameId}".`,
+      'a single face host whose ancestor slots use structural core, axis, articulated, span, or accent roles'
+    );
+  }
+  if (
+    intent?.symmetry.kind === 'bilateral' &&
+    hostSlot &&
+    hostSlot.symmetry.kind !== 'centered'
+  ) {
+    addIssue(
+      issues,
+      'face.hostSlotId',
+      'A bilateral full-face host must be centered on the project reflection plane.',
+      'a focal-frame slot with symmetry {kind:"centered"}'
+    );
+  }
   const mouthState = typeof value.mouthState === 'string' &&
     MOUTH_STATES.has(value.mouthState)
     ? value.mouthState as AuthoringFaceContract['mouthState']
@@ -443,6 +559,12 @@ export const readAuthoringFace = (
   }
   const components = readComponents(
     value.components,
+    hostSlotId,
+    slotsById,
+    issues
+  );
+  validateEyeSurfaceHosts(
+    components,
     hostSlotId,
     slotsById,
     issues

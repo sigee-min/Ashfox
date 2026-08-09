@@ -16,6 +16,14 @@ import {
   PART_OCCUPANCY_POLICY
 } from './partOccupancyCanonicalization';
 import { partTranslation } from './partTranslation';
+import {
+  attachmentReflectionMaps,
+  withReflectedDerivedAttachment,
+  type PartAttachmentReflectionPlan
+} from './partAttachmentReflection';
+import {
+  areLatticeCellSetsExactReflections
+} from './partRecipeTransforms/geometry';
 import { validationOccupancyForPart } from './semanticCuboidGrammar';
 import {
   resolveAttachmentAnchor
@@ -39,6 +47,15 @@ export interface PartAttachmentDerivationSuccess {
 export type PartAttachmentDerivationResult =
   | PartAttachmentDerivationFailure
   | PartAttachmentDerivationSuccess;
+
+export type {
+  PartAttachmentReflectionPair,
+  PartAttachmentReflectionPlan
+} from './partAttachmentReflection';
+
+export interface PartAttachmentDerivationOptions {
+  reflection?: PartAttachmentReflectionPlan;
+}
 
 export interface PartParentInferenceFailure {
   ok: false;
@@ -404,7 +421,8 @@ const withDerivedAttachment = (
  */
 export const derivePartAttachments = (
   parts: readonly PartSpec[],
-  density: SurfacePixelDensity
+  density: SurfacePixelDensity,
+  options: PartAttachmentDerivationOptions = {}
 ): PartAttachmentDerivationResult => {
   const ordered = canonicalPartOrder(parts);
   if (!ordered) {
@@ -415,6 +433,12 @@ export const derivePartAttachments = (
         'Part hierarchy must contain unique IDs, existing parents, and no cycles.'
     };
   }
+
+  const reflectionMaps = attachmentReflectionMaps(
+    ordered,
+    options.reflection
+  );
+  if ('ok' in reflectionMaps) return reflectionMaps;
 
   const resolvedById = new Map<string, PartSpec>();
   const occupancyById = new Map<string, OccupancyGrid>();
@@ -436,6 +460,68 @@ export const derivePartAttachments = (
         joint: { kind: 'fixed' },
         attachment: null
       });
+      continue;
+    }
+    const sourcePartId = reflectionMaps.sourceByReflected.get(
+      part.partId
+    );
+    if (sourcePartId) {
+      const source = resolvedById.get(sourcePartId);
+      const sourceOccupancy = occupancyById.get(sourcePartId);
+      const expectedParentPartId = source?.parentPartId === null
+        ? null
+        : source?.parentPartId === undefined
+          ? undefined
+          : reflectionMaps.reflectedBySource.get(source.parentPartId) ??
+            source.parentPartId;
+      if (
+        !source ||
+        !isGeometryPartSpec(source) ||
+        !sourceOccupancy ||
+        source.kind !== part.kind ||
+        expectedParentPartId !== part.parentPartId
+      ) {
+        return {
+          ok: false,
+          path: `parts.${part.partId}`,
+          message:
+            `Reflected part "${part.partId}" must mirror the resolved ` +
+            `geometry and parent relationship of "${sourcePartId}".`
+        };
+      }
+      const reflected = withReflectedDerivedAttachment(
+        part,
+        source,
+        options.reflection!.frame
+      );
+      if (!reflected) {
+        return {
+          ok: false,
+          path: `parts.${part.partId}.attachment`,
+          message:
+            `Reflected part "${part.partId}" requires a resolved source attachment.`
+        };
+      }
+      const reflectedOccupancy = validationOccupancyForPart(
+        reflected,
+        density
+      );
+      if (!areLatticeCellSetsExactReflections(
+        sourceOccupancy.cells,
+        reflectedOccupancy.cells,
+        options.reflection!.frame.lateralAxis,
+        options.reflection!.frame.plane!
+      )) {
+        return {
+          ok: false,
+          path: `parts.${part.partId}`,
+          message:
+            `Reflected part "${part.partId}" no longer exactly mirrors ` +
+            `"${sourcePartId}" after attachment derivation.`
+        };
+      }
+      resolvedById.set(part.partId, reflected);
+      occupancyById.set(part.partId, reflectedOccupancy);
       continue;
     }
     if (part.parentPartId === null) {

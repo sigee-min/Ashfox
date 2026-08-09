@@ -12,12 +12,20 @@ import { compareStableText } from '../stableOrder';
 import {
   PROJECT_SYMMETRY_MAX_PLANE_TWICE
 } from './projectSpatialFrame';
+import {
+  PROJECT_INTENT_STABLE_ID_PATTERN_SOURCE,
+  PROJECT_SUPPORTED_SURFACE_LIMIT
+} from './projectIntentContract';
+import {
+  normalizeProjectSemanticContract
+} from './projectSemanticContract';
 
 export const PROJECT_INTENT_LIMITS = Object.freeze({
   maxSubjectLength: 160,
   maxFeatureLength: 240,
   maxFeatures: 32,
   maxReferences: 16,
+  maxSupportedSurfaces: PROJECT_SUPPORTED_SURFACE_LIMIT,
   maxReferenceDescriptionLength: 480,
   maxReferenceCues: 16,
   maxReferenceCueLength: 240
@@ -67,6 +75,7 @@ const INTENT_KEYS = new Set([
   'forward',
   'grounding',
   'symmetry',
+  'semanticContract',
   'features',
   'references'
 ]);
@@ -83,7 +92,7 @@ const REFERENCE_KINDS = new Set<ProjectReferenceKind>([
   'model'
 ]);
 export const PROJECT_REFERENCE_ID_PATTERN_SOURCE =
-  '^[a-z][a-z0-9._-]{0,63}$';
+  PROJECT_INTENT_STABLE_ID_PATTERN_SOURCE;
 const REFERENCE_ID_PATTERN = new RegExp(
   PROJECT_REFERENCE_ID_PATTERN_SOURCE
 );
@@ -440,11 +449,19 @@ export const normalizeProjectIntent = (
   const symmetry = normalizedSymmetry(value.symmetry, issues);
   const features = normalizedFeatures(value.features, issues);
   const references = normalizedReferences(value.references, issues);
+  const semanticContract = normalizeProjectSemanticContract(
+    value.semanticContract,
+    grounding,
+    symmetry,
+    references ?? [],
+    issues
+  );
   if (
     issues.length > 0 ||
     symmetry === null ||
     features === null ||
     references === null ||
+    semanticContract === null ||
     typeof forward !== 'string' ||
     !FORWARD_DIRECTIONS.has(forward as ProjectForwardDirection) ||
     typeof grounding !== 'string' ||
@@ -460,6 +477,7 @@ export const normalizeProjectIntent = (
         forward: forward as ProjectForwardDirection,
         grounding: grounding as ProjectGrounding,
         symmetry,
+        semanticContract,
         features,
         ...(references.length > 0 ? { references } : {})
       }

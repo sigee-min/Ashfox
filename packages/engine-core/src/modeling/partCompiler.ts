@@ -1,4 +1,5 @@
 import {
+  CUBE_FACE_DIRECTIONS,
   IDENTITY_TRANSFORM,
   type BoneNode,
   type CubeNode,
@@ -32,6 +33,10 @@ import {
 import {
   latticeToWorld
 } from './lattice';
+import {
+  partitionSurfaceOwnedCuboids,
+  type SurfaceOwnedCuboid
+} from './surfaceOwnership';
 import type {
   Cuboid,
   LatticePoint
@@ -117,7 +122,7 @@ const materialColors = (
       return failure(
         'geometry',
         `materials.${input.id}`,
-        'Use model.parts.material to change an existing material color.'
+        'Recompile the Intent Program to change a generated material palette.'
       );
     }
     colors.set(input.id, input.baseColor);
@@ -209,11 +214,17 @@ const cubeForCuboid = (
   document: ProjectDocument,
   part: GeometryPartSpec,
   cuboid: Cuboid,
+  surface: SurfaceOwnedCuboid['faces'],
   baseColor: string,
   textureId: string
 ): CubeNode => {
   const density = document.settings.surfacePixelDensity;
   const texture = document.textures[textureId];
+  const generatedFaces = createGeneratedCubeFaces(
+    textureId,
+    texture.width,
+    texture.height
+  );
   const candidate: CubeNode = {
     id: compiledPartCubeId(part.partId, density, cuboid.bounds),
     kind: 'cube',
@@ -244,15 +255,24 @@ const cubeForCuboid = (
     mirror: false,
     boxUv: false,
     baseColor,
-    faces: createGeneratedCubeFaces(
-      textureId,
-      texture.width,
-      texture.height
-    )
+    faces: Object.fromEntries(
+      CUBE_FACE_DIRECTIONS.map((direction) => [
+        direction,
+        {
+          ...generatedFaces[direction],
+          enabled: surface[direction] === 'external'
+        }
+      ])
+    ) as CubeNode['faces']
   };
   const existing = document.scene.nodes[candidate.id];
   if (
     existing?.kind !== 'cube' ||
+    !CUBE_FACE_DIRECTIONS.every(
+      (direction) =>
+        existing.faces[direction].enabled ===
+        candidate.faces[direction].enabled
+    ) ||
     !Object.values(existing.faces).every(
       (face) => face.textureId === textureId
     )
@@ -372,6 +392,27 @@ export const compilePartScene = (
       canonicalized.message
     );
   }
+  const surfaceOwnership = partitionSurfaceOwnedCuboids(
+    canonicalized.parts.flatMap((entry) =>
+      entry.cuboids.map((cuboid) => ({
+        ownerId: entry.spec.partId,
+        cuboid
+      }))
+    )
+  );
+  if (!surfaceOwnership.ok) {
+    return failure(
+      'geometry',
+      'parts',
+      surfaceOwnership.message
+    );
+  }
+  const surfaceCuboidsByPart = new Map<string, SurfaceOwnedCuboid[]>();
+  for (const cuboid of surfaceOwnership.cuboids) {
+    const entries = surfaceCuboidsByPart.get(cuboid.ownerId) ?? [];
+    entries.push(cuboid);
+    surfaceCuboidsByPart.set(cuboid.ownerId, entries);
+  }
   const stripped = withoutReplacedParts(document, replacedPartIds);
   let working = stripped.document;
   const compiledNodes: SceneNode[] = [];
@@ -391,11 +432,20 @@ export const compilePartScene = (
         document.settings.surfacePixelDensity,
         entry.canonicalAttachmentAnchor
       );
-      const cubes = entry.cuboids.map((cuboid) =>
+      const surfaceCuboids = surfaceCuboidsByPart.get(part.partId);
+      if (!surfaceCuboids || surfaceCuboids.length === 0) {
+        return failure(
+          'geometry',
+          `parts.${part.partId}`,
+          `Part "${part.partId}" has no canonical surface-owned cuboids.`
+        );
+      }
+      const cubes = surfaceCuboids.map((surfaceCuboid) =>
         cubeForCuboid(
           document,
           part,
-          cuboid,
+          surfaceCuboid.cuboid,
+          surfaceCuboid.faces,
           baseColor,
           input.textureId
         )

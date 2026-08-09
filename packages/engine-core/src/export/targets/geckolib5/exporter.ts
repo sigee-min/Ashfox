@@ -1,4 +1,4 @@
-import type { ProjectDocument, TextureAsset } from '../../../model';
+import type { ExportAdaptedDocument, ExportTextureAsset } from '../../adapter';
 import { createCompactJsonExportFile } from '../../json';
 import { createExportBundle } from '../../pipeline/createBundle';
 import { validateExportTarget } from '../../pipeline/validateTarget';
@@ -9,7 +9,7 @@ import {
   type ExportBundle
 } from '../../types';
 
-const createTextureCopy = (texture: TextureAsset): BlobCopyExportFile => {
+const createTextureCopy = (texture: ExportTextureAsset): BlobCopyExportFile => {
   if (!texture.minecraft) {
     throw new Error(`Texture "${texture.id}" has no Minecraft binding.`);
   }
@@ -23,7 +23,7 @@ const createTextureCopy = (texture: TextureAsset): BlobCopyExportFile => {
   };
 };
 
-export const buildGeckoLib5Geometry = (document: ProjectDocument) => {
+export const buildGeckoLib5Geometry = (document: ExportAdaptedDocument) => {
   const profile = document.formatProfile;
   if (profile.id !== 'minecraft.java.geckolib5') {
     throw new Error('Project does not use the minecraft.java.geckolib5 profile.');
@@ -35,7 +35,7 @@ export const buildGeckoLib5Geometry = (document: ProjectDocument) => {
   });
 };
 
-export const buildGeckoLib5Animations = (document: ProjectDocument) => {
+export const buildGeckoLib5Animations = (document: ExportAdaptedDocument) => {
   const profile = document.formatProfile;
   if (profile.id !== 'minecraft.java.geckolib5') {
     throw new Error('Project does not use the minecraft.java.geckolib5 profile.');
@@ -46,7 +46,7 @@ export const buildGeckoLib5Animations = (document: ProjectDocument) => {
   });
 };
 
-export const exportGeckoLib5 = (document: ProjectDocument): ExportBundle => {
+export const exportGeckoLib5 = (document: ExportAdaptedDocument): ExportBundle => {
   const validation = validateExportTarget(document, {
     profileId: 'minecraft.java.geckolib5',
     errorMessage: 'GeckoLib 5 export validation failed.'

@@ -21,6 +21,9 @@ import type {
   VisualReviewReceipt
 } from '../../application/visualReviewReceipt';
 import { nextVisualReview } from './visualReviewPlan';
+import {
+  pendingIntentProgramBlock
+} from './intentProgramProposalGate';
 
 interface CaptureAgentProjectInput {
   request: AgentCaptureRequest;
@@ -202,6 +205,14 @@ export const captureAgentProject = async ({
   capture,
   lease
 }: CaptureAgentProjectInput): Promise<CaptureResult> => {
+  const proposalBlock = pendingIntentProgramBlock(document);
+  if (proposalBlock) {
+    return invalidState(
+      document.revision,
+      proposalBlock.path,
+      proposalBlock.expected
+    );
+  }
   const readiness = evaluateProductionReadiness(document, report);
   if (!readiness.mechanicallyReady) {
     return invalidState(

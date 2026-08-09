@@ -1,4 +1,4 @@
-import type { ProjectDocument } from '../../model';
+import type { ExportAdaptedDocument } from '../../export/adapter';
 import { validateExportCompatibilityProfile } from '../../export/compatibilityValidation';
 import type { FindingSink } from '../types';
 import { validateAnimationExportCapabilities } from './animationExportValidator';
@@ -7,7 +7,7 @@ import { validateJavaBlockProfile } from './javaBlockValidator';
 import { validateMinecraftActorProfile } from './minecraftActorValidator';
 
 export const validateFormatProfile = (
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   add: FindingSink
 ): void => {
   validateExportCompatibilityProfile(document).forEach(add);

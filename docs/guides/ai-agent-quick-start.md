@@ -32,19 +32,19 @@ working session.
 
 ## Describe your first asset
 
-Include the subject, visual style, export format, important features, and
-motion in one request.
+Include the subject, visual style, important features, and motion in one
+request. Choose the delivery adapter later in Export.
 
 ```text
-Create a Minecraft-style clockwork hound for GeckoLib 5 using the attached
+Create a Minecraft-style clockwork hound using the attached
 front and side references. Preserve its low horizontal trunk, four grounded
 legs, sensor head, and exposed shoulder drives. Use a restrained iron-green
 and brass palette, plus idle and walk loops.
 ```
 
-Animation-capable authority profiles bind selected motion specialists to
-canonical clip roles. Name every additional clip you expect. Static export
-targets do not create an empty ceremonial animation clip.
+The compiler binds canonical motion to clip roles. Name every additional clip
+you expect. A later static export may omit motion from its artifact, but it
+never changes the canonical project.
 
 The current composable authority covers creatures, figures, props, vehicles,
 and other assets through neutral `core`, `axis`, `articulated`, `span`,
@@ -57,15 +57,15 @@ whole asset; face requirements apply only when a full face is declared.
 ## Watch the result
 
 The agent keeps the live viewport visible while it works. Ask it to inspect the
-scene hierarchy, exact transforms, pivots, animation clips, and activity
-receipts whenever a result needs closer review. Normal modeling commands apply
-without individual approval; correct a visible problem with a short follow-up
-request.
+compiled result, review frames, and activity receipts whenever a result needs
+closer review. Correct a visible problem with a short semantic follow-up; the
+compiler, not the agent, owns transforms, pivots, and geometry.
 
 ## Deliver the finished asset
 
-Ask the agent to finish every required viewport review and deliver the current
-target. It verifies the artifact name, format, byte length, and content hash
-before transferring the prepared file.
+Ask the agent to finish every required viewport review. Then open **Export**,
+choose the target adapter and any Minecraft-only options, and create the
+artifact. The export result verifies its name, format, byte length, content
+hash, and target-specific adaptations without changing the project.
 
 Next: [Create and refine assets](authoring-and-review.md).

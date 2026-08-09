@@ -14,7 +14,6 @@ const INTERNAL_CONTRACT_VERSIONS = Object.freeze({
   visualReviewReceipt: 1,
   sidecarIpc: 1,
   traceLog: 1,
-  galleryCatalog: 1,
   skillReleaseDescriptor: 1
 });
 

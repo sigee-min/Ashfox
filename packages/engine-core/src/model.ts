@@ -3,6 +3,19 @@ import { INTERNAL_CONTRACT_VERSIONS } from '@ashfox/internal-contracts';
 import type {
   AuthoringProfile
 } from './authoring/authoringTypes';
+import type {
+  ProjectSemanticContract
+} from './project/projectSemanticTypes';
+
+export type {
+  ProjectCanonicalSupport,
+  ProjectSemanticContract,
+  ProjectSemanticFace,
+  ProjectSubjectDomain,
+  ProjectSupportedSurfaceExtension,
+  ProjectSupportedSurfaceObligation,
+  ProjectSupportedSurfaceRole
+} from './project/projectSemanticTypes';
 
 export const PROJECT_DOCUMENT_SCHEMA_VERSION =
   INTERNAL_CONTRACT_VERSIONS.projectDocument;
@@ -33,79 +46,6 @@ export const isSurfacePixelDensity = (
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
-
-export interface MinecraftResourceLocation {
-  namespace: string;
-  path: string;
-}
-
-export interface GenericFormatProfile {
-  id: 'ashfox.generic';
-  version: typeof ASHFOX_GENERIC_FORMAT_VERSION;
-}
-
-export interface MinecraftJavaBlockFormatProfile {
-  id: 'minecraft.java_block';
-  minecraftVersion: '1.21.5' | '1.21.11' | '26.1' | '26.2';
-  resourcePackFormat: 55 | 75 | 84 | 88;
-  namespace: string;
-  modelPath: string;
-  modelKind: 'block';
-  parent?: string;
-  ambientOcclusion?: boolean;
-  guiLight?: 'front' | 'side';
-}
-
-export interface MinecraftBedrockFormatProfile {
-  id: 'minecraft.bedrock';
-  minecraftVersion: '1.21.130' | '1.26.0' | '1.26.30';
-  geometryFormatVersion: '1.21.0';
-  animationFormatVersion: '1.8.0';
-  namespace: string;
-  modelPath: string;
-  animationPath: string;
-  geometryKind: 'entity' | 'block';
-  geometryIdentifier: string;
-  visibleBounds?: {
-    width: number;
-    height: number;
-    offset: Vec3;
-  };
-}
-
-export interface MinecraftJavaGeckoLib5FormatProfile {
-  id: 'minecraft.java.geckolib5';
-  version: '5';
-  minecraftVersion: '1.21.5' | '1.21.11' | '26.1';
-  geometryFormatVersion: '1.12.0';
-  animationFormatVersion: '1.8.0';
-  namespace: string;
-  assetKind: 'entity' | 'block' | 'item';
-  modelPath: string;
-  animationPath: string;
-  geometryIdentifier: string;
-  visibleBounds?: {
-    width: number;
-    height: number;
-    offset: Vec3;
-  };
-}
-
-export interface Gltf2FormatProfile {
-  id: 'gltf.2';
-  version: '2.0';
-  container: 'gltf' | 'glb';
-  imageStorage: 'external' | 'embedded';
-  modelPath: string;
-  copyright?: string;
-}
-
-export type ProjectFormatProfile =
-  | GenericFormatProfile
-  | MinecraftJavaBlockFormatProfile
-  | MinecraftBedrockFormatProfile
-  | MinecraftJavaGeckoLib5FormatProfile
-  | Gltf2FormatProfile;
 
 export interface ProjectSettings {
   textureResolution: {
@@ -156,6 +96,7 @@ export interface ProjectIntent {
   forward: ProjectForwardDirection;
   grounding: ProjectGrounding;
   symmetry: ProjectSymmetry;
+  semanticContract: ProjectSemanticContract;
   /** Human/agent review criteria. Their meaning is not machine-validated. */
   features: readonly string[];
   /** Auditable observations used to route and review authoring authorities. */
@@ -395,13 +336,6 @@ export interface BlobRef {
   byteLength?: number;
 }
 
-export interface MinecraftTextureBinding {
-  key: string;
-  resource: MinecraftResourceLocation;
-  extension: 'png';
-  particle?: boolean;
-}
-
 export interface TextureCanvasDetail {
   id: EntityId;
   color: string;
@@ -429,7 +363,6 @@ export interface TextureAsset {
   renderSides: 'auto' | 'front' | 'double';
   atlasMode?: 'generate' | 'preserve';
   pbrChannel?: 'color' | 'normal' | 'height' | 'mer';
-  minecraft?: MinecraftTextureBinding;
   raster?: TextureRaster;
   metadata?: Readonly<Record<string, string | number | boolean>>;
 }
@@ -524,13 +457,26 @@ export interface AnimationClip {
   triggers: Readonly<Record<ChannelId, AnimationTriggerTrack>>;
 }
 
+/**
+ * Persisted source authority for the Intent Program compiler. The hash is a
+ * derived concurrency/review token; parsed syntax and compiler IR are never
+ * persisted alongside the source.
+ */
+export interface IntentProgramSource {
+  source: string;
+  hash: string;
+}
+
 export interface ProjectDocument {
   schemaVersion: typeof PROJECT_DOCUMENT_SCHEMA_VERSION;
   id: ProjectId;
   name: string;
   revision: Revision;
-  formatProfile: ProjectFormatProfile;
   settings: ProjectSettings;
+  /** Confirmed single semantic authority; all compiler inputs are derived. */
+  intentProgram?: IntentProgramSource;
+  /** Agent draft awaiting an explicit web/system confirmation. */
+  intentProgramProposal?: IntentProgramSource;
   intent?: ProjectIntent;
   authoringProfile?: AuthoringProfile;
   modeling?: ConstrainedModelRecipe;

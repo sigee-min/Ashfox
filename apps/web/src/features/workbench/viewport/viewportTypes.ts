@@ -1,8 +1,5 @@
-import type { TransformControlsMode } from 'three/addons/controls/TransformControls.js';
-
 import type {
-  ProjectDocument,
-  Transform
+  ProjectDocument
 } from '@ashfox/engine-core';
 import type { ProjectAssets } from '../../../application/projectAssets';
 import type { CameraMode } from '../../../rendering/cameraPresets';
@@ -44,9 +41,6 @@ export interface ViewportPresentationFrame {
 export interface ViewportProps {
   document: ProjectDocument;
   assets: ProjectAssets;
-  selectedNodeId: string | null;
-  transformMode: TransformControlsMode;
-  snapEnabled: boolean;
   options: ViewportOptions;
   environment: ViewportEnvironmentId;
   cameraCommand: CameraCommand;
@@ -55,7 +49,6 @@ export interface ViewportProps {
   playing: boolean;
   presentationNonce: number;
   onSelectNode: (nodeId: string | null) => void;
-  onCommitTransform: (nodeId: string, transform: Transform) => void;
   onStats: (stats: ViewportStats) => void;
   onPresented: (frame: ViewportPresentationFrame) => void;
 }

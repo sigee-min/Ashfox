@@ -2,6 +2,7 @@ import {
   CUBE_FACE_DIRECTIONS,
   type ProjectDocument
 } from '../../model';
+import type { ExportAdaptedDocument } from '../../export/adapter';
 import { isSceneNodeEffectivelyVisible } from '../../sceneVisibility';
 import {
   RESOURCE_NAMESPACE_PATTERN,
@@ -20,7 +21,7 @@ const BEDROCK_GEOMETRY_IDENTIFIER_PATTERN =
   /^geometry\.[a-z0-9_.-]+$/;
 
 type ActorProfile = Extract<
-  ProjectDocument['formatProfile'],
+  ExportAdaptedDocument['formatProfile'],
   { id: 'minecraft.bedrock' | 'minecraft.java.geckolib5' }
 >;
 
@@ -250,7 +251,7 @@ const validateActorLocator = (
 };
 
 const validateScene = (
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   profile: ActorProfile,
   textureCount: number,
   add: FindingSink
@@ -298,7 +299,7 @@ const validateScene = (
 };
 
 const validateTextures = (
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   profile: ActorProfile,
   add: FindingSink
 ): void => {
@@ -360,7 +361,7 @@ const validateTextures = (
 };
 
 const validateAnimationChannels = (
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   profile: ActorProfile,
   add: FindingSink
 ): void => {
@@ -404,7 +405,7 @@ const validateAnimationChannels = (
 };
 
 export const validateMinecraftActorProfile = (
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   add: FindingSink
 ): void => {
   const profile = document.formatProfile;

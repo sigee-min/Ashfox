@@ -5,6 +5,15 @@ import {
   compileSemanticPartCuboids,
   occupancyForCuboids
 } from '../src/modeling/semanticCuboidGrammar';
+import {
+  partitionSurfaceOwnedCuboids
+} from '../src/modeling/surfaceOwnership';
+import { createProjectDocument } from '../src/project/createProjectDocument';
+import { ensureGeneratedTexture } from '../src/textures/generatedMaterial';
+import { compilePartScene } from '../src/modeling/partCompiler';
+import { readCompiledParts } from '../src/modeling/partInvariants';
+import { validatePartRecipeProjection } from '../src/modeling/partProjection';
+import { normalizePartRecipe, withPartRecipe } from '../src/modeling/partRecipe';
 
 const common = {
   parentPartId: null,
@@ -226,4 +235,109 @@ assert.throws(
       }
     ]),
   /overlap/
+);
+
+const surfaceOwned = partitionSurfaceOwnedCuboids([
+  {
+    ownerId: 'body',
+    cuboid: {
+      bounds: {
+        min: { x: 0, y: 0, z: 0 },
+        max: { x: 4, y: 4, z: 4 }
+      }
+    }
+  },
+  {
+    ownerId: 'arm',
+    cuboid: {
+      bounds: {
+        min: { x: 4, y: 1, z: 1 },
+        max: { x: 6, y: 3, z: 3 }
+      }
+    }
+  }
+]);
+assert.equal(surfaceOwned.ok, true);
+if (!surfaceOwned.ok) throw new Error(surfaceOwned.message);
+assert.equal(
+  surfaceOwned.occupancy.size,
+  72,
+  'surface partitioning must preserve the exact occupied solid'
+);
+assert.equal(
+  surfaceOwned.cuboids.some((cuboid) =>
+    Object.values(cuboid.faces).includes('mixed')
+  ),
+  false,
+  'a partial attachment must split its host face before rendering'
+);
+const bodyEastFaces = surfaceOwned.cuboids
+  .filter((cuboid) => cuboid.ownerId === 'body')
+  .map((cuboid) => cuboid.faces.east);
+assert.ok(bodyEastFaces.includes('internal'));
+assert.ok(bodyEastFaces.includes('external'));
+
+const projectionParts = [
+  {
+    kind: 'mass' as const,
+    partId: 'body',
+    parentPartId: null,
+    materialId: 'base',
+    joint: { kind: 'fixed' as const },
+    attachment: null,
+    center: [0, 0, 0] as const,
+    radii: [4, 4, 4] as const,
+    profile: 'block' as const
+  },
+  {
+    kind: 'mass' as const,
+    partId: 'arm',
+    parentPartId: 'body',
+    materialId: 'accent',
+    joint: { kind: 'fixed' as const },
+    attachment: {
+      parentAnchor: [4, 0, 0] as const,
+      partAnchor: [4, 0, 0] as const
+    },
+    center: [5, 0, 0] as const,
+    radii: [1, 1, 1] as const,
+    profile: 'block' as const
+  }
+];
+const projectionMaterials = [
+  { id: 'base', baseColor: '#112233' },
+  { id: 'accent', baseColor: '#445566' }
+];
+const normalizedProjectionRecipe = normalizePartRecipe(
+  projectionParts,
+  projectionMaterials
+);
+assert.equal(normalizedProjectionRecipe.ok, true);
+if (!normalizedProjectionRecipe.ok) {
+  throw new Error(normalizedProjectionRecipe.issues[0]?.message);
+}
+const projectionSeed = ensureGeneratedTexture(createProjectDocument({
+  id: 'surface-projection',
+  name: 'surface projection',
+  revision: 'r1',
+  createdAt: '2026-08-09T00:00:00.000Z'
+}));
+const projectionCompile = compilePartScene(projectionSeed.document, {
+  parts: normalizedProjectionRecipe.recipe.parts,
+  materials: normalizedProjectionRecipe.recipe.materials,
+  textureId: projectionSeed.textureId
+});
+assert.equal(projectionCompile.ok, true);
+if (!projectionCompile.ok) throw new Error(projectionCompile.message);
+const projectedDocument = withPartRecipe(
+  projectionCompile.document,
+  normalizedProjectionRecipe.recipe
+);
+const projectedParts = readCompiledParts(projectedDocument);
+assert.equal(projectedParts.ok, true);
+if (!projectedParts.ok) throw new Error(projectedParts.issues[0]?.message);
+assert.deepEqual(
+  validatePartRecipeProjection(projectedDocument, projectedParts.parts),
+  [],
+  'projection must compare the same surface-owned cuboid plan as compilation'
 );

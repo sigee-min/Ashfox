@@ -29,9 +29,6 @@ import type {
   ArtifactFile
 } from '../files/artifactFile';
 import type {
-  TargetArtifactFile
-} from '../files/browserFileWorkflow';
-import type {
   CaptureArtifactRequest
 } from '../files/captureArtifactRequest';
 import type {
@@ -59,9 +56,6 @@ import type {
   ViewPresentationRequest
 } from './types';
 import {
-  deliverAgentProject
-} from './deliverAgentProject';
-import {
   captureAgentProject
 } from './captureAgentProject';
 
@@ -81,9 +75,6 @@ interface UseAgentCommandPortInput {
   onReview: (
     request: VisualReviewDecisionRequest
   ) => Promise<PresentResult>;
-  onDeliver: (lease: OperationLeaseToken) => Promise<
-    FileOperationRunResult<TargetArtifactFile>
-  >;
   onCapture: (
     request: CaptureArtifactRequest,
     lease: OperationLeaseToken
@@ -108,7 +99,6 @@ export const useAgentCommandPort = ({
   onFocusEntity,
   onPresent,
   onReview,
-  onDeliver,
   onCapture,
   buildDocuments,
   getVisualReviews,
@@ -126,7 +116,6 @@ export const useAgentCommandPort = ({
   const reportRef = useLatestValue(report);
   const onPresentRef = useLatestValue(onPresent);
   const onReviewRef = useLatestValue(onReview);
-  const onDeliverRef = useLatestValue(onDeliver);
   const onCaptureRef = useLatestValue(onCapture);
   const buildDocumentsRef = useLatestValue(buildDocuments);
   const getVisualReviewsRef = useLatestValue(getVisualReviews);
@@ -172,19 +161,6 @@ export const useAgentCommandPort = ({
             ),
             review: onReviewRef.current,
             present: onPresentRef.current
-          });
-        },
-        deliver: (lease) => {
-          const current = documentRef.current;
-          return deliverAgentProject({
-            document: current,
-            report: reportRef.current,
-            visualReviews: getVisualReviewsRef.current(
-              current.id,
-              current.revision
-            ),
-            currentDocument: () => documentRef.current,
-            exportTarget: () => onDeliverRef.current(lease)
           });
         },
         capture: (

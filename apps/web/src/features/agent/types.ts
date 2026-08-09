@@ -1,9 +1,7 @@
 import { COMMAND_RECEIPT_SCHEMA_VERSION } from '@ashfox/engine-core';
 import type {
   CommandSource,
-  ExportAdaptationReceipt,
   InvariantFinding,
-  MinecraftGameVersion,
   ProjectCommandOperation
 } from '@ashfox/engine-core';
 import {
@@ -34,20 +32,6 @@ export type {
 
 export type InspectRequest =
   | { kind: 'command'; name: string }
-  | { kind: 'catalog'; cursor?: string; limit?: number }
-  | { kind: 'parts'; ids: readonly string[] }
-  | { kind: 'entity'; ids: readonly string[] }
-  | { kind: 'texture'; ids: readonly string[] }
-  | {
-      kind: 'clip';
-      id: string;
-      trackId?: string;
-      cursor?: string;
-      limit?: number;
-    }
-  | { kind: 'activity'; cursor?: string; limit?: number }
-  | { kind: 'target' }
-  | { kind: 'authoring'; id?: string }
   | { kind: 'finding'; path: string };
 
 export interface InspectSuccess {
@@ -189,38 +173,6 @@ export interface PresentFailure {
 
 export type PresentResult = PresentSuccess | PresentFailure;
 
-export interface DeliverSuccess {
-  ok: true;
-  revision: string;
-  artifact: {
-    name: string;
-    contentType: string;
-    byteLength: number;
-    target: string;
-    gameVersion: MinecraftGameVersion | null;
-    contentHash: string;
-    adaptationCount: number;
-    adaptations: ExportAdaptationReceipt;
-  };
-}
-
-export interface DeliverFailure {
-  ok: false;
-  revision: string;
-  error: {
-    code:
-      | 'busy'
-      | 'cancelled'
-      | 'invalid_state'
-      | 'export_failed';
-    message?: string;
-    path?: string;
-    expected?: string;
-  };
-}
-
-export type DeliverResult = DeliverSuccess | DeliverFailure;
-
 export type AgentCaptureRequest =
   | { kind: 'result' }
   | { kind: 'animation'; clipId?: string }
@@ -269,7 +221,6 @@ export interface AgentCommandPortApi {
   run(request: AgentRunRequest): Promise<RunResult>;
   present(request: PresentRequest): Promise<PresentResult>;
   capture(request: AgentCaptureRequest): Promise<CaptureResult>;
-  deliver(): Promise<DeliverResult>;
 }
 
 declare global {

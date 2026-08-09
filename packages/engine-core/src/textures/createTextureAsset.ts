@@ -1,5 +1,4 @@
 import type {
-  MinecraftTextureBinding,
   ProjectDocument,
   TextureAsset
 } from '../model';
@@ -14,56 +13,6 @@ export interface CreateTextureAssetInput {
   background?: string;
 }
 
-export const createMinecraftTextureBinding = (
-  location: {
-    namespace: string;
-    kind: 'block' | 'item' | 'entity';
-    modelPath: string;
-  },
-  id: string,
-  ordinal: number
-): MinecraftTextureBinding => {
-  const token = resourceToken(id, 'texture');
-  const suffix = ordinal === 0 ? '' : `_${token}`;
-  return {
-    key: ordinal === 0 ? 'base' : `${token}_${ordinal}`,
-    resource: {
-      namespace: location.namespace,
-      path: `${location.kind}/${location.modelPath}${suffix}`
-    },
-    extension: 'png',
-    particle: ordinal === 0
-  };
-};
-
-const textureBinding = (
-  document: ProjectDocument,
-  id: string,
-  ordinal: number
-): MinecraftTextureBinding | undefined => {
-  const profile = document.formatProfile;
-  if (
-    profile.id !== 'minecraft.java_block' &&
-    profile.id !== 'minecraft.bedrock' &&
-    profile.id !== 'minecraft.java.geckolib5'
-  ) {
-    return undefined;
-  }
-  return createMinecraftTextureBinding(
-    {
-      namespace: profile.namespace,
-      kind: profile.id === 'minecraft.java_block'
-        ? profile.modelKind
-        : profile.id === 'minecraft.bedrock'
-          ? profile.geometryKind
-          : profile.assetKind,
-      modelPath: profile.modelPath
-    },
-    id,
-    ordinal
-  );
-};
-
 export const createTextureAsset = (
   document: ProjectDocument,
   input: CreateTextureAssetInput
@@ -72,7 +21,6 @@ export const createTextureAsset = (
   const projectToken = resourceToken(document.id, 'project');
   const textureToken = resourceToken(input.id, 'texture');
   const background = input.background ?? '#8e98a3';
-  const minecraft = textureBinding(document, input.id, ordinal);
   return {
     id: input.id,
     name: input.name.trim(),
@@ -91,7 +39,6 @@ export const createTextureAsset = (
     renderSides: 'double',
     atlasMode: input.atlasMode ?? 'generate',
     pbrChannel: 'color',
-    ...(minecraft ? { minecraft } : {}),
     raster: {
       background,
       canvasDetails: []

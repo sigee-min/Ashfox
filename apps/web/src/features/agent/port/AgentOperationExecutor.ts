@@ -8,7 +8,6 @@ import type {
 import type {
   AgentCaptureRequest,
   CaptureResult,
-  DeliverResult,
   PresentRequest,
   PresentResult,
   RunResult
@@ -50,31 +49,6 @@ export class AgentOperationExecutor {
           ? 'Command batch was cancelled.'
           : 'Command batch could not be submitted.'
       )
-    });
-  }
-
-  deliver(
-    lease: OperationLeaseToken,
-    finish: () => void
-  ): Promise<DeliverResult> {
-    const deliver = this.dependencies.deliver;
-    if (!deliver) {
-      throw new Error('Delivery adapter is unavailable.');
-    }
-    return executeLeasedOperation({
-      lease,
-      start: () => this.updateStatus('working'),
-      cleanup: finish,
-      complete: () => this.updateStatus('connected'),
-      execute: () => deliver(lease),
-      failure: () => ({
-        ok: false,
-        revision: this.dependencies.currentRevision(),
-        error: {
-          code: 'export_failed',
-          message: 'Project delivery could not be completed.'
-        }
-      })
     });
   }
 

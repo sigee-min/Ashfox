@@ -1,7 +1,7 @@
 import type {
-  ProjectDocument,
   TextureAsset
 } from '../../../model';
+import type { ExportAdaptedDocument } from '../../adapter';
 import { validateExportTarget } from '../../pipeline/validateTarget';
 import {
   ExportMaterializationRequiredError,
@@ -55,7 +55,7 @@ const textureMimeType = (
   return texture.source.contentType;
 };
 
-const unitScaleFor = (document: ProjectDocument): number => {
+const unitScaleFor = (document: ExportAdaptedDocument): number => {
   switch (document.settings.coordinateSystem.unit) {
     case 'pixel':
       return 1 / 16;
@@ -66,7 +66,7 @@ const unitScaleFor = (document: ProjectDocument): number => {
 };
 
 export const buildGltf = (
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   options: GltfBuildOptions = {}
 ): CompiledGltf => {
   const profile = document.formatProfile;
@@ -211,7 +211,7 @@ export const buildGltf = (
   };
 };
 
-export const exportGltf = (document: ProjectDocument): ExportBundle => {
+export const exportGltf = (document: ExportAdaptedDocument): ExportBundle => {
   const validation = validateExportTarget(document, {
     profileId: 'gltf.2',
     errorMessage: 'glTF 2.0 export validation failed.'
@@ -230,7 +230,7 @@ export const exportGltf = (document: ProjectDocument): ExportBundle => {
 };
 
 export const exportGltfResolved = async (
-  document: ProjectDocument,
+  document: ExportAdaptedDocument,
   options: GltfResolvedExportOptions
 ): Promise<ExportBundle> => {
   const validation = validateExportTarget(document, {

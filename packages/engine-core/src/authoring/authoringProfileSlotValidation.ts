@@ -10,6 +10,7 @@ import {
   type AuthoringSlotAssignment,
   type AuthoringSupport
 } from './authoringTypes';
+import type { AuthoringSpan } from './authoringSpanTypes';
 
 const validateParentReferences = (
   slots: readonly AuthoringSlotAssignment[],
@@ -153,6 +154,24 @@ const supportSignature = (support: AuthoringSupport): string => {
   });
 };
 
+const spanSignature = (span: AuthoringSpan): string =>
+  span.kind === 'none'
+    ? 'none'
+    : canonicalJsonString({
+        kind: span.kind,
+        obligationId: span.obligationId,
+        rootPartCount: span.rootPartIds.length,
+        spars: span.spars.map((spar) => ({
+          sparId: spar.sparId,
+          partCount: spar.partIds.length
+        })),
+        membranes: span.membranes.map((membrane) => ({
+          membraneId: membrane.membraneId,
+          partCount: membrane.partIds.length,
+          boundedBySparIds: membrane.boundedBySparIds
+        }))
+      });
+
 const lateralSide = (
   slot: AuthoringSlotAssignment
 ): 'left' | 'right' | null => {
@@ -223,6 +242,7 @@ const validateSpatialContracts = (
       new Set(pair.map((slot) => slot.structuralRole)).size === 1 &&
       new Set(pair.map((slot) => slot.qualityStage)).size === 1 &&
       new Set(pair.map((slot) => supportSignature(slot.support))).size === 1 &&
+      new Set(pair.map((slot) => spanSignature(slot.span))).size === 1 &&
       symmetricParents &&
       sides.length === 2 &&
       new Set(sides).size === 2;
@@ -230,8 +250,8 @@ const validateSpatialContracts = (
       addIssue(
         issues,
         'slots',
-        `Pair "${pairId}" must contain exactly two isomorphic support slots with one left and one right member.`,
-        'two same-role, stage, support shape, and semantically corresponding centered/paired parents carrying complementary left/right relations'
+        `Pair "${pairId}" must contain exactly two isomorphic semantic slots with one left and one right member.`,
+        'two same-role, stage, support/span shape, and semantically corresponding centered/paired parents carrying complementary left/right relations'
       );
     }
   }
@@ -245,6 +265,15 @@ const validateSpatialContracts = (
         'slots',
         'A bilateral project requires its root core slot to be centered.',
         'root symmetry {kind:"centered"}'
+      );
+    }
+    for (const slot of slots) {
+      if (slot.symmetry.kind !== 'asymmetric') continue;
+      addIssue(
+        issues,
+        `slots.${slot.slotId}.symmetry`,
+        `Bilateral project slot "${slot.slotId}" cannot declare asymmetric ownership.`,
+        'centered or paired slot symmetry; use asymmetric project intent for intentional asymmetry'
       );
     }
   } else if (projectSymmetry?.kind === 'asymmetric') {

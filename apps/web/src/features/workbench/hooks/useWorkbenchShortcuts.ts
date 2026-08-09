@@ -1,12 +1,10 @@
 'use client';
 
 import { useEffect } from 'react';
-import type { TransformControlsMode } from 'three/addons/controls/TransformControls.js';
 
 interface WorkbenchShortcutHandlers {
   onUndo: () => void;
   onRedo: () => void;
-  onTransformMode: (mode: TransformControlsMode) => void;
   onTogglePlayback: () => void;
   onClosePanels: () => void;
 }
@@ -30,7 +28,6 @@ const isInteractive = (target: EventTarget | null): boolean =>
 export const useWorkbenchShortcuts = ({
   onUndo,
   onRedo,
-  onTransformMode,
   onTogglePlayback,
   onClosePanels
 }: WorkbenchShortcutHandlers): void => {
@@ -46,9 +43,6 @@ export const useWorkbenchShortcuts = ({
         return;
       }
 
-      if (event.key.toLowerCase() === 'w') onTransformMode('translate');
-      if (event.key.toLowerCase() === 'e') onTransformMode('rotate');
-      if (event.key.toLowerCase() === 'r') onTransformMode('scale');
       if (event.code === 'Space') {
         event.preventDefault();
         onTogglePlayback();
@@ -62,7 +56,6 @@ export const useWorkbenchShortcuts = ({
     onClosePanels,
     onRedo,
     onTogglePlayback,
-    onTransformMode,
     onUndo
   ]);
 };

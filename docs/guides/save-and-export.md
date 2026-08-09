@@ -1,19 +1,18 @@
 # Export a Finished Asset
 
-Tell the agent which target will consume the asset. It builds against that
-target, completes the required visual reviews, and delivers the prepared
-artifact.
+Ashfox first compiles one target-independent canonical asset from the confirmed
+Intent Program. Choose a delivery adapter only when you are ready to export.
 
-## Create a project with the right settings
+## Create the canonical project
 
-Include the project settings in the first request:
+The project itself needs only a name. Describe the asset's form, support,
+surface, and motion in its Intent Program; do not include coordinates or a
+delivery target.
 
-- **Name** — the human-readable project name;
-- **Format** — Java block, GeckoLib 5, Bedrock, GLB, or glTF;
-- **Game version** — one of the versions offered for a Minecraft format.
+- **Name** — the human-readable project name.
 
 ```text
-Create a GeckoLib 5 project named Ember Stag.
+Create a project named Ember Stag.
 ```
 
 Ashfox uses its fixed iconic form scale and grows the generated atlas as
@@ -23,15 +22,16 @@ validated automatically.
 ## Export a finished asset
 
 ```text
-Validate the current project for its configured target.
-Fix blocking findings, export it, deliver the artifact to artifacts/, and
-verify the final filename, extension, and size.
+Open **Export**, choose Java block, GeckoLib 5, Bedrock, GLB, or glTF, and
+provide a Minecraft game version, namespace, and path only when that adapter
+needs them. Fix any adapter-specific finding, then export and verify the final
+filename, extension, and size.
 ```
 
 Java block, GeckoLib 5, Bedrock, and glTF use ZIP when the target needs several
 related files. GLB can contain geometry, animation, and textures in one binary.
 
-Export adapts a copy of the canonical project to the configured profile. It may
+Export adapts a copy of the canonical project to the selected adapter. It may
 bake portable values or leave out target-only events, but it does not delete
 source clips or events. The export result includes a structured receipt of every
 converted or omitted item alongside the prepared artifact metadata.
@@ -41,12 +41,10 @@ option.
 
 ## Verify delivery
 
-The agent reports an artifact only after the workbench validates the current
-revision and returns its target, filename, byte length, and SHA-256 content
-hash. It also returns the adaptation count and the structured `converted` and
-`omitted` receipt. An omitted item is absent from that artifact only; it remains
-editable in the project. The agent then transfers that exact prepared artifact
-and verifies the final location.
+The Export menu reports target-specific compatibility failures before writing an
+artifact. A successful export returns the filename, byte length, SHA-256 content
+hash, and structured `converted` and `omitted` receipt. An omitted item is
+absent from that artifact only; it remains in the canonical project.
 
 Expected extensions:
 

@@ -29,7 +29,6 @@ import type {
   AgentCommandPortApi,
   AgentRunRequest,
   CaptureResult,
-  DeliverResult,
   InspectRequest,
   InspectResult,
   PresentRequest,
@@ -88,10 +87,6 @@ export class AgentCommandPort implements AgentCommandPortApi {
     return this.captureController.capture(request);
   }
 
-  deliver(): Promise<DeliverResult> {
-    return this.lifecycle.deliver();
-  }
-
   run(request: AgentRunRequest): Promise<RunResult> {
     return this.runController.run(request);
   }
@@ -130,18 +125,6 @@ export class AgentCommandPort implements AgentCommandPortApi {
         return this.present(request.payload as PresentRequest);
       case 'capture':
         return this.capture(request.payload as AgentCaptureRequest);
-      case 'deliver':
-        return request.payload === undefined
-          ? this.deliver()
-          : {
-              ok: false,
-              revision: this.dependencies.currentRevision(),
-              error: {
-                code: 'invalid_state',
-                path: 'payload',
-                expected: 'no deliver payload'
-              }
-            };
       case 'run':
         return this.runController.runConnected(
           request.payload,

@@ -11,8 +11,7 @@ import { projectToThreeScene } from '../../rendering/projectSceneProjection';
 import { useViewportRuntime } from './viewport/useViewportRuntime';
 import {
   applyCameraCommand,
-  applyViewportEnvironment,
-  configureTransformControls
+  applyViewportEnvironment
 } from './viewport/viewportRuntime';
 import {
   reportViewportFrame
@@ -22,9 +21,6 @@ import type { ViewportProps } from './viewport/viewportTypes';
 export function Viewport({
   document,
   assets,
-  selectedNodeId,
-  transformMode,
-  snapEnabled,
   options,
   environment,
   cameraCommand,
@@ -33,17 +29,13 @@ export function Viewport({
   playing,
   presentationNonce,
   onSelectNode,
-  onCommitTransform,
   onStats,
   onPresented
 }: ViewportProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const documentRef = useLatestValue(document);
-  const selectedNodeIdRef = useLatestValue(selectedNodeId);
   const cameraCommandRef = useLatestValue(cameraCommand);
   const onSelectNodeRef = useLatestValue(onSelectNode);
-  const onCommitTransformRef = useLatestValue(onCommitTransform);
   const onStatsRef = useLatestValue(onStats);
   const onPresentedRef = useLatestValue(onPresented);
   const presentationStateRef = useLatestValue({
@@ -69,10 +61,7 @@ export function Viewport({
   });
 
   const runtimeRef = useViewportRuntime(hostRef, canvasRef, {
-    document: documentRef,
-    selectedNodeId: selectedNodeIdRef,
     onSelectNode: onSelectNodeRef,
-    onCommitTransform: onCommitTransformRef,
     onStats: onStatsRef,
     onFrame: onFrameRef
   });
@@ -81,7 +70,6 @@ export function Viewport({
     const runtime = runtimeRef.current;
     if (!runtime) return;
 
-    runtime.transform.detach();
     if (runtime.projection) {
       runtime.scene.remove(runtime.projection.root);
       runtime.projection.dispose();
@@ -111,48 +99,13 @@ export function Viewport({
     const runtime = runtimeRef.current;
     const projection = runtime?.projection;
     if (!runtime || !projection) return;
-    if (playing) {
-      runtime.transform.detach();
-    }
     applyAnimationPose(document, projection, activeClipId, playhead);
   }, [activeClipId, document, playhead, playing, runtimeRef]);
 
   useEffect(() => {
     const runtime = runtimeRef.current;
-    const projection = runtime?.projection;
-    if (!runtime || !projection) return;
-
-    runtime.transform.detach();
-    if (!selectedNodeId || playing) return;
-    if (
-      document.scene.nodes[selectedNodeId]?.generation?.authority ===
-      'ashfox.part-compiler'
-    ) {
-      return;
-    }
-    const object = projection.objectsByNodeId.get(selectedNodeId);
-    if (!object) return;
-    runtime.transform.attach(object);
-  }, [
-    assets,
-    document,
-    options.showSkeleton,
-    options.showWireframe,
-    playing,
-    runtimeRef,
-    selectedNodeId
-  ]);
-
-  useEffect(() => {
-    const runtime = runtimeRef.current;
-    if (runtime) configureTransformControls(runtime, transformMode, snapEnabled);
-  }, [runtimeRef, snapEnabled, transformMode]);
-
-  useEffect(() => {
-    const runtime = runtimeRef.current;
     if (!runtime) return;
     runtime.grid.visible = options.showGrid;
-    runtime.axes.visible = options.showGrid;
   }, [options.showGrid, runtimeRef]);
 
   useEffect(() => {

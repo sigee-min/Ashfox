@@ -1,33 +1,12 @@
 import { canonicalJsonString } from '../canonicalJson';
-import {
-  animationSupportForFormatProfile,
-  formatProfileSupportsAnimation
-} from '../export/compatibility';
-import type { ProjectDocument, ProjectFormatProfile } from '../model';
+import type { ProjectDocument } from '../model';
 import {
   AUTHORING_ROUTING_CONTRACT_VERSION,
   type AuthoringRoutingSnapshot
 } from './authoringTypes';
 
-const targetContract = (
-  profile: ProjectFormatProfile
-): Readonly<Record<string, string>> => {
-  switch (profile.id) {
-    case 'minecraft.java_block':
-      return { profileId: profile.id, assetKind: profile.modelKind };
-    case 'minecraft.bedrock':
-      return { profileId: profile.id, assetKind: profile.geometryKind };
-    case 'minecraft.java.geckolib5':
-      return { profileId: profile.id, assetKind: profile.assetKind };
-    case 'gltf.2':
-      return { profileId: profile.id, assetKind: 'scene' };
-    case 'ashfox.generic':
-      return { profileId: profile.id, assetKind: 'generic' };
-  }
-};
-
 export const authoringRoutingSnapshot = (
-  document: Pick<ProjectDocument, 'intent' | 'formatProfile'>
+  document: Pick<ProjectDocument, 'intent'>
 ): AuthoringRoutingSnapshot | null => {
   if (!document.intent) return null;
   const referenceIds = (document.intent.references ?? [])
@@ -35,17 +14,13 @@ export const authoringRoutingSnapshot = (
     .sort((left, right) => left.localeCompare(right));
   return {
     contractVersion: AUTHORING_ROUTING_CONTRACT_VERSION,
-    animationSupported:
-      formatProfileSupportsAnimation(document.formatProfile),
+    // Canonical authoring always retains its neutral idle. Delivery adapters
+    // decide whether a selected runtime exports animation later.
+    animationSupported: true,
     canonicalInput: canonicalJsonString({
       intent: {
         ...document.intent,
         references: document.intent.references ?? []
-      },
-      target: {
-        ...targetContract(document.formatProfile),
-        animationSupport:
-          animationSupportForFormatProfile(document.formatProfile)
       }
     }),
     referenceIds
@@ -53,7 +28,7 @@ export const authoringRoutingSnapshot = (
 };
 
 export const authoringRoutingMatches = (
-  document: Pick<ProjectDocument, 'intent' | 'formatProfile'>,
+  document: Pick<ProjectDocument, 'intent'>,
   snapshot: AuthoringRoutingSnapshot
 ): boolean => {
   const current = authoringRoutingSnapshot(document);

@@ -3,10 +3,8 @@ import {
   listAgentCommandDefinitions
 } from '@ashfox/engine-core';
 
-import {
-  agentCommandProtocol
-} from './agentCommandProtocol';
 import { canonicalFingerprint } from '../../application/canonicalFingerprint';
+import { agentCommandProtocol } from './agentCommandProtocol';
 
 const commands = listAgentCommandDefinitions().map((definition) => ({
   name: definition.name,
@@ -14,26 +12,17 @@ const commands = listAgentCommandDefinitions().map((definition) => ({
   schemaHash: canonicalFingerprint(definition.inputSchema)
 }));
 
-const compatibility = exportCompatibilityOptions();
-
 export const agentManifest = {
   protocol: agentCommandProtocol.protocol,
   workbench: agentCommandProtocol.workbench,
   href: agentCommandProtocol.href,
   description:
-    'Canonical machine guide for composing, creating, reviewing, and exporting one structurally authored iconic Minecraft-style asset with ashfox.',
-  compatibility: {
-    options: compatibility,
-    contract:
-      'Choose a listed target and gameVersion pair; omit gameVersion for glTF or GLB. Minecraft omission selects that target’s curated default. animationSupport "none" omits artifact clips while keeping the canonical source unchanged; "actor" and "scene" require canonical idle.'
-  },
+    'Machine guide for compiling one intent program into an Ashfox asset and reviewing canonical output.',
   setup: {
     manifest:
-      'Fetch this JSON with a direct system HTTP request such as curl. Do not navigate the controlled browser away from the workbench.',
-    browser:
-      'Open /workbench/ in an in-app browser, or a connected browser if unavailable.',
+      'Fetch this JSON directly. Keep the controlled browser on the workbench.',
     ready:
-      'Inspect the active project, then ask exactly: "What would you like to create?" Do not change the project before the user answers.'
+      'Inspect the active project, then ask exactly: "What would you like to create?" Do not mutate the project before the answer.'
   },
   pageApi: {
     global: 'ashfox',
@@ -41,239 +30,99 @@ export const agentManifest = {
     runMethod: 'run',
     presentMethod: 'present',
     captureMethod: 'capture',
-    deliverMethod: 'deliver',
     inspect: {
       current:
-        'window.ashfox.inspect() returns operation, revision, stage, first blocker, nextActions, structural authority and active quality gate, counts, form composition, target, and reviews. Cuboid counts reveal fragmentation, not artistic budgets. Submit operation actions directly; inspect command schemas.',
+        'window.ashfox.inspect() returns workflow stage, blocker, nextActions, canonical-output readiness, and review state.',
       command:
-        'window.ashfox.inspect({kind:"command",name:"<command>"}) returns the exact current input schema. Read it immediately before using an unfamiliar command.',
-      parts:
-        'window.ashfox.inspect({kind:"parts",ids:["<partId>"]}) returns authorable project-space specs. Reapplying an unchanged inspected spec is a visual no-op.',
-      clip:
-        'window.ashfox.inspect({kind:"clip",id:"<clipId>"}) returns paged authoring track summaries. Add trackId to page through exact keys for one track; follow nextCursor and never infer omitted keys.',
-      catalog:
-        'Use kind authoring without id for contract, specialists, claims, progress, and recipes. Modules expose structuralRole, qualityStage, parentSlotIds, spatialRelations, facing, symmetry, and typed support; assetQuality reports structure, exact symmetry, support, coverage, and face. Role policies list allowed parts and stages. Recipes never decide commands.'
+        'window.ashfox.inspect({kind:"command",name:"<command>"}) returns the exact current schema. Inspect only commands named by nextActions.',
+      rule:
+        'Do not inspect authoring catalogs, semantic plans, raw parts, clips, or editable geometry. They are compiler internals.'
     },
     run: {
       call:
         'await window.ashfox.run({requestId:"stable-unique-id",operations:[{name:"<command>",payload:{}}]})',
       contract:
-        'Submit 1-64 atomic operations. The port supplies project and revision. Same-session retries of identical requestId and operations return the same result; changed reuse is rejected.',
-      terminal:
-        'Every outcome resolves once and releases working state.'
+        'The only agent-authored asset mutation is intent.program.propose {source:"..."}. Submit it alone, then wait. The user confirms or replaces it in the workbench; the compiler owns all derived project, structure, material, and motion output.'
     },
     present: {
-      call:
-        'await window.ashfox.present({review:"next"})',
-      preview:
-        'await window.ashfox.present({review:"preview",milestone:"archetype"|"specialists",camera?:"perspective"|"native"|"front"|"side"|"top"})',
+      call: 'await window.ashfox.present({review:"next"})',
       accept:
-        'await window.ashfox.present({review:"accept",frameNonce:<returned frameNonce>,checkIds:[...returned reviewChecks ids]})',
+        'await window.ashfox.present({review:"accept",frameNonce:<frameNonce>,checkIds:[...reviewCheckIds]})',
       reject:
-        'await window.ashfox.present({review:"reject",frameNonce:<returned frameNonce>,issues:["silhouette"|"proportion"|"connection"|"clipping"|"focal_detail"|"material"|"pivot"|"motion"|"other"],failedCheckIds:[...failed returned reviewChecks ids]})',
+        'await window.ashfox.present({review:"reject",frameNonce:<frameNonce>,issues:[...],failedCheckIds:[...reviewCheckIds]})',
       contract:
-        'preview records evidence, not the delivery ledger; next renders one missing view or cycle. Results bind frameNonce, pixel-derived frameEvidence, and reviewChecks carrying evidenceCriteria and criterionId claims. Accept all check IDs; reject failed IDs and issues. Stale frames fail. Only accepted delivery frames complete review.'
+        'Review compiled output only. A rejected frame requires a revised intent program, never a part, profile, material, or animation patch.'
     },
     capture: {
-      result:
-        'await window.ashfox.capture({kind:"result"})',
-      animation:
-        'await window.ashfox.capture({kind:"animation",clipId:"idle"})',
-      build:
-        'await window.ashfox.capture({kind:"build"})',
-      contract:
-        'Supply kind and optional clipId. Ashfox derives camera, background, resolution, timing, and files. Build replays real commits. Omitted clipId selects canonical animation. Results return metadata and SHA-256, never raw bytes. Concurrent duplicates share a promise.',
-    },
-    deliver: {
-      call: 'await window.ashfox.deliver()',
-      contract:
-        'No payload is accepted. The project profile owns target, game version, format, and options. Delivery rejects unfinished work and returns artifact metadata, adaptationCount, and {converted,omitted} adaptations. Lowering never mutates the canonical project.'
+      result: 'await window.ashfox.capture({kind:"result"})',
+      build: 'await window.ashfox.capture({kind:"build"})'
     }
   },
   authoring: {
-    project:
-      'Start with project.create {name,target?,gameVersion?,density?}. Read compatibility.options or the schema before choosing a Minecraft version. Target defaults to glb; each Minecraft target has one curated default; density is fixed to 1. IDs and paths are derived. Never simulate texture detail with density 2 or 4 geometry.',
-    iconic:
-      'Iconic pixel is the only style. On a 1-unit lattice, geometry must change silhouette, depth, articulation, or identity. Preserve identity-bearing middle forms: neck break, muzzle plane, mass rhythm, span fold, joint, foot, or taper. Iconic does not mean childlike, uniform, or fewest parts. formComposition is diagnostic, never an artistic cube budget. Pixel variation belongs to system-generated surface clusters and noise, not detail cubes or painted texels. There is no style escape hatch.',
-    intent:
-      'Set project.intent.set {subject,forward,grounding,symmetry,features?,references?}. symmetry is asymmetric or bilateral with integer planeTwice; even values lie between cells and odd values cross cell centers, so both core widths are exact. Normalize every requested or observed cue into features. Each call replaces intent; there are no directional or symmetry defaults.',
     authority:
-      'After intent, inspect {kind:"authoring"} and the project.authoring.configure schema. Configure one composable structural authority from neutral module instances; do not select or invent a named body plan. Cover each evidenceCriterion with criterionId, basis:"observed"|"requested", referenceIds, and rationale. Optional modules require identity, silhouette, articulation, or target-format reason. Specialists add bounded policy and motion, never topology.',
-    structuralAuthority:
-      'The authority is an open module graph. Each slot declares structuralRole, qualityStage, partIds, parentSlotIds, spatialRelations, facing, symmetry, and support. centered slots self-reflect; paired slots are absent together or atomic exact reflected occupancy. Missing or contradictory landmarks block the next gate.',
+      'Intent source is the sole modeling authority. AST, normalized IR, semantic contract, layout, PartRecipe, scene, rig, texture, and animations are compiler-owned derived output.',
+    program: {
+      grammar:
+        'asset "name"; track essential|hero; domain organism|constructed; frame front north|south|east|west; symmetry bilateral|asymmetric; rest feet|base|airborne; body core|mass|chain|limb|wheel|radial declarations; supported surfaces; face; optional semantic palette natural|ember|ocean|noir|metal|gold. The compiler supplies canonical idle.',
+      submit:
+        'Call intent.program.propose {source}. Source must state topology-relevant meaning, not coordinates, cubes, materials, pivots, UVs, or keyframes.'
+    },
     tracks: {
-      contract:
-        'Tracks are asset-wide representation contracts, never low/high quality. hero is default; face rules are a conditional part.',
       essential:
-        'essential deliberately distills the whole asset for explicit cute, chibi, mascot, or icon needs. Silhouette and middle structure remain complete. Targets may be shared; undeclared focal modules are optional.',
+        'Preserves the same semantic graph with a compact detail budget.',
       hero:
-        'hero is for ambiguity, reference fidelity, terminal forms, and semantic material boundaries. It requires all stages, exclusive feature targets, and multi-view material review.',
-      coverage:
-        'Map every intent.features.N exactly once with slotIds and materialIds; use geometry, features, or role materials. Automatic noise never counts.'
+        'Preserves the same semantic graph with additional compiler-derived structure and focal detail. Track never changes subject, support, pose, face, or surface meaning.'
     },
-    face: {
-      contract:
-        'Set faceMode explicitly; never infer it. A biological face uses full with one focal-frame host, component-exclusive descendant slots, and explicit role materials.',
-      tracks:
-        'full essential requires readable eye, nasal nose|muzzle|beak, and oral mouth. full hero preserves reference proportions with eye-frame orbital|brow, nasal, oral, and jaw; an open mouth requires mouth-interior.',
-      review:
-        'At native gameplay size, gaze and expression must read. Eyes use square or slit glyphs at least 3x3 with compiler-owned sclera, iris, pupil, and outline. Single eyes self-center; even-width paired pupils choose the inner center texel so gaze converges. Keep noise subordinate. Omissions need observed/requested species evidence.'
-    },
-    motifs: {
-      core:
-        'Primary load-bearing volume. Split only for meaningful mass rhythm, articulation, or silhouette.',
-      axis:
-        'Directed serial form such as neck, tail, branch, or boom. Preserve bends and taper; never sample path cells.',
-      articulated:
-        'Jointed chain with explicit pairing and handedness. Foot support owns root, sole, toe groups, and claws whether grounded or lifted; all extend toward project forward, and paired semantic regions are exact reflections.',
-      span:
-        'Rooted spread such as wing, fin, sail, or panel: segments form spars and plates form membranes; never use a grounded limb.',
-      'focal-frame':
-        'Host planes for gaze, mouth, controls, or signage. Establish brow, muzzle, bezel, or equivalent before projecting glyphs.',
-      accent:
-        'Optional silhouette-changing horn, crest, handle, antenna, or blade. Color-only accents are features.'
-    },
-    recipes:
-      'Recipes are non-authoritative discovery examples. Their claim, slot, and binding suggestions require current schema inspection. Compatibility, readiness, review checks, and commands derive from the configured graph and document, never from a recipe.',
-    coordinates:
-      'Use integer project coordinates: +x east, +y up, +z south. One lattice unit is one model unit. Plate outlines alone are origin-relative.',
-    hierarchy:
-      'A project has one root: a lone initial part or one parentPartId:null. A fixed child may omit parent only with one unambiguous touching parent; feature and jointed parts name it. Ashfox rederives model-scale parent contact, anchors, pivots, seams, and direct semantic cuboids. partId is semantic; cubes are implementation detail.',
-    parts: {
-      mass:
-        'Primary semantic volume: center, radii, optional profile. profile:"block" is the default and should carry the torso, head, pelvis, wheel housing, or other major read. Use soft, balanced, or hard only when the rounded contour materially changes the silhouette.',
-      segment:
-        'Semantic span chain: 2-8 control points. A straight constant-thickness span emits one cuboid; bends and meaningful taper transitions add short intentional steps. One radii triple broadcasts to all points; otherwise provide one triple per point.',
-      plate:
-        'Stepped silhouette surface: plane, origin, thickness, and either rectangle size or one ordered triangle/trapezoid/rectangle outline. Sharp outline turns receive narrow silhouette accents instead of dense raster stairs.',
-      radial:
-        'Axis-aligned disk or ring: center, axis, outer radius, optional inner radius, depth. Radius changes proportion; the compiler keeps a small disk/ring template rather than sampling a curve.',
-      feature:
-        'A feature is a zero-depth mark on an exposed mass or segment face. Non-eyes may project; eye anchors are explicit so a pair cannot snap apart. Use eye glyph square|slit, nose dot|snout, or mouth neutral|fang|beak. Eyes derive high-contrast sclera/iris/pupil/outline without eyeball, socket, or billboard. motif:"patch" makes color-only regions; Ashfox supplies tone and automatic noise. Eye, iris, pupil, or glint geometry IDs are rejected.'
-    },
-    joints:
-      'Omit joint for rigid attachment. A hinge declares one axis; a ball rotates in XYZ. Ashfox derives attachment and pivot.',
-    materials:
-      'A new part names materialId and may define materials [{id,baseColor}]. model.parts.material accepts either or both; baseColor derives/reuses an ID, and partial recolor forks shared material. Choose role colors and semantic regions, not individual pixels. Ashfox owns three-tone clusters, clustered automatic noise, directional tone, equal square surface pixels, cross-cuboid continuity, UV gutters, raster, and atlas. Automatic noise is required synthesis.',
-    mutations:
-      'model.parts.upsert preserves omitted fields on same-kind parts; kind changes require a complete shape. Use material for palette, transform {rootPartId,by}, mirror {rootPartId,axis,plane}, and delete. Inspect parts after structural edits.'
-  },
-  animation: {
-    command:
-      'Use animation.motion.upsert {clipId,role?,durationFrames?,static?,poses?,spins?,removePartIds?}. New clips require role and durationFrames; Ashfox derives 20 FPS keys, interpolation, shortest paths, and loop closure.',
-    idle:
-      'Animated targets need clipId "idle" role "idle". Use durationFrames:20 and static:true for motionless idle or a closed pose loop. Static delivery may omit clips but preserve them canonically.',
-    poses:
-      'poses is ordered {rotations:{partId:angleOrXYZ}}. Hinges use scalars; roots and balls use [x,y,z]. Put every track in the first pose; omissions carry forward. No counterpart motion is invented.',
-    spins:
-      'Use spins [{partId,turns,direction?}] for continuous hinge rotation. Loop spins require whole turns and safe 20 FPS sampling. Idle cannot contain a spin.',
-    patch:
-      'Inspect first. Omit role and durationFrames to preserve timing; changing duration validates preserved keys. Omitted tracks remain; only removePartIds deletes them. Non-static clips must move; fixed children cannot.',
-    review:
-      'Inspect after writing. present next observes one cycle; accept every check ID or reject failed IDs for that frameNonce.'
-  },
-  quality: {
-    required:
-      'Complete assets have intentional geometry and generated texture coverage. No absolute cuboid count proves quality: use the least geometry that preserves silhouette, depth, articulation, and identity, with more when meaning requires it. Animated targets need canonical idle; a static profile may retain canonical clips.',
-    structure:
-      'Prioritize silhouette, construction, proportion, connection, focal features, and articulation. Keep macro and identity-bearing middle forms; remove only unreadable micro-geometry. Before noise, realize every requested or observed cue with explicit geometry, a feature, or a distinct role material. Automatic noise never invents semantic material boundaries. Delete filler, bevel stairs, scale cubes, and hidden ribs.',
-    fidelity:
-      'Follow the configured module graph; preserve body plan, proportion, posture, maturity, and defining cues. Resolve the spatial frame from forward and symmetry first. Faces use unobstructed focal-frame surface glyphs, never decorative micro-cubes. Feet declare sole/toe/claw regions: grounded soles contact y=0 and rear or lifted feet still point toward project forward.',
-    gates: {
-      silhouette:
-        'Gate 1 — macro: establish core proportion, axes, span direction, reach, stance, and negative space. Reject an unreadable silhouette.',
-      structure:
-        'Gate 2 — meso: verify mass rhythm, roots, folds, joints, contacts, terminal forms, openings, and taper. Reject toy uniformity and fragmentation.',
-      focal:
-        'Gate 3 — focal: verify host planes, room, separation, direction, and contrast before feature projection. Never add rescue geometry.',
-      surface:
-        'Gate 4 — surface: after the first three gates, audit cue coverage and role-material boundaries, then synthesize three-tone clusters, UV continuity, and required automatic noise.'
-    },
-    review:
-      'Machine checks do not prove recognizability or appeal. Inspect front, side, top, three-quarter, and native gameplay-size views. Reject unreadable silhouettes or faces, reversed feet, axis mirrors, occlusion, missing or floating parts, clipping, bad pivots, loop snaps, micro-noise, and close-up-only detail.'
+    rules: [
+      'After intent.program.propose, stop mutation and wait for user/workbench confirmation and compilation.',
+      'To change form, pose, face, support, wings, materials, or motion, revise the source and propose again.',
+      'Never call legacy raw mutation or semantic-inspection interfaces.',
+      'Do not infer successful compilation from proposal acceptance; inspect after the workbench reports compilation.'
+    ]
   },
   workflow: [
     {
       stage: 'start',
       instruction:
-        'Inspect. Submit an operation nextAction directly. For a command nextAction, inspect its schema and provide the project-specific payload. An empty workbench starts with project.create {name,target,gameVersion?,density}; gameVersion is only for a supported Minecraft target.'
+        'If there is no project, ask the user to create one in the workbench. When asked to create or revise an asset, write one complete intent program.'
     },
     {
       stage: 'plan',
       instruction:
-        'Replace intent with subject, forward, grounding, symmetry, normalized features, and references. Inspect contracts, then call project.authoring.configure with asset-wide track, conditional face contract, exact feature coverage, claims, and modules declaring role, stage, parts, hierarchy, direction, symmetry, and typed support before coordinates.'
+        'Submit intent.program.propose {source}, then wait for explicit user confirmation and workbench compilation. Do not send follow-up mutations.'
     },
     {
       stage: 'model',
       instruction:
-        'Commit the macro pass first with profile:"block" for primary masses, then meso structure and focal frames. Map every requested or observed cue to geometry, a feature, or a distinct role material. Pass macro, meso, and focal before surface synthesis and noise. Use inspected preview milestone names and correct incomplete contributions. Staged receipts are not final review.'
+        'Model is compiler-owned. If the compiled result fails a requirement, revise the intent program and propose it; do not patch derived output.'
     },
     {
       stage: 'animate',
       instruction:
-        'For an animation-capable target, create canonical idle with animation.motion.upsert, then requested loops or one-shots from ordered poses or hinge spins. Skip this stage when inspect reports a static target.'
+        'The compiler supplies the canonical neutral idle. Do not author keyframes, rotations, loops, or one-off motion through the agent surface.'
     },
     {
       stage: 'review',
       instruction:
-        'Call present({review:"next"}), inspect the render at native size against every returned reviewCheck, then accept all checkIds or reject with issues and failedCheckIds for that frameNonce. Revise every rejection. After all delivery views pass, optionally capture a result, animation, or build.'
+        'Present compiled frames, accept valid checks, or reject with concrete visual issues. A rejection returns to an intent-program revision.'
     },
     {
       stage: 'deliver',
-      instruction:
-        'Call deliver() only when mechanically ready and visually reviewed. Transfer the prepared artifact without copying bytes through model context.'
+      instruction: 'After review, tell the user to use Export. The user chooses the target adapter, game version, namespace, and path there; the agent never selects or persists them.'
     }
   ],
   recovery: {
     invalidInput:
-      'Inspect the command schema, correct the reported path, and resubmit. Never replace surface color with dense geometry.',
+      'Correct source syntax or the reported source span, then submit one replacement intent.program.propose.',
     invalidState:
-      'Inspect the first blocker. Submit operation nextActions directly; inspect command nextActions before payloads. Failed atomic requests change nothing.',
-    concurrent:
-      'Wait for the current promise. Never prepare revisions manually.',
+      'Inspect the blocker. If it concerns compiled form, revise source; if it requires user confirmation, wait.',
     visual:
-      'If the render is wrong despite valid structure, follow reviewChecks and revise module relations, proportions, claims, or defining cues rather than adding filler detail.'
+      'Translate the observed issue into intent-program meaning and recompile. Never patch derived geometry.'
   },
-  domBridge: {
-    purpose:
-      'Fallback transport when window.ashfox is unavailable. It forwards inspect, run, present, capture, or deliver and owns no project mutation.',
-    request:
-      '{"requestId":"unique-id","method":"inspect|run|present|capture|deliver","payload":"optional for inspect, required for run/present/capture, omitted for deliver"}',
-    response:
-      '{"requestId":"same-unique-id","result":{"ok":true|false,"revision":"..."}}',
-    examples: {
-      inspect:
-        '{"requestId":"inspect-1","method":"inspect","payload":{"kind":"target"}}',
-      run:
-        '{"requestId":"run-1","method":"run","payload":{"operations":[{"name":"project.create","payload":{"name":"My asset"}}]}}',
-      present:
-        '{"requestId":"present-1","method":"present","payload":{"review":"next"}}',
-      capture:
-        '{"requestId":"capture-1","method":"capture","payload":{"kind":"result"}}',
-      deliver:
-        '{"requestId":"deliver-1","method":"deliver"}'
-    },
-    input: {
-      selector: '[data-agent-command-port-input]',
-      property: 'value',
-      write:
-        'Assign the serialized request JSON to element.value, then dispatch one bubbling input event. The data-agent-command-port-input attribute is only the selector marker.',
-      event: 'input'
-    },
-    result: {
-      selector: 'meta[data-agent-command-port-result]',
-      attribute: agentCommandProtocol.resultAttribute
-    },
-    encoding: 'json'
-  },
-  artifact: {
-    downloadSelector: '[data-ashfox-action="artifact.download"]',
-    requestedPath: 'workspace-relative directory',
-    defaultDirectory: 'artifacts/',
-    adaptationReceipt:
-      'A successful deliver result includes adaptationCount and complete adaptations.converted and adaptations.omitted arrays. Treat omitted items as absent only from that artifact; do not delete their source data.',
-    rule:
-      'After capture or deliver succeeds, transfer the prepared artifact through the connected browser, verify the actual file, and report its workspace-relative path and format. API responses contain metadata only; never copy encoded file bytes through model context.'
+  compatibility: {
+    options: exportCompatibilityOptions(),
+    contract:
+      'Target selection affects delivery adaptation only. It never creates a second intent, profile, model, or animation authority.'
   },
   commands
 } as const;

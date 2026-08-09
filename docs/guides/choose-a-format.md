@@ -1,6 +1,6 @@
 # Choose an Export Format
 
-Choose the format used by the project that will receive the asset.
+Choose the adapter used to deliver an already-compiled canonical asset.
 
 | Format | Choose it when | Download |
 | --- | --- | --- |
@@ -10,20 +10,19 @@ Choose the format used by the project that will receive the asset.
 | GLB | A game engine, 3D tool, or viewer should receive one portable file | One `.glb` with embedded geometry, animation, and textures |
 | glTF | A 3D pipeline prefers editable JSON and separate resources | ZIP with `.gltf`, binary data, and textures |
 
-Minecraft targets also show a **Game version** setting. That setting belongs to
-the project, so preview, validation, and delivery all use the same version. The
-workbench lists only combinations its exporters test; it does not accept an
-arbitrary version string.
+Minecraft adapters show a **Game version** setting in the Export menu. It is
+not saved in the project or given to the compiler. The workbench lists only
+combinations its exporters test; it does not accept an arbitrary version string.
 
 For Bedrock and GeckoLib, this is the tested consumer compatibility target.
 Multiple supported game versions can intentionally share the same stable
 geometry or animation schema; selecting a version does not invent a different
 asset payload when the consumer contract is unchanged.
 
-The selected format is the project's default delivery profile, not a destructive
-authoring mode. Changing it keeps canonical geometry, textures, hierarchy,
-clips, and events. Export compiles a copy into the selected target and reports
-anything it converted or omitted from that artifact.
+The selected format is an export-only choice, not a project setting or
+authoring mode. Changing it cannot rewrite canonical geometry, textures,
+hierarchy, clips, events, or the Intent Program. Export compiles a transient
+copy and reports anything it converted or omitted from that artifact.
 
 ## Java block
 
@@ -86,9 +85,7 @@ project.
 
 ## Before exporting
 
-Ask the agent to play every required animation, inspect texture assignment and
-pixel scale, confirm the configured target, and resolve every blocking finding.
-Target resource identifiers and export options are derived automatically. The
-agent delivers only after every revision-bound visual review for the configured
-profile is accepted. A successful delivery returns the converted and omitted
-receipt alongside the artifact metadata.
+Review canonical animation, texture assignment, and pixel scale first. Then
+choose the export adapter and resolve any adapter-specific finding in the
+Export menu. Namespace, path, and version live only in that menu. A successful
+export returns the converted and omitted receipt alongside artifact metadata.

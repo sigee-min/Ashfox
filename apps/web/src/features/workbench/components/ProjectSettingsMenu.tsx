@@ -5,126 +5,37 @@ import {
 } from 'react';
 
 import {
-  getArchetype,
-  getSpecialist,
-  isExportModelPathValid,
-  isExportNamespaceValid,
-  normalizeExportModelPath,
   type ProjectDocument
 } from '@ashfox/engine-core';
 
-import {
-  editableProjectTargetFor,
-  defaultProjectGameVersionFor,
-  isMinecraftExportTarget,
-  projectExportTargetFor
-} from '../../../application/projectExportTarget';
 import type {
   ProjectSettingsInput
 } from '../projectSettings';
-import { ProjectTargetFields } from './ProjectTargetFields';
 
 interface ProjectSettingsMenuProps {
   document: ProjectDocument;
   onSave: (input: ProjectSettingsInput) => void;
 }
 
-const coordinateLabel = (document: ProjectDocument): string => {
-  const coordinate = document.settings.coordinateSystem;
-  return `${coordinate.up.toUpperCase()} up · ${coordinate.handedness} · ${coordinate.unit}`;
-};
-
 export function ProjectSettingsMenu({
   document,
   onSave
 }: ProjectSettingsMenuProps) {
   const [name, setName] = useState(document.name);
-  const currentTarget = projectExportTargetFor(document);
-  const currentEditableTarget = editableProjectTargetFor(document);
-  const [target, setTarget] = useState(
-    currentEditableTarget?.target ?? null
-  );
-  const [gameVersion, setGameVersion] = useState(
-    currentEditableTarget?.gameVersion ??
-    defaultProjectGameVersionFor(currentEditableTarget?.target ?? null)
-  );
-  const [namespace, setNamespace] = useState(currentTarget.namespace);
-  const [modelPath, setModelPath] = useState(currentTarget.modelPath);
 
   useEffect(() => {
-    const nextTarget = projectExportTargetFor(document);
-    const nextEditableTarget = editableProjectTargetFor(document);
     setName(document.name);
-    setTarget(nextEditableTarget?.target ?? null);
-    setGameVersion(
-      nextEditableTarget?.gameVersion ??
-      defaultProjectGameVersionFor(nextEditableTarget?.target ?? null)
-    );
-    setNamespace(nextTarget.namespace);
-    setModelPath(nextTarget.modelPath);
   }, [document]);
 
   const trimmedName = name.trim();
-  const trimmedNamespace = namespace.trim();
-  const trimmedModelPath = modelPath.trim();
-  const targetChanged =
-    target !== null &&
-    (
-      currentEditableTarget === null ||
-      target !== currentEditableTarget.target ||
-      gameVersion !== currentEditableTarget.gameVersion ||
-      trimmedNamespace !== currentEditableTarget.namespace ||
-      trimmedModelPath !== currentEditableTarget.modelPath
-    );
-  const valid =
-    trimmedName.length > 0 &&
-    (
-      target === null ||
-      (
-        isExportModelPathValid(target, trimmedModelPath) &&
-        (
-          !isMinecraftExportTarget(target) ||
-          (
-            gameVersion !== null &&
-            isExportNamespaceValid(target, trimmedNamespace)
-          )
-        )
-      )
-    );
   const canSave =
-    valid &&
-    (
-      trimmedName !== document.name ||
-      targetChanged
-    );
-  const authoringProfile = document.authoringProfile;
-  const archetype = authoringProfile
-    ? getArchetype(authoringProfile.archetype.id)
-    : undefined;
-  const specialistLabels = authoringProfile
-    ? authoringProfile.specialists.map((reference) =>
-        getSpecialist(reference.id)?.label ?? reference.id
-      )
-    : [];
-
+    trimmedName.length > 0 &&
+    trimmedName !== document.name;
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     if (!canSave) return;
     onSave({
-      name: trimmedName,
-      surfacePixelDensity: document.settings.surfacePixelDensity,
-      exportTarget:
-        targetChanged && target !== null
-          ? {
-              target,
-              namespace: trimmedNamespace || 'ashfox',
-              modelPath: trimmedModelPath,
-              gameVersion:
-                isMinecraftExportTarget(target)
-                  ? gameVersion
-                  : null
-            }
-          : null
+      name: trimmedName
     });
   };
 
@@ -146,56 +57,33 @@ export function ProjectSettingsMenu({
           onChange={(event) => setName(event.target.value)}
         />
       </label>
-      <ProjectTargetFields
-        target={target}
-        gameVersion={gameVersion}
-        namespace={namespace}
-        modelPath={modelPath}
-        onTargetChange={(nextTarget) => {
-          setTarget(nextTarget);
-          setGameVersion(defaultProjectGameVersionFor(nextTarget));
-          setModelPath(normalizeExportModelPath(nextTarget, modelPath));
-        }}
-        onGameVersionChange={setGameVersion}
-        onNamespaceChange={setNamespace}
-        onModelPathChange={setModelPath}
-      />
       <div className="iconic-style-card" aria-label="Authoring style">
-        <strong>Iconic pixel · locked</strong>
+        <strong>Intent Program · compiler owned</strong>
         <span>
-          {document.settings.surfacePixelDensity === 1
-            ? '1-unit form grid · compact semantic decomposition'
-            : `${document.settings.surfacePixelDensity}× density is not authorable · rebuild at 1×`}
-        </span>
-      </div>
-      <div className="iconic-style-card" aria-label="Authoring authority">
-        <strong>
-          {authoringProfile
-            ? archetype?.label ?? authoringProfile.archetype.id
-            : 'Archetype · not configured'}
-        </strong>
-        <span>
-          {authoringProfile
-            ? specialistLabels.length > 0
-              ? `Specialists: ${specialistLabels.join(' · ')}`
-              : 'No specialist contributions configured.'
-            : 'Configure one broad archetype before modeling.'}
+          Form, symmetry, stance, facial structure, and surface detail come from the confirmed program.
         </span>
       </div>
       <div className="project-facts">
         <span>
-          <small>Coordinates</small>
-          <strong>{coordinateLabel(document)}</strong>
-        </span>
-        <span>
-          <small>Generated atlas</small>
+          <small>Program</small>
           <strong>
-            {document.settings.textureResolution.width}
-            {' × '}
-            {document.settings.textureResolution.height}
+            {document.intentProgram
+              ? `Confirmed · ${document.intentProgram.hash.slice(0, 10)}`
+              : 'Not confirmed'}
           </strong>
         </span>
       </div>
+      {document.intentProgram && (
+        <details className="confirmed-intent-program">
+          <summary>Confirmed Intent Program</summary>
+          <p>
+            This source is the authority for the generated asset. Ask for a new
+            program when you want to revise the asset; coordinates are never
+            edited here.
+          </p>
+          <pre>{document.intentProgram.source}</pre>
+        </details>
+      )}
       <button
         type="submit"
         className="popover-primary"

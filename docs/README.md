@@ -14,8 +14,8 @@ browser access.
    [Get started](guides/ai-agent-quick-start.md).
 2. Paste it into Codex desktop app, Cursor, or another browser-capable AI
    agent.
-3. Describe the asset you want, including its style, export format, important
-   details, and animation.
+3. Describe the asset you want, including its style, important details, and
+   animation. Choose a delivery adapter later in Export.
 
 The manifest tells the agent how to open ashfox and prepare the empty project.
 The agent builds inside the live viewport and uses the activity receipt and
@@ -39,17 +39,15 @@ Undo to review complete changes.
   first asset.
 - [Create and refine](guides/authoring-and-review.md) — write better requests,
   review details, and correct the result.
-- [Explore example assets](guides/examples.md) — ask the agent to inspect the
-  tractor, rocket, and kirin projects.
-- [Export a finished asset](guides/save-and-export.md) — validate and deliver
-  the configured target.
-- [Choose an export format](guides/choose-a-format.md) — choose the receiving
-  game version and artifact format.
+- [Export a finished asset](guides/save-and-export.md) — choose an adapter and
+  create an artifact without changing the project.
+- [Choose an export format](guides/choose-a-format.md) — choose a receiving
+  game version and artifact format at export time.
 - [Troubleshooting](guides/troubleshooting.md) — solve common browser, texture,
   animation, and download problems.
 
 ## Your files stay local
 
 ashfox stores the working project in your browser. It does not require a
-database or upload your project to an ashfox server. The finished target leaves
-the browser only when the agent delivers it.
+database or upload your project to an ashfox server. The finished artifact
+leaves the browser only when you export it.

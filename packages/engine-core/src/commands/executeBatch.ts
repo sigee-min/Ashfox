@@ -39,11 +39,6 @@ export const executeWebCommandBatch = (
   batch: CommandBatch
 ): CommandBatchResult => executeCommandBatch(document, batch, 'web');
 
-export const executeImportCommandBatch = (
-  document: ProjectDocument,
-  batch: CommandBatch
-): CommandBatchResult => executeCommandBatch(document, batch, 'import');
-
 export const executeSystemCommandBatch = (
   document: ProjectDocument,
   batch: CommandBatch

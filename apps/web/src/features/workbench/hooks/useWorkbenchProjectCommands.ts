@@ -4,9 +4,7 @@ import { useCallback, type Dispatch } from 'react';
 
 import {
   type ProjectDocument,
-  type ProjectCommandOperation,
-  type Transform,
-  type Vec3
+  type ProjectCommandOperation
 } from '@ashfox/engine-core';
 
 import {
@@ -17,31 +15,27 @@ import {
   createProjectSettingsOperations,
   type ProjectSettingsInput
 } from '../projectSettings';
+import {
+  createIntentProgramCompilationAction
+} from '../intentProposalConfirmation';
 import type { HistoryAction } from '../../../application/historyReducer';
 import { LOCAL_COMMAND_ACTOR_ID } from '../../../application/localCommandActor';
 
 interface UseWorkbenchProjectCommandsInput {
   document: ProjectDocument;
-  selectedNodeId: string | null;
   dispatch: Dispatch<HistoryAction>;
 }
 
 interface WorkbenchProjectCommands {
   createProject: (input: NewProjectInput) => void;
   updateProjectSettings: (input: ProjectSettingsInput) => void;
-  commitNodeTransform: (nodeId: string, transform: Transform) => void;
-  updateTransformProperty: (
-    property: keyof Transform,
-    value: Vec3
-  ) => void;
-  toggleVisibility: (nodeId: string) => void;
+  compileIntentProgram: () => void;
   undo: () => void;
   redo: () => void;
 }
 
 export const useWorkbenchProjectCommands = ({
   document,
-  selectedNodeId,
   dispatch
 }: UseWorkbenchProjectCommandsInput): WorkbenchProjectCommands => {
   const execute = useCallback(
@@ -80,51 +74,14 @@ export const useWorkbenchProjectCommands = ({
     [execute]
   );
 
-  const commitNodeTransform = useCallback(
-    (nodeId: string, transform: Transform): void => {
-      if (document.scene.nodes[nodeId]?.generation) return;
-      execute([{
-        name: 'scene.nodes.transform',
-        payload: {
-          nodeIds: [nodeId],
-          transform
-        }
-      }]);
-    },
-    [document.scene.nodes, execute]
-  );
-
-  const updateTransformProperty = useCallback(
-    (property: keyof Transform, value: Vec3): void => {
-      if (!selectedNodeId) return;
-      if (document.scene.nodes[selectedNodeId]?.generation) return;
-      execute([{
-        name: 'scene.nodes.transform',
-        payload: {
-          nodeIds: [selectedNodeId],
-          transform: {
-            [property]: value
-          }
-        }
-      }]);
-    },
-    [document.scene.nodes, execute, selectedNodeId]
-  );
-
-  const toggleVisibility = useCallback(
-    (nodeId: string): void => {
-      const node = document.scene.nodes[nodeId];
-      if (!node || node.generation) return;
-      execute([{
-        name: 'scene.nodes.visibility',
-        payload: {
-          nodeIds: [nodeId],
-          visible: !node.visible
-        }
-      }]);
-    },
-    [document.scene.nodes, execute]
-  );
+  const compileIntentProgram = useCallback((): void => {
+    const action = createIntentProgramCompilationAction(
+      document,
+      crypto.randomUUID(),
+      new Date().toISOString()
+    );
+    if (action) dispatch(action);
+  }, [dispatch, document]);
 
   const undo = useCallback((): void => {
     dispatch({
@@ -145,9 +102,7 @@ export const useWorkbenchProjectCommands = ({
   return {
     createProject,
     updateProjectSettings,
-    commitNodeTransform,
-    updateTransformProperty,
-    toggleVisibility,
+    compileIntentProgram,
     undo,
     redo
   };

@@ -1,6 +1,3 @@
-import { initializeGallery } from './gallery.js';
-import { initializeLandingPlayback } from './landingPlayback.js';
-
 const currentYear = String(new Date().getFullYear());
 for (const target of document.querySelectorAll('[data-current-year]')) {
   target.textContent = currentYear;
@@ -9,15 +6,6 @@ for (const target of document.querySelectorAll('[data-current-year]')) {
 const prefersReducedMotion = window.matchMedia(
   '(prefers-reduced-motion: reduce)'
 ).matches;
-
-const cleanupLandingPlayback = initializeLandingPlayback({
-  prefersReducedMotion
-});
-const cleanupGallery = initializeGallery({ prefersReducedMotion });
-window.addEventListener('pagehide', () => {
-  cleanupLandingPlayback();
-  cleanupGallery();
-}, { once: true });
 
 const revealTargets = [...document.querySelectorAll('[data-reveal]')];
 if (

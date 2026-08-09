@@ -1,4 +1,9 @@
 import type { ProjectDocument } from '../../model';
+import {
+  adaptProjectForExport,
+  type ExportAdaptedDocument,
+  type ExportAdapterInput
+} from '../adapter';
 import { exportMinecraftBedrock } from '../targets/bedrock/exporter';
 import { exportGeckoLib5 } from '../targets/geckolib5/exporter';
 import { exportGenericProject } from '../targets/generic/exporter';
@@ -11,7 +16,15 @@ import { exportMinecraftJavaBlock } from '../targets/javaBlock/exporter';
 import type { ExportBundle } from '../types';
 
 export const compileProjectBundle = (
-  document: ProjectDocument
+  document: ProjectDocument,
+  adapter: ExportAdapterInput
+): ExportBundle => {
+  const adapted = adaptProjectForExport(document, adapter);
+  return compileAdaptedProjectBundle(adapted);
+};
+
+const compileAdaptedProjectBundle = (
+  document: ExportAdaptedDocument
 ): ExportBundle => {
   switch (document.formatProfile.id) {
     case 'ashfox.generic':
@@ -35,8 +48,12 @@ export const compileProjectBundle = (
 
 export const compileProjectBundleResolved = async (
   document: ProjectDocument,
+  adapter: ExportAdapterInput,
   options: GltfResolvedExportOptions
 ): Promise<ExportBundle> =>
-  document.formatProfile.id === 'gltf.2'
-    ? exportGltfResolved(document, options)
-    : compileProjectBundle(document);
+  {
+    const adapted = adaptProjectForExport(document, adapter);
+    return adapted.formatProfile.id === 'gltf.2'
+      ? exportGltfResolved(adapted, options)
+      : compileAdaptedProjectBundle(adapted);
+  };

@@ -2,43 +2,48 @@ import type {
   CubeFaceDirection
 } from '../model';
 import {
+  paintGeneratedTonePixel,
+  generatedSurfaceTonePalette
+} from './generatedPixelShade';
+import {
   DEFAULT_PIXEL_SHADE_STYLE,
-  shadePixelRect,
   type RgbColor
 } from './pixelRectShade';
 
 export const FOCAL_PIXEL_SHADE_STYLE = {
-  intensity: 0.09,
-  edge: 0.02,
-  noise: 0.025,
-  lightDir: 'tl_br'
+  ...DEFAULT_PIXEL_SHADE_STYLE,
+  noise: 0.015
 } as const;
-
-const DIRECTIONAL_TONE: Readonly<
-  Record<CubeFaceDirection, number>
-> = {
-  up: 1.08,
-  south: 1,
-  east: 1,
-  north: 0.9,
-  west: 0.9,
-  down: 0.82
-};
-
-const clampChannel = (value: number): number =>
-  Math.min(255, Math.max(0, Math.round(value)));
 
 export const directionalSurfaceBaseColor = (
   color: RgbColor,
   face: CubeFaceDirection
-): RgbColor => {
-  const scale = DIRECTIONAL_TONE[face];
-  return {
-    r: clampChannel(color.r * scale),
-    g: clampChannel(color.g * scale),
-    b: clampChannel(color.b * scale)
-  };
-};
+): RgbColor => generatedSurfaceTonePalette(color, face).base;
+
+const paintGeneratedSurfacePixel = (
+  color: RgbColor,
+  face: CubeFaceDirection | undefined,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  seed: number,
+  style: typeof DEFAULT_PIXEL_SHADE_STYLE | typeof FOCAL_PIXEL_SHADE_STYLE
+): RgbColor => paintGeneratedTonePixel(
+  generatedSurfaceTonePalette(color, face),
+  x,
+  y,
+  {
+    x: 0,
+    y: 0,
+    width,
+    height
+  },
+  {
+    ...style,
+    seed
+  }
+);
 
 export const paintSurfacePixel = (
   color: RgbColor,
@@ -48,25 +53,21 @@ export const paintSurfacePixel = (
   height: number,
   seed: number
 ): RgbColor =>
-  shadePixelRect(
+  paintGeneratedSurfacePixel(
     color,
+    undefined,
     x,
     y,
-    {
-      x: 0,
-      y: 0,
-      width,
-      height
-    },
-    {
-      ...DEFAULT_PIXEL_SHADE_STYLE,
-      seed
-    }
+    width,
+    height,
+    seed,
+    DEFAULT_PIXEL_SHADE_STYLE
   );
 
 /**
- * Keeps the system-owned three-tone language on focal host planes while
- * reducing variation that can compete with eyes, mouths, controls, or signs.
+ * Keeps the same macro light field and three-tone coverage on focal host
+ * planes while reducing only the high-frequency variation that can compete
+ * with eyes, mouths, controls, or signs.
  */
 export const paintFocalSurfacePixel = (
   color: RgbColor,
@@ -76,20 +77,15 @@ export const paintFocalSurfacePixel = (
   height: number,
   seed: number
 ): RgbColor =>
-  shadePixelRect(
+  paintGeneratedSurfacePixel(
     color,
+    undefined,
     x,
     y,
-    {
-      x: 0,
-      y: 0,
-      width,
-      height
-    },
-    {
-      ...FOCAL_PIXEL_SHADE_STYLE,
-      seed
-    }
+    width,
+    height,
+    seed,
+    FOCAL_PIXEL_SHADE_STYLE
   );
 
 export const paintDirectionalSurfacePixel = (
@@ -101,13 +97,15 @@ export const paintDirectionalSurfacePixel = (
   height: number,
   seed: number
 ): RgbColor =>
-  paintSurfacePixel(
-    directionalSurfaceBaseColor(color, face),
+  paintGeneratedSurfacePixel(
+    color,
+    face,
     x,
     y,
     width,
     height,
-    seed
+    seed,
+    DEFAULT_PIXEL_SHADE_STYLE
   );
 
 export const paintDirectionalFocalSurfacePixel = (
@@ -119,11 +117,13 @@ export const paintDirectionalFocalSurfacePixel = (
   height: number,
   seed: number
 ): RgbColor =>
-  paintFocalSurfacePixel(
-    directionalSurfaceBaseColor(color, face),
+  paintGeneratedSurfacePixel(
+    color,
+    face,
     x,
     y,
     width,
     height,
-    seed
+    seed,
+    FOCAL_PIXEL_SHADE_STYLE
   );

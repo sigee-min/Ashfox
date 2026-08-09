@@ -12,6 +12,7 @@ export type PartInvariantCode =
   | 'connectivity'
   | 'attachment'
   | 'overlap'
+  | 'surface'
   | 'silhouette'
   | 'rig'
   | 'budget'

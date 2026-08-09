@@ -5,7 +5,6 @@ const { outdir, webRoot } = require('./buildOptions');
 
 const repoRoot = path.resolve(webRoot, '..', '..');
 const brandSource = path.join(repoRoot, 'assets', 'brand');
-const gallerySource = path.join(repoRoot, 'examples', 'gallery');
 const staticFiles = [
   'workbench/agent-manifest.json',
   'workbench/index.html'
@@ -47,9 +46,6 @@ const prepareOutput = () => {
     `${JSON.stringify(loadAgentManifest())}\n`
   );
   fs.cpSync(brandSource, path.join(outdir, 'brand'), {
-    recursive: true
-  });
-  fs.cpSync(gallerySource, path.join(outdir, 'demos'), {
     recursive: true
   });
 };

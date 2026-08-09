@@ -37,7 +37,7 @@ export function ProjectTargetFields({
       <div
         className="export-target-list"
         role="radiogroup"
-        aria-label="Format"
+        aria-label="Export target"
       >
         {PROJECT_EXPORT_TARGETS.map((option) => (
           <button
@@ -80,7 +80,7 @@ export function ProjectTargetFields({
             <label className="popover-field">
               <span>Namespace</span>
               <input
-                aria-label="Project namespace"
+                aria-label="Export namespace"
                 aria-invalid={
                   !isExportNamespaceValid(target, namespace.trim())
                 }
@@ -92,9 +92,9 @@ export function ProjectTargetFields({
             </label>
           ) : null}
           <label className="popover-field project-model-path">
-            <span>Model path</span>
+            <span>Export path</span>
             <input
-              aria-label="Project model path"
+                aria-label="Export model path"
               aria-invalid={
                 !isExportModelPathValid(target, modelPath.trim())
               }

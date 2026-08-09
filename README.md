@@ -1,13 +1,3 @@
-<p align="center">
-  <img
-    src="examples/gallery/blackfrost-dreadwing/build.gif"
-    alt="Blackfrost Dreadwing built visibly from an empty scene through anatomy, wings, semantic eyes, materials, and motion in ashfox"
-    width="900"
-  >
-  <br>
-  <sub><strong>GPT-5 xhigh</strong> · authentic 14-stage build · 58 bones · 2,453 generated cubes · 11,524 exported triangles · 1 Meshopt GLB primitive</sub>
-</p>
-
 # ashfox — AI-native low-poly asset workbench
 
 Describe an asset and watch your AI agent model, texture, rig, and animate it in
@@ -17,8 +7,6 @@ Blockbench MCP workflow is included for teams already using Blockbench.
 
 <p align="center">
   <a href="https://ashfox.io"><strong>Explore ashfox.io →</strong></a>
-  &nbsp;·&nbsp;
-  <a href="https://ashfox.io/gallery/"><strong>Open the demo gallery →</strong></a>
   <br>
   <sub>Build complete low-poly assets with your AI agent—no modeling app required.</sub>
 </p>
@@ -27,8 +15,6 @@ Blockbench MCP workflow is included for teams already using Blockbench.
   <a href="#connect-blockbench"><strong>Connect Blockbench</strong></a>
   &nbsp;·&nbsp;
   <a href="#use-without-blockbench"><strong>Use without Blockbench</strong></a>
-  &nbsp;·&nbsp;
-  <a href="#editable-demo-gallery"><strong>Demo gallery</strong></a>
   &nbsp;·&nbsp;
   <a href="https://ashfox.io/docs/"><strong>Read the guides</strong></a>
 </p>
@@ -80,8 +66,8 @@ Connect to the Blockbench MCP endpoint, call list_capabilities, inspect the
 current project, and tell me which modeling, texture, animation, preview, and
 export tools are available. When the connection check is complete, ask me
 exactly: "What would you like to create?" Treat my next message as the complete
-asset brief and begin unless one required target detail is missing. Do not
-change the project until I answer.
+asset brief and begin. Do not change the project until I answer. The user
+chooses any delivery target later in the Export menu.
 ```
 
 ### 3. Make your first asset
@@ -159,25 +145,7 @@ ashfox, connect to the page, inspect the project, edit safely, and ask what you
 want to create.
 
 The workbench keeps its editable project in the browser. Files leave it only
-when the agent delivers the validated target artifact.
-
-## Editable demo gallery
-
-The current featured set is **Blackfrost Dreadwing**, **Aether Spear ·
-Crownshift Interceptor**, **Ironroot · Verdant Crown Tractor**, and **Moonveil ·
-Aurora Sovereign Kirin**. Visit the
-[demo gallery](https://ashfox.io/gallery/) to inspect each animation and open
-the exact editable source directly in the workbench.
-
-Every gallery entry is a self-contained folder under
-[`examples/gallery/`](examples/gallery/README.md). It contains one `demo.json`
-manifest, its media, and the exact `project.ashfox` source. The website discovers
-these folders automatically, exposes name search and category filters, and opens
-the selected archive directly in the workbench.
-
-Automated gallery checks keep manifest metrics synchronized with each editable
-archive, audit connected eye and forward-facing foot anatomy, preserve every
-animation clip, and validate the exported GLB.
+when you choose an export adapter in the Export menu.
 
 ## Local data and source
 

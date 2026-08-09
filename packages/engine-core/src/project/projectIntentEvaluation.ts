@@ -145,8 +145,7 @@ export const evaluateProjectIntentRequirements = (
         message:
           intentResult.issues[0]?.message ??
           'Persisted project intent is invalid.',
-        fix:
-          'Replace the intent through project.intent.set.'
+        fix: 'Correct and recompile the confirmed Intent Program source.'
       }]
     };
   }
@@ -161,8 +160,7 @@ export const evaluateProjectIntentRequirements = (
         code: 'intent_missing',
         path: 'intent',
         message: 'The project has no subject intent.',
-        fix:
-          'Use project.intent.set with the literal subject and optional visual criteria before modeling.'
+        fix: 'Submit one complete coordinate-free Intent Program for confirmation.'
       }]
     };
   }
@@ -206,8 +204,7 @@ export const evaluateProjectIntentRequirements = (
             idsTruncated: entityIds.length > ISSUE_ID_LIMIT
           }
         : {}),
-      fix:
-        'Correct the first model blocker with model.parts.upsert before grounding review.'
+      fix: 'Correct and recompile the confirmed Intent Program source.'
     });
   }
 
@@ -221,8 +218,7 @@ export const evaluateProjectIntentRequirements = (
         `${foreignGeometryIds.length} visible renderable node(s) exist outside canonical part occupancy.`,
       entityIds: foreignGeometryIds.slice(0, ISSUE_ID_LIMIT),
       idsTruncated: foreignGeometryIds.length > ISSUE_ID_LIMIT,
-      fix:
-        'Use project.intent.set with free grounding, or begin a canonical part project.'
+      fix: 'Compile one complete Intent Program; arbitrary external geometry is not part of this workflow.'
     });
   }
 
@@ -252,9 +248,7 @@ export const evaluateProjectIntentRequirements = (
             ? `Grounded intent requires minimum lattice y=0; found ${String(minimumY)}.`
             : `Airborne intent requires minimum lattice y>0; found ${String(minimumY)}.`,
         fix:
-          intent.grounding === 'grounded'
-            ? 'Apply the exact model.parts.transform operation returned by inspect so the lowest occupied cell begins at y=0.'
-            : 'Apply the exact model.parts.transform operation returned by inspect so every occupied cell begins above y=0.'
+          'Choose the appropriate neutral rest declaration and recompile the Intent Program.'
       });
     } else if (
       intent.grounding === 'grounded' &&
@@ -265,8 +259,7 @@ export const evaluateProjectIntentRequirements = (
         path: 'intent.grounding',
         message:
           'The uniform-volume center of mass falls outside the ground-contact support hull.',
-        fix:
-          'Use model.parts.upsert to widen or reposition ground contacts or rebalance occupied volume.'
+        fix: 'Adjust the high-level body or rest declaration and recompile the Intent Program.'
       });
     }
   }

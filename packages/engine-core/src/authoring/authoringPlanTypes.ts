@@ -7,6 +7,7 @@ import type {
   AuthoringStructuralRole,
   AuthoringSupport
 } from './authoringTypes';
+import type { AuthoringSpan } from './authoringSpanTypes';
 
 export type AuthoringSlotState =
   | 'planned'
@@ -46,6 +47,26 @@ export type AuthoringPlanIssueCode =
   | 'authoring.plan.support_pair_reflection_invalid'
   | 'authoring.plan.support_toe_direction_invalid'
   | 'authoring.plan.support_claw_direction_invalid'
+  | 'authoring.plan.span_evaluation_unavailable'
+  | 'authoring.plan.span_part_missing'
+  | 'authoring.plan.span_part_kind_invalid'
+  | 'authoring.plan.span_root_parent_invalid'
+  | 'authoring.plan.span_hierarchy_invalid'
+  | 'authoring.plan.span_spar_attachment_invalid'
+  | 'authoring.plan.span_spar_extension_invalid'
+  | 'authoring.plan.span_membrane_envelope_invalid'
+  | 'authoring.plan.span_membrane_boundary_invalid'
+  | 'authoring.plan.span_cross_plane_invalid'
+  | 'authoring.plan.span_ground_contact_invalid'
+  | 'authoring.plan.span_pair_reflection_invalid'
+  | 'authoring.plan.rest_pose_incomplete'
+  | 'authoring.plan.rest_pose_evaluation_unavailable'
+  | 'authoring.plan.rest_pose_support_invalid'
+  | 'authoring.plan.rest_pose_ground_contact_invalid'
+  | 'authoring.plan.rest_pose_clearance_invalid'
+  | 'authoring.plan.rest_pose_hierarchy_invalid'
+  | 'authoring.plan.rest_pose_descent_invalid'
+  | 'authoring.plan.rest_pose_balance_invalid'
   | 'authoring.plan.intent_coverage_incomplete'
   | 'authoring.plan.track_stage_incomplete'
   | 'authoring.plan.face_mode_invalid'
@@ -57,6 +78,7 @@ export type AuthoringPlanIssueCode =
   | 'authoring.plan.part_unassigned'
   | 'authoring.plan.motion_clip_missing'
   | 'authoring.plan.motion_role_invalid'
+  | 'authoring.plan.motion_idle_rest_invalid'
   | 'authoring.plan.motion_static';
 
 export interface AuthoringSlotStatus {
@@ -75,6 +97,7 @@ export interface AuthoringSlotStatus {
   facing: 'forward' | null;
   symmetry: AuthoringSlotSymmetry | null;
   support: AuthoringSupport | null;
+  span: AuthoringSpan | null;
   attachmentPortId: string | null;
   hostSlotId: string | null;
   partIds: readonly string[];
