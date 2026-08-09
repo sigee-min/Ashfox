@@ -2,7 +2,8 @@
 
 ashfox is designed around one short source of truth: the Intent Program. Write
 what the asset is and how its important forms relate; the compiler determines
-the geometry, texture layout, hierarchy, rig, and canonical idle.
+the geometry, texture layout, hierarchy, rig, and animation synthesized from
+the declared idle mode.
 
 ## Start with the intended result
 
@@ -11,7 +12,7 @@ neutral support, its face, and any surface that must be structurally present.
 State relationships instead of construction instructions.
 
 ~~~text
-Create a moonlit kirin with a readable horned silhouette, paired upward wings,
+Create a moonlit kirin with a readable horned silhouette, mirrored upward wings,
 grounded feet, clear centered eyes, and a restrained blue-gold palette.
 ~~~
 
@@ -35,14 +36,16 @@ track hero
 domain organism
 frame front north
 symmetry bilateral
-rest neutral feet
+rest neutral feet on legs
 body core torso
-body limb legs pair from torso
+body mass head from torso extends forward
+body limb legs pair from torso extends down
 surface wings pair wing from torso extends up
-face full
+face full on head
 eyes pair gaze center
 nose present
 mouth neutral
+motion idle breathe
 style palette ocean
 ~~~
 
@@ -54,22 +57,30 @@ The program answers a small set of questions:
 | domain | Whether the asset is an organism or a constructed form. |
 | frame front | The direction that face, feet, and directional details must follow. |
 | symmetry | Whether bilateral reflection is required. |
-| rest | Neutral standing feet, a supported base, or airborne placement. |
-| body | Named core, mass, chain, limb, wheel, or radial relationships. |
-| surface | A required single or paired wing, fin, sail, or panel and its direction. |
-| face | Whether a full face exists; a full face declares centered single or paired eyes plus nasal and oral presence. |
+| rest | Explicit neutral support: feet, base, or wheels on a named module, or airborne. |
+| body | A named core, then named mass, chain, limb, wheel, or radial modules with an explicit host and direction. |
+| surface | A required `pair` or `single` wing, fin, sail, or panel, its named host, and its direction. |
+| face | `face none`, or `face full on <body-id>` with centered eyes plus nasal and oral presence. |
+| focal | A named hero focal stage on a body module when the hero uses `face none`. |
+| motion | One explicit `motion idle still|breathe|scan` declaration. |
 | style palette | A semantic palette family. ashfox derives role colors and surface tone. |
 
-A surface uses one of four directions: lateral, up, forward, or rearward. A
-bilateral lateral surface must be paired. A neutral feet rest is bilateral, so
-every standing limb is compiled as a matched pair.
+`body core <id>` is the root. Every other body declaration uses
+`from <host> extends forward|rearward|up|down|left|right`; limbs and wheels
+use the source spelling `pair`. A `pair` surface may extend lateral, up,
+forward, or rearward. A `single` surface must explicitly extend left, right,
+up, forward, or rearward. Bilateral assets cannot hide one left- or
+right-sided surface. Hero track declares exactly one focal stage: either a
+full face or `focal <id> on <body-id>`. A full face reserves the canonical
+front, so its supported surfaces use lateral, up, or rearward directions;
+use a body chain for an anterior form.
 
 ## Confirm only the intended meaning
 
 The workbench displays the whole proposal before compilation. Read every
-declared forward direction, symmetry mode, neutral support, face state, surface
-direction, and palette. Confirm only if that description expresses the asset
-you want.
+declared forward direction, symmetry mode, named neutral support, face or
+focal stage, surface direction, idle mode, and palette. Confirm only if that
+description expresses the asset you want.
 
 Confirmation compiles the program atomically. A valid result becomes the one
 canonical asset. A failed result leaves the current canonical asset unchanged
@@ -88,8 +99,9 @@ the result as a reader would:
 - a wing, fin, sail, or panel sits on its intended host and has a readable
   direction;
 - base colors produce a visible pixel shadow, midtone, and highlight field;
-- the neutral rest is standing, base-supported, or airborne as declared;
-- the canonical idle starts and ends at the same neutral state.
+- the neutral rest is standing, base-supported, wheel-grounded, or airborne
+  as declared;
+- the declared idle mode starts and ends at the same neutral state.
 
 Describe a failed relationship in ordinary language, revise the program, then
 repeat confirmation and compilation. A revision replaces the canonical result

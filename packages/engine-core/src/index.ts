@@ -253,16 +253,28 @@ export {
 } from './project/projectIntent';
 export {
   parseIntentProgram,
+  resolveIntentProgramSourceSpan,
   type IntentProgramAst,
+  type IntentProgramAstField,
+  type IntentProgramAttachedModule,
+  type IntentProgramAbsentFace,
+  type IntentProgramCoreModule,
   type IntentProgramDiagnostic,
   type IntentProgramFace,
+  type IntentProgramFullFace,
+  type IntentProgramFocal,
+  type IntentProgramIdleMotion,
   type IntentProgramIr,
   type IntentProgramModule,
+  type IntentProgramModuleExtension,
+  type IntentProgramPalette,
   type IntentProgramParseResult,
   type IntentProgramRest,
+  type IntentProgramSourceMap,
   type IntentProgramSpan,
   type IntentProgramStyle,
-  type IntentProgramSurface
+  type IntentProgramSurface,
+  type IntentProgramSurfaceExtension
 } from './project/intentProgram';
 export {
   compileIntentProgram,

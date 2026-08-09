@@ -47,6 +47,7 @@ export const supportPartIds = (
 ): readonly string[] => {
   if (support.kind === 'none') return [];
   if (support.kind === 'base') return support.supportPartIds;
+  if (support.kind === 'wheel') return support.wheelPartIds;
   return [
     support.rootPartId,
     ...support.solePartIds,

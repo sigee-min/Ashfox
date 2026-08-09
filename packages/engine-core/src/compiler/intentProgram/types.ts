@@ -20,6 +20,7 @@ export type IntentProgramGraphNodeKind =
   | 'wheel'
   | 'radial'
   | 'surface'
+  | 'focal'
   | 'face-host'
   | 'face-feature';
 

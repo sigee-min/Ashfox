@@ -181,6 +181,72 @@ const evaluateBase = (
   };
 };
 
+/** Validates a real radial rolling contact, not a base masquerading as a wheel. */
+const evaluateWheel = (
+  slot: AuthoringSlotAssignment,
+  support: Extract<AuthoringSupport, { kind: 'wheel' }>,
+  context: EvaluationContext,
+  evaluation: MutableEvaluation,
+  references: ReturnType<typeof validateSupportReferences>
+): SupportQualityStatus => {
+  const issueStart = evaluation.issues.length;
+  validateGroundingIntent(slot, support, context, evaluation);
+  let groundCells = 0;
+  if (references.valid) {
+    for (const partId of support.wheelPartIds) {
+      const part = context.parts.get(partId);
+      const cells = part?.occupancy.cells ?? new Set();
+      const contacts = groundContactCellCount(cells);
+      const penetrations = belowGroundCellCount(cells);
+      groundCells += contacts;
+      if (
+        part?.primitive !== 'radial' ||
+        part.joint.kind !== 'hinge' ||
+        part.joint.axis !== context.frame.lateralAxis
+      ) {
+        addIssue(evaluation, issue(
+          'authoring.plan.support_wheel_primitive_invalid',
+          `authoringProfile.slots.${slot.slotId}.support.wheelPartIds`,
+          `Wheel support part "${partId}" is not a lateral-axis hinged radial primitive.`,
+          'one radial primitive with a hinge around the project lateral axis',
+          [partId]
+        ), true);
+      }
+      if (support.contact === 'grounded' && (contacts === 0 || penetrations > 0)) {
+        addIssue(evaluation, issue(
+          'authoring.plan.support_ground_contact_invalid',
+          `authoringProfile.slots.${slot.slotId}.support.wheelPartIds`,
+          contacts === 0
+            ? `Rolling wheel "${partId}" has no canonical contact at lattice y=0.`
+            : `Rolling wheel "${partId}" penetrates below lattice y=0 ` +
+              `with ${penetrations} canonical cell${penetrations === 1 ? '' : 's'}.`,
+          'every grounded wheel owning at least one y=0 cell and no cell below y=0',
+          [partId]
+        ), true);
+      }
+    }
+  }
+  const localIssues = evaluation.issues.slice(issueStart);
+  return {
+    slotId: slot.slotId,
+    supportKind: 'wheel',
+    contact: support.contact,
+    state:
+      references.missingPartIds.length > 0
+        ? 'incomplete'
+        : !references.valid || localIssues.length > 0
+          ? 'invalid'
+          : 'complete',
+    referencedPartIds: references.referencedPartIds,
+    missingPartIds: references.missingPartIds,
+    groundContactCellCount: groundCells,
+    downwardExposedSoleCellCount: 0,
+    toeForwardMarginCells: null,
+    clawForwardMarginCells: null,
+    issueCodes: localIssues.map((entry) => entry.code)
+  };
+};
+
 const validateFootHierarchy = (
   slot: AuthoringSlotAssignment,
   support: Extract<AuthoringSupport, { kind: 'foot' }>,
@@ -400,7 +466,9 @@ const evaluateSlot = (
   const references = validateSupportReferences(slot, context, evaluation);
   const status = slot.support.kind === 'base'
     ? evaluateBase(slot, slot.support, context, evaluation, references)
-    : evaluateFoot(slot, slot.support, context, evaluation, references);
+    : slot.support.kind === 'wheel'
+      ? evaluateWheel(slot, slot.support, context, evaluation, references)
+      : evaluateFoot(slot, slot.support, context, evaluation, references);
   const hasViolation = evaluation.violations.length > violationStart;
   return {
     ...status,
@@ -502,7 +570,7 @@ export const evaluateSupportQuality = (
       'authoring.plan.support_grounding_missing',
       'authoringProfile.slots',
       'Grounded project intent has no declared grounded support authority.',
-      'at least one base or foot slot with grounded contact'
+      'at least one base, foot, or wheel slot with grounded contact'
     ), true);
   }
   return {

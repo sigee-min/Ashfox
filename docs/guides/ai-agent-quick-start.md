@@ -10,7 +10,8 @@ Decide what the asset should mean:
 
 1. the subject and visual style;
 2. what faces forward and whether it is symmetric;
-3. whether it stands on feet, rests on a base, or is airborne;
+3. whether it stands on feet, rests on a base, rolls on wheels, or is
+   airborne, and which declared module owns that support;
 4. the identity details that must survive compilation, such as a full face or
    a pair of wings.
 
@@ -43,17 +44,19 @@ palette. It should read clearly from the front and three-quarter views.
 ~~~
 
 The agent turns that request into a compact program. A program uses semantic
-declarations such as body limb legs pair from torso, rest neutral feet, and
-surface fins pair fin from torso extends up; it never uses lattice positions,
-mesh edits, texture coordinates, or animation keyframes.
+relationships such as `body limb legs pair from torso extends down`,
+`rest neutral feet on legs`, `face full on head`, and `motion idle breathe`.
+It never uses lattice positions, mesh edits, texture coordinates, or animation
+keyframes.
 
 ## Confirm and compile
 
 Read the complete proposal in the workbench. Check the project’s forward
-direction, symmetry, rest support, face declaration, surface directions, and
-palette before confirming. Confirming compiles the source atomically: either a
-valid canonical asset replaces the prior canonical asset, or the workbench
-shows a source-specific diagnostic and preserves the prior result.
+direction, symmetry, named rest host, face or hero focal declaration, surface
+directions, idle mode, and palette before confirming. Confirming compiles the
+source atomically: either a valid canonical asset replaces the prior canonical
+asset, or the workbench shows a source-specific diagnostic and preserves the
+prior result.
 
 ## Review and revise
 
@@ -61,13 +64,13 @@ Review the compiled result in the viewport. If it needs to change, describe the
 visible relationship that is wrong:
 
 ~~~text
-Keep the same hound, but make the rear stance wider and add paired upward fins
+Keep the same hound, but make the rear stance wider and add a mirrored pair of upward fins
 behind the shoulder drives.
 ~~~
 
 The agent submits a replacement program. Review and confirm it again; the
-compiler owns every derived transform, texture placement, hierarchy, and idle
-motion.
+compiler owns every derived transform, texture placement, hierarchy, and the
+animation synthesized from the declared idle mode.
 
 ## Deliver the finished asset
 

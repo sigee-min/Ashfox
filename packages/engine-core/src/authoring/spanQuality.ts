@@ -148,6 +148,8 @@ const requiredExtensionDirection = (
     return context.frame.forward.map((coordinate) => -coordinate) as
       [number, number, number];
   }
+  if (extension === 'left') return context.frame.left;
+  if (extension === 'right') return context.frame.right;
   if (extension !== 'lateral') return null;
   const side = lateralSide(slot);
   return side === null ? null : context.frame[side];

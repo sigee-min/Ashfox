@@ -2,6 +2,7 @@ export type ProjectSubjectDomain = 'organism' | 'constructed';
 
 export type ProjectCanonicalSupport =
   | { kind: 'standing-feet' }
+  | { kind: 'rolling-wheels' }
   | { kind: 'supported-base' }
   | { kind: 'airborne' }
   | {
@@ -27,6 +28,8 @@ export type ProjectSupportedSurfaceRole =
 
 export type ProjectSupportedSurfaceExtension =
   | 'lateral'
+  | 'left'
+  | 'right'
   | 'up'
   | 'forward'
   | 'rearward';

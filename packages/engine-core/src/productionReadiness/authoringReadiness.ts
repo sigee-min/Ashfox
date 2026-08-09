@@ -55,6 +55,8 @@ export const AUTHORING_PRODUCTION_READINESS_CODE_BY_ISSUE = {
     'production.authoring_support_sole_orientation_invalid',
   'authoring.plan.support_ground_contact_invalid':
     'production.authoring_support_ground_contact_invalid',
+  'authoring.plan.support_wheel_primitive_invalid':
+    'production.authoring_support_wheel_primitive_invalid',
   'authoring.plan.support_pair_reflection_invalid':
     'production.authoring_support_pair_reflection_invalid',
   'authoring.plan.support_toe_direction_invalid':

@@ -35,10 +35,16 @@ that caused the conflict.
 
 Common semantic corrections include:
 
-- use neutral feet only for a bilaterally standing asset;
-- use a paired lateral surface for bilateral side surfaces;
-- give a full face centered eyes, a nose state, and a mouth state;
-- attach a body module or surface to an existing named body module;
+- use `rest neutral feet on <limb>` only for a bilaterally standing asset;
+- use a `pair` surface for a bilateral lateral form, and state a `single`
+  surface’s left, right, up, forward, or rearward direction explicitly;
+- give a full face its named host, centered eyes, a nose state, and a mouth
+  state;
+- attach every non-core body module with both `from <host>` and
+  `extends <direction>`;
+- give hero track exactly one focal stage: a full face or `focal <id> on
+  <body-id>`;
+- declare `motion idle still`, `motion idle breathe`, or `motion idle scan`;
 - express a forward-facing requirement through the front-frame declaration,
   not a coordinate or rotation.
 

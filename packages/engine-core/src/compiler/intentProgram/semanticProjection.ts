@@ -10,6 +10,7 @@ import type {
   IntentProgramIr,
   IntentProgramSpan
 } from '../../project/intentProgramTypes';
+import { resolveIntentProgramSourceSpan } from '../../project/intentProgramTypes';
 
 const fallbackSpan: IntentProgramSpan = {
   start: { offset: 0, line: 1, column: 1 },
@@ -19,7 +20,7 @@ const fallbackSpan: IntentProgramSpan = {
 const spanAt = (
   sourceMap: Readonly<Record<string, IntentProgramSpan>>,
   path: string
-): IntentProgramSpan => sourceMap[path] ?? fallbackSpan;
+): IntentProgramSpan => resolveIntentProgramSourceSpan(sourceMap, path) ?? fallbackSpan;
 
 const error = (
   sourceMap: Readonly<Record<string, IntentProgramSpan>>,
@@ -36,6 +37,7 @@ const error = (
 const supportFor = (program: IntentProgramIr): ProjectCanonicalSupport => {
   switch (program.rest.kind) {
     case 'feet': return { kind: 'standing-feet' };
+    case 'wheels': return { kind: 'rolling-wheels' };
     case 'base': return { kind: 'supported-base' };
     case 'airborne': return { kind: 'airborne' };
   }
@@ -45,7 +47,7 @@ const faceFor = (program: IntentProgramIr): ProjectSemanticFace => {
   if (program.face.kind === 'none') return { kind: 'none' };
   return {
     kind: 'full',
-    eyeConfiguration: program.face.eyes ?? 'paired',
+    eyeConfiguration: program.face.eyes,
     nasal: program.face.nose === 'absent' ? 'absent' : 'present',
     oral: program.face.mouth === 'absent' ? 'absent' : 'present'
   };
@@ -67,7 +69,8 @@ export const projectIntentProgramSemantics = (
       'Paired supported surfaces require bilateral symmetry.'
     ));
   }
-  if (program.symmetry === 'asymmetric' && program.face.eyes === 'paired') {
+  if (program.symmetry === 'asymmetric' &&
+    program.face.kind === 'full' && program.face.eyes === 'paired') {
     diagnostics.push(error(
       sourceMap,
       'face.eyes',
@@ -75,12 +78,13 @@ export const projectIntentProgramSemantics = (
       'Paired eyes require bilateral symmetry.'
     ));
   }
-  if (program.domain === 'organism' && program.rest.kind === 'base') {
+  if (program.domain === 'organism' &&
+    (program.rest.kind === 'base' || program.rest.kind === 'wheels')) {
     diagnostics.push(error(
       sourceMap,
       'rest',
-      'intent-program.organism-base-support',
-      'Organisms cannot declare a base as their canonical neutral support.'
+      'intent-program.organism-constructed-support',
+      'Organisms cannot declare a base or wheel as their canonical neutral support.'
     ));
   }
   const seenSurfaces = new Set<string>();
@@ -102,12 +106,31 @@ export const projectIntentProgramSemantics = (
         `Supported surface "${surface.id}" names unknown host "${surface.from}".`
       ));
     }
+    if (surface.configuration === 'paired' &&
+      (surface.extension === 'left' || surface.extension === 'right')) {
+      diagnostics.push(error(
+        sourceMap,
+        `surfaces.${surface.id}.extension`,
+        'intent-program.paired-surface-side-derived',
+        'Paired surfaces derive lateral direction from each semantic member.'
+      ));
+    }
     if (surface.configuration === 'single' && surface.extension === 'lateral') {
       diagnostics.push(error(
         sourceMap,
         `surfaces.${surface.id}.extension`,
         'intent-program.single-lateral-surface',
-        'A single supported surface cannot extend laterally; use paired, up, forward, or rearward.'
+        'A single supported surface must explicitly extend left or right.'
+      ));
+    }
+    if (program.symmetry === 'bilateral' &&
+      surface.configuration === 'single' &&
+      (surface.extension === 'left' || surface.extension === 'right')) {
+      diagnostics.push(error(
+        sourceMap,
+        `surfaces.${surface.id}.extension`,
+        'intent-program.single-sided-surface-requires-asymmetric',
+        'A bilateral asset cannot own only one lateral supported surface.'
       ));
     }
   }
@@ -142,7 +165,9 @@ export const projectIntentProgramSemantics = (
     intent: {
       subject: program.asset,
       forward: program.frame.facing,
-      grounding: program.rest.kind === 'feet' || program.rest.kind === 'base'
+      grounding: program.rest.kind === 'feet' ||
+        program.rest.kind === 'base' ||
+        program.rest.kind === 'wheels'
         ? 'grounded'
         : 'airborne',
       symmetry: program.symmetry === 'bilateral'
@@ -151,7 +176,8 @@ export const projectIntentProgramSemantics = (
       semanticContract,
       features: [
         ...program.body.map((module) => `${module.kind}:${module.id}`),
-        ...program.surfaces.map((surface) => `${surface.role}:${surface.id}`)
+        ...program.surfaces.map((surface) => `${surface.role}:${surface.id}`),
+        ...(program.focal ? [`focal:${program.focal.id}`] : [])
       ].sort()
     }
   };

@@ -2,6 +2,7 @@ import type {
   IntentProgramDiagnostic,
   IntentProgramSpan
 } from '../../project/intentProgramTypes';
+import { resolveIntentProgramSourceSpan } from '../../project/intentProgramTypes';
 
 const fallbackSpan: IntentProgramSpan = {
   start: { offset: 0, line: 1, column: 1 },
@@ -17,5 +18,5 @@ export const intentProgramDiagnostic = (
   severity: 'error',
   code,
   message,
-  span: sourceMap[path] ?? fallbackSpan
+  span: resolveIntentProgramSourceSpan(sourceMap, path) ?? fallbackSpan
 });

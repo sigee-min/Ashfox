@@ -37,6 +37,7 @@ export type ProductionReadinessCode =
   | 'production.authoring_support_hierarchy_invalid'
   | 'production.authoring_support_sole_orientation_invalid'
   | 'production.authoring_support_ground_contact_invalid'
+  | 'production.authoring_support_wheel_primitive_invalid'
   | 'production.authoring_support_pair_reflection_invalid'
   | 'production.authoring_support_toe_direction_invalid'
   | 'production.authoring_support_claw_direction_invalid'

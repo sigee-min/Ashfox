@@ -49,10 +49,12 @@ for (const forward of ['north', 'south', 'east', 'west'] as const) {
       'domain organism',
       `frame front ${forward}`,
       'symmetry bilateral',
-      'rest neutral feet',
+      'rest neutral feet on legs',
       'body core body',
+      'body limb legs pair from body extends down',
       `surface wing pair wing from body extends ${extension}`,
       'face none',
+      'motion idle still',
       'style palette ember'
     ].join('\n');
     const parsed = parseIntentProgram(source);

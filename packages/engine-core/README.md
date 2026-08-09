@@ -1,33 +1,28 @@
 # ashfox Engine Core
 
-Pure TypeScript domain model, invariants, command contracts, and deterministic
-asset exporters for the standalone ashfox engine.
+`@ashfox/engine-core` is the deterministic canonical-asset compiler behind the
+ashfox workbench.
 
-Host-independent UV packing and deterministic pixel-surface generation also
-live here so the Web Studio and Blockbench compatibility track use one
-calculation authority.
+Its authored input is one confirmed Intent Program. The parser accepts only
+coordinate-free semantic declarations: explicit support and support host,
+named body relationships, face or hero focal stage, supported surfaces, idle
+motion, and palette. The compiler derives the canonical geometry, surface
+pixels, hierarchy, rig, animation, and readiness evidence from that source.
 
-This package must not import React, browser DOM APIs, Three.js, MCP transport
-types, Blockbench globals, or persistence implementations.
+The canonical project has no export target, game version, namespace, or model
+path. Export adapters derive Java block, Bedrock, GeckoLib 5, GLB, and glTF
+artifacts only after canonical compilation; an adapter cannot alter the
+program or its canonical result.
 
-Implemented targets:
+This package is pure TypeScript domain code. It must not import React, browser
+DOM APIs, Three.js, MCP transport types, host globals, or persistence
+implementations.
 
-- deterministic canonical project JSON;
-- Minecraft Java block resource-pack model bundles;
-- Minecraft Bedrock geometry and actor-animation resource-pack bundles;
-- GeckoLib 5-compatible geometry and actor-animation bundles;
-- glTF 2.0 JSON, external-resource GLB, and self-contained GLB binaries.
+Key boundaries:
 
-Target export validates the document first and returns logical JSON files and
-blob-copy entries. Self-contained GLB export instead accepts an injected async
-blob resolver and returns exactly one binary model. Directory/ZIP
-materialization belongs to the application layer.
-
-The normative authoring compiler is defined in
-[Iconic Hardcut Modeling](../../docs/architecture/iconic-hardcut-modeling.md).
-The strict archetype/specialist authority boundary, provenance model, and
-non-authoritative recipe boundary are defined in
-[Authoring Authority Harness](../../docs/architecture/authoring-authority-harness.md).
-
-The runtime dependency direction, ownership map, and extension paths are in
-[Codebase map](../../docs/architecture/codebase.md).
+- `src/project/intentProgram.ts` parses the closed source language and owns
+  source-span diagnostics.
+- `src/compiler/intentProgram/` lowers source into one canonical asset and
+  verifies structural, support, focal, texture, rig, and motion contracts.
+- `src/export/` adapts an already-compiled canonical project for a delivery
+  target.

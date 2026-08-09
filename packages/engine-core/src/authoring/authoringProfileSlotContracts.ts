@@ -25,6 +25,7 @@ const SYMMETRY_KIND_KEYS = new Set(['kind']);
 const PAIRED_SYMMETRY_KEYS = new Set(['kind', 'pairId']);
 const SUPPORT_NONE_KEYS = new Set(['kind']);
 const SUPPORT_BASE_KEYS = new Set(['kind', 'contact', 'supportPartIds']);
+const SUPPORT_WHEEL_KEYS = new Set(['kind', 'contact', 'wheelPartIds']);
 const SUPPORT_FOOT_KEYS = new Set([
   'kind',
   'contact',
@@ -201,7 +202,7 @@ export const readAuthoringSlotSupport = (
       issues,
       path,
       'Support must use a closed discriminated contract.',
-      'none | base | foot support contract'
+      'none | base | foot | wheel support contract'
     );
     return null;
   }
@@ -249,12 +250,33 @@ export const readAuthoringSlotSupport = (
       ? { kind: 'base', contact, supportPartIds }
       : null;
   }
+  if (value.kind === 'wheel') {
+    const keysValid = hasExactContractKeys(value, SUPPORT_WHEEL_KEYS);
+    const wheelPartIds = readOwnedIds(
+      value.wheelPartIds,
+      `${path}.wheelPartIds`,
+      owned,
+      false,
+      issues
+    );
+    if (!keysValid) {
+      addIssue(
+        issues,
+        path,
+        'Wheel support must use the closed contract shape.',
+        '{kind:"wheel",contact,wheelPartIds}'
+      );
+    }
+    return keysValid && contact && wheelPartIds
+      ? { kind: 'wheel', contact, wheelPartIds }
+      : null;
+  }
   if (value.kind !== 'foot') {
     addIssue(
       issues,
       `${path}.kind`,
       `Unknown support kind "${value.kind}".`,
-      'none | base | foot'
+      'none | base | foot | wheel'
     );
     return null;
   }

@@ -140,6 +140,13 @@ const supportSignature = (support: AuthoringSupport): string => {
       supportPartCount: support.supportPartIds.length
     });
   }
+  if (support.kind === 'wheel') {
+    return canonicalJsonString({
+      kind: support.kind,
+      contact: support.contact,
+      wheelPartCount: support.wheelPartIds.length
+    });
+  }
   return canonicalJsonString({
     kind: support.kind,
     contact: support.contact,

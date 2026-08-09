@@ -44,6 +44,7 @@ export type AuthoringPlanIssueCode =
   | 'authoring.plan.support_hierarchy_invalid'
   | 'authoring.plan.support_sole_orientation_invalid'
   | 'authoring.plan.support_ground_contact_invalid'
+  | 'authoring.plan.support_wheel_primitive_invalid'
   | 'authoring.plan.support_pair_reflection_invalid'
   | 'authoring.plan.support_toe_direction_invalid'
   | 'authoring.plan.support_claw_direction_invalid'

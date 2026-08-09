@@ -1,8 +1,7 @@
 import type {
   AuthoringFaceComponentDeclaration,
   AuthoringFaceContract,
-  AuthoringFaceException,
-  AuthoringSlotAssignment
+  AuthoringFaceException
 } from '../../authoring/authoringTypes';
 import type {
   ModelPartLatticeVec3
@@ -29,10 +28,10 @@ import {
   sideRelation,
   sideSymmetry,
   type BuildState,
-  type IntentProgramModuleHost,
-  type Side
+  type IntentProgramModuleHost
 } from './state';
 import { placeFaceHost } from './facePlacement';
+import { addSurfaceMembers } from './surfaceMemberLowering';
 
 const addPoints = (
   ...points: readonly ModelPartLatticeVec3[]
@@ -44,51 +43,6 @@ const addPoints = (
   ],
   [0, 0, 0]
 );
-
-const scalePoint = (
-  point: ModelPartLatticeVec3,
-  amount: number
-): ModelPartLatticeVec3 => [
-  point[0] * amount,
-  point[1] * amount,
-  point[2] * amount
-];
-
-const vectorAxis = (
-  point: ModelPartLatticeVec3
-): 'x' | 'y' | 'z' => point[0] !== 0 ? 'x' : point[1] !== 0 ? 'y' : 'z';
-
-const planeFor = (
-  first: ModelPartLatticeVec3,
-  second: ModelPartLatticeVec3
-): 'xy' | 'xz' | 'yz' => {
-  const axes = new Set([vectorAxis(first), vectorAxis(second)]);
-  if (axes.has('x') && axes.has('y')) return 'xy';
-  if (axes.has('x') && axes.has('z')) return 'xz';
-  return 'yz';
-};
-
-const planeAxes = (
-  plane: 'xy' | 'xz' | 'yz'
-): readonly ['x' | 'y' | 'z', 'x' | 'y' | 'z'] =>
-  plane === 'xy' ? ['x', 'y'] : plane === 'xz' ? ['x', 'z'] : ['y', 'z'];
-
-const axisValue = (
-  point: ModelPartLatticeVec3,
-  axis: 'x' | 'y' | 'z'
-): number => point[axis === 'x' ? 0 : axis === 'y' ? 1 : 2];
-
-const plateOutlineThrough = (
-  plane: 'xy' | 'xz' | 'yz',
-  origin: ModelPartLatticeVec3,
-  vertices: readonly ModelPartLatticeVec3[]
-): readonly [number, number][] => {
-  const [u, v] = planeAxes(plane);
-  return vertices.map((vertex) => [
-    axisValue(vertex, u) - axisValue(origin, u),
-    axisValue(vertex, v) - axisValue(origin, v)
-  ]);
-};
 
 const reflectPairedSurface = (
   state: BuildState,
@@ -140,162 +94,20 @@ export const addSurface = (
   const surfaceStart = state.parts.length;
   const frame = projectSpatialFrame(state.intent);
   const host = state.parts.find((part) => part.partId === rootPartId);
-  const hostOrigin = compilerHostAnchor(
-    state.intent,
-    host,
-    localPoint(state.intent, 0, 5, 0)
-  );
-  const hostReach = compilerPartPlanarReach(host);
-  // A supported surface is a structural semantic unit in its own right,
-  // even when its host is the silhouette-stage root core.
-  const qualityStage = 'structure' as const;
-  const sides: readonly (Side | null)[] = surface.configuration === 'paired'
-    ? ['left', 'right'] : [null];
-  const pairId = `pair.surface.${surface.id}`;
-  const pairedNonLateral =
-    surface.configuration === 'paired' && surface.extension !== 'lateral';
-  const segmentRadius: ModelPartLatticeVec3 = [1, 1, 1];
-  for (const side of sides) {
-    const member = side ?? 'center';
-    const slotId = `slot.surface.${surface.id}.${member}`;
-    const rootIds = [`surface.${surface.id}.${member}.root`];
-    const sparIds = [
-      `surface.${surface.id}.${member}.spar.1`,
-      `surface.${surface.id}.${member}.spar.2`
-    ];
-    const membranePartIds = [`surface.${surface.id}.${member}.membrane`];
-    const sideVector = side === 'right' ? frame.right : frame.left;
-    const extension = surface.extension === 'lateral'
-      ? sideVector
-      : surface.extension === 'up'
-        ? frame.up
-        : surface.extension === 'forward'
-          ? frame.forward
-          : scalePoint(frame.forward, -1);
-    const cross = surface.extension === 'lateral'
-      ? frame.up
-      : surface.extension === 'up'
-        ? side === null ? frame.left : frame.forward
-        : surface.configuration === 'paired' ? frame.up : frame.left;
-    const mountBase = addPoints(
-      hostOrigin,
-      side !== null && surface.extension !== 'lateral'
-        ? scalePoint(sideVector, Math.max(1, hostReach - 1))
-        : [0, 0, 0]
-    );
-    // Lateral surfaces mount above articulated lower-body modules. This keeps
-    // their root and spar seam ownership disjoint from neutral feet and limbs.
-    const base = addPoints(
-      mountBase,
-      surface.extension === 'lateral' ? scalePoint(frame.up, 2) : [0, 0, 0]
-    );
-    const rootExtensionStart =
-      host?.kind === 'radial' && surface.extension === 'up' ? 0 : hostReach;
-    const plane = planeFor(extension, cross);
-    const rootStart = addPoints(
-      base,
-      scalePoint(extension, rootExtensionStart)
-    );
-    const rootEnd = addPoints(
-      base,
-      scalePoint(extension, rootExtensionStart + 1)
-    );
-    state.parts.push({
-      partId: rootIds[0], parentPartId: rootPartId, materialId: 'mat.base', joint: { kind: 'fixed' },
-      attachment: attachment(rootStart), kind: 'segment', points: [rootStart, rootEnd],
-      radii: [segmentRadius, segmentRadius], profile: 'hard'
-    });
-    const sparStarts: ModelPartLatticeVec3[] = [];
-    const sparEnds: ModelPartLatticeVec3[] = [];
-    for (let index = 0; index < sparIds.length; index += 1) {
-      const offset = index === 0 ? -1 : 1;
-      const sparStart = addPoints(
-        rootEnd,
-        scalePoint(cross, offset)
-      );
-      const sparEnd = addPoints(
-        sparStart,
-        scalePoint(extension, 5),
-        scalePoint(cross, offset * 2)
-      );
-      sparStarts.push(sparStart);
-      sparEnds.push(sparEnd);
-      state.parts.push({
-        partId: sparIds[index], parentPartId: rootIds[0],
-        materialId: surface.configuration === 'single' ? 'mat.accent' : 'mat.dark',
-        joint: { kind: 'fixed' },
-        attachment: attachment(sparStart), kind: 'segment', points: [sparStart, sparEnd],
-        radii: [segmentRadius, segmentRadius], profile: 'hard'
-      });
-    }
-    // A plate owns cells on the positive normal side of its origin. For a
-    // paired non-lateral span that normal is the lateral axis, so keeping the
-    // origin on the spar would bury the membrane inside its own seam on half
-    // of the semantic frames. Place it just outside the spar envelope. The
-    // asymmetric 1/2 offset is the lattice-cell reflection of a thickness-1
-    // plate around the project vertex plane (x -> -x - 1).
-    const lateralCoordinate = frame.lateralAxis === 'x'
-      ? sideVector[0]
-      : sideVector[2];
-    const membraneOrigin = pairedNonLateral && side !== null
-      ? addPoints(
-          rootEnd,
-          scalePoint(sideVector, lateralCoordinate > 0 ? 1 : 2)
-        )
-      : rootEnd;
-    const membraneVertices = [
-      addPoints(rootEnd, scalePoint(cross, -1)),
-      addPoints(rootEnd, scalePoint(cross, 1)),
-      sparEnds[1]!,
-      sparEnds[0]!
-    ];
-    state.parts.push({
-      partId: membranePartIds[0],
-      parentPartId: pairedNonLateral ? sparIds[0]! : rootIds[0],
-      materialId: 'mat.accent',
-      joint: { kind: 'fixed' },
-      attachment: attachment(
-        pairedNonLateral ? sparStarts[0]! : membraneOrigin
-      ),
-      kind: 'plate',
-      plane,
-      origin: membraneOrigin,
-      outline: plateOutlineThrough(
-        plane,
-        membraneOrigin,
-        membraneVertices
-      ),
-      thickness: 1
-    });
-    const directionalRelation: 'above' | 'front' | 'rear' | null =
-      surface.extension === 'lateral'
-        ? null
-        : surface.extension === 'up' ? 'above'
-          : surface.extension === 'forward' ? 'front' : 'rear';
-    const spatialRelations: AuthoringSlotAssignment['spatialRelations'] = [
-      ...(surface.configuration === 'paired' ? sideRelation(side!) : []),
-      ...(directionalRelation === null ? [] : [directionalRelation])
-    ];
-    addSlot(state, {
-      slotId, structuralRole: 'span', qualityStage,
-      partIds: [...rootIds, ...sparIds, ...membranePartIds].sort(), parentSlotIds: [rootSlotId],
-      spatialRelations,
-      facing: null,
-      symmetry: surface.configuration === 'paired'
-        ? sideSymmetry(pairId)
-        : centeredOrAsymmetric(state.program),
-      support: { kind: 'none' },
-      span: {
-        kind: 'supported-surface', obligationId: surface.id, rootPartIds: rootIds,
-        spars: sparIds.map((partId, index) => ({ sparId: `spar.${index + 1}`, partIds: [partId] })),
-        membranes: [{
-          membraneId: 'membrane.main',
-          partIds: membranePartIds,
-          boundedBySparIds: ['spar.1', 'spar.2']
-        }]
-      }
-    });
-  }
+  addSurfaceMembers({
+    state,
+    surface,
+    rootPartId,
+    rootSlotId,
+    frame,
+    hostOrigin: compilerHostAnchor(
+      state.intent,
+      host,
+      localPoint(state.intent, 0, 5, 0)
+    ),
+    hostReach: compilerPartPlanarReach(host),
+    radialHost: host?.kind === 'radial'
+  });
   if (surface.configuration === 'paired') {
     reflectPairedSurface(state, surface.id, surfaceStart, frame);
     const leftPrefix = `surface.${surface.id}.left.`;
@@ -326,7 +138,7 @@ const faceException = (
   component: 'nasal' | 'oral'
 ): { component: 'nasal' | 'oral'; basis: 'requested'; referenceIds: readonly string[]; rationale: string } => ({
   component, basis: 'requested', referenceIds: ['intent.subject'],
-  rationale: `The intent program explicitly omits ${component}.`
+  rationale: `The confirmed Intent Program explicitly omits ${component}.`
 });
 
 export const addFace = (

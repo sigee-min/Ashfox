@@ -21,7 +21,6 @@ const EPSILON = 0.000001;
 
 export const CANONICAL_STANDING_EXTENSION_POLICY = Object.freeze({
   minimumVerticalDropCells: 1,
-  maximumHorizontalToVerticalRatio: 1,
   minimumVerticalPathFraction: 0.5,
   minimumCoreCentroidClearanceCells: 1
 });
@@ -125,6 +124,8 @@ const expectedSupportSlots = (
       return profile.slots.filter((slot) => slot.support.kind === 'foot');
     case 'supported':
       return profile.slots.filter((slot) => slot.support.kind === 'base');
+    case 'rolling':
+      return profile.slots.filter((slot) => slot.support.kind === 'wheel');
     case 'airborne':
     case 'free':
       return [];
@@ -137,6 +138,7 @@ const supportContactPartIds = (
 ): readonly string[] => {
   if (support.kind === 'none') return [];
   if (support.kind === 'base') return support.supportPartIds;
+  if (support.kind === 'wheel') return support.wheelPartIds;
   return [
     ...support.solePartIds,
     ...support.digits.flatMap((digit) => [
@@ -151,6 +153,7 @@ const supportContractIsConsistent = (
 ): boolean => {
   const feet = profile.slots.filter((slot) => slot.support.kind === 'foot');
   const bases = profile.slots.filter((slot) => slot.support.kind === 'base');
+  const wheels = profile.slots.filter((slot) => slot.support.kind === 'wheel');
   const groundedFeet = feet.filter(
     (slot) => slot.support.kind === 'foot' &&
       slot.support.contact === 'grounded'
@@ -159,18 +162,27 @@ const supportContractIsConsistent = (
     (slot) => slot.support.kind === 'base' &&
       slot.support.contact === 'grounded'
   );
+  const groundedWheels = wheels.filter(
+    (slot) => slot.support.kind === 'wheel' &&
+      slot.support.contact === 'grounded'
+  );
   switch (profile.restPose.mode) {
     case 'standing':
       return feet.length > 0 &&
         groundedFeet.length === feet.length &&
-        groundedBases.length === 0;
+        bases.length === 0 && wheels.length === 0;
+    case 'rolling':
+      return wheels.length > 0 &&
+        groundedWheels.length === wheels.length &&
+        feet.length === 0 && bases.length === 0;
     case 'supported':
       return bases.length > 0 &&
         groundedBases.length === bases.length &&
-        groundedFeet.length === 0;
+        feet.length === 0 && wheels.length === 0;
     case 'airborne':
     case 'free':
-      return groundedFeet.length === 0 && groundedBases.length === 0;
+      return groundedFeet.length === 0 && groundedBases.length === 0 &&
+        groundedWheels.length === 0;
   }
 };
 
@@ -200,10 +212,6 @@ const chainDescends = (chain: readonly CompiledPartState[]): boolean => {
   const first = concrete[0];
   const last = concrete.at(-1)!;
   const verticalDrop = first[1] - last[1];
-  const horizontalDisplacement = Math.hypot(
-    first[0] - last[0],
-    first[2] - last[2]
-  );
   const totalPathLength = concrete.slice(1).reduce((length, point, index) => {
     const previous = concrete[index];
     return length + Math.hypot(
@@ -214,8 +222,6 @@ const chainDescends = (chain: readonly CompiledPartState[]): boolean => {
   }, 0);
   const policy = CANONICAL_STANDING_EXTENSION_POLICY;
   return verticalDrop >= policy.minimumVerticalDropCells - EPSILON &&
-    horizontalDisplacement <=
-      verticalDrop * policy.maximumHorizontalToVerticalRatio + EPSILON &&
     totalPathLength > EPSILON &&
     verticalDrop / totalPathLength >=
       policy.minimumVerticalPathFraction - EPSILON &&
@@ -259,6 +265,7 @@ const evaluateGroundContract = (
     .map((part) => part.partId)
     .sort(compareStableText);
   const groundedMode = profile.restPose.mode === 'standing' ||
+    profile.restPose.mode === 'rolling' ||
     profile.restPose.mode === 'supported';
   const nonSupportGroundContactPartIds = groundedMode
     ? groundContactPartIds.filter((partId) => !supportIds.has(partId))
@@ -268,7 +275,7 @@ const evaluateGroundContract = (
       'authoring.plan.rest_pose_ground_contact_invalid',
       'modeling.parts',
       'Canonical grounded rest has y=0 contact outside declared support regions.',
-      'only declared grounded foot/base support parts may own lattice y=0 cells',
+      'only declared grounded foot, wheel, or base support parts may own lattice y=0 cells',
       { partIds: nonSupportGroundContactPartIds }
     ), true);
   }
@@ -372,7 +379,7 @@ const evaluateStandingHierarchy = (
       'authoring.plan.rest_pose_descent_invalid',
       'authoringProfile.restPose',
       'Standing core-to-foot chains do not realize canonical vertical extension.',
-      'non-rising chains whose vertical drop dominates horizontal displacement, covers at least half of centroid-chain length, and leaves the core centroid at least one cell above support-top',
+      'non-rising chains whose vertical drop covers at least half of centroid-chain length and leaves the core centroid at least one cell above support-top; lateral exterior ports are validated separately by exact bilateral reflection',
       { partIds: invalidDescentPartIds }
     ), true);
   }
@@ -399,6 +406,7 @@ const evaluateGroundedBalance = (
   evaluation: MutableEvaluation
 ): GroundedBalanceResult => {
   const groundedMode = profile.restPose.mode === 'standing' ||
+    profile.restPose.mode === 'rolling' ||
     profile.restPose.mode === 'supported';
   const inputsComplete = groundedMode && coreSlot !== undefined &&
     coreSlot.partIds.every((partId) => presentIds.has(partId)) &&
@@ -515,7 +523,7 @@ export const evaluateRestPoseQuality = (
       'authoring.plan.rest_pose_support_invalid',
       'authoringProfile.restPose',
       `Canonical ${profile.restPose.mode} mode contradicts typed support contact.`,
-      'standing with every foot grounded, supported with every base grounded, or no grounded support for airborne/free'
+      'standing with every foot grounded, rolling with every wheel grounded, supported with every base grounded, or no grounded support for airborne/free'
     ), true);
   }
 

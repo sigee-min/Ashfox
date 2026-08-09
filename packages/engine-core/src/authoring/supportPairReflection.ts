@@ -69,6 +69,13 @@ const supportPairRegions = (
       rightPartIds: right.supportPartIds
     }];
   }
+  if (left.kind === 'wheel' && right.kind === 'wheel') {
+    return [{
+      label: 'wheel',
+      leftPartIds: left.wheelPartIds,
+      rightPartIds: right.wheelPartIds
+    }];
+  }
   return left.kind === 'foot' && right.kind === 'foot'
     ? footPairRegions(left, right)
     : [];

@@ -26,6 +26,8 @@ const validateCanonicalSupport = (
   const supportSlots = declaredSupportSlots(slots);
   const expectedMode = contract.kind === 'standing-feet'
     ? 'standing'
+    : contract.kind === 'rolling-wheels'
+      ? 'rolling'
     : contract.kind === 'supported-base'
       ? 'supported'
       : contract.kind === 'airborne'
@@ -48,6 +50,19 @@ const validateCanonicalSupport = (
         'slots',
         'Standing-feet authority permits only grounded foot supports and requires at least one.',
         'one or more grounded foot slots; no base or free support'
+      );
+    }
+    return;
+  }
+  if (contract.kind === 'rolling-wheels') {
+    if (supportSlots.length === 0 || supportSlots.some((slot) =>
+      slot.support.kind !== 'wheel' || slot.support.contact !== 'grounded'
+    )) {
+      addIssue(
+        issues,
+        'slots',
+        'Rolling-wheel authority permits only grounded wheel supports and requires at least one.',
+        'one or more grounded wheel slots; no foot or base support'
       );
     }
     return;
@@ -205,14 +220,22 @@ const validateSupportedSurfaces = (
         ? 'front'
         : obligation.extension === 'rearward'
           ? 'rear'
-          : null;
+          : obligation.extension === 'left'
+            ? 'left'
+            : obligation.extension === 'right'
+              ? 'right'
+              : null;
     const opposite = obligation.extension === 'up'
       ? 'below'
       : obligation.extension === 'forward'
         ? 'rear'
         : obligation.extension === 'rearward'
           ? 'front'
-          : null;
+          : obligation.extension === 'left'
+            ? 'right'
+            : obligation.extension === 'right'
+              ? 'left'
+              : null;
     const invalidExtension = group.find((slot) => {
       if (obligation.extension === 'lateral') {
         const left = slot.spatialRelations.includes('left');

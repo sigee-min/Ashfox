@@ -48,6 +48,12 @@ export const archetypeDefinitions: readonly ArchetypeDefinition[] = [{
       'Use for jointed appendages or supports without assigning an anatomical or manufactured identity.'
     ),
     policy(
+      'rotary',
+      ['radial'],
+      ['silhouette', 'structure'],
+      'Use for a compiler-owned radial drive, hub, or wheel whose rotation axis and attachment are derived from the structural host.'
+    ),
+    policy(
       'span',
       ['segment', 'plate'],
       ['silhouette', 'structure'],
@@ -70,7 +76,7 @@ export const archetypeDefinitions: readonly ArchetypeDefinition[] = [{
     {
       id: 'port.role-module',
       type: 'role-prop',
-      hostStructuralRoles: ['core', 'articulated', 'span', 'accent'],
+      hostStructuralRoles: ['core', 'articulated', 'rotary', 'span', 'accent'],
       capacity: 8,
       acceptsFacets: ['role-prop']
     },
@@ -81,6 +87,7 @@ export const archetypeDefinitions: readonly ArchetypeDefinition[] = [{
         'core',
         'axis',
         'articulated',
+        'rotary',
         'span',
         'focal-frame',
         'accent'
@@ -95,6 +102,7 @@ export const archetypeDefinitions: readonly ArchetypeDefinition[] = [{
         'core',
         'axis',
         'articulated',
+        'rotary',
         'span',
         'accent'
       ],

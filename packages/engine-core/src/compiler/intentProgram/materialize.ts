@@ -1,7 +1,6 @@
 import { createAuthoringProfile } from '../../authoring/authoringProfile';
 import { evaluateAuthoringPlan } from '../../authoring/authoringPlan';
 import type {
-  AnimationClip,
   IntentProgramSource,
   ProjectDocument
 } from '../../model';
@@ -11,6 +10,8 @@ import { materializeCompilerParts } from './materializeParts';
 import { parseIntentProgram } from '../../project/intentProgram';
 import { deriveGeneratedTextures } from '../../textures/textureRecipe';
 import { compileIntentProgram } from './lowering';
+import { compileCanonicalIdle } from './motionLowering';
+import { sourcePathForCompilerIssue } from './sourceOwnership';
 import type { IntentProgramCompilerPlan } from './types';
 
 export interface IntentProgramMaterializationError {
@@ -27,42 +28,6 @@ const failure = (
   path: string
 ): MaterializeIntentProgramResult => ({ ok: false, error: { message, path } });
 
-const compilerIdle = (
-  document: ProjectDocument
-): AnimationClip | null => {
-  const root = document.modeling?.parts.find(
-    (part) => part.parentPartId === null
-  );
-  if (!root) return null;
-  const channelId = `animation:idle:channel:${root.partId}:rotation`;
-  return {
-    id: 'idle',
-    name: `animation.${document.id}.idle`,
-    durationSeconds: 1,
-    fps: 20,
-    loop: 'loop',
-    channels: {
-      [channelId]: {
-        id: channelId,
-        targetNodeId: `bone:${root.partId}`,
-        property: 'rotation',
-        keys: [{
-          id: `animation:idle:key:${root.partId}:0`,
-          timeSeconds: 0,
-          value: [0, 0, 0],
-          interpolation: 'linear'
-        }, {
-          id: `animation:idle:key:${root.partId}:20`,
-          timeSeconds: 1,
-          value: [0, 0, 0],
-          interpolation: 'linear'
-        }]
-      }
-    },
-    triggers: {}
-  };
-};
-
 const compileSeed = (
   seed: ProjectDocument,
   plan: IntentProgramCompilerPlan
@@ -72,7 +37,10 @@ const compileSeed = (
     const issue = profile.issues[0];
     return failure(
       issue?.message ?? 'Compiler output failed authoring normalization.',
-      issue?.path ?? 'authoringProfile'
+      sourcePathForCompilerIssue(
+        issue?.path ?? 'authoringProfile',
+        plan.recipe.parts
+      )
     );
   }
   const materialized = materializeCompilerParts(
@@ -95,10 +63,16 @@ const compileSeed = (
   if (!materialized.ok) {
     return failure(
       materialized.error.message,
-      materialized.error.path ?? 'modeling'
+      sourcePathForCompilerIssue(
+        materialized.error.path ?? 'modeling',
+        plan.recipe.parts
+      )
     );
   }
-  const idle = compilerIdle(materialized.value.document);
+  const idle = compileCanonicalIdle(
+    materialized.value.document,
+    plan.program.motion
+  );
   if (!idle) {
     return failure(
       'Compiler output has no root part for canonical idle.',
@@ -199,7 +173,10 @@ export const materializeIntentProgram = (
         const issue = authoring.issues[0];
         return failure(
           issue?.message ?? 'Compiler output is not mechanically ready.',
-          issue?.path ?? 'authoringProfile'
+          sourcePathForCompilerIssue(
+            issue?.path ?? 'authoringProfile',
+            compiled.plan.recipe.parts
+          )
         );
       }
       return { ok: true, document: textured.document };

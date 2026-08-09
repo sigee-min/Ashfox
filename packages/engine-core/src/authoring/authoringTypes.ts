@@ -111,6 +111,7 @@ export const AUTHORING_STRUCTURAL_ROLES = [
   'core',
   'axis',
   'articulated',
+  'rotary',
   'span',
   'focal-frame',
   'accent'
@@ -170,10 +171,17 @@ export type AuthoringSupport =
       rootPartId: string;
       solePartIds: readonly string[];
       digits: readonly AuthoringFootDigit[];
+    }
+  | {
+      /** A radial primitive whose lower arc owns the rolling ground contact. */
+      kind: 'wheel';
+      contact: AuthoringContact;
+      wheelPartIds: readonly string[];
     };
 
 export const AUTHORING_REST_POSE_MODES = [
   'standing',
+  'rolling',
   'supported',
   'airborne',
   'free'

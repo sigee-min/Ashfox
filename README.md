@@ -1,8 +1,9 @@
 # ashfox — Intent Program asset compiler
 
 ashfox turns one confirmed, coordinate-free Intent Program into a canonical
-low-poly asset. The compiler owns the derived geometry, pixel surface,
-hierarchy, rig, and canonical idle. You review the program before compilation,
+low-poly asset. The program explicitly states its neutral support, focal
+meaning, and idle mode; the compiler owns the derived geometry, pixel surface,
+hierarchy, rig, and animation. You review the program before compilation,
 review the resulting asset afterward, and choose a delivery adapter only when
 you export.
 
@@ -45,14 +46,16 @@ track hero
 domain organism
 frame front north
 symmetry bilateral
-rest neutral feet
+rest neutral feet on legs
 body core torso
-body limb legs pair from torso
-surface antlers pair fin from torso extends up
-face full
+body mass head from torso extends forward
+body limb legs pair from torso extends down
+surface antlers pair fin from head extends up
+face full on head
 eyes pair gaze center
 nose present
 mouth neutral
+motion idle breathe
 style palette ember
 ~~~
 

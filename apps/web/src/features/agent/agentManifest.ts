@@ -12,6 +12,18 @@ const commands = listAgentCommandDefinitions().map((definition) => ({
   schemaHash: canonicalFingerprint(definition.inputSchema)
 }));
 
+const canonicalIntentGrammar = [
+  'Every complete source requires: asset "<name>"; track essential|hero; domain organism|constructed; frame front north|south|east|west; symmetry bilateral|asymmetric.',
+  'Use rest neutral feet|base|wheels on <body-id>, or rest airborne.',
+  'Use body core <id>. Use body mass|chain|radial <id> from <host> extends forward|rearward|up|down|left|right. Use body limb|wheel <id> pair from <host> extends forward|rearward|up|down|left|right.',
+  'Use surface <id> pair wing|fin|sail|panel from <body-id> extends lateral|up|forward|rearward, or surface <id> single wing|fin|sail|panel from <body-id> extends left|right|up|forward|rearward.',
+  'Use face none, or face full on <body-id> followed by eyes single|pair gaze center, nose present|absent, and mouth absent|neutral|beak|fang.',
+  'A full face owns the canonical front: its supported surfaces use lateral, up, or rearward; use a body chain for an anterior form.',
+  'Hero track has exactly one focal stage: its full face or focal <id> on <body-id>.',
+  'Use motion idle still|breathe|scan and style palette natural|ember|ocean|noir|metal|gold.',
+  'Do not use aliases, implicit defaults, coordinates, cubes, materials, pivots, UVs, or keyframes.'
+].join(' ');
+
 export const agentManifest = {
   protocol: agentCommandProtocol.protocol,
   workbench: agentCommandProtocol.workbench,
@@ -63,19 +75,20 @@ export const agentManifest = {
       'Intent source is the sole modeling authority. AST, normalized IR, semantic contract, layout, PartRecipe, scene, rig, texture, and animations are compiler-owned derived output.',
     program: {
       grammar:
-        'asset "name"; track essential|hero; domain organism|constructed; frame front north|south|east|west; symmetry bilateral|asymmetric; rest feet|base|airborne; body core|mass|chain|limb|wheel|radial declarations; supported surfaces; face; optional semantic palette natural|ember|ocean|noir|metal|gold. The compiler supplies canonical idle.',
+        canonicalIntentGrammar,
       submit:
-        'Call intent.program.propose {source}. Source must state topology-relevant meaning, not coordinates, cubes, materials, pivots, UVs, or keyframes.'
+        'Call intent.program.propose {source} only with one complete program that satisfies this grammar. Source states topology-relevant meaning, not coordinates, cubes, materials, pivots, UVs, or keyframes.'
     },
     tracks: {
       essential:
         'Preserves the same semantic graph with a compact detail budget.',
       hero:
-        'Preserves the same semantic graph with additional compiler-derived structure and focal detail. Track never changes subject, support, pose, face, or surface meaning.'
+        'Preserves the same semantic graph with additional compiler-derived structure and focal detail. It requires exactly one focal stage: a full face or a named focal declaration. Track never changes subject, support, pose, face, or surface meaning.'
     },
     rules: [
       'After intent.program.propose, stop mutation and wait for user/workbench confirmation and compilation.',
       'To change form, pose, face, support, wings, materials, or motion, revise the source and propose again.',
+      'Never omit support host, body direction, full-face host, idle mode, or palette; use only this grammar’s canonical spellings.',
       'Use intent.program.propose as the sole asset-writing command.',
       'Do not infer successful compilation from proposal acceptance; inspect after the workbench reports compilation.'
     ]
@@ -99,7 +112,7 @@ export const agentManifest = {
     {
       stage: 'animate',
       instruction:
-        'The compiler supplies the canonical neutral idle. Do not author keyframes, rotations, loops, or one-off motion through the agent surface.'
+        'Source declares motion idle still, breathe, or scan; the compiler derives the canonical animation. Do not author keyframes, rotations, loops, or one-off motion through the agent surface.'
     },
     {
       stage: 'review',

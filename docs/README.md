@@ -2,8 +2,9 @@
 
 ashfox has one authored asset authority: a confirmed Intent Program. It is a
 small, coordinate-free description of the asset’s identity, forward direction,
-symmetry, neutral support, structural modules, face, supported surfaces, and
-semantic palette. The compiler derives the canonical model from that source.
+symmetry, explicit neutral support host, structural relationships, focal stage,
+idle mode, face, supported surfaces, and semantic palette. The compiler derives
+the canonical model from that source.
 
 The browser workbench is local-first: create a named project, confirm the
 program, compile it, review the canonical result, then select an export adapter
@@ -24,10 +25,11 @@ new compilation.
 - creatures, figures, props, vehicles, and other assets from coordinate-free
   structural modules;
 - compact essential assets and detailed hero assets;
-- standing, base-supported, and airborne neutral assets;
-- bilateral or explicitly asymmetric forms, with compiler-enforced paired
-  surfaces and focal details where required;
-- generated pixel surfaces, canonical hierarchy, and canonical idle motion;
+- standing, base-supported, wheel-grounded, and airborne neutral assets;
+- bilateral or explicitly asymmetric forms, with compiler-enforced reflected
+  surfaces and exactly one hero focal stage where required;
+- generated pixel surfaces, canonical hierarchy, and source-declared idle
+  motion;
 - Java block, GeckoLib 5, Bedrock, GLB, and glTF delivery artifacts.
 
 ## Choose a guide

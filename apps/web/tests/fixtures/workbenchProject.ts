@@ -19,9 +19,10 @@ const createUnitFixture = (): ProjectDocument => {
     'domain constructed',
     'frame front north',
     'symmetry bilateral',
-    'rest neutral base',
+    'rest neutral base on body',
     'body core body',
     'face none',
+    'motion idle still',
     'style palette ocean'
   ].join('\n');
   const proposed = executeAgentCommandBatch(empty, {

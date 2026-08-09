@@ -36,6 +36,7 @@ const SUBJECT_DOMAINS = new Set<ProjectSubjectDomain>([
 ]);
 const CANONICAL_SUPPORT_KINDS = new Set<ProjectCanonicalSupport['kind']>([
   'standing-feet',
+  'rolling-wheels',
   'supported-base',
   'airborne',
   'free-explicit'
@@ -53,6 +54,8 @@ const SUPPORTED_SURFACE_CONFIGURATIONS = new Set([
 const SUPPORTED_SURFACE_EXTENSIONS =
   new Set<ProjectSupportedSurfaceExtension>([
     'lateral',
+    'left',
+    'right',
     'up',
     'forward',
     'rearward'
@@ -81,7 +84,7 @@ const normalizedCanonicalSupport = (
       path: 'semanticContract.canonicalSupport',
       message: 'Canonical support must use a recognized closed contract.',
       expected:
-        '{kind:standing-feet|supported-base|airborne} | ' +
+        '{kind:standing-feet|rolling-wheels|supported-base|airborne} | ' +
         '{kind:"free-explicit",referenceIds:[...]}'
     });
     return null;
@@ -242,7 +245,7 @@ const normalizedSupportedSurfaces = (
         message: 'Supported surface must use the closed obligation shape.',
         expected:
           '{id,role:wing|fin|sail|panel,configuration:paired|single,' +
-          'extension:lateral|up|forward|rearward}'
+          'extension:lateral|left|right|up|forward|rearward}'
       });
       return;
     }
@@ -286,7 +289,7 @@ const normalizedSupportedSurfaces = (
       issues.push({
         path: `${path}.extension`,
         message: 'Supported-surface extension direction is invalid.',
-        expected: 'lateral | up | forward | rearward'
+        expected: 'lateral | left | right | up | forward | rearward'
       });
       return;
     }
@@ -298,14 +301,36 @@ const normalizedSupportedSurfaces = (
       });
       return;
     }
-    if (configuration === 'single' && extension === 'lateral' &&
+    if (configuration === 'paired' &&
+      (extension === 'left' || extension === 'right')) {
+      issues.push({
+        path: `${path}.extension`,
+        message:
+          'Paired surfaces derive their lateral direction from each semantic side.',
+        expected:
+          'lateral | up | forward | rearward'
+      });
+      return;
+    }
+    if (configuration === 'single' && extension === 'lateral') {
+      issues.push({
+        path: `${path}.extension`,
+        message:
+          'A single surface must name its left or right direction explicitly.',
+        expected:
+          'left | right | up | forward | rearward'
+      });
+      return;
+    }
+    if (configuration === 'single' &&
+      (extension === 'left' || extension === 'right') &&
       symmetry?.kind === 'bilateral') {
       issues.push({
         path: `${path}.extension`,
         message:
-          'A bilateral single surface cannot realize lateral extension from a centered slot.',
+          'A bilateral single surface cannot own only one lateral side.',
         expected:
-          'paired lateral surface, or single up/forward/rearward surface'
+          'paired lateral surface, or centered single up/forward/rearward surface'
       });
       return;
     }
@@ -356,10 +381,11 @@ export const normalizeProjectSemanticContract = (
     issues
   );
   if (subjectDomain === 'organism' &&
-    canonicalSupport?.kind === 'supported-base') {
+    (canonicalSupport?.kind === 'supported-base' ||
+      canonicalSupport?.kind === 'rolling-wheels')) {
     issues.push({
       path: 'semanticContract.canonicalSupport',
-      message: 'An organism cannot reclassify body contact as a base support.',
+      message: 'An organism cannot reclassify body contact as base or wheel support.',
       expected: 'standing-feet, airborne, or free-explicit'
     });
   }
