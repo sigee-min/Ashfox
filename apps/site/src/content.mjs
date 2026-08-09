@@ -2,7 +2,7 @@ export const landingContent = {
   eyebrow: 'AI-native low-poly workbench',
   titleLines: ['Describe it.', 'Ship it game-ready.'],
   summary:
-    'Your AI agent turns one reviewed Intent Program into an editable asset, then delivers optimized Bedrock, GeckoLib, glTF, or GLB output.',
+    'Your AI agent turns one confirmed Intent Program into one canonical asset, then delivers optimized Bedrock, GeckoLib, glTF, or GLB output.',
   quickStart: {
     title: 'One instruction. Then describe what you want.',
     body:
@@ -21,8 +21,8 @@ export const landingContent = {
     {
       index: '02',
       label: 'Author',
-      title: 'Model and review',
-      body: 'Describe the asset, confirm its intent, and review the compiled result.',
+      title: 'Confirm and review',
+      body: 'Describe the asset, confirm its Intent Program, and review the compiled result.',
       href: '/docs/guides/authoring-and-review/'
     },
     {

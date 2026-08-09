@@ -249,8 +249,8 @@ export const renderLandingPage = ({ assets, config }) => {
       <section class="section output-section" id="outputs">
         <div class="output-copy" data-reveal>
           <p class="eyebrow"><span></span>Export</p>
-          <h2>Editable source. Runtime-ready output.</h2>
-          <p>Keep the complete .ashfox project, while target compilers remove hidden work, reduce animation data, and batch GLB geometry without changing the visible asset.</p>
+          <h2>Canonical source. Runtime-ready output.</h2>
+          <p>Keep the complete .ashfox project. Export adapters derive target artifacts, record every conversion or omission, and never change the canonical asset.</p>
           <a class="text-link" href="/docs/guides/save-and-export/">Read the delivery guide <span>→</span></a>
         </div>
         <div class="format-grid">

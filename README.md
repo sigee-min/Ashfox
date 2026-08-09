@@ -1,177 +1,111 @@
-# ashfox — AI-native low-poly asset workbench
+# ashfox — Intent Program asset compiler
 
-Describe an asset and watch your AI agent model, texture, rig, and animate it in
-an editable browser workbench. Keep the canonical `.ashfox` source, then export
-runtime-optimized Bedrock, GeckoLib 5, glTF, or GLB output. A fully supported
-Blockbench MCP workflow is included for teams already using Blockbench.
+ashfox turns one confirmed, coordinate-free Intent Program into a canonical
+low-poly asset. The compiler owns the derived geometry, pixel surface,
+hierarchy, rig, and canonical idle. You review the program before compilation,
+review the resulting asset afterward, and choose a delivery adapter only when
+you export.
 
 <p align="center">
-  <a href="https://ashfox.io"><strong>Explore ashfox.io →</strong></a>
+  <a href="https://ashfox.io"><strong>Open ashfox →</strong></a>
   <br>
-  <sub>Build complete low-poly assets with your AI agent—no modeling app required.</sub>
+  <sub>Describe the asset’s meaning. ashfox derives the model.</sub>
 </p>
 
 <p align="center">
-  <a href="#connect-blockbench"><strong>Connect Blockbench</strong></a>
+  <a href="#use-the-workbench"><strong>Use the workbench</strong></a>
   &nbsp;·&nbsp;
-  <a href="#use-without-blockbench"><strong>Use without Blockbench</strong></a>
+  <a href="#export"><strong>Export</strong></a>
   &nbsp;·&nbsp;
   <a href="https://ashfox.io/docs/"><strong>Read the guides</strong></a>
 </p>
 
-## Choose the workflow you want
+## Use the workbench
 
-| | Blockbench MCP | Web workbench |
-| --- | --- | --- |
-| Best for | Existing Blockbench workflows | Starting without installing a modeling app |
-| Setup | Load one plugin and connect localhost MCP | Give your agent one manifest instruction |
-| Workspace | Your open Blockbench project | A browser-local `.ashfox` project |
-| Agent access | MCP tools | Connected or in-app browser |
-| Exports | Blockbench-supported targets | Java block, GeckoLib 5, Bedrock, GLB, and glTF |
+1. Create a project and give it a name.
+2. Give your browser-capable agent this instruction:
 
-Both workflows are open source and local-first. The web workbench is optional;
-you do not need to switch away from Blockbench.
+   ~~~text
+   Fetch and follow https://ashfox.io/workbench/agent-manifest.json using a direct HTTP request such as curl.
+   ~~~
 
-## Connect Blockbench
+3. Describe the asset in ordinary language. The agent submits one complete
+   Intent Program proposal.
+4. Read the displayed program, including its forward direction, symmetry,
+   resting support, face, and supported surfaces. Confirm only when that
+   meaning is correct.
+5. ashfox compiles the canonical asset atomically. Review the result, then
+   revise the Intent Program if the result needs a different meaning.
 
-### 1. Install the plugin
+For example:
 
-In the latest Blockbench Desktop:
+~~~text
+asset "Ember Stag"
+track hero
+domain organism
+frame front north
+symmetry bilateral
+rest neutral feet
+body core torso
+body limb legs pair from torso
+surface antlers pair fin from torso extends up
+face full
+eyes pair gaze center
+nose present
+mouth neutral
+style palette ember
+~~~
 
-1. Open **File → Plugins → Load Plugin from URL**.
-2. Paste the release URL below.
-3. Choose **Install** or **Load**.
+The source states semantic relationships, not coordinates, cubes, pivots,
+materials, UVs, or keyframes. The compiler derives those details and rejects a
+program that cannot produce a valid canonical asset.
 
-```text
-https://github.com/sigee-min/ashfox/releases/latest/download/ashfox.js
-```
+## Revise the right thing
 
-This URL loads the published `ashfox.js` asset from this GitHub repository.
-The plugin opens a local MCP endpoint on your machine; it does not require an
-ashfox account or a connection to `ashfox.io`.
+The Intent Program remains the asset authority. When a result is wrong, state
+the visual relationship that should change and have the agent submit a revised
+complete program. For example, ask for a wider rear stance, a pair of upward
+fins, or eyes that remain readable from a three-quarter view. Do not prescribe
+implementation details; they are compiler output.
 
-### 2. Connect your agent
+Essential produces a compact, intentional read. Hero keeps the same semantic
+identity with more compiler-derived secondary form. Neither track changes the
+asset’s subject, neutral rest, face meaning, or supported surface obligations.
 
-Keep Blockbench open, then add this HTTP MCP endpoint to your agent or MCP
-client:
+## Export
 
-```text
-http://127.0.0.1:8787/mcp
-```
+The project stores no delivery target. Open **Export** only after the canonical
+asset is ready, then choose Java block, GeckoLib 5, Bedrock, GLB, or glTF. A
+Minecraft adapter may ask for its game version, namespace, and model path.
+Those values exist only for that export operation; they never rewrite the
+Intent Program or canonical asset.
 
-Ask the agent to confirm the connection before it edits anything:
-
-```text
-Connect to the Blockbench MCP endpoint, call list_capabilities, inspect the
-current project, and tell me which modeling, texture, animation, preview, and
-export tools are available. When the connection check is complete, ask me
-exactly: "What would you like to create?" Treat my next message as the complete
-asset brief and begin. Do not change the project until I answer. The user
-chooses any delivery target later in the Export menu.
-```
-
-### 3. Make your first asset
-
-Once the agent reports that Blockbench is connected:
-
-```text
-Create a Minecraft-style fantasy creature with a readable silhouette,
-consistent pixel textures, a clean bone hierarchy, and an idle animation.
-Validate it and render a preview before exporting.
-```
-
-That is the complete setup. You can stay entirely inside Blockbench.
-
-<details>
-<summary><strong>Verify the endpoint manually</strong></summary>
-
-List the available tools:
-
-```bash
-curl -s http://127.0.0.1:8787/mcp \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
-```
-
-Read the active Blockbench capabilities:
-
-```bash
-curl -s http://127.0.0.1:8787/mcp \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_capabilities","arguments":{}}}'
-```
-
-</details>
-
-<details>
-<summary><strong>If the plugin or endpoint does not connect</strong></summary>
-
-- Confirm that you are using the latest Blockbench Desktop.
-- Confirm that the loaded file is named `ashfox.js`.
-- Keep Blockbench open while the MCP client connects.
-- Check **ashfox: Server** for the host, port, path, and current status.
-- Allow Blockbench on private networks if the operating system asks.
-- On Flatpak or Snap, allow access to the project and export folders.
-- If a command reports a revision mismatch, inspect the project again and use
-  the latest `ifRevision`.
-
-</details>
-
-## What the Blockbench integration exposes
-
-- **Modeling:** bones, cubes, meshes, transforms, updates, and deletes.
-- **Texturing:** assignment, deterministic face painting, mesh painting, and
-  texture reads.
-- **Animation:** clips, frame poses, triggers, and keyframes.
-- **Review:** project state, validation, capability inspection, and rendered
-  previews.
-- **Delivery:** export through the active Blockbench project and format.
-
-Normal edits use revisions so an agent cannot silently apply work against stale
-project state. Use only trusted local MCP clients because connected tools can
-edit the project currently open in Blockbench.
-
-## Use without Blockbench
-
-Paste this single instruction into Codex desktop app, Cursor, or another
-browser-capable agent:
-
-```text
-Fetch and follow https://ashfox.io/workbench/agent-manifest.json using a direct HTTP request such as curl.
-```
-
-That manifest is the complete operating guide. It tells the agent how to open
-ashfox, connect to the page, inspect the project, edit safely, and ask what you
-want to create.
-
-The workbench keeps its editable project in the browser. Files leave it only
-when you choose an export adapter in the Export menu.
+The adapter reports incompatible features, conversions, omissions, artifact
+metadata, and a content hash before delivery.
 
 ## Local data and source
 
-- The Blockbench plugin and MCP endpoint run on your machine.
-- The web workbench does not require an ashfox account or project upload.
-- The browser and Blockbench workflows are built and tested independently.
-- Source for the plugin, sidecar, engine, workbench, and site is in this
+- The workbench keeps the project in your browser.
+- ashfox does not require an account or project upload.
+- Source for the engine, workbench, export adapters, and site is in this
   repository under the MIT license.
 
 ## Build from source
 
-```bash
+~~~bash
 git clone https://github.com/sigee-min/ashfox.git
 cd ashfox
 npm install
 npm run build
-```
+~~~
 
-The Blockbench build produces `dist/ashfox.js` and
-`dist/ashfox-sidecar.js`. To build or test one surface:
+Before publishing a change, run:
 
-```bash
-npm run build:blockbench
-npm run build:public
+~~~bash
 npm test
-```
+npm run build:public
+npm run quality:check
+~~~
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for repository conventions and
 [docs/](docs/README.md) for user guides.

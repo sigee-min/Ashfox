@@ -1914,18 +1914,6 @@ html[data-motion="ready"] [data-reveal][data-revealed="true"] {
     transform: none;
   }
 
-  .gallery-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .gallery-controls {
-    grid-template-columns: minmax(240px, 340px) minmax(0, 1fr);
-  }
-
-  .gallery-results {
-    grid-column: 1 / -1;
-  }
-
   .docs-shell {
     grid-template-columns: 200px minmax(0, 1fr);
     gap: 42px;
@@ -2031,36 +2019,9 @@ html[data-motion="ready"] [data-reveal][data-revealed="true"] {
   .hero,
   .section,
   .quick-start-section,
-  .gallery,
   .site-footer,
   .docs-shell {
     width: min(100% - 32px, var(--max-width));
-  }
-
-  .gallery {
-    padding-top: 56px;
-  }
-
-  .gallery-hero {
-    margin-bottom: 36px;
-  }
-
-  .gallery-hero h1 {
-    font-size: clamp(46px, 15vw, 64px);
-  }
-
-  .gallery-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .gallery-controls {
-    grid-template-columns: 1fr;
-    gap: 12px;
-    padding: 13px;
-  }
-
-  .gallery-results {
-    grid-column: auto;
   }
 
   .hero {

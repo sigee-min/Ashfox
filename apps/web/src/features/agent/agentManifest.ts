@@ -76,7 +76,7 @@ export const agentManifest = {
     rules: [
       'After intent.program.propose, stop mutation and wait for user/workbench confirmation and compilation.',
       'To change form, pose, face, support, wings, materials, or motion, revise the source and propose again.',
-      'Never call legacy raw mutation or semantic-inspection interfaces.',
+      'Use intent.program.propose as the sole asset-writing command.',
       'Do not infer successful compilation from proposal acceptance; inspect after the workbench reports compilation.'
     ]
   },

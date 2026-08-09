@@ -1,53 +1,50 @@
 # ashfox Docs
 
-ashfox composes a model request through one subject-neutral structural
-authority and focused specialists, then turns the grounded semantic plan into
-an editable low-poly asset you can watch, correct, review, and export in the
-browser. There is nothing to install and no account to create.
+ashfox has one authored asset authority: a confirmed Intent Program. It is a
+small, coordinate-free description of the asset’s identity, forward direction,
+symmetry, neutral support, structural modules, face, supported surfaces, and
+semantic palette. The compiler derives the canonical model from that source.
 
-Blockbench is optional. The quickest path uses only ashfox and an AI agent with
-browser access.
+The browser workbench is local-first: create a named project, confirm the
+program, compile it, review the canonical result, then select an export adapter
+for the receiving runtime.
 
 ## Start in three steps
 
-1. Copy the one-line manifest instruction in
-   [Get started](guides/ai-agent-quick-start.md).
-2. Paste it into Codex desktop app, Cursor, or another browser-capable AI
-   agent.
-3. Describe the asset you want, including its style, important details, and
-   animation. Choose a delivery adapter later in Export.
+1. Follow [Get started](guides/ai-agent-quick-start.md).
+2. Ask a browser-capable agent to submit one complete Intent Program.
+3. Read the proposal, confirm its meaning, and review the compiled result.
 
-The manifest tells the agent how to open ashfox and prepare the empty project.
-The agent builds inside the live viewport and uses the activity receipt and
-Undo to review complete changes.
+The agent may propose source and present review frames. It does not directly
+modify the canonical model. A changed requirement means a revised program and a
+new compilation.
 
 ## What you can make
 
-- creatures, figures, props, vehicles, and other forms through composable
-  structural modules rather than named body-plan archetypes;
-- intentional `essential` assets for distilled small-scale reads and `hero`
-  assets for reference-faithful secondary form and material separation;
-- focused role, surface, silhouette, and motion specialists selected from
-  request and reference provenance;
-- pixel textures with consistent UV scale;
-- bones, pivots, and reusable animation clips;
-- Java block, GeckoLib 5, Bedrock, GLB, and glTF exports.
+- creatures, figures, props, vehicles, and other assets from coordinate-free
+  structural modules;
+- compact essential assets and detailed hero assets;
+- standing, base-supported, and airborne neutral assets;
+- bilateral or explicitly asymmetric forms, with compiler-enforced paired
+  surfaces and focal details where required;
+- generated pixel surfaces, canonical hierarchy, and canonical idle motion;
+- Java block, GeckoLib 5, Bedrock, GLB, and glTF delivery artifacts.
 
 ## Choose a guide
 
-- [Get started](guides/ai-agent-quick-start.md) — connect an agent and make your
-  first asset.
-- [Create and refine](guides/authoring-and-review.md) — write better requests,
-  review details, and correct the result.
-- [Export a finished asset](guides/save-and-export.md) — choose an adapter and
-  create an artifact without changing the project.
-- [Choose an export format](guides/choose-a-format.md) — choose a receiving
-  game version and artifact format at export time.
-- [Troubleshooting](guides/troubleshooting.md) — solve common browser, texture,
-  animation, and download problems.
+- [Get started](guides/ai-agent-quick-start.md) — create and compile a first
+  Intent Program.
+- [Create and refine](guides/authoring-and-review.md) — write source that
+  expresses the intended result and review it safely.
+- [Export a finished asset](guides/save-and-export.md) — deliver an artifact
+  without changing the project.
+- [Choose an export format](guides/choose-a-format.md) — select an adapter at
+  delivery time.
+- [Troubleshooting](guides/troubleshooting.md) — resolve proposal,
+  compilation, review, export, and download problems.
 
 ## Your files stay local
 
 ashfox stores the working project in your browser. It does not require a
-database or upload your project to an ashfox server. The finished artifact
-leaves the browser only when you export it.
+database or project upload. An artifact leaves the browser only when you
+export it.
