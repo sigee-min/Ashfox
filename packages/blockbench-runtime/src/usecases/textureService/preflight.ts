@@ -16,7 +16,7 @@ import {
   computeUvBounds,
   recommendResolution,
   summarizeTextureUsage
-} from './textureUsageUtils';
+} from './usage';
 import {
   TEXTURE_NOT_FOUND,
   TEXTURE_PREFLIGHT_BOUNDS_EXCEED,
@@ -154,5 +154,4 @@ export const runTexturePreflight = (
     return ok(result);
   });
 };
-
 

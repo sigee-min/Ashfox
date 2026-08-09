@@ -1,5 +1,9 @@
 import type { RefObject } from 'react';
 
+import {
+  ASHFOX_PROJECT_FILE_EXTENSION
+} from '@ashfox/engine-core';
+
 import type { ArtifactFile } from '../../../files/artifactFile';
 import type { FileOperationState } from '../../../files/fileOperationState';
 import { Icon } from '../../Icon';
@@ -7,12 +11,17 @@ import type {
   HeaderMenu,
   OpenHeaderMenu
 } from './headerMenu';
+import type {
+  ExportAvailabilityViewModel
+} from '../../exportAvailability';
+import { presentExportTrigger } from '../../presentation/export';
 
 interface HeaderFileActionsProps {
   activeMenu: HeaderMenu;
   fileOperation: FileOperationState<ArtifactFile>;
   artifactFile: ArtifactFile | null;
   artifactUrl: string | null;
+  exportAvailability: ExportAvailabilityViewModel;
   openInputRef: RefObject<HTMLInputElement | null>;
   artifactAnchorRef: RefObject<HTMLAnchorElement | null>;
   onToggleMenu: (menu: OpenHeaderMenu) => void;
@@ -35,6 +44,7 @@ export function HeaderFileActions({
   fileOperation,
   artifactFile,
   artifactUrl,
+  exportAvailability,
   openInputRef,
   artifactAnchorRef,
   onToggleMenu,
@@ -43,10 +53,14 @@ export function HeaderFileActions({
 }: HeaderFileActionsProps) {
   const fileBusy = fileOperation.phase === 'running';
   const captureBusy = fileBusy && fileOperation.kind === 'capture';
+  const exportTrigger = presentExportTrigger(
+    exportAvailability,
+    fileBusy && fileOperation.kind === 'export'
+  );
   return (
     <div
       className="file-actions"
-      title={fileOperation.message ?? 'Project files'}
+      title={fileOperation.message ?? 'Intent Program files'}
       aria-busy={fileBusy}
     >
       <button
@@ -70,8 +84,8 @@ export function HeaderFileActions({
         ref={openInputRef}
         type="file"
         hidden
-        aria-label="Open project file"
-        accept=".ashfox,application/vnd.ashfox.project+zip,application/zip"
+        aria-label="Open Intent Program file"
+        accept={`${ASHFOX_PROJECT_FILE_EXTENSION},text/x-ashfox`}
         data-ashfox-action="project.open.input"
         onChange={(event) => {
           const file = event.currentTarget.files?.[0];
@@ -85,17 +99,24 @@ export function HeaderFileActions({
         data-ashfox-action="project.save"
         onClick={onSave}
       >
-        {operationLabel(fileOperation, 'save', 'Save', 'Saving…')}
+        {operationLabel(
+          fileOperation,
+          'save',
+          'Download source',
+          'Preparing…'
+        )}
       </button>
       <button
         type="button"
-        className="is-primary"
+        className={`is-primary${exportTrigger.blocked ? ' is-blocked' : ''}`}
         disabled={fileBusy}
         aria-expanded={activeMenu === 'export'}
+        aria-label={exportTrigger.ariaLabel}
+        data-export-blocked={exportTrigger.blocked}
         data-ashfox-action="project.export.open"
         onClick={() => onToggleMenu('export')}
       >
-        {operationLabel(fileOperation, 'export', 'Export', 'Exporting…')}
+        {exportTrigger.label}
       </button>
       <button
         type="button"

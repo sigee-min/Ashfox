@@ -13,8 +13,8 @@ import { ToolService } from './usecases/ToolService';
 import { UsecaseResult } from './usecases/result';
 import { err, toToolResponse } from './shared/tooling/toolResponse';
 import { guardOptionalRevision } from './shared/tooling/optionalRevision';
-import { TraceRecorder } from './trace/traceRecorder';
-import { TraceLogService } from './usecases/TraceLogService';
+import { TraceRecorder } from './trace/recorder';
+import { TraceLogService } from './usecases/trace';
 import { toRevisionPayload } from './dispatcher/utils';
 import { buildDefaultToolService } from './dispatcher/bootstrap';
 import {
@@ -235,7 +235,6 @@ export class ToolDispatcherImpl implements Dispatcher {
   }
 
 }
-
 
 
 

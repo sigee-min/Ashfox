@@ -27,8 +27,8 @@ import { buildRuntimeServices } from './runtimeServices';
 import { registerCodecs } from './runtimeCodecs';
 import { createRuntimeServerState, restartServer, type RuntimeServerState } from './runtimeServer';
 import { createDefaultPolicies, createTraceLogDefaults } from './runtimeDefaults';
-import type { TraceRecorder } from '../trace/traceRecorder';
-import type { TraceLogFlushScheduler } from '../trace/traceLogFlushScheduler';
+import type { TraceRecorder } from '../trace/recorder';
+import type { TraceLogFlushScheduler } from '../trace/flush';
 import type { TraceLogWriter } from '../ports/traceLog';
 import {
   PLUGIN_LOG_LOADING,
@@ -273,7 +273,6 @@ Notes:
     }
   });
 };
-
 
 
 

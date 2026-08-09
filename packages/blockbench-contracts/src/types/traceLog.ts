@@ -8,13 +8,17 @@ import {
   isUniqueContractTextArray
 } from '@ashfox/internal-contracts';
 
-import type { ProjectDiff, ProjectDiffCountsByKind, ProjectState } from './project';
+import type {
+  ProjectDiff,
+  ProjectDiffCountsByKind,
+  ProjectState
+} from './project';
 import {
   isProjectDiffContract,
   isProjectStateContract,
   isProjectStateCountsContract,
   isProjectTextureResolutionContract
-} from './projectContract';
+} from './project/contract';
 import {
   FORMAT_KINDS,
   isToolErrorContract,

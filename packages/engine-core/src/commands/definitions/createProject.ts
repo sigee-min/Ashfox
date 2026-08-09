@@ -1,4 +1,4 @@
-import { createProjectDocument } from '../../project/createProjectDocument';
+import { createProjectDocument } from '../../project/create';
 import type { ProjectDocument } from '../../model';
 import { resourceToken } from '../../resourceToken';
 import { defineCommand } from '../definition';

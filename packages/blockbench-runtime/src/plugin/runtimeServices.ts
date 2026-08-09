@@ -4,26 +4,26 @@ import type { ToolPolicies } from '../usecases/policies';
 import { computeCapabilities } from '../config';
 import { ToolDispatcherImpl } from '../dispatcher';
 import { ProjectSession } from '../session';
-import { BlockbenchEditor } from '../adapters/blockbench/BlockbenchEditor';
-import { BlockbenchHost } from '../adapters/blockbench/BlockbenchHost';
-import { BlockbenchFormats } from '../adapters/blockbench/BlockbenchFormats';
-import { BlockbenchSnapshot } from '../adapters/blockbench/BlockbenchSnapshot';
-import { BlockbenchExport } from '../adapters/blockbench/BlockbenchExport';
-import { BlockbenchTextureRenderer } from '../adapters/blockbench/BlockbenchTextureRenderer';
-import { BlockbenchViewportRefresher } from '../adapters/blockbench/BlockbenchViewportRefresher';
-import { BlockbenchTraceLogWriter } from '../adapters/blockbench/BlockbenchTraceLogWriter';
+import { BlockbenchEditor } from '../adapters/blockbench/editor';
+import { BlockbenchHost } from '../adapters/blockbench/host';
+import { BlockbenchFormats } from '../adapters/blockbench/formats';
+import { BlockbenchSnapshot } from '../adapters/blockbench/snapshot';
+import { BlockbenchExport } from '../adapters/blockbench/export';
+import { BlockbenchTextureRenderer } from '../adapters/blockbench/texture/renderer';
+import { BlockbenchViewportRefresher } from '../adapters/blockbench/viewport/refresh';
+import { BlockbenchTraceLogWriter } from '../adapters/blockbench/trace/writer';
 import type { FormatOverrides } from '../domain/formats';
 import { InMemoryResourceStore } from '../adapters/resources/resourceStore';
 import { LocalTmpStore } from '../adapters/tmp/LocalTmpStore';
 import { ToolService } from '../usecases/ToolService';
 import { DEFAULT_TOOL_REGISTRY } from '../transport/mcp/tools';
-import { TraceRecorder } from '../trace/traceRecorder';
-import { TraceLogStore } from '../trace/traceLogStore';
-import { ResourceTraceLogWriter } from '../trace/traceLogWriters';
+import { TraceRecorder } from '../trace/recorder';
+import { TraceLogStore } from '../trace/store';
+import { ResourceTraceLogWriter } from '../trace/writers';
 import { PLUGIN_VERSION } from '../config';
-import { TraceLogService } from '../usecases/TraceLogService';
+import { TraceLogService } from '../usecases/trace';
 import type { TraceLogWriteMode, TraceLogWriterFactory } from '../ports/traceLog';
-import { TraceLogFlushScheduler } from '../trace/traceLogFlushScheduler';
+import { TraceLogFlushScheduler } from '../trace/flush';
 
 export type RuntimeServices = {
   session: ProjectSession;
@@ -265,7 +265,6 @@ export const buildRuntimeServices = (options: BuildRuntimeServicesOptions): Runt
     traceLogService
   };
 };
-
 
 
 

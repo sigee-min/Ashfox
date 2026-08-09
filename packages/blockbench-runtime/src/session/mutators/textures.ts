@@ -1,7 +1,8 @@
 import type { SessionState, TextureUpdate, TrackedTexture } from '../types';
+import { cloneTrackedTexture } from '../clone';
 
 export const addTexture = (state: SessionState, tex: TrackedTexture) => {
-  state.textures.push(tex);
+  state.textures.push(cloneTrackedTexture(tex));
 };
 
 export const updateTexture = (state: SessionState, name: string, updates: TextureUpdate): boolean => {
@@ -36,5 +37,4 @@ export const removeTextures = (state: SessionState, names: string[] | Set<string
   state.textures = state.textures.filter((t) => !nameSet.has(t.name));
   return before - state.textures.length;
 };
-
 

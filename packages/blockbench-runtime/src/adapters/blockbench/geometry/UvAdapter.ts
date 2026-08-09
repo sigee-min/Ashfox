@@ -2,7 +2,7 @@ import type { ToolError } from '@ashfox/blockbench-contracts/types/internal';
 import type { Logger } from '../../../logging';
 import type { SetFaceUvCommand } from '../../../ports/editor';
 import { withToolErrorAdapterError } from '../adapterErrors';
-import { getCubeApi } from '../blockbenchAdapterUtils';
+import { getCubeApi } from '../api';
 import { findCubeRef } from '../outlinerLookup';
 import { withUndo, extendEntity } from '../blockbenchUtils';
 import { MODEL_CUBE_NOT_FOUND, UV_ASSIGNMENT_FACES_NON_EMPTY } from '../../../shared/messages';
@@ -45,4 +45,3 @@ export class BlockbenchUvAdapter {
     });
   }
 }
-

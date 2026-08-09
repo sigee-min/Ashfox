@@ -1,7 +1,7 @@
 import type { PaintFacesPayload } from '@ashfox/blockbench-contracts/types/internal';
 import { checkDimensions, mapDimensionError } from '../../domain/dimensions';
 import { buildIdNameMismatchMessage } from '../../shared/targetMessages';
-import { normalizeCubeFaces } from '../textureService/textureUsageUtils';
+import { normalizeCubeFaces } from '../textureService/usage';
 import { CUBE_FACE_DIRECTIONS } from '../../shared/toolConstants';
 import {
   DIMENSION_INTEGER_MESSAGE,
@@ -120,4 +120,3 @@ export const resolveTextureForPaintFaces = (
   }
   return ok(resolvedTexture);
 };
-

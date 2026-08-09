@@ -7,7 +7,7 @@ import type {
 import {
   buildCompiledSurfaceAuthority,
   type CompiledSurfaceAuthority
-} from '../generatedSurfaceAuthority';
+} from '../appearance/authority';
 import { cubeFaceDimensions } from '../uvAtlas';
 
 const BASE_PIXELS_PER_BLOCK = 16;

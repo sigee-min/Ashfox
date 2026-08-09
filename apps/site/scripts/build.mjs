@@ -14,7 +14,7 @@ import {
   renderDocumentationPage,
   renderLandingPage,
   renderNotFoundPage
-} from '../src/templates.mjs';
+} from '../src/templates/index.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = path.resolve(siteRoot, '..', '..');

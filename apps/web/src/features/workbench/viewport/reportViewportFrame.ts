@@ -1,6 +1,6 @@
 import type { MutableRefObject } from 'react';
 
-import { captureViewportFrameEvidence } from './viewportFrameEvidence';
+import { captureViewportFrameEvidence } from './evidence';
 import type { ViewportRuntime } from './viewportRuntime';
 import type {
   ViewportPresentationFrame

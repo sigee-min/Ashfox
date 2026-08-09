@@ -30,7 +30,7 @@ import {
 } from './captureSurface';
 import { drawBuildFrameOverlay } from './gifFrameOverlay';
 import { resolveBuildReviewClip } from './buildReviewClip';
-import { createCaptureProjection } from './createCaptureProjection';
+import { createCaptureProjection } from './projection';
 
 export interface BuildGifCaptureOptions {
   documents: readonly ProjectDocument[];

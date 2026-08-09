@@ -1,0 +1,1 @@
+export { buildMinecraftActorAnimation } from './compile';

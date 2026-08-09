@@ -33,7 +33,7 @@ import type { SnapshotPort } from '../src/ports/snapshot';
 import type { TextureRendererPort } from '../src/ports/textureRenderer';
 import type { TmpSaveResult, TmpStorePort } from '../src/ports/tmpStore';
 import type { ProjectSession } from '../src/session';
-import type { RenderPreviewResult, ToolError } from '../src/types';
+import type { RenderPreviewResult, ToolError } from '@ashfox/blockbench-contracts/types/internal';
 
 type EditorStubState = {
   textures: TextureStat[];
@@ -70,16 +70,14 @@ const buildEditorStub = (state: EditorStubState): EditorPort => {
   };
 
   return {
-    createProject: (_name: string, _formatId: string, _kind: 'Java Block/Item' | 'geckolib' | 'animated_java') =>
-      null,
+    createProject: () => null,
     closeProject: (_options?: { force?: boolean }) => null,
     importTexture: (params: ImportTextureCommand): ToolError | null => {
       upsertTexture({
         id: params.id ?? null,
         name: params.name,
         width: params.width ?? 16,
-        height: params.height ?? 16,
-        path: params.path
+        height: params.height ?? 16
       });
       return null;
     },
@@ -152,7 +150,13 @@ const defaultEditorState = (): EditorStubState => ({
   previewResult: {
     kind: 'single',
     frameCount: 1,
-    image: { mime: 'image/png', width: 16, height: 16, dataUri: 'data:image/png;base64,AAAA' }
+    image: {
+      mime: 'image/png',
+      width: 16,
+      height: 16,
+      byteLength: 4,
+      dataUri: 'data:image/png;base64,AAAA'
+    }
   },
   readTextureDataUri: 'data:image/png;base64,AAAA',
   writes: []
@@ -250,4 +254,3 @@ export const createResourceStoreStub = (): ResourceStore => {
     }
   };
 };
-

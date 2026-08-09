@@ -34,15 +34,18 @@ export {
   type ProjectDocument,
   type ProjectForwardDirection,
   type ProjectIntent,
+  type CompilationReceipt,
   type IntentProgramSource,
+  type IntentProgramSourceV1,
   type ProjectCanonicalSupport,
   type ProjectReferenceKind,
   type ProjectReferenceObservation,
   type ProjectSemanticContract,
   type ProjectSemanticFace,
   type ProjectSubjectDomain,
+  type ProjectSupportedSurfaceAnchor,
+  type ProjectSupportedSurfaceGrowth,
   type ProjectSupportedSurfaceObligation,
-  type ProjectSupportedSurfaceExtension,
   type ProjectSupportedSurfaceRole,
   type ProjectSymmetry,
   type SceneNode,
@@ -52,241 +55,130 @@ export {
   type TransformChannel,
   type Vec3
 } from './model';
-
-export {
-  ARCHETYPE_IDS,
-  ATTACHMENT_PORT_TYPES,
-  AUTHORING_CAPABILITIES,
-  AUTHORING_CONTACTS,
-  AUTHORING_EYE_CONFIGURATIONS,
-  AUTHORING_FACETS,
-  AUTHORING_FACE_COMPONENTS,
-  AUTHORING_FACE_FORMS,
-  AUTHORING_FACE_MODES,
-  AUTHORING_MOUTH_STATES,
-  AUTHORING_PART_KINDS,
-  AUTHORING_PROFILE_SCHEMA_VERSION,
-  AUTHORING_QUALITY_STAGES,
-  AUTHORING_REVIEW_CAMERAS,
-  AUTHORING_REVIEW_ISSUES,
-  AUTHORING_ROUTING_CONTRACT_VERSION,
-  AUTHORING_SLOT_SYMMETRY_KINDS,
-  AUTHORING_SPATIAL_RELATIONS,
-  AUTHORING_STRUCTURAL_ROLES,
-  AUTHORING_TRACKS,
-  SPECIALIST_IDS,
-  type AppliedAuthoringReviewCheck,
-  type ArchetypeDefinition,
-  type ArchetypeId,
-  type ArchetypeReference,
-  type AttachmentPortDefinition,
-  type AttachmentPortType,
-  type AttachmentRequirement,
-  type AuthoringAttachmentBinding,
-  type AuthoringAuthorityClaim,
-  type AuthoringAuthorityId,
-  type AuthoringAuthorityReference,
-  type AuthoringBinding,
-  type AuthoringCapability,
-  type AuthoringClaimBasis,
-  type AuthoringContact,
-  type AuthoringCompatibilityIssue,
-  type AuthoringCompatibilityResult,
-  type AuthoringFacet,
-  type AuthoringEyeConfiguration,
-  type AuthoringFaceComponent,
-  type AuthoringFaceComponentDeclaration,
-  type AuthoringFaceContract,
-  type AuthoringFaceException,
-  type AuthoringFaceForm,
-  type AuthoringFaceMode,
-  type AuthoringFeatureCoverage,
-  type AuthoringFootDigit,
-  type AuthoringMotionBinding,
-  type AuthoringMotionRole,
-  type AuthoringMouthState,
-  type AuthoringPartKind,
-  type AuthoringProfile,
-  type AuthoringQualityStage,
-  type AuthoringRestPose,
-  type AuthoringRestPoseMode,
-  type AuthoringReviewCamera,
-  type AuthoringReviewCheck,
-  type AuthoringReviewIssue,
-  type AuthoringRoutingSnapshot,
-  type AuthoringSelectionInput,
-  type AuthoringSlotAssignment,
-  type AuthoringSlotSymmetry,
-  type AuthoringSlotSymmetryKind,
-  type AuthoringSpatialRelation,
-  type AuthoringStructuralRole,
-  type AuthoringSupport,
-  type AuthoringTrack,
-  type CompatibilityClause,
-  type ComposedAuthoringSlotDefinition,
-  type EvidenceCriterionDefinition,
-  type StructuralRolePolicyDefinition,
-  type SpecialistBindingRequirement,
-  type SpecialistContributionDefinition,
-  type SpecialistDefinition,
-  type SpecialistId,
-  type SpecialistReference
-} from './authoring/authoringTypes';
-export { AUTHORING_REST_POSE_MODES } from './authoring/authoringTypes';
-export {
-  authoringAuthorityLabel,
-  authoringReviewChecks,
-  getArchetype,
-  getSpecialist,
-  listArchetypes,
-  listSpecialists,
-  resolveArchetypeReference,
-  resolveSpecialistReference
-} from './authoring/authoringRegistry';
-export {
-  AUTHORING_PROFILE_LIMITS,
-  createAuthoringProfile,
-  normalizeAuthoringProfile,
-  readAuthoringProfile,
-  type AuthoringProfileIssue,
-  type NormalizeAuthoringProfileResult,
-  type ReadAuthoringProfileResult
-} from './authoring/authoringProfile';
-export { deriveAuthoringRestPoseMode } from './authoring/authoringProfileRestPose';
-export {
-  type AuthoringSpan,
-  type AuthoringSpanMembrane,
-  type AuthoringSpanSpar
-} from './authoring/authoringSpanTypes';
-export {
-  composeAuthoringSlots,
-  evaluateAuthoringPlan,
-  type AuthoringPlanEvaluation,
-  type AuthoringPlanIssueCode,
-  type AuthoringPlanIssue,
-  type AuthoringSlotState,
-  type AuthoringSlotStatus
-} from './authoring/authoringPlan';
-export {
-  AUTHORING_ASSET_QUALITY_DIMENSIONS,
-  evaluateAssetQuality,
-  type AssetQualityEvaluation,
-  type AuthoringAssetQualityDimension,
-  type AuthoringAssetQualityDimensionStatus,
-  type AuthoringAssetQualityStage
-} from './authoring/assetQuality';
-export {
-  CANONICAL_STANDING_EXTENSION_POLICY,
-  evaluateRestPoseQuality,
-  type RestPoseQualityEvaluation,
-  type RestPoseQualityState,
-  type RestPoseQualityStatus
-} from './authoring/restPoseQuality';
-export {
-  evaluateSpanQuality,
-  type SpanQualityEvaluation,
-  type SpanQualityIssue,
-  type SpanQualityIssueCode,
-  type SpanQualityState,
-  type SpanQualityStatus
-} from './authoring/spanQuality';
-export {
-  AUTHORING_TRACK_POLICIES,
-  authoringTrackPolicy,
-  type AuthoringTrackFacePolicy,
-  type AuthoringTrackPolicy
-} from './authoring/authoringTrackPolicies';
-export {
-  AUTHORING_COVERAGE_ASPECTS,
-  evaluateIntentCoverage,
-  type AuthoringCoverageAspect,
-  type IntentCoverageEvaluation,
-  type IntentCoverageStageStatus,
-  type IntentFeatureCoverageStatus
-} from './authoring/intentCoverage';
-export {
-  evaluateFaceQuality,
-  type FaceComponentQualityStatus,
-  type FaceQualityEvaluation
-} from './authoring/faceQuality';
-export {
-  evaluateSymmetryQuality,
-  type SymmetryQualityEvaluation,
-  type SymmetryQualityStatus
-} from './authoring/symmetryQuality';
-export {
-  evaluateSupportQuality,
-  type SupportQualityEvaluation,
-  type SupportQualityIssue,
-  type SupportQualityIssueCode,
-  type SupportQualityState,
-  type SupportQualityStatus
-} from './authoring/supportQuality';
-export {
-  evaluateStructuralQuality,
-  STRUCTURAL_QUALITY_STAGE_ORDER,
-  type StructuralQualityEvaluation,
-  type StructuralQualityGate,
-  type StructuralQualityGateState
-} from './authoring/structuralQuality';
-export {
-  evaluateAuthoringCompatibility,
-  validateAuthoringCatalog,
-  type AuthoringCatalogIssue
-} from './authoring/compatibilityEvaluator';
+export * from './project/appearance/contract';
+export * from './authoring';
 
 export { canonicalJsonString } from './canonicalJson';
 export {
-  ProjectFileError,
-  parseProjectDocument
+  createCompilationReceipt,
+  createIntentProgramSourceV1,
+  INTENT_PROGRAM_COMPILER_VERSION,
+  INTENT_PROGRAM_DIGEST_LENGTH,
+  INTENT_PROGRAM_DIGEST_PATTERN_SOURCE,
+  INTENT_PROGRAM_SOURCE_VERSION,
+  INTENT_PROGRAM_SPECIFICATION_VERSION,
+  intentProgramOutputDigest, intentProgramOutputProjection,
+  intentProgramRasterProjection, intentProgramReviewDigest,
+  intentProgramSourceReader,
+  isIntentProgramDigest,
+  readIntentProgramSource,
+  sha256ByteDigest, sha256Digest,
+  validateIntentProgramReceipt,
+  type IntentProgramProvenanceIssue, type IntentProgramRasterProjection,
+  type IntentProgramReceiptExpectation,
+  type IntentProgramSourceReader,
+  type ReadIntentProgramSourceResult
+} from './provenance/program';
+export {
+  ASHFOX_PROJECT_FILE_CONTENT_TYPE,
+  ASHFOX_PROJECT_FILE_EXTENSION,
+  openProjectFile,
+  serializeProjectFile,
+  type OpenProjectFileInput,
+  type OpenProjectFileResult,
+  type ProjectFileIdentitySeed,
+  type ProjectFileSerializationError,
+  type ProjectFileSerializationErrorCode,
+  type SerializeProjectFileResult
 } from './projectFile';
 export {
   effectivelyVisibleSceneNodeIds,
   isSceneNodeEffectivelyVisible
 } from './sceneVisibility';
 
-export { createProjectDocument } from './project/createProjectDocument';
+export { createProjectDocument } from './project/create';
 export {
   PROJECT_REFERENCE_ID_PATTERN_SOURCE,
   normalizeProjectIntent,
-  readProjectIntent
-} from './project/projectIntent';
+  projectIntentReader,
+  readProjectIntent,
+  type ProjectIntentReader
+} from './project/intent';
 export {
+  collectIntentProgramConstraintIssues,
   parseIntentProgram,
+  resolveIntentProgramConstraints,
   resolveIntentProgramSourceSpan,
+  type IntentProgramConstraintInspection,
+  type IntentProgramConstraintIssue,
+  type IntentProgramConstraintMetrics,
+  type IntentProgramConstraintReporter,
   type IntentProgramAst,
   type IntentProgramAstField,
   type IntentProgramAttachedModule,
+  type IntentProgramAnimation,
+  type IntentProgramAppearance,
+  type IntentProgramAttachmentAnchor,
+  type IntentProgramAttachmentLane,
   type IntentProgramAbsentFace,
+  type IntentProgramCardinality,
   type IntentProgramCoreModule,
   type IntentProgramDiagnostic,
+  type IntentProgramDomain,
+  type IntentProgramEyeConfiguration,
   type IntentProgramFace,
+  type IntentProgramForwardDirection,
   type IntentProgramFullFace,
+  type IntentProgramGaze,
   type IntentProgramFocal,
-  type IntentProgramIdleMotion,
+  type IntentProgramGrowthDirection,
+  type IntentProgramIdleAnimation,
+  type IntentProgramIdleMode,
   type IntentProgramIr,
   type IntentProgramModule,
-  type IntentProgramModuleExtension,
+  type IntentProgramModuleKind,
   type IntentProgramPalette,
   type IntentProgramParseResult,
-  type IntentProgramRest,
+  type IntentProgramRootBlock,
+  type IntentProgramSemanticAst,
   type IntentProgramSourceMap,
   type IntentProgramSpan,
-  type IntentProgramStyle,
+  type IntentProgramSupport,
+  type IntentProgramSupportKind,
   type IntentProgramSurface,
-  type IntentProgramSurfaceExtension
-} from './project/intentProgram';
+  type IntentProgramSurfaceAxis,
+  type IntentProgramSurfaceChord,
+  type IntentProgramSurfaceEdge,
+  type IntentProgramSurfaceOffset,
+  type IntentProgramSurfaceShape,
+  type IntentProgramSurfaceSpan,
+  type IntentProgramSurfaceTip
+} from './project/program';
 export {
-  compileIntentProgram,
-  type CompileIntentProgramResult,
-  type IntentProgramCompilerPlan,
-  type IntentProgramGraphNode,
-  type IntentProgramLoweringInput,
+  INTENT_PROGRAM_IDENTIFIER_PATTERN,
+  INTENT_PROGRAM_LANGUAGE_SPECIFICATION,
+  INTENT_PROGRAM_LANGUAGE_VERSION, INTENT_PROGRAM_SOURCE_MAX_LENGTH,
+  type IntentLanguageSpecification
+} from './project/program/language';
+export {
+  compileIntentProgram, diagnoseIntentProgramSource,
+  previewIntentProgram,
+  type CompileIntentProgramResult, type IntentProgramDiagnosticReport,
+  type IntentProgramCompilationPlan, type IntentProgramCompilerPlan,
+  type IntentProgramGraphNode, type IntentProgramLoweringInput,
+  type IntentProgramPlannedSurface,
+  type IntentProgramPreviewDiagnostic, type IntentProgramPreviewView,
+  type IntentProgramResolvedSurfaceShape,
+  type IntentProgramSurfaceMembrane,
+  type IntentProgramSurfacePoint,
+  type IntentProgramSurfaceStation,
+  type PreviewIntentProgramResult,
   type IntentProgramStructuralGraph
-} from './compiler/intentProgram';
+} from './compiler/program';
 export {
   PROJECT_SYMMETRY_MAX_PLANE_TWICE,
   projectCellLateralSide,
+  projectPairPlaneTwice,
   projectPointLateralSide,
   projectSpatialFrame,
   reflectProjectCell,
@@ -295,14 +187,14 @@ export {
   type ProjectLateralSide,
   type ProjectLateralSign,
   type ProjectSpatialFrame
-} from './project/projectSpatialFrame';
+} from './project/frame';
 export {
   evaluateProjectIntentRequirements,
   projectGroundingCorrection
-} from './project/projectIntentEvaluation';
+} from './project/intent/evaluate';
 
 export {
-  COMMAND_RECEIPT_SCHEMA_VERSION,
+  AGENT_ACCESSIBLE_COMMAND_NAMES, COMMAND_RECEIPT_SCHEMA_VERSION,
   commandAllowedForSource,
   createProjectFromInput,
   executeAgentCommandBatch,
@@ -340,7 +232,7 @@ export {
   type ProductionReadinessCounts,
   type ProductionReadinessFinding,
   type ProductionReadinessReport
-} from './productionReadiness';
+} from './readiness';
 
 export {
   AnimationExportCapabilityError,
@@ -360,57 +252,57 @@ export {
 export {
   completePartAuthoringSpec,
   projectSpacePartAuthoringSpec
-} from './modeling/partAuthoring';
+} from './modeling/part/authoring';
 export {
   derivePartAttachments
-} from './modeling/partAttachmentDerivation';
+} from './modeling/attachment/derive';
 export {
   normalizePartSpecs
-} from './modeling/partContract';
+} from './modeling/part';
 export type {
   PartAuthoringSpec,
   PartSpec
-} from './modeling/partContract';
-export type { CellKey } from './modeling/types';
-export { readCompiledParts } from './modeling/partInvariants';
+} from './modeling/part';
+export type { CellKey } from './modeling/contract';
+export { readCompiledParts } from './modeling/invariants';
 export {
   canonicalizePartOccupancies
-} from './modeling/partOccupancyCanonicalization';
+} from './modeling/occupancy';
 export {
   auditEyeAnatomy,
   type EyeAnatomyAuditOptions,
   type EyeAnatomyIssue,
   type EyeAnatomyIssueCode
-} from './modeling/eyeAnatomy';
+} from './modeling/eye/anatomy';
 export {
   auditEyeVisibility,
   EYE_VISIBILITY_POLICY,
   type EyeVisibilityIssue,
   type EyeVisibilityIssueCode
-} from './modeling/eyeVisibility';
+} from './modeling/eye/visibility';
 export {
   attachmentContactMetrics,
   orthographicContributionMetrics
-} from './modeling/partQualityMetrics';
+} from './modeling/part/quality';
 export {
   measureDocumentFormComposition,
   measureFormComposition,
   type FormComposition,
   type FormPartComposition
-} from './modeling/formComposition';
+} from './modeling/form/composition';
 export {
   normalizePartRecipe,
   readPartRecipe
-} from './modeling/partRecipe';
+} from './modeling/recipe';
 export {
   partTranslation
-} from './modeling/partTranslation';
+} from './modeling/part/translate';
 export {
   worldCubeBounds,
   worldBoundsOverlap,
   type WorldAxisAlignedBounds
-} from './modeling/worldCubeBounds';
-export { measureStaticSupport } from './modeling/staticSupportMetric';
+} from './modeling/world/bounds';
+export { measureStaticSupport } from './modeling/support/metric';
 
 export {
   cubeFaceDimensions,
@@ -424,13 +316,6 @@ export {
   stableTextureSeed
 } from './textures/deterministicPixel';
 export {
-  FOCAL_PIXEL_SHADE_STYLE,
-  paintDirectionalFocalSurfacePixel,
-  paintDirectionalSurfacePixel,
-  paintFocalSurfacePixel,
-  paintSurfacePixel
-} from './textures/pixelSurfacePattern';
-export {
   DEFAULT_PIXEL_SHADE_STYLE,
   pixelTonePalette,
   shadePixelRect,
@@ -438,20 +323,13 @@ export {
   type PixelToneRole,
   type RgbColor
 } from './textures/pixelRectShade';
-export {
-  DEFAULT_GENERATED_TONE_CUTOFFS,
-  generatedSurfaceTonePalette,
-  generatedToneRole,
-  generatedToneScore,
-  paintGeneratedTonePixel,
-  type GeneratedToneCutoffs
-} from './textures/generatedPixelShade';
+export { generatedSurfaceTonePalette } from './textures/appearance';
 export { paintEyeMotifPixel } from './textures/eyeMotif';
 export { paintFeatureMotifPixel } from './textures/featureMotif';
-export { generatedSurfacePixel } from './textures/generatedSurfacePixel';
+export { generatedSurfacePixel } from './textures/appearance/pixel';
 export {
-  composeTextureRaster,
-  staleGeneratedTextureIds,
+  composeTextureRaster, rasterizeTexture, staleGeneratedTextureIds,
+  type CanonicalRgbaBytes, type CanonicalTextureRaster,
   type TextureComposition,
   type TextureCompositionRegion
 } from './textures/textureRecipe';
@@ -465,7 +343,7 @@ export {
   type ExportFile,
   type JsonExportFile,
   type ResolvedBlob
-} from './export/types';
+} from './export/contract';
 export {
   EXPORT_COMPATIBILITY_REGISTRY,
   EXPORT_PRESETS,
@@ -483,7 +361,7 @@ export {
   ProductionExportError,
   exportProductionProject,
   exportProductionProjectResolved
-} from './export/exportProject';
+} from './export/project';
 export {
   adaptProjectForExport,
   resolveExportAdapter,
@@ -494,4 +372,4 @@ export {
 } from './export/adapter';
 export type {
   ExportFormatProfile
-} from './export/adapterTypes';
+} from './export/adapter/contract';

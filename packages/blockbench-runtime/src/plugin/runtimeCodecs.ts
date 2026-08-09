@@ -1,12 +1,12 @@
 import type { Capabilities, ExportPayload, FormatKind } from '@ashfox/blockbench-contracts/types/internal';
 import type { ProjectSession } from '../session';
-import type { BlockbenchFormats } from '../adapters/blockbench/BlockbenchFormats';
+import type { BlockbenchFormats } from '../adapters/blockbench/formats';
 import type { ExportPolicy } from '../usecases/policies';
 import { readGlobals } from '../adapters/blockbench/blockbenchUtils';
 import type { Logger } from '../logging';
 import { buildInternalExport } from '../domain/exporters';
 import { resolveFormatId, type FormatOverrides } from '../domain/formats';
-import { BlockbenchCompileAdapter } from '../adapters/blockbench/export/BlockbenchCompileAdapter';
+import { BlockbenchCompileAdapter } from '../adapters/blockbench/export/adapter';
 import { PLUGIN_ID } from '../config';
 import {
   PLUGIN_UI_EXPORT_COMPLETE,
@@ -122,4 +122,3 @@ export const registerCodecs = (args: {
     register('animated_java', 'animated_java', PLUGIN_ID + '_animated_java');
   }
 };
-

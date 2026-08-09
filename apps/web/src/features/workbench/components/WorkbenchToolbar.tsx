@@ -1,121 +1,39 @@
-import { Icon, type IconName } from '../Icon';
 import type {
-  CameraCommand,
-  ViewportOptions
+  CameraCommand
 } from '../viewport/viewportTypes';
 
-interface IconButtonProps {
-  label: string;
-  icon: IconName;
-  active?: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-  shortcut?: string;
-}
-
-function IconButton({
-  label,
-  icon,
-  active = false,
-  disabled = false,
-  onClick,
-  shortcut
-}: IconButtonProps) {
-  return (
-    <button
-      className={`icon-button${active ? ' is-active' : ''}`}
-      type="button"
-      aria-label={label}
-      title={`${label}${shortcut ? ` · ${shortcut}` : ''}`}
-      disabled={disabled}
-      onClick={onClick}
-    >
-      <Icon name={icon} />
-    </button>
-  );
-}
-
 interface WorkbenchToolbarProps {
-  canUndo: boolean;
-  canRedo: boolean;
-  cameraMode: CameraCommand['mode'];
-  viewportOptions: ViewportOptions;
-  onUndo: () => void;
-  onRedo: () => void;
-  onSetCamera: (mode: CameraCommand['mode']) => void;
-  onToggleViewportOption: (option: keyof ViewportOptions) => void;
+  readonly cameraMode: CameraCommand['mode'];
+  readonly onSetCamera: (mode: CameraCommand['mode']) => void;
 }
 
 export function WorkbenchToolbar({
-  canUndo,
-  canRedo,
   cameraMode,
-  viewportOptions,
-  onUndo,
-  onRedo,
-  onSetCamera,
-  onToggleViewportOption
+  onSetCamera
 }: WorkbenchToolbarProps) {
   return (
-    <div className="tool-strip">
-      <div className="tool-group">
-        <IconButton
-          label="Undo"
-          icon="undo"
-          shortcut="⌘Z"
-          disabled={!canUndo}
-          onClick={onUndo}
-        />
-        <IconButton
-          label="Redo"
-          icon="redo"
-          shortcut="⇧⌘Z"
-          disabled={!canRedo}
-          onClick={onRedo}
-        />
-      </div>
-      <div className="toolbar-spacer" />
-      <div className="view-label">View</div>
+    <div className="tool-strip observer-toolbar">
+      <span className="view-label">View</span>
       <div className="camera-presets" aria-label="Camera presets">
         {(
           [
-            ['perspective', 'P'],
-            ['front', 'F'],
-            ['side', 'S'],
-            ['top', 'T']
+            ['perspective', 'Perspective'],
+            ['front', 'Front'],
+            ['side', 'Side'],
+            ['top', 'Top']
           ] as const
         ).map(([mode, label]) => (
           <button
             type="button"
             className={cameraMode === mode ? 'is-active' : ''}
             key={mode}
-            title={`${mode} camera`}
+            title={`${label} camera`}
+            aria-label={`${label} camera`}
             onClick={() => onSetCamera(mode)}
           >
             {label}
           </button>
         ))}
-      </div>
-      <div className="tool-separator" />
-      <div className="tool-group">
-        <IconButton
-          label="Grid"
-          icon="grid"
-          active={viewportOptions.showGrid}
-          onClick={() => onToggleViewportOption('showGrid')}
-        />
-        <IconButton
-          label="Wireframe"
-          icon="wire"
-          active={viewportOptions.showWireframe}
-          onClick={() => onToggleViewportOption('showWireframe')}
-        />
-        <IconButton
-          label="Skeleton"
-          icon="bone"
-          active={viewportOptions.showSkeleton}
-          onClick={() => onToggleViewportOption('showSkeleton')}
-        />
       </div>
     </div>
   );

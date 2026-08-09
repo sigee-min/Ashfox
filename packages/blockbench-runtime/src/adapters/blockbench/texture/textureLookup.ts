@@ -1,6 +1,6 @@
 import type { TextureConstructor, TextureInstance } from '../../../types/blockbench';
 import type { TextureStat } from '../../../ports/editor';
-import { getTextureApi } from '../blockbenchAdapterUtils';
+import { getTextureApi } from '../api';
 import { readTextureId } from '../utils/ids';
 import { readTextureSize } from '../utils/texture';
 

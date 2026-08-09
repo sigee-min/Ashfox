@@ -3,7 +3,8 @@
 `@ashfox/engine-core` is the deterministic canonical-asset compiler behind the
 ashfox workbench.
 
-Its authored input is one confirmed Intent Program. The parser accepts only
+Its authored input is one Agent-authored, Agent-compiled version 1 Intent
+Program. The parser accepts only
 coordinate-free semantic declarations: explicit support and support host,
 named body relationships, face or hero focal stage, supported surfaces, idle
 motion, and palette. The compiler derives the canonical geometry, surface
@@ -20,9 +21,15 @@ implementations.
 
 Key boundaries:
 
-- `src/project/intentProgram.ts` parses the closed source language and owns
-  source-span diagnostics.
-- `src/compiler/intentProgram/` lowers source into one canonical asset and
+- `src/project/program/language.ts` is the single closed V1 vocabulary;
+  the parser and normalizer own source-span diagnostics and semantic IR.
+- `src/compiler/program/` resolves an immutable compilation plan before
+  lowering source into one canonical asset and
   verifies structural, support, focal, texture, rig, and motion contracts.
+- `src/provenance/program/` owns SHA-256 source, semantic, and output
+  projections plus compiler/specification receipt metadata.
+- `src/textures/appearance/contract.ts` owns the closed Surface
+  Appearance and Surface Synthesis 1 boundary described in
+  [`docs/architecture/surface-appearance-v1.md`](../../docs/architecture/surface-appearance-v1.md).
 - `src/export/` adapts an already-compiled canonical project for a delivery
   target.

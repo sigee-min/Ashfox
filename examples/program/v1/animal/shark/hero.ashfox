@@ -1,0 +1,62 @@
+metadata {
+  name "Reef Hunter Shark"
+  track hero
+  domain organism
+}
+model {
+  orientation forward north
+  symmetry bilateral
+  support none
+  body {
+    core torso
+    mass head single parent torso anchor front growth forward lane center
+    mass tail single parent torso anchor rear growth rearward lane center
+  }
+  surface pectorals paired fin parent head anchor sides growth outward lane center
+  shape pectorals {
+    axis longitudinal
+    span medium
+    chord broad
+    tip pointed
+    offset posterior
+    edge convex
+  }
+  surface dorsal single fin parent torso anchor top growth up lane center
+  shape dorsal {
+    axis longitudinal
+    span medium
+    chord broad
+    tip pointed
+    offset posterior
+    edge convex
+  }
+  surface caudal single fin parent tail anchor rear growth rearward lane center
+  shape caudal {
+    axis vertical
+    span long
+    chord broad
+    tip forked
+    offset center
+    edge concave
+  }
+  face {
+    full parent head
+    eyes paired gaze center
+    nose absent
+    mouth fang
+  }
+}
+animation {
+  idle scan
+}
+appearance {
+  palette ocean
+  texture mottle scale broad density balanced contrast subtle
+  seed reef-shark-hero-01
+  mark belly target body torso region ventral placement whole as wash tone lighter scale broad density sparse contrast subtle
+  mark flank target body torso region flank placement center as stripe tone darker flow longitudinal variant reef-adult scale medium density sparse contrast medium
+  mark gills target body head region posterior-flank placement center as bars tone darker flow vertical variant reef-adult scale fine density sparse contrast medium
+  mark dorsal-tip target surface dorsal region full placement tip as patch tone darker scale medium density sparse contrast medium
+  mark pectoral-rim target surface pectorals region full placement edge as rim tone darker scale fine density sparse contrast subtle
+  mark caudal-rim target surface caudal region full placement edge as rim tone accent scale fine density sparse contrast medium
+}

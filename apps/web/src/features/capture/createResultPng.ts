@@ -9,7 +9,7 @@ import {
   frameCaptureObject,
   waitForProjectionTextures
 } from './captureSurface';
-import { createCaptureProjection } from './createCaptureProjection';
+import { createCaptureProjection } from './projection';
 import {
   createResultCaptureFile,
   type ResultCaptureFile,

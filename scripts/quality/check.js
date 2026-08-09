@@ -1,328 +1,172 @@
 /* eslint-disable no-console */
-// ashfox release gate: lightweight static checks.
-// Intentionally dependency-free: Node fs + regex scanning.
+'use strict';
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
+const ts = require('typescript');
+const {
+  readDevelopmentManifest
+} = require('./manifest');
+const {
+  repositoryPolicyViolations
+} = require('./repositoryPolicyGate');
+const {
+  assertSourcePatternRegistryMatches,
+  sourcePatternFindings
+} = require('./patterns');
 
 const repoRoot = path.resolve(__dirname, '..', '..');
+const developmentManifest = readDevelopmentManifest(repoRoot);
 
 const readText = (filePath) => fs.readFileSync(filePath, 'utf8');
-const readModuleSpecifiers = (source) => {
-  const specifiers = [];
-  const pattern =
-    /(?:\bfrom\s+|\bimport\s*(?:\(\s*)?|\brequire\s*\(\s*)['"]([^'"]+)['"]/g;
-  let match;
-  while ((match = pattern.exec(source)) !== null) {
-    specifiers.push(match[1]);
-  }
-  return specifiers;
-};
 
-const walk = (dir, predicate) => {
-  /** @type {string[]} */
-  const out = [];
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
+const walk = (directory, predicate) => {
+  const files = [];
+  const entries = fs.readdirSync(directory, { withFileTypes: true })
+    .sort((left, right) => left.name.localeCompare(right.name));
+  for (const entry of entries) {
+    const value = path.join(directory, entry.name);
     if (entry.isDirectory()) {
       if (entry.name === 'node_modules' || entry.name === 'dist') continue;
-      out.push(...walk(full, predicate));
-      continue;
+      files.push(...walk(value, predicate));
+    } else if (predicate(value)) {
+      files.push(value);
     }
-    if (predicate(full)) out.push(full);
   }
-  return out;
+  return files;
 };
 
-const rel = (filePath) => path.relative(repoRoot, filePath).replace(/\\/g, '/');
+const relativePath = (filePath) =>
+  path.relative(repoRoot, filePath).replace(/\\/g, '/');
 
-const scanFile = (filePath, rules) => {
-  const text = readText(filePath);
-  const lines = text.split(/\r?\n/);
-  /** @type {Array<{file:string,line:number,rule:string,snippet:string}>} */
+const workspaceSourceDirectories = () =>
+  developmentManifest.architecture.workspaceSourceScopes.flatMap((scope) =>
+    fs.readdirSync(path.join(repoRoot, scope), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((entry) => path.join(repoRoot, scope, entry.name))
+      .filter((directory) =>
+        fs.existsSync(path.join(directory, 'package.json')) &&
+        fs.existsSync(path.join(directory, 'src'))
+      )
+      .map((directory) => path.join(directory, 'src'))
+  );
+
+const requiresSemicolon = (node) =>
+  ts.isVariableStatement(node) ||
+  ts.isExpressionStatement(node) ||
+  ts.isReturnStatement(node) ||
+  ts.isThrowStatement(node) ||
+  ts.isBreakStatement(node) ||
+  ts.isContinueStatement(node) ||
+  ts.isImportDeclaration(node) ||
+  ts.isImportEqualsDeclaration(node) ||
+  ts.isExportDeclaration(node) ||
+  ts.isExportAssignment(node) ||
+  ts.isTypeAliasDeclaration(node) ||
+  ts.isPropertyDeclaration(node);
+
+const sourceStyleViolations = (filePath, source, style) => {
+  const sourceFile = ts.createSourceFile(
+    filePath,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    filePath.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+  );
   const findings = [];
-
-  for (let i = 0; i < lines.length; i += 1) {
-    const lineNo = i + 1;
-    const line = lines[i];
-    for (const rule of rules) {
-      if (rule.appliesTo && !rule.appliesTo(filePath)) continue;
-      if (rule.allow && rule.allow(filePath, line)) continue;
-      if (rule.pattern.test(line)) {
-        findings.push({
-          file: rel(filePath),
-          line: lineNo,
-          rule: rule.id,
-          snippet: line.trim().slice(0, 200)
-        });
+  const indentedLines = new Set();
+  const lines = source.split(/\r?\n/);
+  const report = (node, rule) => {
+    const line = sourceFile.getLineAndCharacterOfPosition(
+      node.getStart(sourceFile)
+    ).line + 1;
+    findings.push({
+      file: relativePath(filePath),
+      line,
+      rule,
+      snippet: lines[line - 1].trim().slice(0, 200)
+    });
+  };
+  const visit = (node) => {
+    const start = node.getStart(sourceFile);
+    const position = sourceFile.getLineAndCharacterOfPosition(start);
+    const lineStart = sourceFile.getPositionOfLineAndCharacter(
+      position.line,
+      0
+    );
+    const indentation = source.slice(lineStart, start);
+    if (!indentedLines.has(position.line) && /^\s*$/.test(indentation)) {
+      indentedLines.add(position.line);
+      if (
+        indentation.includes('\t') ||
+        position.character % style.indentSpaces !== 0
+      ) {
+        report(node, 'style-indentation');
       }
     }
-  }
+    if (
+      style.quotes === 'single' &&
+      ts.isStringLiteral(node) &&
+      !ts.isJsxAttribute(node.parent) &&
+      source[start] === '"'
+    ) {
+      report(node, 'style-quotes');
+    }
+    if (
+      style.semicolons === 'required' &&
+      requiresSemicolon(node) &&
+      !source.slice(start, node.end).trimEnd().endsWith(';')
+    ) {
+      report(node, 'style-semicolons');
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
   return findings;
 };
 
-const assertRemovedBoundariesStayRemoved = () => {
-  const removedPaths = [
-    'apps/plugin-desktop/package.json',
-    'apps/ashfox/package.json',
-    'packages/backend-blockbench/package.json',
-    'apps/mcp-gateway/package.json',
-    'apps/worker/package.json',
-    'packages/backend-core/package.json',
-    'packages/backend-engine/package.json',
-    'apps/web/src/app/api/mcp/route.ts'
-  ];
-  for (const removedPath of removedPaths) {
-    if (fs.existsSync(path.join(repoRoot, removedPath))) {
-      throw new Error(`quality: removed boundary restored: ${removedPath}`);
-    }
-  }
-};
-
-const assertTrackDependencies = () => {
-  const rootPackage = JSON.parse(readText(path.join(repoRoot, 'package.json')));
-  const webPackage = JSON.parse(
-    readText(path.join(repoRoot, 'apps', 'web', 'package.json'))
-  );
-  const sitePackage = JSON.parse(
-    readText(path.join(repoRoot, 'apps', 'site', 'package.json'))
-  );
-  const workspaces = new Set(rootPackage.workspaces ?? []);
-  const forbiddenWorkspaces = [
-    'apps/mcp-gateway',
-    'apps/worker',
-    'packages/backend-core',
-    'packages/backend-engine'
-  ];
-
-  for (const workspace of forbiddenWorkspaces) {
-    if (workspaces.has(workspace)) {
-      throw new Error(`quality: forbidden hybrid workspace: ${workspace}`);
-    }
-  }
-
-  const webDependencies = Object.keys({
-    ...(webPackage.dependencies ?? {}),
-    ...(webPackage.devDependencies ?? {})
-  });
-  const forbiddenWebDependency = webDependencies.find((dependency) =>
-    /^@ashfox\/(?:blockbench-|backend-)|mcp/i.test(dependency)
-  );
-  if (forbiddenWebDependency) {
-    throw new Error(
-      `quality: Web Studio cannot depend on ${forbiddenWebDependency}`
-    );
-  }
-
-  if (!workspaces.has('apps/site')) {
-    throw new Error('quality: static public site workspace is missing.');
-  }
-  const siteDependencies = Object.keys({
-    ...(sitePackage.dependencies ?? {}),
-    ...(sitePackage.devDependencies ?? {})
-  });
-  const allowedSiteDependencies = new Set([
-    '@ashfox/internal-contracts',
-    'marked'
-  ]);
-  const forbiddenSiteDependency = siteDependencies.find(
-    (dependency) => !allowedSiteDependencies.has(dependency)
-  );
-  if (forbiddenSiteDependency) {
-    throw new Error(
-      `quality: static public site cannot depend on ${forbiddenSiteDependency}`
-    );
-  }
-  const siteSourceFiles = walk(
-    path.join(repoRoot, 'apps', 'site'),
-    (filePath) => /\.(?:js|mjs)$/.test(filePath)
-  );
-  for (const filePath of siteSourceFiles) {
-    const crossesProductBoundary = readModuleSpecifiers(readText(filePath)).some(
-      (specifier) => {
-        if (specifier === '@ashfox/internal-contracts') {
-          return false;
-        }
-        if (
-          specifier.startsWith('@ashfox/') ||
-          /^(?:react|three)(?:\/|$)/.test(specifier)
-        ) {
-          return true;
-        }
-        if (!specifier.startsWith('.')) {
-          return false;
-        }
-        const targetPath = path.resolve(path.dirname(filePath), specifier);
-        return [
-          path.join(repoRoot, 'apps', 'web'),
-          path.join(repoRoot, 'packages', 'engine-core')
-        ].some(
-          (productRoot) =>
-            targetPath === productRoot ||
-            targetPath.startsWith(`${productRoot}${path.sep}`)
-        );
-      }
-    );
-    if (crossesProductBoundary) {
-      throw new Error(
-        `quality: static public site crosses the product boundary: ${rel(filePath)}`
-      );
-    }
-  }
-};
-
-const importsFromRoot = (
-  filePath,
-  targetRoot
-) =>
-  readModuleSpecifiers(readText(filePath)).some((specifier) => {
-    if (!specifier.startsWith('.')) return false;
-    const targetPath = path.resolve(path.dirname(filePath), specifier);
-    return (
-      targetPath === targetRoot ||
-      targetPath.startsWith(`${targetRoot}${path.sep}`)
-    );
-  });
-
-const assertWebArchitectureBoundaries = () => {
-  const webSourceRoot = path.join(repoRoot, 'apps', 'web', 'src');
-  const featuresRoot = path.join(webSourceRoot, 'features');
-  const workbenchRoot = path.join(featuresRoot, 'workbench');
-  const sourceFile = (filePath) =>
-    filePath.endsWith('.ts') || filePath.endsWith('.tsx');
-
-  for (const layer of ['application', 'rendering']) {
-    const layerRoot = path.join(webSourceRoot, layer);
-    for (const filePath of walk(layerRoot, sourceFile)) {
-      if (importsFromRoot(filePath, featuresRoot)) {
-        throw new Error(
-          `quality: ${layer} layer imports feature implementation: ${rel(filePath)}`
-        );
-      }
-    }
-  }
-
-  for (const feature of ['agent', 'capture', 'files']) {
-    const featureRoot = path.join(featuresRoot, feature);
-    for (const filePath of walk(featureRoot, sourceFile)) {
-      if (importsFromRoot(filePath, workbenchRoot)) {
-        throw new Error(
-          `quality: ${feature} feature imports workbench implementation: ${rel(filePath)}`
-        );
-      }
-    }
-  }
-};
-
 const main = () => {
-  assertRemovedBoundariesStayRemoved();
-  assertTrackDependencies();
-  assertWebArchitectureBoundaries();
+  const repositoryViolations = repositoryPolicyViolations(
+    repoRoot,
+    developmentManifest.architecture
+  );
+  if (repositoryViolations.length > 0) {
+    throw new Error(repositoryViolations[0]);
+  }
 
-  const sourceDirs = [
-    path.join(repoRoot, 'packages', 'blockbench-runtime', 'src'),
-    path.join(repoRoot, 'packages', 'engine-core', 'src'),
-    path.join(repoRoot, 'apps', 'web', 'src')
-  ];
-  const tsFiles = sourceDirs.flatMap((srcDir) =>
-    walk(srcDir, (p) => p.endsWith('.ts') || p.endsWith('.tsx'))
+  const sourcePolicies = developmentManifest.quality.forbiddenSourcePatterns;
+  assertSourcePatternRegistryMatches(sourcePolicies);
+  const sourceDirectories = workspaceSourceDirectories();
+  const sourceFiles = sourceDirectories.flatMap((directory) =>
+    walk(directory, (filePath) =>
+      filePath.endsWith('.ts') || filePath.endsWith('.tsx')
+    )
   );
 
-  const rules = [
-    {
-      id: 'ts-ignore',
-      pattern: /@ts-ignore|@ts-expect-error/
-    },
-    {
-      id: 'as-any',
-      pattern: /\bas any\b/
-    },
-    {
-      id: 'as-unknown-as',
-      pattern: /\bas unknown as\b/,
-      // No allowlist: remove unsafe double assertions.
-    },
-    {
-      id: 'console-in-src',
-      pattern: /\bconsole\.(log|warn|error|info|debug)\(/,
-      allow: (filePath) => rel(filePath) === 'packages/blockbench-runtime/src/logging.ts'
-    },
-    {
-      id: 'bare-document',
-      // Detect identifier access only (avoid matching strings/types):
-      // - document?.foo
-      // - document.foo
-      // - document[...]
-      // - document(...)
-      pattern: /(^|[^\w.])document\s*(\.|\?\.|\[|\()/,
-      appliesTo: (filePath) => rel(filePath).startsWith('packages/blockbench-runtime/src/')
-    },
-    {
-      id: 'bare-window',
-      pattern: /(^|[^\w.])window\s*(\.|\?\.|\[|\()/,
-      appliesTo: (filePath) => rel(filePath).startsWith('packages/blockbench-runtime/src/')
-    },
-    {
-      id: 'engine-core-host-dependency',
-      pattern: /@ashfox\/blockbench-|@ashfox\/backend-|\bBlockbench\b|\bMCP\b|\/mcp\b|from ['"](?:react|next|three)['"]/,
-      appliesTo: (filePath) => rel(filePath).startsWith('packages/engine-core/src/')
-    },
-    {
-      id: 'workbench-blockbench-dependency',
-      pattern: /@ashfox\/blockbench-|@ashfox\/backend-|\bBlockbench\b|\bMCP\b|\/mcp\b/,
-      appliesTo: (filePath) => rel(filePath).startsWith('apps/web/src/')
-    },
-    {
-      id: 'throw-in-proxy',
-      pattern: /\bthrow\b/,
-      appliesTo: (filePath) => rel(filePath).startsWith('packages/blockbench-runtime/src/proxy/'),
-      // No allowlist: proxy must be throw-free.
-    }
-    ,
-    {
-      id: 'proxy-globalThis-document',
-      pattern: /\bglobalThis\.document\b/,
-      appliesTo: (filePath) => rel(filePath).startsWith('packages/blockbench-runtime/src/proxy/')
-    },
-    {
-      id: 'throw-in-src',
-      pattern: /\bthrow\b/,
-      appliesTo: (filePath) => rel(filePath).startsWith('packages/blockbench-runtime/src/'),
-      // Allow a narrow exception for Blockbench codec compile contract.
-      allow: (filePath, line) =>
-        rel(filePath) === 'packages/blockbench-runtime/src/plugin/runtime.ts' && line.includes('throw new Error(')
-    },
-    {
-      id: 'todo-fixme-comment',
-      pattern: /\/\/\s*(TODO|FIXME)\b|\/\*\s*(TODO|FIXME)\b/,
-      appliesTo: (filePath) => rel(filePath).startsWith('packages/blockbench-runtime/src/')
-    },
-    {
-      id: 'catch-without-binding',
-      pattern: /catch\s*\{/,
-      appliesTo: (filePath) => rel(filePath).startsWith('packages/blockbench-runtime/src/')
-    },
-    {
-      id: 'globalThis-as',
-      pattern: /\bglobalThis\s+as\b/,
-      appliesTo: (filePath) => rel(filePath).startsWith('packages/blockbench-runtime/src/'),
-      allow: (filePath) => {
-        const p = rel(filePath);
-        return p === 'packages/blockbench-runtime/src/types/blockbench.ts' || p === 'packages/blockbench-runtime/src/shared/globalState.ts';
-      }
-    }
-  ];
-
-  /** @type {Array<{file:string,line:number,rule:string,snippet:string}>} */
   const findings = [];
-  for (const filePath of tsFiles) {
-    findings.push(...scanFile(filePath, rules));
+  for (const filePath of sourceFiles) {
+    const source = readText(filePath);
+    findings.push(...sourcePatternFindings(
+      filePath,
+      relativePath(filePath),
+      source,
+      sourcePolicies
+    ));
+    findings.push(...sourceStyleViolations(
+      filePath,
+      source,
+      developmentManifest.engineering.style
+    ));
   }
 
   if (findings.length > 0) {
     console.error('ashfox quality gate failed. Violations:');
-    for (const f of findings) {
-      console.error(`- ${f.rule}: ${f.file}:${f.line} :: ${f.snippet}`);
+    for (const finding of findings) {
+      console.error(
+        `- ${finding.rule}: ${finding.file}:${finding.line} :: ` +
+        finding.snippet
+      );
     }
     process.exitCode = 1;
     return;
@@ -331,4 +175,6 @@ const main = () => {
   console.log('ashfox quality gate ok');
 };
 
-main();
+if (require.main === module) main();
+
+module.exports = { sourceStyleViolations };

@@ -2,6 +2,7 @@ import {
   getAgentCommandDefinition,
   type ProjectCommandOperation
 } from '@ashfox/engine-core';
+import type { AgentRunRequest } from './types';
 
 import {
   AGENT_REQUEST_ID_EXPECTED,
@@ -10,10 +11,7 @@ import {
 
 interface ParseSuccess {
   ok: true;
-  request: {
-    requestId: string;
-    operations: readonly ProjectCommandOperation[];
-  };
+  request: AgentRunRequest;
 }
 
 interface ParseFailure {
@@ -37,8 +35,8 @@ const isRecord = (
 
 const operationsShape = (
   value: unknown
-): readonly ProjectCommandOperation[] =>
-  value as readonly ProjectCommandOperation[];
+): readonly [ProjectCommandOperation] =>
+  value as readonly [ProjectCommandOperation];
 
 const unknownKey = (
   value: Readonly<Record<string, unknown>>,
@@ -85,15 +83,14 @@ export const parseRunRequest = (
   }
   if (
     !Array.isArray(value.operations) ||
-    value.operations.length === 0 ||
-    value.operations.length > 64
+    value.operations.length !== 1
   ) {
     return {
       ok: false,
       error: {
         code: 'invalid_batch',
-        path: '$',
-        expected: '1-64 operations'
+        path: 'operations',
+        expected: 'exactly one operation'
       }
     };
   }

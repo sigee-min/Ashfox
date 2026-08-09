@@ -1,13 +1,13 @@
 import type { Capabilities } from '@ashfox/blockbench-contracts/types/internal';
 import type { ProjectSession } from '../session';
 import type { Logger } from '../logging';
-import { BlockbenchEditor } from '../adapters/blockbench/BlockbenchEditor';
-import { BlockbenchHost } from '../adapters/blockbench/BlockbenchHost';
-import { BlockbenchFormats } from '../adapters/blockbench/BlockbenchFormats';
-import { BlockbenchSnapshot } from '../adapters/blockbench/BlockbenchSnapshot';
-import { BlockbenchExport } from '../adapters/blockbench/BlockbenchExport';
-import { BlockbenchTextureRenderer } from '../adapters/blockbench/BlockbenchTextureRenderer';
-import { BlockbenchViewportRefresher } from '../adapters/blockbench/BlockbenchViewportRefresher';
+import { BlockbenchEditor } from '../adapters/blockbench/editor';
+import { BlockbenchHost } from '../adapters/blockbench/host';
+import { BlockbenchFormats } from '../adapters/blockbench/formats';
+import { BlockbenchSnapshot } from '../adapters/blockbench/snapshot';
+import { BlockbenchExport } from '../adapters/blockbench/export';
+import { BlockbenchTextureRenderer } from '../adapters/blockbench/texture/renderer';
+import { BlockbenchViewportRefresher } from '../adapters/blockbench/viewport/refresh';
 import { LocalTmpStore } from '../adapters/tmp/LocalTmpStore';
 import { ToolService } from '../usecases/ToolService';
 
@@ -38,4 +38,3 @@ export const buildDefaultToolService = (
     policies: { snapshotPolicy: 'hybrid', exportPolicy: 'strict' }
   });
 };
-

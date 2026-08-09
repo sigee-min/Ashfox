@@ -14,11 +14,14 @@ import {
   inspectFinding
 } from './inspect/inspectFinding';
 import {
+  inspectIntentProgram
+} from './inspect/inspectIntentProgram';
+import {
   inspectOverview
 } from './inspect/inspectOverview';
 import type {
   VisualReviewReceipt
-} from '../../application/visualReviewReceipt';
+} from '../../application/review';
 import type {
   InspectRequest,
   InspectResult
@@ -49,6 +52,8 @@ export const inspectProject = (
       return inspectCommand(document, request.name);
     case 'finding':
       return inspectFinding(document, report, request.path);
+    case 'intent-program':
+      return inspectIntentProgram(document, request.source);
     default:
       return {
         ok: false,
@@ -56,7 +61,7 @@ export const inspectProject = (
         error: {
           code: 'invalid_request',
           path: 'kind',
-          expected: 'command or finding'
+          expected: 'command, finding, or intent-program'
         }
       };
   }

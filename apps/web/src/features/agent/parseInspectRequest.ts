@@ -2,6 +2,7 @@ import type {
   InspectFailure,
   InspectRequest
 } from './types';
+import { INTENT_PROGRAM_SOURCE_MAX_LENGTH } from '@ashfox/engine-core';
 
 interface ParseInspectRequestSuccess {
   ok: true;
@@ -16,6 +17,9 @@ interface ParseInspectRequestFailure {
 export type ParseInspectRequestResult =
   | ParseInspectRequestSuccess
   | ParseInspectRequestFailure;
+
+export const INTENT_PROGRAM_INSPECT_SOURCE_MAX_LENGTH =
+  INTENT_PROGRAM_SOURCE_MAX_LENGTH;
 
 const isRecord = (
   value: unknown
@@ -71,5 +75,22 @@ export const parseInspectRequest = (
       : failure('path', 'finding path');
   }
 
-  return failure('kind', 'command or finding');
+  if (value.kind === 'intent-program') {
+    const unknown = rejectUnknownProperties(value, ['kind', 'source']);
+    if (unknown) return unknown;
+    if (typeof value.source !== 'string') {
+      return failure('source', 'Intent Program source');
+    }
+    return value.source.length <= INTENT_PROGRAM_INSPECT_SOURCE_MAX_LENGTH
+      ? {
+          ok: true,
+          request: { kind: 'intent-program', source: value.source }
+        }
+      : failure(
+          'source',
+          `source length <= ${INTENT_PROGRAM_INSPECT_SOURCE_MAX_LENGTH} characters`
+        );
+  }
+
+  return failure('kind', 'command, finding, or intent-program');
 };

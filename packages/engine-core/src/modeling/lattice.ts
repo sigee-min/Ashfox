@@ -1,15 +1,11 @@
 import { isSurfacePixelDensity } from '../model';
 import type {
-  Axis,
   CellKey,
   LatticeBounds,
   LatticePoint,
   OccupancyGrid,
-  PlanePoint,
   SurfacePixelDensity
-} from './types';
-
-export const AXES: readonly Axis[] = ['x', 'y', 'z'];
+} from './contract';
 
 export const assertDensity: (
   density: number
@@ -35,21 +31,6 @@ export const assertLatticePoint = (
   assertLatticeInteger(point.x, `${field}.x`);
   assertLatticeInteger(point.y, `${field}.y`);
   assertLatticeInteger(point.z, `${field}.z`);
-};
-
-export const assertPlanePoint = (point: PlanePoint, field: string): void => {
-  assertLatticeInteger(point.u, `${field}.u`);
-  assertLatticeInteger(point.v, `${field}.v`);
-};
-
-export const assertPositiveLatticePoint = (
-  point: LatticePoint,
-  field: string
-): void => {
-  assertLatticePoint(point, field);
-  if (point.x <= 0 || point.y <= 0 || point.z <= 0) {
-    throw new RangeError(`${field} components must be greater than zero`);
-  }
 };
 
 export const cellKey = (point: LatticePoint): CellKey => {
@@ -123,20 +104,6 @@ export const worldToLattice = (
   return rounded;
 };
 
-export const pointFromPlane = (
-  normalAxis: Axis,
-  normal: number,
-  plane: PlanePoint
-): LatticePoint => {
-  if (normalAxis === 'x') {
-    return { x: normal, y: plane.u, z: plane.v };
-  }
-  if (normalAxis === 'y') {
-    return { x: plane.u, y: normal, z: plane.v };
-  }
-  return { x: plane.u, y: plane.v, z: normal };
-};
-
 export const stableBoundsKey = (
   density: SurfacePixelDensity,
   bounds: LatticeBounds
@@ -157,14 +124,3 @@ export const stableBoundsKey = (
     `${bounds.max.x},${bounds.max.y},${bounds.max.z}`
   ].join(':');
 };
-
-export const boundsContainsCell = (
-  bounds: LatticeBounds,
-  cell: LatticePoint
-): boolean =>
-  cell.x >= bounds.min.x &&
-  cell.x < bounds.max.x &&
-  cell.y >= bounds.min.y &&
-  cell.y < bounds.max.y &&
-  cell.z >= bounds.min.z &&
-  cell.z < bounds.max.z;

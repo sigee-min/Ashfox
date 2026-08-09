@@ -2,69 +2,58 @@ import type { CommandDefinition } from './definition';
 import { createProjectCommand } from './definitions/createProject';
 import {
   compileIntentProgramCommand
-} from './definitions/intentProgramCompile';
+} from './program/compile';
 import {
   proposeIntentProgramCommand
-} from './definitions/intentProgramPropose';
+} from './program/propose';
 import { renameProjectCommand } from './definitions/renameProject';
 import type { CommandName, CommandSource } from './types';
 
-interface CommandRegistration {
-  definition: CommandDefinition;
-  agentAccessible: boolean;
-}
-
-const registration = (
-  definition: CommandDefinition,
-  agentAccessible: boolean
-): CommandRegistration => ({ definition, agentAccessible });
+/** The complete and sole Agent mutation authority. */
+export const AGENT_ACCESSIBLE_COMMAND_NAMES = Object.freeze([
+  'intent.program.compile',
+  'intent.program.propose'
+] as const);
+const agentAccessibleCommandNames = new Set<string>(
+  AGENT_ACCESSIBLE_COMMAND_NAMES
+);
 
 /** The command registry is intentionally limited to project identity plus the
  * source-authoritative Intent Program boundary. Raw scene,
  * part, material, profile, and animation mutation commands have no registry
  * entry and therefore cannot enter any command batch. */
 const registrations = {
-  'project.create': registration(createProjectCommand, false),
-  'project.rename': registration(renameProjectCommand, false),
-  'intent.program.propose': registration(proposeIntentProgramCommand, true),
-  'intent.program.compile': registration(compileIntentProgramCommand, false)
-} satisfies Partial<Record<CommandName, CommandRegistration>>;
-
-export const commandRegistry = Object.fromEntries(
-  Object.entries(registrations).map(([name, value]) => [
-    name,
-    value.definition
-  ])
-) as Readonly<Partial<Record<CommandName, CommandDefinition>>>;
+  'project.create': createProjectCommand,
+  'project.rename': renameProjectCommand,
+  'intent.program.propose': proposeIntentProgramCommand,
+  'intent.program.compile': compileIntentProgramCommand
+} satisfies Partial<Record<CommandName, CommandDefinition>>;
 
 export const getCommandDefinition = (
   name: string
 ): CommandDefinition | undefined =>
-  registrations[name as keyof typeof registrations]?.definition;
-
-export const listCommandDefinitions = (): readonly CommandDefinition[] =>
-  Object.values(registrations).map((entry) => entry.definition);
+  registrations[name as keyof typeof registrations];
 
 export const getAgentCommandDefinition = (
   name: string
 ): CommandDefinition | undefined => {
-  const value = registrations[name as keyof typeof registrations];
-  return value?.agentAccessible ? value.definition : undefined;
+  return agentAccessibleCommandNames.has(name)
+    ? getCommandDefinition(name)
+    : undefined;
 };
 
 export const listAgentCommandDefinitions =
   (): readonly CommandDefinition[] =>
-    Object.values(registrations)
-      .filter((entry) => entry.agentAccessible)
-      .map((entry) => entry.definition);
+    AGENT_ACCESSIBLE_COMMAND_NAMES.map((name) => registrations[name]);
 
 export const commandAllowedForSource = (
   name: CommandName,
   source: CommandSource
 ): boolean => {
   if (!(name in registrations)) return false;
-  if (name === 'intent.program.propose') {
-    return source === 'agent' || source === 'web';
+  if (source === 'system') return true;
+  if (source === 'agent') {
+    return agentAccessibleCommandNames.has(name);
   }
-  return source === 'web' || source === 'system';
+  return name === 'project.create';
 };

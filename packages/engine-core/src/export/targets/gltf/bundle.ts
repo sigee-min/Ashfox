@@ -1,12 +1,12 @@
 import type { ExportAdaptedDocument } from '../../adapter';
-import type { InvariantFinding } from '../../../validation/types';
+import type { InvariantFinding } from '../../../validation/contract';
 import { createCompactJsonExportFile } from '../../json';
-import { createExportBundle } from '../../pipeline/createBundle';
+import { createExportBundle } from '../../pipeline/bundle';
 import type {
   BinaryExportFile,
   ExportBundle
-} from '../../types';
-import type { CompiledGltf } from './buildTypes';
+} from '../../contract';
+import type { CompiledGltf } from './build';
 import { buildGlb } from './glb';
 
 export const createGltfBundle = (

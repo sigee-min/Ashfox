@@ -1,34 +1,37 @@
 import type { CubeFaceDirection } from './shared';
 
 export type TextureUsageCube = {
-  id?: string;
-  name: string;
-  faces: Array<{ face: CubeFaceDirection; uv?: [number, number, number, number] }>;
+  readonly id?: string;
+  readonly name: string;
+  readonly faces: readonly {
+    readonly face: CubeFaceDirection;
+    readonly uv?: readonly [number, number, number, number];
+  }[];
 };
 
 export type TextureUsageEntry = {
-  id?: string;
-  name: string;
-  width?: number;
-  height?: number;
-  cubeCount: number;
-  faceCount: number;
-  cubes: TextureUsageCube[];
+  readonly id?: string;
+  readonly name: string;
+  readonly width?: number;
+  readonly height?: number;
+  readonly cubeCount: number;
+  readonly faceCount: number;
+  readonly cubes: readonly TextureUsageCube[];
 };
 
 export type TextureUsageUnresolved = {
-  textureRef: string;
-  cubeId?: string;
-  cubeName: string;
-  face: CubeFaceDirection;
+  readonly textureRef: string;
+  readonly cubeId?: string;
+  readonly cubeName: string;
+  readonly face: CubeFaceDirection;
 };
 
 export type TextureUsageResult = {
-  textures: TextureUsageEntry[];
-  unresolved?: TextureUsageUnresolved[];
+  readonly textures: readonly TextureUsageEntry[];
+  readonly unresolved?: readonly TextureUsageUnresolved[];
 };
 
 export type TextureUsageQuery = {
-  textureId?: string;
-  textureName?: string;
+  readonly textureId?: string;
+  readonly textureName?: string;
 };

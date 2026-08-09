@@ -7,12 +7,14 @@ import type {
   CommandSource
 } from '../types';
 import { commandBatchFailure } from './failure';
+import type { CommandExecutionContext } from './context';
 
 export const applyCommandOperation = (
   document: ProjectDocument,
   batch: CommandBatch,
   index: number,
-  _source: CommandSource
+  _source: CommandSource,
+  context: CommandExecutionContext
 ): CommandApplication | CommandBatchFailure => {
   const operation = batch.operations[index];
   const definition = getCommandDefinition(operation.name);
@@ -23,7 +25,7 @@ export const applyCommandOperation = (
       path: `operations[${index}].name`
     });
   }
-  const result = definition.apply(document, operation.payload);
+  const result = definition.apply(document, operation.payload, context);
   if (result.ok) return result.value;
   const {
     pathScope = 'operation',

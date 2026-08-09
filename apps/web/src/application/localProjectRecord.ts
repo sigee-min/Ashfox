@@ -1,82 +1,66 @@
 import {
   INTERNAL_CONTRACT_VERSIONS,
-  isCurrentInternalContractVersion,
-  isValidCommandReceiptLedger,
-  parseProjectDocument,
-  validateProjectDocument,
-  type CommandReceipt,
-  type ProjectDocument
+  INTENT_PROGRAM_SOURCE_MAX_LENGTH,
+  isCurrentInternalContractVersion
 } from '@ashfox/engine-core';
 import {
   hasExactContractKeys,
   isCanonicalIsoDate,
-  isClosedContractRecord
+  isClosedContractRecord,
+  isNonEmptyContractText
 } from '@ashfox/internal-contracts';
-import {
-  areVisualReviewLedgersEqual,
-  isValidVisualReviewLedger,
-  type VisualReviewReceipt
-} from './visualReviewReceipt';
-import {
-  areProjectAssetsEqual,
-  isProjectAssets,
-  type ProjectAssets
-} from './projectAssets';
 
 export const LOCAL_PROJECT_SCHEMA_VERSION =
   INTERNAL_CONTRACT_VERSIONS.localProjectRecord;
-const LOCAL_PROJECT_ACTIVITY_LIMIT = 100;
 
+/**
+ * Durable browser authority. Compiled ProjectDocument output is deliberately
+ * absent and must be reconstructed atomically from `source` on every restore.
+ */
 export interface LocalProjectRecord {
-  schemaVersion: typeof LOCAL_PROJECT_SCHEMA_VERSION;
-  projectId: string;
-  revision: string;
-  document: ProjectDocument;
-  assets: ProjectAssets;
-  activity: readonly CommandReceipt[];
-  visualReviews: readonly VisualReviewReceipt[];
-  savedAt: string;
+  readonly schemaVersion: typeof LOCAL_PROJECT_SCHEMA_VERSION;
+  readonly projectId: string;
+  readonly revision: string;
+  readonly createdAt: string;
+  readonly source: string;
+  readonly savedAt: string;
 }
 
 const LOCAL_PROJECT_RECORD_KEYS = new Set([
   'schemaVersion',
   'projectId',
   'revision',
-  'document',
-  'assets',
-  'activity',
-  'visualReviews',
+  'createdAt',
+  'source',
   'savedAt'
 ]);
 
-interface CreateLocalProjectRecordInput {
-  document: ProjectDocument;
-  assets: ProjectAssets;
-  activity: readonly CommandReceipt[];
-  visualReviews: readonly VisualReviewReceipt[];
-  savedAt: string;
+export interface CreateLocalProjectRecordInput {
+  readonly projectId: string;
+  readonly revision: string;
+  readonly createdAt: string;
+  readonly source: string;
+  readonly savedAt: string;
 }
 
 export const createLocalProjectRecord = ({
-  document,
-  assets,
-  activity,
-  visualReviews,
+  projectId,
+  revision,
+  createdAt,
+  source,
   savedAt
 }: CreateLocalProjectRecordInput): LocalProjectRecord => ({
   schemaVersion: LOCAL_PROJECT_SCHEMA_VERSION,
-  projectId: document.id,
-  revision: document.revision,
-  document,
-  assets,
-  activity,
-  visualReviews,
+  projectId,
+  revision,
+  createdAt,
+  source,
   savedAt
 });
 
 export interface ProjectRevisionMessage {
-  projectId: string;
-  revision: string;
+  readonly projectId: string;
+  readonly revision: string;
 }
 
 const LOCAL_REVISION_PATTERN = /^local-(\d+)$/;
@@ -109,88 +93,47 @@ export const compareProjectRevisions = (
   return projectRevisionSerial(left) - projectRevisionSerial(right);
 };
 
-const hasClosedRecordShape = (
-  record: Readonly<Record<string, unknown>>
-): boolean => hasExactContractKeys(record, LOCAL_PROJECT_RECORD_KEYS);
-
 export const isValidLocalProjectRecord = (
   value: unknown,
   projectId: string
-): value is LocalProjectRecord => {
-  if (!isClosedContractRecord(value) || !hasClosedRecordShape(value)) {
-    return false;
-  }
-  if (
-    !isCurrentInternalContractVersion(
-      'localProjectRecord',
-      value.schemaVersion
-    ) ||
-    value.projectId !== projectId ||
-    typeof value.revision !== 'string' ||
-    !isClosedContractRecord(value.document) ||
-    value.document.id !== projectId ||
-    value.revision !== value.document.revision ||
-    !isProjectAssets(value.assets) ||
-    !isValidCommandReceiptLedger(value.activity, {
-      projectId,
-      maxEntries: LOCAL_PROJECT_ACTIVITY_LIMIT
-    }) ||
-    !isCanonicalIsoDate(value.savedAt)
-  ) {
-    return false;
-  }
-  try {
-    const document = parseProjectDocument(value.document);
-    return validateProjectDocument(document).valid &&
-      isValidVisualReviewLedger(value.visualReviews, document);
-  } catch {
-    return false;
-  }
-};
+): value is LocalProjectRecord =>
+  isClosedContractRecord(value) &&
+  hasExactContractKeys(value, LOCAL_PROJECT_RECORD_KEYS) &&
+  isCurrentInternalContractVersion(
+    'localProjectRecord',
+    value.schemaVersion
+  ) &&
+  isNonEmptyContractText(value.projectId) &&
+  value.projectId === projectId &&
+  isNonEmptyContractText(value.revision) &&
+  isCanonicalIsoDate(value.createdAt) &&
+  typeof value.source === 'string' &&
+  value.source.length > 0 &&
+  value.source.length <= INTENT_PROGRAM_SOURCE_MAX_LENGTH &&
+  isCanonicalIsoDate(value.savedAt);
 
 export const parseLocalProjectRecord = (
   value: unknown,
   projectId: string
 ): LocalProjectRecord => {
-  if (!isClosedContractRecord(value) || !hasClosedRecordShape(value)) {
-    throw new Error('Stored local project does not match the closed v1 schema.');
+  if (!isValidLocalProjectRecord(value, projectId)) {
+    throw new Error('Stored local source failed the closed v1 contract.');
   }
-  const document = parseProjectDocument(value.document);
-  const record = {
+  return {
     schemaVersion: value.schemaVersion,
     projectId: value.projectId,
     revision: value.revision,
-    document,
-    assets: value.assets,
-    activity: value.activity,
-    visualReviews: value.visualReviews,
+    createdAt: value.createdAt,
+    source: value.source,
     savedAt: value.savedAt
   };
-  if (!isValidLocalProjectRecord(record, projectId)) {
-    throw new Error('Stored local project failed closed v1 validation.');
-  }
-  return record;
 };
-
-export const areProjectDocumentsEqual = (
-  left: ProjectDocument,
-  right: ProjectDocument
-): boolean =>
-  left === right || JSON.stringify(left) === JSON.stringify(right);
 
 export const areLocalProjectRecordsEqual = (
   left: LocalProjectRecord,
   right: LocalProjectRecord
 ): boolean =>
-  areProjectDocumentsEqual(left.document, right.document) &&
-  areProjectAssetsEqual(left.assets, right.assets) &&
-  JSON.stringify(left.activity) === JSON.stringify(right.activity) &&
-  areVisualReviewLedgersEqual(left.visualReviews, right.visualReviews);
-
-export const areLocalProjectPayloadsEqual = (
-  left: LocalProjectRecord,
-  right: LocalProjectRecord
-): boolean =>
-  areProjectDocumentsEqual(left.document, right.document) &&
-  areProjectAssetsEqual(left.assets, right.assets) &&
-  JSON.stringify(left.activity) === JSON.stringify(right.activity);
+  left.projectId === right.projectId &&
+  left.revision === right.revision &&
+  left.createdAt === right.createdAt &&
+  left.source === right.source;

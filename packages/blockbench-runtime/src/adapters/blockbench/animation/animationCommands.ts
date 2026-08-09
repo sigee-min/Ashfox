@@ -37,7 +37,7 @@ import {
   sanitizeAnimatorChannels,
   sanitizeAnimatorKeyframes,
   sanitizeClipKeyframes
-} from './animationKeyframeHelpers';
+} from './keyframes';
 import { refreshAnimationViewport } from './animationViewport';
 
 type BoneAnimatorConstructor = new (uuid: string, clip: AnimationClip) => AnimatorLike;
@@ -331,5 +331,4 @@ export const getAnimations = (): AnimationClip[] => {
   if (Array.isArray(globals.Animation?.all)) return globals.Animation.all;
   return [];
 };
-
 

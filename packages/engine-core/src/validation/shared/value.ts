@@ -4,7 +4,7 @@ import type {
   Vec2,
   Vec3
 } from '../../model';
-import type { FindingSink } from '../types';
+import type { FindingSink } from '../contract';
 
 export const COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 export const EPSILON = 0.000001;

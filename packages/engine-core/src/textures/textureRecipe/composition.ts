@@ -6,7 +6,7 @@ import {
 import {
   effectiveGeneratedFaceEnabled,
   generatedSurfaceFaceKey
-} from '../generatedSurfaceAuthority';
+} from '../appearance/authority';
 import {
   compileTextureSurfaceAuthority,
   generatedTextureBaseColor,
@@ -17,6 +17,9 @@ import type {
   TextureComposition,
   TextureCompositionRegion
 } from './types';
+
+const compareText = (left: string, right: string): number =>
+  left < right ? -1 : left > right ? 1 : 0;
 
 export const composeTextureRaster = (
   document: ProjectDocument,
@@ -65,7 +68,11 @@ export const composeTextureRaster = (
     background: generatedTextureBaseColor(texture),
     generated,
     gutter: generated ? generatedTextureGutter(document) : 0,
-    regions,
-    canvasDetails: texture.raster?.canvasDetails ?? []
+    regions: regions.sort((left, right) =>
+      compareText(`${left.nodeId}:${left.face}`, `${right.nodeId}:${right.face}`)
+    ),
+    canvasDetails: [...(texture.raster?.canvasDetails ?? [])].sort(
+      (left, right) => compareText(left.id, right.id)
+    )
   };
 };

@@ -1,8 +1,12 @@
 process.env.DISABLE_V8_COMPILE_CACHE = process.env.DISABLE_V8_COMPILE_CACHE || '1';
 
-const fs = require('fs');
 const path = require('path');
 const { register } = require('ts-node');
+const {
+  discoverTests,
+  requireTests,
+  selectTests
+} = require('../../../scripts/tests/discovery');
 
 register({
   transpileOnly: true,
@@ -16,24 +20,15 @@ globalThis.requireNativeModule = (name) => require(name);
 
 globalThis.__ashfox_test_promises = [];
 
-const discoverTests = () =>
-  fs
-    .readdirSync(__dirname, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.test.ts'))
-    .map((entry) => entry.name)
-    .sort((a, b) => a.localeCompare(b));
-
-const tests = discoverTests();
+const tests = discoverTests(__dirname);
 const testFilter = process.env.ASHFOX_TEST_FILTER;
-const selectedTests = testFilter ? tests.filter((test) => test.includes(testFilter)) : tests;
+const selectedTests = selectTests(tests, {
+  filter: testFilter,
+  label: 'runtime tests'
+});
 
 (async () => {
-  if (selectedTests.length === 0) {
-    throw new Error(testFilter ? `No tests matched filter: ${testFilter}` : 'No test files discovered.');
-  }
-  for (const test of selectedTests) {
-    require(path.join(__dirname, test));
-  }
+  requireTests(selectedTests);
   const pending = Array.isArray(globalThis.__ashfox_test_promises) ? globalThis.__ashfox_test_promises : [];
   if (pending.length > 0) {
     await Promise.all(pending);
@@ -49,4 +44,3 @@ const selectedTests = testFilter ? tests.filter((test) => test.includes(testFilt
     globalThis.requireNativeModule = originalNativeModuleLoader;
   }
 });
-

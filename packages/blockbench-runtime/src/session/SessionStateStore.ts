@@ -3,7 +3,7 @@ import { err } from '../shared/tooling/toolResponse';
 import { PROJECT_NO_ACTIVE } from '../shared/messages';
 import type { SessionState } from './types';
 import { resolveAnimationTimePolicy } from '../domain/animation/timePolicy';
-import { cloneAnimations } from './clone';
+import { sessionStateCloner, type SessionStateCloner } from './clone';
 
 const createEmptyState = (policy = resolveAnimationTimePolicy()): SessionState => ({
   id: null,
@@ -23,6 +23,8 @@ const createEmptyState = (policy = resolveAnimationTimePolicy()): SessionState =
 
 export class SessionStateStore {
   private state: SessionState = createEmptyState();
+
+  constructor(private readonly cloner: SessionStateCloner = sessionStateCloner) {}
 
   create(format: FormatKind, name: string, formatId?: string | null): ToolResponse<{ id: string; format: FormatKind; name: string }> {
     const id = `${Date.now()}`;
@@ -49,23 +51,24 @@ export class SessionStateStore {
     if (!snapshot.format) {
       return err<{ id: string; format: FormatKind; name: string | null }>('invalid_state', PROJECT_NO_ACTIVE);
     }
-    const id = snapshot.id ?? `${Date.now()}`;
+    const cloned = this.cloner.state(snapshot);
+    const id = cloned.id ?? `${Date.now()}`;
     const format = snapshot.format;
-    const name = snapshot.name ?? null;
-    const animationTimePolicy = resolveAnimationTimePolicy(snapshot.animationTimePolicy ?? this.state.animationTimePolicy);
+    const name = cloned.name ?? null;
+    const animationTimePolicy = resolveAnimationTimePolicy(cloned.animationTimePolicy ?? this.state.animationTimePolicy);
     this.state = {
       id,
       format,
-      formatId: snapshot.formatId ?? null,
+      formatId: cloned.formatId ?? null,
       name,
-      dirty: snapshot.dirty,
-      uvPixelsPerBlock: snapshot.uvPixelsPerBlock,
-      bones: [...snapshot.bones],
-      cubes: [...snapshot.cubes],
-      meshes: [...(snapshot.meshes ?? [])],
-      textures: [...snapshot.textures],
-      animations: cloneAnimations(snapshot.animations),
-      animationsStatus: snapshot.animationsStatus ?? 'available',
+      dirty: cloned.dirty,
+      uvPixelsPerBlock: cloned.uvPixelsPerBlock,
+      bones: cloned.bones,
+      cubes: cloned.cubes,
+      meshes: cloned.meshes ?? [],
+      textures: cloned.textures,
+      animations: cloned.animations,
+      animationsStatus: cloned.animationsStatus ?? 'available',
       animationTimePolicy
     };
     return { ok: true, data: { id, format, name } };
@@ -77,16 +80,7 @@ export class SessionStateStore {
   }
 
   snapshot(): SessionState {
-    return {
-      ...this.state,
-      bones: [...this.state.bones],
-      cubes: [...this.state.cubes],
-      meshes: [...(this.state.meshes ?? [])],
-      textures: [...this.state.textures],
-      animations: cloneAnimations(this.state.animations),
-      animationsStatus: this.state.animationsStatus,
-      animationTimePolicy: { ...this.state.animationTimePolicy }
-    };
+    return this.cloner.state(this.state);
   }
 
   ensureActive(): ToolError | null {
@@ -112,4 +106,3 @@ export class SessionStateStore {
     this.state.uvPixelsPerBlock = value;
   }
 }
-

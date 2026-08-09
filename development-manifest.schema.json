@@ -1,0 +1,963 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ashfox.io/schemas/development-manifest.v1.schema.json",
+  "title": "ashfox repository development manifest",
+  "description": "Versioned authority for product experience, engineering workflow, quality, versioning, and architecture rules.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "productExperience",
+    "engineering",
+    "workflow",
+    "versioning",
+    "quality",
+    "architecture"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./development-manifest.schema.json"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "productExperience": {
+      "$ref": "#/$defs/productExperience"
+    },
+    "engineering": {
+      "$ref": "#/$defs/engineering"
+    },
+    "workflow": {
+      "$ref": "#/$defs/workflow"
+    },
+    "versioning": {
+      "$ref": "#/$defs/versioning"
+    },
+    "quality": {
+      "$ref": "#/$defs/quality"
+    },
+    "architecture": {
+      "$ref": "#/$defs/architecture"
+    }
+  },
+  "$defs": {
+    "positiveSafeInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "workspaceSourceScope": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "sourceDirectoryPrefix": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)+/$"
+    },
+    "repositoryDirectoryPrefix": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)*/$"
+    },
+    "repositoryPath": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9.][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)*$"
+    },
+    "productExperience": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "interactionModel",
+        "canonicalAuthority",
+        "projectFile",
+        "humanCapabilities",
+        "agentCapabilities",
+        "forbiddenHumanAuthoring",
+        "agentDecision",
+        "deliveryAuthority"
+      ],
+      "properties": {
+        "interactionModel": {
+          "const": "ai-authored-ai-compiled-human-observed"
+        },
+        "canonicalAuthority": {
+          "const": "intent-program-v1"
+        },
+        "projectFile": {
+          "$ref": "#/$defs/projectFile"
+        },
+        "humanCapabilities": {
+          "$ref": "#/$defs/humanCapabilities"
+        },
+        "agentCapabilities": {
+          "$ref": "#/$defs/agentCapabilities"
+        },
+        "forbiddenHumanAuthoring": {
+          "$ref": "#/$defs/forbiddenHumanAuthoring"
+        },
+        "agentDecision": {
+          "$ref": "#/$defs/agentDecision"
+        },
+        "deliveryAuthority": {
+          "const": "human"
+        }
+      }
+    },
+    "projectFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "extension",
+        "mediaType",
+        "encoding",
+        "bom",
+        "authority",
+        "loadMode",
+        "compiledState"
+      ],
+      "properties": {
+        "extension": {
+          "const": ".ashfox"
+        },
+        "mediaType": {
+          "const": "text/x-ashfox;charset=utf-8"
+        },
+        "encoding": {
+          "const": "utf-8"
+        },
+        "bom": {
+          "const": "forbidden"
+        },
+        "authority": {
+          "const": "intent-program-source-only"
+        },
+        "loadMode": {
+          "const": "parse-compile-atomic"
+        },
+        "compiledState": {
+          "const": "ephemeral-cache-only"
+        }
+      }
+    },
+    "humanCapabilities": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "prefixItems": [
+        { "const": "capture-evidence" },
+        { "const": "create-project" },
+        { "const": "download-project" },
+        { "const": "export-artifact" },
+        { "const": "observe-agent-decisions" },
+        { "const": "open-project" },
+        { "const": "prompt-agent-externally" },
+        { "const": "view-canonical-asset" }
+      ],
+      "items": false
+    },
+    "agentCapabilities": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "prefixItems": [
+        { "const": "decide-and-compile-intent-program" },
+        { "const": "inspect-project" },
+        { "const": "present-review-evidence" },
+        { "const": "propose-intent-program" }
+      ],
+      "items": false
+    },
+    "forbiddenHumanAuthoring": {
+      "type": "array",
+      "minItems": 11,
+      "maxItems": 11,
+      "uniqueItems": true,
+      "prefixItems": [
+        { "const": "compare-current-and-candidate" },
+        { "const": "confirm-intent-program" },
+        { "const": "decide-intent-program" },
+        { "const": "direct-animation-authoring" },
+        { "const": "direct-geometry-authoring" },
+        { "const": "direct-hierarchy-authoring" },
+        { "const": "direct-material-authoring" },
+        { "const": "direct-rig-authoring" },
+        { "const": "direct-texture-authoring" },
+        { "const": "edit-intent-program-source-in-workbench" },
+        { "const": "reject-intent-program" }
+      ],
+      "items": false
+    },
+    "agentDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "compilationAuthority",
+        "confirmationRequired",
+        "requiredEvidence"
+      ],
+      "properties": {
+        "compilationAuthority": {
+          "const": "agent"
+        },
+        "confirmationRequired": {
+          "const": false
+        },
+        "requiredEvidence": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "prefixItems": [
+            { "const": "semantic-summary" },
+            { "const": "candidate-visual" },
+            { "const": "technical-receipt" }
+          ],
+          "items": false
+        }
+      }
+    },
+    "engineering": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "style",
+        "principles",
+        "testing",
+        "exceptions"
+      ],
+      "properties": {
+        "style": {
+          "$ref": "#/$defs/engineeringStyle"
+        },
+        "principles": {
+          "type": "array",
+          "minItems": 10,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/engineeringPrinciple"
+          }
+        },
+        "testing": {
+          "$ref": "#/$defs/engineeringTesting"
+        },
+        "exceptions": {
+          "type": "array",
+          "maxItems": 0,
+          "items": false
+        }
+      }
+    },
+    "engineeringStyle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "typescriptStrict",
+        "indentSpaces",
+        "quotes",
+        "semicolons",
+        "readonlyPublicContracts",
+        "mutableDraftsPrivate"
+      ],
+      "properties": {
+        "typescriptStrict": {
+          "const": true
+        },
+        "indentSpaces": {
+          "const": 2
+        },
+        "quotes": {
+          "const": "single"
+        },
+        "semicolons": {
+          "const": "required"
+        },
+        "readonlyPublicContracts": {
+          "const": true
+        },
+        "mutableDraftsPrivate": {
+          "const": true
+        }
+      }
+    },
+    "engineeringPrinciple": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "rule",
+        "enforcedBy"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "atomic-mutation",
+            "closed-contracts",
+            "deterministic-output",
+            "interface-first",
+            "no-derived-write-path",
+            "owner-scoped-files",
+            "preserve-unrelated-work",
+            "pure-core-io-adapters",
+            "single-authority",
+            "source-owned-diagnostics"
+          ]
+        },
+        "rule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enforcedBy": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "quality:architecture",
+              "quality:check",
+              "review",
+              "tests",
+              "typecheck"
+            ]
+          }
+        }
+      }
+    },
+    "engineeringTesting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "behaviorChangeRequiresRegression",
+        "statefulPaths",
+        "userVisibleChangeRequiresDocs"
+      ],
+      "properties": {
+        "behaviorChangeRequiresRegression": {
+          "const": true
+        },
+        "statefulPaths": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "prefixItems": [
+            { "const": "success" },
+            { "const": "cancellation" },
+            { "const": "stale-revision" },
+            { "const": "invalid-input" },
+            { "const": "exception" }
+          ],
+          "items": false
+        },
+        "userVisibleChangeRequiresDocs": {
+          "const": true
+        }
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dirtyWorktree",
+        "changeScope",
+        "publicContractChange",
+        "generatedArtifacts",
+        "commits",
+        "verification"
+      ],
+      "properties": {
+        "dirtyWorktree": {
+          "const": "preserve-unrelated"
+        },
+        "changeScope": {
+          "const": "smallest-complete-slice"
+        },
+        "publicContractChange": {
+          "const": "reader-version-contract-test"
+        },
+        "generatedArtifacts": {
+          "const": "edit-source-only"
+        },
+        "commits": {
+          "$ref": "#/$defs/commits"
+        },
+        "verification": {
+          "$ref": "#/$defs/verification"
+        }
+      }
+    },
+    "commits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "subject",
+        "types",
+        "atomic",
+        "breakingChangeRequiresReview"
+      ],
+      "properties": {
+        "format": {
+          "const": "conventional-commits"
+        },
+        "subject": {
+          "const": "imperative"
+        },
+        "types": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "prefixItems": [
+            { "const": "chore" },
+            { "const": "docs" },
+            { "const": "feat" },
+            { "const": "fix" },
+            { "const": "refactor" },
+            { "const": "test" }
+          ],
+          "items": false
+        },
+        "atomic": {
+          "const": true
+        },
+        "breakingChangeRequiresReview": {
+          "const": true
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "duringChange",
+        "beforeHandoff",
+        "beforePullRequest"
+      ],
+      "properties": {
+        "duringChange": {
+          "const": "focused"
+        },
+        "beforeHandoff": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "uniqueItems": true,
+          "prefixItems": [
+            {
+              "const": "git diff --check"
+            }
+          ],
+          "items": false
+        },
+        "beforePullRequest": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "uniqueItems": true,
+          "prefixItems": [
+            {
+              "const": "npm run quality"
+            }
+          ],
+          "items": false
+        }
+      }
+    },
+    "versioning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "product",
+        "intentProgram",
+        "surfaceSynthesis",
+        "deliveryTargets"
+      ],
+      "properties": {
+        "product": {
+          "$ref": "#/$defs/productReleaseVersioning"
+        },
+        "intentProgram": {
+          "$ref": "#/$defs/intentProgramVersioning"
+        },
+        "surfaceSynthesis": {
+          "$ref": "#/$defs/surfaceSynthesisVersioning"
+        },
+        "deliveryTargets": {
+          "$ref": "#/$defs/deliveryTargetVersioning"
+        }
+      }
+    },
+    "productReleaseVersioning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scheme",
+        "sourceOfTruth",
+        "automation",
+        "synchronizedFiles",
+        "changeOwner",
+        "verification"
+      ],
+      "properties": {
+        "scheme": {
+          "const": "semver"
+        },
+        "sourceOfTruth": {
+          "const": "package.json"
+        },
+        "automation": {
+          "const": "release-please"
+        },
+        "synchronizedFiles": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "prefixItems": [
+            {
+              "const": ".github/release-please/manifest.json"
+            },
+            {
+              "const": "packages/blockbench-runtime/src/config.ts"
+            }
+          ],
+          "items": false
+        },
+        "changeOwner": {
+          "const": "release-pr"
+        },
+        "verification": {
+          "const": "npm run release:validate"
+        }
+      }
+    },
+    "intentProgramVersioning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "compatibility",
+        "authority",
+        "breakingChangeRequiresVersion"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "compatibility": {
+          "const": "current-version-only"
+        },
+        "authority": {
+          "const": "packages/engine-core/src/project/program/language.ts"
+        },
+        "breakingChangeRequiresVersion": {
+          "const": true
+        }
+      }
+    },
+    "surfaceSynthesisVersioning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "authority",
+        "rasterAuthority",
+        "receiptAuthority",
+        "breakingChangeRequiresVersion"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "authority": {
+          "const": "packages/engine-core/src/textures/appearance/contract.ts"
+        },
+        "rasterAuthority": {
+          "const": "packages/engine-core/src/textures/textureRecipe/raster.ts"
+        },
+        "receiptAuthority": {
+          "const": "packages/engine-core/src/provenance/program/receipt.ts"
+        },
+        "breakingChangeRequiresVersion": {
+          "const": true
+        }
+      }
+    },
+    "deliveryTargetVersioning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "canonicalMutation"
+      ],
+      "properties": {
+        "scope": {
+          "const": "transient-export-input"
+        },
+        "canonicalMutation": {
+          "const": false
+        }
+      }
+    },
+    "ownerLayout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractFile",
+        "testFileSuffix",
+        "testFileExtension",
+        "testFileStem",
+        "maxTestFileStemLength",
+        "maxTestFileLines",
+        "testOwnership",
+        "testDiscovery",
+        "testOwners"
+      ],
+      "properties": {
+        "contractFile": {
+          "const": "contract"
+        },
+        "testFileSuffix": {
+          "const": ".test"
+        },
+        "testFileExtension": {
+          "const": ".ts"
+        },
+        "testFileStem": {
+          "const": "lower-word"
+        },
+        "maxTestFileStemLength": {
+          "$ref": "#/$defs/positiveSafeInteger"
+        },
+        "maxTestFileLines": {
+          "$ref": "#/$defs/positiveSafeInteger"
+        },
+        "testOwnership": {
+          "const": "owner-directory-required"
+        },
+        "testDiscovery": {
+          "const": "recursive-stable-nonempty"
+        },
+        "testOwners": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/testOwner"
+          }
+        }
+      }
+    },
+    "testOwner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workspace",
+        "roots"
+      ],
+      "properties": {
+        "workspace": {
+          "$ref": "#/$defs/repositoryPath"
+        },
+        "roots": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*$"
+          }
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maxSourceFileLines",
+        "maxCodeFileStemLength",
+        "newSourceFileRatchetLines",
+        "maxFunctionLines",
+        "ownerLayout",
+        "forbiddenSourcePatterns"
+      ],
+      "properties": {
+        "maxSourceFileLines": {
+          "$ref": "#/$defs/positiveSafeInteger"
+        },
+        "maxCodeFileStemLength": {
+          "$ref": "#/$defs/positiveSafeInteger"
+        },
+        "newSourceFileRatchetLines": {
+          "$ref": "#/$defs/positiveSafeInteger"
+        },
+        "maxFunctionLines": {
+          "$ref": "#/$defs/positiveSafeInteger"
+        },
+        "ownerLayout": {
+          "$ref": "#/$defs/ownerLayout"
+        },
+        "forbiddenSourcePatterns": {
+          "type": "array",
+          "minItems": 14,
+          "maxItems": 14,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/forbiddenSourcePattern"
+          }
+        }
+      }
+    },
+    "forbiddenSourcePattern": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "scope",
+        "allowedPaths"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "as-any",
+            "as-unknown-as",
+            "bare-document",
+            "bare-window",
+            "catch-without-binding",
+            "console-in-src",
+            "double-assertion",
+            "engine-core-host-dependency",
+            "explicit-any",
+            "globalThis-as",
+            "throw-in-src",
+            "todo-fixme-comment",
+            "ts-ignore",
+            "workbench-blockbench-dependency"
+          ]
+        },
+        "scope": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/repositoryDirectoryPrefix"
+          }
+        },
+        "allowedPaths": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/repositoryPath"
+          }
+        }
+      }
+    },
+    "architecture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workspaceSourceScopes",
+        "workspacePolicy",
+        "tombstones",
+        "packageDependencyPolicies",
+        "sourceImportBoundaries",
+        "forbiddenDependencies"
+      ],
+      "properties": {
+        "workspaceSourceScopes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/workspaceSourceScope"
+          }
+        },
+        "workspacePolicy": {
+          "$ref": "#/$defs/workspacePolicy"
+        },
+        "tombstones": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/repositoryPath"
+          }
+        },
+        "packageDependencyPolicies": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/packageDependencyPolicy"
+          }
+        },
+        "sourceImportBoundaries": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/sourceImportBoundary"
+          }
+        },
+        "forbiddenDependencies": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/forbiddenDependency"
+          }
+        }
+      }
+    },
+    "workspacePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "forbidden"
+      ],
+      "properties": {
+        "required": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/repositoryPath"
+          }
+        },
+        "forbidden": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/repositoryPath"
+          }
+        }
+      }
+    },
+    "packageDependencyPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workspace",
+        "sections",
+        "mode",
+        "values"
+      ],
+      "properties": {
+        "workspace": {
+          "$ref": "#/$defs/repositoryPath"
+        },
+        "sections": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "dependencies",
+              "devDependencies",
+              "optionalDependencies",
+              "peerDependencies"
+            ]
+          }
+        },
+        "mode": {
+          "enum": [
+            "allow-only",
+            "deny-prefixes"
+          ]
+        },
+        "values": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "sourceImportBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "extensions",
+        "allowedExternalImports",
+        "forbiddenExternalPrefixes",
+        "forbiddenExternalPackageRoots",
+        "forbiddenRelativeTargets"
+      ],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/repositoryDirectoryPrefix"
+        },
+        "extensions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^\\.[a-z0-9]+$"
+          }
+        },
+        "allowedExternalImports": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "forbiddenExternalPrefixes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "forbiddenExternalPackageRoots": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "forbiddenRelativeTargets": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/repositoryDirectoryPrefix"
+          }
+        }
+      }
+    },
+    "forbiddenDependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "targets"
+      ],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/sourceDirectoryPrefix"
+        },
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/sourceDirectoryPrefix"
+          }
+        }
+      }
+    }
+  }
+}

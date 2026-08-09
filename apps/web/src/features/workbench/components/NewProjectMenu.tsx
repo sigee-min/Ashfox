@@ -34,7 +34,7 @@ export function NewProjectMenu({
     >
       <div className="popover-heading">
         <strong>New project</strong>
-        <span>Local · empty canvas</span>
+        <span>Stored in this browser</span>
       </div>
       <label className="popover-field">
         <span>Name</span>
@@ -45,15 +45,9 @@ export function NewProjectMenu({
           onChange={(event) => setName(event.target.value)}
         />
       </label>
-      <div className="iconic-style-card" aria-label="Authoring style">
-        <strong>Iconic pixel</strong>
-        <span>
-          Fixed 1-unit forms · semantic parts · generated pixel surfaces
-        </span>
-      </div>
       <p className="new-project-note">
-        The project starts as one target-independent canonical asset. Choose
-        an export adapter only when you export.
+        After creating it, describe the asset in chat. The AI handles the
+        build; you can watch, capture, download, or export the result here.
       </p>
       <button
         type="submit"

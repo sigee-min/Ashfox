@@ -18,14 +18,15 @@ import { BrandLogo } from './BrandLogo';
 import { CaptureMenu } from './CaptureMenu';
 import { ExportMenu } from './ExportMenu';
 import { NewProjectMenu } from './NewProjectMenu';
-import { ProjectSettingsMenu } from './ProjectSettingsMenu';
 import type { NewProjectInput } from '../newProject';
-import type { ProjectSettingsInput } from '../projectSettings';
 import { HeaderFileActions } from './header/HeaderFileActions';
 import type {
   HeaderMenu,
   OpenHeaderMenu
 } from './header/headerMenu';
+import type {
+  ExportAvailabilityViewModel
+} from '../exportAvailability';
 
 interface WorkbenchHeaderProps {
   document: ProjectDocument;
@@ -37,10 +38,10 @@ interface WorkbenchHeaderProps {
   environment: ViewportEnvironmentId;
   cameraMode: CameraMode;
   captureFile: GifCaptureFile | null;
+  exportAvailability: ExportAvailabilityViewModel;
   onCreateProject: (input: NewProjectInput) => void;
   onOpen: (file: File) => void;
   onSave: () => void;
-  onUpdateProject: (input: ProjectSettingsInput) => void;
   onExport: (adapter: ExportAdapterInput) => void;
   onActiveClipChange: (clipId: string | null) => void;
   onCapture: (request: GifCaptureRequest) => void;
@@ -57,10 +58,10 @@ export function WorkbenchHeader({
   environment,
   cameraMode,
   captureFile,
+  exportAvailability,
   onCreateProject,
   onOpen,
   onSave,
-  onUpdateProject,
   onExport,
   onActiveClipChange,
   onCapture,
@@ -91,23 +92,18 @@ export function WorkbenchHeader({
         <span>ashfox</span>
       </div>
       <div className="header-divider" />
-      <button
-        type="button"
-        className="project-path project-settings-trigger"
-        aria-expanded={activeMenu === 'project'}
-        aria-label="Project settings"
-        onClick={() => toggleMenu('project')}
-      >
+      <div className="project-path" aria-label="Current project">
         <span className="muted">Projects</span>
         <Icon name="chevron" />
         <strong>{document.name}</strong>
-      </button>
+      </div>
       <div className="header-spacer" />
       <HeaderFileActions
         activeMenu={activeMenu}
         fileOperation={fileOperation}
         artifactFile={artifactFile}
         artifactUrl={artifactUrl}
+        exportAvailability={exportAvailability}
         openInputRef={openInputRef}
         artifactAnchorRef={artifactAnchorRef}
         onToggleMenu={toggleMenu}
@@ -129,19 +125,11 @@ export function WorkbenchHeader({
           }}
         />
       ) : null}
-      {activeMenu === 'project' ? (
-        <ProjectSettingsMenu
-          document={document}
-          onSave={(input) => {
-            onUpdateProject(input);
-            setActiveMenu(null);
-          }}
-        />
-      ) : null}
       {activeMenu === 'export' ? (
         <ExportMenu
           document={document}
           busy={fileBusy}
+          availability={exportAvailability}
           onExport={(adapter) => {
             onExport(adapter);
             setActiveMenu(null);

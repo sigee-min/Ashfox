@@ -1,4 +1,10 @@
-import type { Capabilities, ToolError } from '@ashfox/blockbench-contracts/types/internal';
+import type {
+  AutoUvAtlasPayload,
+  AutoUvAtlasResult,
+  Capabilities,
+  PreflightTextureResult,
+  ToolError
+} from '@ashfox/blockbench-contracts/types/internal';
 import type { EditorPort } from '../../ports/editor';
 import type { TextureRendererPort } from '../../ports/textureRenderer';
 import type { SessionState } from '../../session';
@@ -53,8 +59,14 @@ export type TextureToolContext = {
     ifRevision?: string;
     allowExisting?: boolean;
   }) => UsecaseResult<{ id: string; name: string; created: boolean }>;
-  preflightTexture?: (payload: { textureId?: string; textureName?: string; includeUsage?: boolean }) => UsecaseResult<import('../../types').PreflightTextureResult>;
-  autoUvAtlas?: (payload: import('../../types').AutoUvAtlasPayload) => UsecaseResult<import('../../types').AutoUvAtlasResult>;
+  preflightTexture?: (payload: {
+    textureId?: string;
+    textureName?: string;
+    includeUsage?: boolean;
+  }) => UsecaseResult<PreflightTextureResult>;
+  autoUvAtlas?: (
+    payload: AutoUvAtlasPayload
+  ) => UsecaseResult<AutoUvAtlasResult>;
   runWithoutRevisionGuard?: <T>(fn: () => T) => T;
 };
 
@@ -63,5 +75,4 @@ export const uvGuardMessages = buildUvGuardMessages();
 export const uvPaintMessages = buildUvPaintMessages();
 export const uvPaintPixelMessages = buildUvPaintPixelMessages();
 export const uvPaintSourceMessages = buildUvPaintSourceMessages();
-
 

@@ -7,7 +7,7 @@ import type {
   ExportPreset,
   JavaGameVersion,
   MinecraftGameVersion
-} from './types';
+} from './contract';
 
 export const EXPORT_PRESETS = Object.freeze(
   [...new Set(

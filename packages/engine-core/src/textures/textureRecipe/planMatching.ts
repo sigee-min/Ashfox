@@ -5,7 +5,7 @@ import {
 import {
   generatedSurfaceFaceKey,
   type CompiledSurfaceAuthority
-} from '../generatedSurfaceAuthority';
+} from '../appearance/authority';
 import type { UvAtlasPlacement } from '../uvAtlas';
 import type { AtlasPlan, FaceTarget } from './types';
 

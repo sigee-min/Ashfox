@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "node scripts/dev.js",
     "build": "tsc -p tsconfig.json --noEmit && node scripts/build.js",
-    "package:project": "node scripts/packageProject.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node tests/run.js"
   },
   "dependencies": {

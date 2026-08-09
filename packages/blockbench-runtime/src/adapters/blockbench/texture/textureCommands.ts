@@ -12,7 +12,7 @@ import type {
 import type { ToolError } from '@ashfox/blockbench-contracts/types/internal';
 import type { PreviewItem, TextureConstructor, TextureInstance } from '../../../types/blockbench';
 import { readGlobals, readTextureId, readTextureSize, removeEntity, renameEntity, withUndo } from '../blockbenchUtils';
-import { getTextureApi } from '../blockbenchAdapterUtils';
+import { getTextureApi } from '../api';
 import {
   ADAPTER_TEXTURE_CANVAS_UNAVAILABLE,
   ADAPTER_TEXTURE_DATA_UNAVAILABLE,

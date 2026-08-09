@@ -1,6 +1,6 @@
 import type { ToolName, ToolPayloadMap, ToolResponse } from '@ashfox/blockbench-contracts/types/internal';
 import type { ToolService } from '../usecases/ToolService';
-import type { TraceRecorder } from '../trace/traceRecorder';
+import type { TraceRecorder } from '../trace/recorder';
 import type { Logger } from '../logging';
 import { runResponsePipeline } from './responsePipeline';
 

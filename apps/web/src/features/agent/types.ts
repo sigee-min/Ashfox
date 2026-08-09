@@ -1,6 +1,7 @@
 import { COMMAND_RECEIPT_SCHEMA_VERSION } from '@ashfox/engine-core';
 import type {
   CommandSource,
+  IntentProgramPreviewDiagnostic,
   InvariantFinding,
   ProjectCommandOperation
 } from '@ashfox/engine-core';
@@ -13,7 +14,7 @@ import {
   type VisualReviewIssue,
   type VisualReviewMilestone,
   type VisualReviewObservation
-} from '../../application/visualReviewContract';
+} from '../../application/review';
 import type {
   CameraMode
 } from '../../rendering/cameraPresets';
@@ -32,7 +33,14 @@ export type {
 
 export type InspectRequest =
   | { kind: 'command'; name: string }
-  | { kind: 'finding'; path: string };
+  | { kind: 'finding'; path: string }
+  | { kind: 'intent-program'; source: string };
+
+export interface IntentProgramInspectData {
+  readonly kind: 'intent-program';
+  readonly valid: boolean;
+  readonly diagnostics: readonly IntentProgramPreviewDiagnostic[];
+}
 
 export interface InspectSuccess {
   ok: true;
@@ -102,8 +110,8 @@ export interface RunFailure {
 export type RunResult = RunSuccess | RunFailure;
 
 export interface AgentRunRequest {
-  requestId: string;
-  operations: readonly ProjectCommandOperation[];
+  readonly requestId: string;
+  readonly operations: readonly [ProjectCommandOperation];
 }
 
 export type PresentRequest =

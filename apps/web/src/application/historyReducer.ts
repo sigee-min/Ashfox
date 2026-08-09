@@ -8,13 +8,15 @@ import {
 } from '@ashfox/engine-core';
 
 import {
-  areProjectDocumentsEqual,
   compareProjectRevisions,
   isLocalProjectRevision,
   localProjectRevisionForSerial,
-  projectRevisionSerial,
-  type LocalProjectRecord
+  projectRevisionSerial
 } from './localProjectRecord';
+import {
+  areProjectDocumentsEqual,
+  type ProjectSnapshot
+} from './snapshot';
 import {
   boundedCommandFindings,
   type CommandOutcome
@@ -46,8 +48,8 @@ export type HistoryAction =
     }
   | { type: 'undo'; commandId: string; committedAt: string }
   | { type: 'redo'; commandId: string; committedAt: string }
-  | { type: 'hydrate'; record: LocalProjectRecord }
-  | { type: 'external'; record: LocalProjectRecord };
+  | { type: 'hydrate'; record: ProjectSnapshot }
+  | { type: 'external'; record: ProjectSnapshot };
 
 export const createHistoryState = (
   document: ProjectDocument
@@ -123,13 +125,14 @@ const historyReceipt = (
 
 const hydrateHistory = (
   state: HistoryState,
-  record: LocalProjectRecord
+  record: ProjectSnapshot
 ): HistoryState => {
-  if (record.projectId !== state.present.id) {
-    const serial = projectRevisionSerial(record.revision);
+  const { id: projectId, revision } = record.document;
+  if (projectId !== state.present.id) {
+    const serial = projectRevisionSerial(revision);
     return {
       past: [],
-      present: isLocalProjectRevision(record.revision)
+      present: isLocalProjectRevision(revision)
         ? record.document
         : stampDocument(record.document, serial, record.savedAt),
       future: [],
@@ -148,7 +151,7 @@ const hydrateHistory = (
     };
   }
 
-  const recordSerial = projectRevisionSerial(record.revision);
+  const recordSerial = projectRevisionSerial(revision);
   const replacesCurrentSnapshot = !areProjectDocumentsEqual(
     record.document,
     state.present
@@ -173,11 +176,14 @@ const hydrateHistory = (
 
 const receiveExternalHistory = (
   state: HistoryState,
-  record: LocalProjectRecord
+  record: ProjectSnapshot
 ): HistoryState => {
   if (
-    record.projectId !== state.present.id ||
-    compareProjectRevisions(record.revision, state.present.revision) <= 0
+    record.document.id !== state.present.id ||
+    compareProjectRevisions(
+      record.document.revision,
+      state.present.revision
+    ) <= 0
   ) {
     return state;
   }
@@ -187,7 +193,7 @@ const receiveExternalHistory = (
     future: [],
     serial: Math.max(
       state.serial,
-      projectRevisionSerial(record.revision)
+      projectRevisionSerial(record.document.revision)
     ),
     activity: [...record.activity],
     lastCommandOutcome: null,

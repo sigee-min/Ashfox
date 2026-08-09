@@ -6,7 +6,7 @@ import type {
 
 import type {
   VisualReviewReceipt
-} from '../../../application/visualReviewReceipt';
+} from '../../../application/review';
 import type {
   PresentResult,
   VisualReviewDecisionRequest,
@@ -14,10 +14,10 @@ import type {
 } from '../../agent/types';
 import {
   usePresentationSession
-} from '../presentation/usePresentationSession';
+} from '../presentation/session';
 import {
   useVisualReviewController
-} from '../presentation/useVisualReviewController';
+} from '../presentation/review';
 import type {
   ViewportPresentationFrame
 } from '../viewport/viewportTypes';

@@ -1,28 +1,17 @@
 import type { PaintTexturePayload, PaintTextureResult } from '@ashfox/blockbench-contracts/types/internal';
-import { MAX_TEXTURE_OPS, isTextureOp } from '../../domain/textureOps';
 import { applyTextureOps, fillPixels, parseHexColor } from '../../domain/texturePaint';
 import { resolveUvPaintRects } from '../../domain/uv/paint';
-import { validateUvPaintSpec } from '../../domain/uv/paintValidation';
 import { guardUvUsage } from '../../domain/uv/guards';
 import { collectSingleTarget } from '../../domain/uv/targets';
 import { requireUvUsageId } from '../../domain/uv/usageId';
 import { validateUvPaintSourceSize } from '../../domain/uv/paintSource';
-import { checkDimensions, mapDimensionError } from '../../domain/dimensions';
 import { toDomainSnapshot, toDomainTextureUsage } from '../domainMappers';
 import { resolveTextureTarget } from '../targetResolvers';
-import { ensureNonBlankString } from '../../shared/payloadValidation';
 import {
-  DIMENSION_INTEGER_MESSAGE,
-  DIMENSION_POSITIVE_MESSAGE,
   TEXTURE_ALREADY_EXISTS,
   TEXTURE_OP_INVALID,
-  TEXTURE_OPS_TOO_MANY,
-  TEXTURE_PAINT_MODE_INVALID,
-  TEXTURE_PAINT_NAME_REQUIRED,
   TEXTURE_PAINT_TARGET_REQUIRED,
   TEXTURE_PAINT_UV_USAGE_REQUIRED,
-  TEXTURE_PAINT_SIZE_EXCEEDS_MAX,
-  TEXTURE_PAINT_SIZE_EXCEEDS_MAX_FIX,
   TEXTURE_RENDERER_UNAVAILABLE,
   TEXTURE_RENDERER_NO_IMAGE,
   TEXTURE_OP_COLOR_INVALID,
@@ -32,8 +21,8 @@ import { fail, ok, type UsecaseResult } from '../result';
 import type { TextureToolContext } from './context';
 import { uvGuardMessages, uvPaintMessages, uvPaintPixelMessages, uvPaintSourceMessages } from './context';
 import { applyUvPaintPixels } from '../../domain/uv/paintPixels';
-import type { UvPaintSpec } from '../../domain/uv/paintSpec';
 import type { UvPaintRect } from '../../domain/uv/paintTypes';
+import { normalizeTexturePaintRequest } from './texturePaintRequest';
 
 export const runPaintTexture = (
   ctx: TextureToolContext,
@@ -42,68 +31,9 @@ export const runPaintTexture = (
   if (!ctx.textureRenderer) {
     return fail({ code: 'not_implemented', message: TEXTURE_RENDERER_UNAVAILABLE });
   }
-  if (payload.mode && payload.mode !== 'create' && payload.mode !== 'update') {
-    return fail({ code: 'invalid_payload', message: TEXTURE_PAINT_MODE_INVALID(payload.mode) });
-  }
-  const nameBlankErr = ensureNonBlankString(payload.name, 'name');
-  if (nameBlankErr) return fail(nameBlankErr);
-  const targetIdBlankErr = ensureNonBlankString(payload.targetId, 'targetId');
-  if (targetIdBlankErr) return fail(targetIdBlankErr);
-  const targetNameBlankErr = ensureNonBlankString(payload.targetName, 'targetName');
-  if (targetNameBlankErr) return fail(targetNameBlankErr);
-  const mode = payload.mode ?? (payload.targetId || payload.targetName ? 'update' : 'create');
-  if (mode === 'create' && !payload.name) {
-    return fail({ code: 'invalid_payload', message: TEXTURE_PAINT_NAME_REQUIRED });
-  }
-  if (mode === 'update' && !payload.targetId && !payload.targetName) {
-    return fail({ code: 'invalid_payload', message: TEXTURE_PAINT_TARGET_REQUIRED });
-  }
-  const label = payload.targetName ?? payload.targetId ?? payload.name ?? 'texture';
-  const width = Number(payload.width);
-  const height = Number(payload.height);
-  const maxSize = ctx.capabilities.limits.maxTextureSize;
-  const sizeCheck = checkDimensions(width, height, { requireInteger: true, maxSize });
-  if (!sizeCheck.ok) {
-    const sizeMessage = mapDimensionError(sizeCheck, {
-      nonPositive: (axis) => DIMENSION_POSITIVE_MESSAGE(axis, axis),
-      nonInteger: (axis) => DIMENSION_INTEGER_MESSAGE(axis, axis),
-      exceedsMax: (limit) => TEXTURE_PAINT_SIZE_EXCEEDS_MAX(limit || maxSize)
-    });
-    if (sizeCheck.reason === 'exceeds_max') {
-      return fail({
-        code: 'invalid_payload',
-        message: sizeMessage ?? TEXTURE_PAINT_SIZE_EXCEEDS_MAX(maxSize),
-        fix: TEXTURE_PAINT_SIZE_EXCEEDS_MAX_FIX(maxSize),
-        details: { width, height, maxSize }
-      });
-    }
-    return fail({ code: 'invalid_payload', message: sizeMessage ?? DIMENSION_POSITIVE_MESSAGE('width/height') });
-  }
-  const uvPaintSpec: UvPaintSpec | undefined = payload.uvPaint;
-  if (uvPaintSpec) {
-    const uvPaintValidation = validateUvPaintSpec(uvPaintSpec, ctx.capabilities.limits, label, uvPaintMessages);
-    if (!uvPaintValidation.ok) return fail(uvPaintValidation.error);
-  }
-  const ops = payload.ops ?? [];
-  if (!Array.isArray(ops)) {
-    return fail({ code: 'invalid_payload', message: TEXTURE_OP_INVALID(label) });
-  }
-  if (ops.length > MAX_TEXTURE_OPS) {
-    return fail({
-      code: 'invalid_payload',
-      message: TEXTURE_OPS_TOO_MANY(MAX_TEXTURE_OPS, label)
-    });
-  }
-  for (let opIndex = 0; opIndex < ops.length; opIndex += 1) {
-    const op = ops[opIndex];
-    if (!isTextureOp(op)) {
-      return fail({
-        code: 'invalid_payload',
-        message: TEXTURE_OP_INVALID(label),
-        details: { opIndex }
-      });
-    }
-  }
+  const request = normalizeTexturePaintRequest(ctx, payload);
+  if (!request.ok) return fail(request.error);
+  const { mode, label, width, height, maxSize, uvPaintSpec, ops } = request.value;
 
   const snapshot = ctx.getSnapshot();
   let target: { id?: string; name: string } | null = null;

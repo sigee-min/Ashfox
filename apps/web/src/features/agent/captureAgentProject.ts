@@ -8,7 +8,7 @@ import {
 import type { OperationLeaseToken } from '../../application/operationLease';
 import type { ArtifactFile } from '../files/artifactFile';
 import { isArtifactCurrent } from '../files/artifactFile';
-import type { CaptureArtifactRequest } from '../files/captureArtifactRequest';
+import type { CaptureArtifactRequest } from '../files/capture';
 import type { FileOperationRunResult } from '../files/useFileOperation';
 import { isGifCaptureFile } from '../capture/gifCaptureFile';
 import { isResultCaptureFile } from '../capture/resultCaptureFile';
@@ -19,11 +19,11 @@ import type {
 } from './types';
 import type {
   VisualReviewReceipt
-} from '../../application/visualReviewReceipt';
+} from '../../application/review';
 import { nextVisualReview } from './visualReviewPlan';
 import {
   pendingIntentProgramBlock
-} from './intentProgramProposalGate';
+} from './proposal';
 
 interface CaptureAgentProjectInput {
   request: AgentCaptureRequest;

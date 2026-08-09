@@ -26,7 +26,7 @@ import {
   GIF_CAPTURE_FPS
 } from './gifFramePlan';
 import { drawAnimationFrameOverlay } from './gifFrameOverlay';
-import { createCaptureProjection } from './createCaptureProjection';
+import { createCaptureProjection } from './projection';
 
 export interface AnimatedGifCaptureOptions {
   document: ProjectDocument;

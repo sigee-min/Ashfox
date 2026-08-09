@@ -1,9 +1,9 @@
-import type { ExportFormatProfile } from '../adapterTypes';
+import type { ExportFormatProfile } from '../adapter/contract';
 import { exportCompatibilityFor } from './queries';
 import type {
   ExportPreset,
   MinecraftGameVersion
-} from './types';
+} from './contract';
 
 export const exportProfileForAdapter = (
   target: ExportPreset,

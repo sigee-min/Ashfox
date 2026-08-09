@@ -38,8 +38,8 @@ export interface IntentProgramProposalInput {
 }
 
 export interface IntentProgramCompileInput {
-  /** Hash shown with the pending draft, preventing compilation of another source. */
-  hash: string;
+  /** SHA-256 shown with the reviewed v1 draft. */
+  sourceDigest: string;
 }
 
 /**
@@ -62,22 +62,6 @@ export type ProjectCommandOperation = {
     name: TName;
     payload: CommandPayloadMap[TName];
   };
-}[CommandName];
-
-export interface CommandEnvelope<TName extends CommandName> {
-  commandId: string;
-  idempotencyKey: string;
-  projectId: ProjectId;
-  actorId: string;
-  source: CommandSource;
-  baseRevision: Revision;
-  name: TName;
-  payload: CommandPayloadMap[TName];
-  traceId?: string;
-}
-
-export type ProjectCommand = {
-  [TName in CommandName]: CommandEnvelope<TName>;
 }[CommandName];
 
 export interface CommandBatch {

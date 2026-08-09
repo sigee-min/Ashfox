@@ -1,9 +1,13 @@
 process.env.DISABLE_V8_COMPILE_CACHE =
   process.env.DISABLE_V8_COMPILE_CACHE || '1';
 
-const fs = require('fs');
 const path = require('path');
 const { register } = require('ts-node');
+const {
+  discoverTests,
+  requireTests,
+  selectTests
+} = require('../../../scripts/tests/discovery');
 
 register({
   transpileOnly: true,
@@ -13,15 +17,10 @@ register({
   }
 });
 
-const tests = fs
-  .readdirSync(__dirname, { withFileTypes: true })
-  .filter((entry) => entry.isFile() && entry.name.endsWith('.test.ts'))
-  .map((entry) => entry.name)
-  .sort((left, right) => left.localeCompare(right));
+const tests = discoverTests(__dirname);
 
 void (async () => {
-  for (const test of tests) {
-    const module = require(path.join(__dirname, test));
+  for (const module of requireTests(selectTests(tests, { label: 'web tests' }))) {
     if (module.test instanceof Promise) await module.test;
   }
   console.log('web state tests ok');

@@ -1,1 +1,1 @@
-import '../../../packages/blockbench-runtime/src/sidecar/index';
+import '../../../packages/blockbench-runtime/src/sidecar';

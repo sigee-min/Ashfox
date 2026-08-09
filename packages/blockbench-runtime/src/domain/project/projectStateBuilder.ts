@@ -2,6 +2,13 @@ import { FormatKind, FORMAT_KINDS, ProjectInfo, ProjectState, ProjectStateDetail
 import { FormatPort } from '../../ports/formats';
 import { FormatOverrides, matchesFormatKind } from '../formats';
 import { SessionState } from '../../session';
+import {
+  cloneTrackedAnimation,
+  cloneTrackedBone,
+  cloneTrackedCube,
+  cloneTrackedMesh,
+  cloneTrackedTexture
+} from './snapshotClone';
 
 export class ProjectStateBuilder {
   private readonly formats: FormatPort;
@@ -63,7 +70,7 @@ export class ProjectStateBuilder {
       textures: snapshot.textures.length,
       animations: snapshot.animations.length
     };
-    const project: ProjectState = {
+    return {
       id: active ? snapshot.id ?? 'active' : 'none',
       active,
       name: snapshot.name ?? null,
@@ -74,18 +81,21 @@ export class ProjectStateBuilder {
       ...(snapshot.uvPixelsPerBlock !== undefined
         ? { uvPixelsPerBlock: snapshot.uvPixelsPerBlock }
         : {}),
-      counts
+      counts,
+      ...(snapshot.textures.length > 0
+        ? { textures: snapshot.textures.map(cloneTrackedTexture) }
+        : {}),
+      ...(detail === 'full'
+        ? {
+            bones: snapshot.bones.map(cloneTrackedBone),
+            cubes: snapshot.cubes.map(cloneTrackedCube),
+            ...(snapshot.meshes !== undefined
+              ? { meshes: snapshot.meshes.map(cloneTrackedMesh) }
+              : {}),
+            animations: snapshot.animations.map(cloneTrackedAnimation)
+          }
+        : {})
     };
-    if (snapshot.textures.length > 0) {
-      project.textures = snapshot.textures;
-    }
-    if (detail === 'full') {
-      project.bones = snapshot.bones;
-      project.cubes = snapshot.cubes;
-      if (snapshot.meshes !== undefined) project.meshes = snapshot.meshes;
-      project.animations = snapshot.animations;
-    }
-    return project;
   }
 
   matchOverrideKind(formatId: string | null): FormatKind | null {
@@ -97,6 +107,4 @@ export class ProjectStateBuilder {
     return match ? match[0] : null;
   }
 }
-
-
 

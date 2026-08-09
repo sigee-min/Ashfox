@@ -5,8 +5,8 @@ import type {
 } from '../model';
 import {
   focalFeatureGlyphPixelRole
-} from '../modeling/focalFeatureGlyph';
-import type { EyePupilBias } from '../modeling/eyeGlyph';
+} from '../modeling/focal/glyph';
+import type { EyePupilBias } from '../modeling/eye/glyph';
 import {
   paintEyeMotifPixel
 } from './eyeMotif';

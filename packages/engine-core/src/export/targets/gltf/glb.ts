@@ -1,4 +1,4 @@
-import type { GltfDocument } from './types';
+import type { GltfDocument } from './contract';
 import { stringifyCompactDeterministicJson } from '../../json';
 
 const GLB_MAGIC = 0x46546c67;

@@ -5,7 +5,7 @@ import {
   parseCellKey,
   sortCells
 } from './lattice';
-import type { LatticePoint, OccupancyGrid } from './types';
+import type { LatticePoint, OccupancyGrid } from './contract';
 
 const SIX_NEIGHBOR_OFFSETS: readonly LatticePoint[] = [
   { x: -1, y: 0, z: 0 },

@@ -17,11 +17,11 @@ import type { PolicyContextLike, RevisionContextLike, SnapshotContextLike } from
 import { ProjectStateBuilder } from '../domain/project/projectStateBuilder';
 import { RevisionStore } from '../domain/revision/revisionStore';
 import { normalizePixelsPerBlock } from '../domain/uv/policy';
-import { ProjectService } from './ProjectService';
-import { TextureService } from './TextureService';
+import { ProjectService } from './project';
+import { TextureService } from './textureService';
 import { ModelService } from './ModelService';
 import { AnimationService } from './AnimationService';
-import { ExportService } from './ExportService';
+import { ExportService } from './export';
 import { RenderService } from './RenderService';
 import { ValidationService } from './ValidationService';
 
@@ -179,7 +179,6 @@ export const createToolServiceContext = (deps: ToolServiceDeps): ToolServiceCont
     validationService
   };
 };
-
 
 
 

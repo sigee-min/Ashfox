@@ -7,7 +7,7 @@ import { updateSceneNode } from '../../scene';
 import {
   generatedSurfaceFaceKey,
   type CompiledSurfaceAuthority
-} from '../generatedSurfaceAuthority';
+} from '../appearance/authority';
 import type { UvAtlasPlacement } from '../uvAtlas';
 import {
   activeGeneratedTextureIds,

@@ -4,23 +4,23 @@ import {
 } from './port/agentCommandEnvelope';
 import type {
   AgentCommandPortDependencies
-} from './port/agentCommandPortTypes';
+} from './port/types';
 import {
   AgentPortLifecycle
 } from './port/AgentPortLifecycle';
 import {
   CaptureRequestController
-} from './port/CaptureRequestController';
+} from './port/capture';
 import {
   connectDomAgentBridge,
   type DomAgentResponse
-} from './port/connectDomAgentBridge';
+} from './port/bridge';
 import {
   InspectRequestController
-} from './port/InspectRequestController';
+} from './port/inspect';
 import {
   PresentRequestController
-} from './port/PresentRequestController';
+} from './port/present';
 import {
   RunRequestController
 } from './port/RunRequestController';
@@ -39,7 +39,7 @@ import type {
 export type {
   AgentCommandPortDependencies,
   AgentCommandPortStatus
-} from './port/agentCommandPortTypes';
+} from './port/types';
 
 export class AgentCommandPort implements AgentCommandPortApi {
   private readonly lifecycle: AgentPortLifecycle;

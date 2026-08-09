@@ -82,7 +82,8 @@ export const pixelTonePalette = (color: RgbColor): PixelTonePalette => {
 
 export const pixelTonePaletteAtLightnessOffset = (
   color: RgbColor,
-  lightnessOffset: number
+  lightnessOffset: number,
+  toneLightnessStep = TONE_LIGHTNESS_STEP
 ): PixelTonePalette => {
   const red = canonicalChannel(color.r);
   const green = canonicalChannel(color.g);
@@ -90,9 +91,10 @@ export const pixelTonePaletteAtLightnessOffset = (
   const offset = Number(
     clamp(lightnessOffset, -0.12, 0.06).toFixed(4)
   );
+  const step = Number(clamp(toneLightnessStep, 0.02, 0.1).toFixed(4));
   const key =
     `${red},${green},${blue}:` +
-    offset.toFixed(4);
+    `${offset.toFixed(4)}:${step.toFixed(4)}`;
   const cached = tonePaletteCache.get(key);
   if (cached) return cached;
   const canonical = Object.freeze({
@@ -113,15 +115,15 @@ export const pixelTonePaletteAtLightnessOffset = (
   );
   const atLightness = (lightness: number): RgbColor => frozenColor(
     gamutMappedOklabToRgb({
-      l: lightness,
+      l: clamp(lightness, 0, 1),
       a: source.a,
       b: source.b
     })
   );
   return cacheTonePalette(key, Object.freeze({
-    shadow: atLightness(baseLightness - TONE_LIGHTNESS_STEP),
+    shadow: atLightness(baseLightness - step),
     base: atLightness(baseLightness),
-    light: atLightness(baseLightness + TONE_LIGHTNESS_STEP)
+    light: atLightness(baseLightness + step)
   }));
 };
 

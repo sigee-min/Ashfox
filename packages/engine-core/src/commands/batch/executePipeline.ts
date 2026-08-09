@@ -1,5 +1,8 @@
 import type { ProjectDocument } from '../../model';
-import { validateProjectDocument } from '../../validation';
+import {
+  validateProjectDocument,
+  validateProjectDocumentCandidate
+} from '../../validation/project/validate';
 import type {
   CommandBatch,
   CommandBatchResult,
@@ -14,12 +17,17 @@ import {
   mergeCommandEffects
 } from './effects';
 import { commandBatchFailure } from './failure';
-import { validateCommandBatch } from './validateBatch';
+import { validateCommandBatch } from './validate';
+import {
+  createCommandExecutionContext,
+  type CommandExecutionContext
+} from './context';
 
 export const executeCommandBatchPipeline = (
   document: ProjectDocument,
   batch: CommandBatch,
-  source: CommandSource
+  source: CommandSource,
+  context: CommandExecutionContext = createCommandExecutionContext()
 ): CommandBatchResult => {
   const batchFailure = validateCommandBatch(
     document,
@@ -36,7 +44,8 @@ export const executeCommandBatchPipeline = (
       workingDocument,
       batch,
       index,
-      source
+      source,
+      context
     );
     if ('ok' in applied) return applied;
     workingDocument = applied.document;
@@ -59,7 +68,13 @@ export const executeCommandBatchPipeline = (
       message: 'Batch does not change the active project.'
     });
   }
-  const report = validateProjectDocument(workingDocument);
+  const report = context.validationAttestation
+    ? validateProjectDocumentCandidate(
+        workingDocument,
+        context.validationAttestation,
+        context.computation
+      )
+    : validateProjectDocument(workingDocument);
   if (!report.valid) {
     return commandBatchFailure(
       document,

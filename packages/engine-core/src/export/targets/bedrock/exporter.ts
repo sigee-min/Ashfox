@@ -1,13 +1,13 @@
 import type { ExportAdaptedDocument, ExportTextureAsset } from '../../adapter';
 import { createCompactJsonExportFile } from '../../json';
-import { createExportBundle } from '../../pipeline/createBundle';
-import { validateExportTarget } from '../../pipeline/validateTarget';
-import { buildMinecraftActorAnimation } from '../../shared/minecraftAnimation';
-import { buildMinecraftGeometry } from '../../shared/minecraftGeometry';
+import { createExportBundle } from '../../pipeline/bundle';
+import { validateExportTarget } from '../../pipeline/validate';
+import { buildMinecraftActorAnimation } from '../../minecraft';
+import { buildMinecraftGeometry } from '../../minecraft/geometry';
 import {
   type BlobCopyExportFile,
   type ExportBundle
-} from '../../types';
+} from '../../contract';
 
 const createTextureCopy = (texture: ExportTextureAsset): BlobCopyExportFile => {
   if (!texture.minecraft) {

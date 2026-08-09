@@ -30,7 +30,7 @@ import type {
 } from '../files/artifactFile';
 import type {
   CaptureArtifactRequest
-} from '../files/captureArtifactRequest';
+} from '../files/capture';
 import type {
   FileOperationRunResult
 } from '../files/useFileOperation';
@@ -45,10 +45,10 @@ import {
 } from './presentAgentProject';
 import {
   useAgentCommandSubmission
-} from './port/useAgentCommandSubmission';
+} from './port/submission';
 import type {
   VisualReviewReceipt
-} from '../../application/visualReviewReceipt';
+} from '../../application/review';
 import type {
   AgentCaptureRequest,
   PresentResult,
@@ -105,7 +105,7 @@ export const useAgentCommandPort = ({
   operationLease
 }: UseAgentCommandPortInput): AgentCommandPortStatus => {
   const [status, setStatus] =
-    useState<AgentCommandPortStatus>('connected');
+    useState<AgentCommandPortStatus>('connecting');
   const mountedRef = useRef(true);
   const documentRef = useLatestValue(document);
   const projectGenerationRef =
@@ -192,10 +192,18 @@ export const useAgentCommandPort = ({
 
   useEffect(() => {
     mountedRef.current = true;
-    const disconnect = port.connect(window);
+    setStatus('connecting');
+    let disconnect: (() => void) | null = null;
+    try {
+      disconnect = port.connect(window);
+      setStatus('connected');
+    } catch (error) {
+      void error;
+      setStatus('disconnected');
+    }
     return () => {
       mountedRef.current = false;
-      disconnect();
+      disconnect?.();
       cancelPending();
     };
   }, [cancelPending, port]);

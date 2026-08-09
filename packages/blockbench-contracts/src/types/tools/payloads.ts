@@ -13,7 +13,7 @@ import type {
 import type { MeshUvPolicy } from '../project';
 import type {
   FillShadeDirection as ContractFillShadeDirection
-} from '../../textureShadeContract';
+} from '../../texture/shade/contract';
 
 export type {
   MeshSymmetryAxis,

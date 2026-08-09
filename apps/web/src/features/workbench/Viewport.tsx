@@ -7,7 +7,7 @@ import {
 } from 'react';
 import { useLatestValue } from '../../hooks/useLatestValue';
 import { applyAnimationPose } from '../../rendering/animationPose';
-import { projectToThreeScene } from '../../rendering/projectSceneProjection';
+import { projectToThreeScene } from '../../rendering/projection';
 import { useViewportRuntime } from './viewport/useViewportRuntime';
 import {
   applyCameraCommand,

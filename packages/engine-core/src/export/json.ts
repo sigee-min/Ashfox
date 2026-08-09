@@ -1,5 +1,5 @@
 import type { JsonValue } from '../model';
-import type { JsonExportFile, ExportFileRole } from './types';
+import type { JsonExportFile, ExportFileRole } from './contract';
 
 const sortJson = (value: JsonValue): JsonValue => {
   if (Array.isArray(value)) {

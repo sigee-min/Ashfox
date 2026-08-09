@@ -1,5 +1,5 @@
 import type { JsonSchema } from '../types';
-import { FILL_SHADE_DIRECTIONS } from '../../textureShadeContract';
+import { FILL_SHADE_DIRECTIONS } from '../../texture/shade/contract';
 
 export { FILL_SHADE_DIRECTIONS };
 

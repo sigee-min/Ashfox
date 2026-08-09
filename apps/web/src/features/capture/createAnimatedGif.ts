@@ -15,9 +15,9 @@ import type { GifCaptureFile } from './gifCaptureFile';
 import { renderAnimatedGif } from './renderAnimatedGif';
 
 export interface AnimatedGifExportOptions {
-  clipId: string;
-  environment: ViewportEnvironmentId;
-  cameraMode: CameraMode;
+  readonly clipId: string;
+  readonly environment: ViewportEnvironmentId;
+  readonly cameraMode: CameraMode;
 }
 
 const animationFileName = (name: string): string => {

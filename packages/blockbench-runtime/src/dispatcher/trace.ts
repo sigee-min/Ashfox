@@ -1,7 +1,7 @@
 import type { Logger } from '../logging';
 import type { ToolName, ToolPayloadMap, ToolResponse } from '@ashfox/blockbench-contracts/types/internal';
 import { errorMessage } from '../logging';
-import type { TraceRecorder } from '../trace/traceRecorder';
+import type { TraceRecorder } from '../trace/recorder';
 
 export const recordTrace = <T>(
   traceRecorder: TraceRecorder | undefined,

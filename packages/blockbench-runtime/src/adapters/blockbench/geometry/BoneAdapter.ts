@@ -11,7 +11,7 @@ import {
   setVisibility,
   withUndo
 } from '../blockbenchUtils';
-import { getGroupApi } from '../blockbenchAdapterUtils';
+import { getGroupApi } from '../api';
 import { findGroup, findGroupRef } from '../outlinerLookup';
 import { withToolErrorAdapterError } from '../adapterErrors';
 import { MODEL_BONE_NOT_FOUND, MODEL_PARENT_BONE_NOT_FOUND } from '../../../shared/messages';
@@ -102,5 +102,4 @@ export class BlockbenchBoneAdapter {
     });
   }
 }
-
 

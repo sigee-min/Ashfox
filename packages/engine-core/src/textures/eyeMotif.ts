@@ -4,7 +4,7 @@ import type {
 import {
   eyeGlyphPixelRole,
   type EyePupilBias
-} from '../modeling/eyeGlyph';
+} from '../modeling/eye/glyph';
 import type {
   RgbColor
 } from './pixelRectShade';

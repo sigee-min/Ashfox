@@ -1,9 +1,33 @@
 import { SessionState, TrackedAnimation, TrackedBone, TrackedCube, TrackedMesh, TrackedTexture } from '../../session';
-import { ProjectDiffCounts, ProjectDiffCountsByKind, ProjectDiffSet } from '@ashfox/blockbench-contracts/types/internal';
+import { ProjectDiffChange, ProjectDiffCounts, ProjectDiffCountsByKind, ProjectDiffEntry, ProjectDiffSet } from '@ashfox/blockbench-contracts/types/internal';
+import {
+  cloneTrackedAnimation,
+  cloneTrackedBone,
+  cloneTrackedCube,
+  cloneTrackedMesh,
+  cloneTrackedTexture
+} from './snapshotClone';
+import {
+  trackedAnimationProjection,
+  trackedBoneProjection,
+  trackedCubeProjection,
+  trackedMeshProjection,
+  trackedTextureProjection
+} from './snapshotProjection';
+
+type MutableDiffSet<T> = {
+  added: ProjectDiffEntry<T>[];
+  removed: ProjectDiffEntry<T>[];
+  changed: ProjectDiffChange<T>[];
+};
+
+type MutableCountsByKind = {
+  -readonly [TKey in keyof ProjectDiffCountsByKind]: ProjectDiffCountsByKind[TKey];
+};
 
 type DiffOutput<T> = {
   counts: ProjectDiffCounts;
-  items?: ProjectDiffSet<T>;
+  items?: MutableDiffSet<T>;
 };
 
 const emptyCounts = (): ProjectDiffCounts => ({ added: 0, removed: 0, changed: 0 });
@@ -16,7 +40,7 @@ const buildCounts = (added: number, removed: number, changed: number): ProjectDi
   changed
 });
 
-const defaultCountsByKind = (): ProjectDiffCountsByKind => ({
+const defaultCountsByKind = (): MutableCountsByKind => ({
   bones: emptyCounts(),
   cubes: emptyCounts(),
   meshes: emptyCounts(),
@@ -26,12 +50,14 @@ const defaultCountsByKind = (): ProjectDiffCountsByKind => ({
 
 type KeyFn<T> = (item: T) => string;
 type SigFn<T> = (item: T) => string;
+type CloneFn<T> = (item: T) => T;
 
 const diffByKey = <T>(
-  previous: T[],
-  current: T[],
+  previous: readonly T[],
+  current: readonly T[],
   keyFn: KeyFn<T>,
   sigFn: SigFn<T>,
+  cloneFn: CloneFn<T>,
   includeItems: boolean
 ): DiffOutput<T> => {
   const prevMap = new Map<string, { item: T; sig: string }>();
@@ -49,7 +75,7 @@ const diffByKey = <T>(
   let removed = 0;
   let changed = 0;
 
-  const items: ProjectDiffSet<T> | undefined = includeItems
+  const items: MutableDiffSet<T> | undefined = includeItems
     ? { added: [], removed: [], changed: [] }
     : undefined;
 
@@ -57,19 +83,25 @@ const diffByKey = <T>(
     const prev = prevMap.get(key);
     if (!prev) {
       added += 1;
-      if (items) items.added.push({ key, item: entry.item });
+      if (items) items.added.push({ key, item: cloneFn(entry.item) });
       return;
     }
     if (prev.sig !== entry.sig) {
       changed += 1;
-      if (items) items.changed.push({ key, before: prev.item, after: entry.item });
+      if (items) {
+        items.changed.push({
+          key,
+          before: cloneFn(prev.item),
+          after: cloneFn(entry.item)
+        });
+      }
     }
   });
 
   prevMap.forEach((entry, key) => {
     if (!currMap.has(key)) {
       removed += 1;
-      if (items) items.removed.push({ key, item: entry.item });
+      if (items) items.removed.push({ key, item: cloneFn(entry.item) });
     }
   });
 
@@ -83,76 +115,15 @@ const animationKey = (anim: TrackedAnimation) => anim.id ?? anim.name;
 const meshKey = (mesh: TrackedMesh) => mesh.id ?? mesh.name;
 
 const boneSig = (bone: TrackedBone) =>
-  JSON.stringify([
-    bone.id ?? null,
-    bone.name,
-    bone.parent ?? '',
-    bone.pivot,
-    bone.rotation ?? null,
-    bone.scale ?? null,
-    bone.visibility ?? null
-  ]);
+  JSON.stringify(trackedBoneProjection(bone));
 const cubeSig = (cube: TrackedCube) =>
-  JSON.stringify([
-    cube.id ?? null,
-    cube.name,
-    cube.bone,
-    cube.from,
-    cube.to,
-    cube.origin ?? null,
-    cube.rotation ?? null,
-    cube.uv ?? null,
-    cube.uvOffset ?? null,
-    cube.inflate ?? null,
-    cube.mirror ?? null,
-    cube.visibility ?? null,
-    cube.boxUv ?? null
-  ]);
+  JSON.stringify(trackedCubeProjection(cube));
 const textureSig = (texture: TrackedTexture) =>
-  JSON.stringify([
-    texture.id ?? null,
-    texture.name,
-    texture.path ?? '',
-    texture.width ?? 0,
-    texture.height ?? 0,
-    texture.contentHash ?? '',
-    texture.namespace ?? null,
-    texture.folder ?? null,
-    texture.particle ?? null,
-    texture.visible ?? null,
-    texture.renderMode ?? null,
-    texture.renderSides ?? null,
-    texture.pbrChannel ?? null,
-    texture.group ?? null,
-    texture.frameTime ?? null,
-    texture.frameOrderType ?? null,
-    texture.frameOrder ?? null,
-    texture.frameInterpolate ?? null,
-    texture.internal ?? null,
-    texture.keepSize ?? null
-  ]);
-const animationSig = (anim: TrackedAnimation) =>
-  JSON.stringify([
-    anim.id ?? null,
-    anim.name,
-    anim.length,
-    anim.loop,
-    anim.fps ?? null,
-    anim.channels?.length ?? 0,
-    anim.triggers?.length ?? 0
-  ]);
+  JSON.stringify(trackedTextureProjection(texture));
+const animationSig = (animation: TrackedAnimation) =>
+  JSON.stringify(trackedAnimationProjection(animation));
 const meshSig = (mesh: TrackedMesh) =>
-  JSON.stringify([
-    mesh.id ?? null,
-    mesh.name,
-    mesh.bone ?? null,
-    mesh.origin ?? null,
-    mesh.rotation ?? null,
-    mesh.visibility ?? null,
-    mesh.uvPolicy ?? null,
-    mesh.vertices,
-    mesh.faces
-  ]);
+  JSON.stringify(trackedMeshProjection(mesh));
 
 export const diffSnapshots = (
   previous: SessionState,
@@ -161,11 +132,46 @@ export const diffSnapshots = (
 ): { counts: ProjectDiffCountsByKind; sets?: { bones: ProjectDiffSet<TrackedBone>; cubes: ProjectDiffSet<TrackedCube>; meshes: ProjectDiffSet<TrackedMesh>; textures: ProjectDiffSet<TrackedTexture>; animations: ProjectDiffSet<TrackedAnimation> } } => {
   const counts = defaultCountsByKind();
 
-  const bones = diffByKey(previous.bones, current.bones, boneKey, boneSig, includeItems);
-  const cubes = diffByKey(previous.cubes, current.cubes, cubeKey, cubeSig, includeItems);
-  const meshes = diffByKey(previous.meshes ?? [], current.meshes ?? [], meshKey, meshSig, includeItems);
-  const textures = diffByKey(previous.textures, current.textures, textureKey, textureSig, includeItems);
-  const animations = diffByKey(previous.animations, current.animations, animationKey, animationSig, includeItems);
+  const bones = diffByKey(
+    previous.bones,
+    current.bones,
+    boneKey,
+    boneSig,
+    cloneTrackedBone,
+    includeItems
+  );
+  const cubes = diffByKey(
+    previous.cubes,
+    current.cubes,
+    cubeKey,
+    cubeSig,
+    cloneTrackedCube,
+    includeItems
+  );
+  const meshes = diffByKey(
+    previous.meshes ?? [],
+    current.meshes ?? [],
+    meshKey,
+    meshSig,
+    cloneTrackedMesh,
+    includeItems
+  );
+  const textures = diffByKey(
+    previous.textures,
+    current.textures,
+    textureKey,
+    textureSig,
+    cloneTrackedTexture,
+    includeItems
+  );
+  const animations = diffByKey(
+    previous.animations,
+    current.animations,
+    animationKey,
+    animationSig,
+    cloneTrackedAnimation,
+    includeItems
+  );
 
   counts.bones = cloneCounts(bones.counts);
   counts.cubes = cloneCounts(cubes.counts);
@@ -175,18 +181,24 @@ export const diffSnapshots = (
 
   if (!includeItems) return { counts };
 
+  const boneItems = bones.items;
+  const cubeItems = cubes.items;
+  const meshItems = meshes.items;
+  const textureItems = textures.items;
+  const animationItems = animations.items;
+  if (!boneItems || !cubeItems || !meshItems || !textureItems || !animationItems) {
+    return { counts };
+  }
   return {
     counts,
     sets: {
-      bones: bones.items!,
-      cubes: cubes.items!,
-      meshes: meshes.items!,
-      textures: textures.items!,
-      animations: animations.items!
+      bones: boneItems,
+      cubes: cubeItems,
+      meshes: meshItems,
+      textures: textureItems,
+      animations: animationItems
     }
   };
 };
-
-
 
 

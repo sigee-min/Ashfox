@@ -15,11 +15,6 @@ import {
 
 import { renderTextureRaster } from '../../rendering/renderTextureRaster';
 import {
-  createProjectArchive,
-  readProjectArchive,
-  type ProjectArchiveFile
-} from './projectArchive';
-import {
   type ProjectAsset,
   type ProjectAssets
 } from '../../application/projectAssets';
@@ -31,7 +26,6 @@ import {
   type ArtifactFile
 } from './artifactFile';
 
-const ASHFOX_CONTENT_TYPE = 'application/vnd.ashfox.project+zip';
 const UNSYNCHRONIZED_TEXTURE_MESSAGE =
   'Generated texture derivations are not current. Finish the canonical project command before creating a file.';
 
@@ -43,40 +37,12 @@ export interface TargetArtifactFile extends ArtifactFile {
   adaptations: ExportAdaptationReceipt;
 }
 
-export const parseProjectFile = async (
-  file: File
-): Promise<ProjectArchiveFile> => {
-  if (!file.name.toLowerCase().endsWith('.ashfox')) {
-    throw new Error('Project files must use the .ashfox extension.');
-  }
-  return readProjectArchive(new Uint8Array(await file.arrayBuffer()));
-};
-
 const assertArtifactDocumentReady = (
   document: ProjectDocument
 ): void => {
   if (staleGeneratedTextureIds(document).size > 0) {
     throw new Error(UNSYNCHRONIZED_TEXTURE_MESSAGE);
   }
-};
-
-export const createProjectArtifact = async (
-  document: ProjectDocument,
-  assets: ProjectAssets
-): Promise<ArtifactFile> => {
-  assertArtifactDocumentReady(document);
-  const bytes = await createProjectArchive(
-    document,
-    (texture) =>
-      resolveTextureAsset(document, texture, assets)
-  );
-  return {
-    ...await createArtifactBinding(document, bytes),
-    kind: 'project',
-    name: `${safeArtifactName(document.name)}.ashfox`,
-    bytes,
-    contentType: ASHFOX_CONTENT_TYPE
-  };
 };
 
 const textureForSource = (

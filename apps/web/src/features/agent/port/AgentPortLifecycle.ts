@@ -20,10 +20,10 @@ import {
 } from './agentCommandResults';
 import type {
   AgentCommandPortDependencies
-} from './agentCommandPortTypes';
+} from './types';
 import {
   AgentOperationExecutor
-} from './AgentOperationExecutor';
+} from './execute';
 
 interface ActiveRun {
   signature: string;

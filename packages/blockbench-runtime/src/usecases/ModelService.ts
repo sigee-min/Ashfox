@@ -3,7 +3,7 @@ import { ProjectSession, SessionState } from '../session';
 import { EditorPort } from '../ports/editor';
 import { BoneService } from './model/BoneService';
 import { CubeService } from './model/CubeService';
-import { MeshService } from './model/MeshService';
+import { MeshService } from './model/mesh';
 import type { MeshUvPolicy } from '../domain/mesh/autoUv';
 import { fail, type UsecaseResult } from './result';
 import { MODEL_MESH_UNSUPPORTED_FORMAT } from '../shared/messages';
@@ -221,7 +221,6 @@ export class ModelService {
     return null;
   }
 }
-
 
 
 

@@ -1,0 +1,564 @@
+{
+  "$schema": "./development-manifest.schema.json",
+  "schemaVersion": 1,
+  "productExperience": {
+    "interactionModel": "ai-authored-ai-compiled-human-observed",
+    "canonicalAuthority": "intent-program-v1",
+    "projectFile": {
+      "extension": ".ashfox",
+      "mediaType": "text/x-ashfox;charset=utf-8",
+      "encoding": "utf-8",
+      "bom": "forbidden",
+      "authority": "intent-program-source-only",
+      "loadMode": "parse-compile-atomic",
+      "compiledState": "ephemeral-cache-only"
+    },
+    "humanCapabilities": [
+      "capture-evidence",
+      "create-project",
+      "download-project",
+      "export-artifact",
+      "observe-agent-decisions",
+      "open-project",
+      "prompt-agent-externally",
+      "view-canonical-asset"
+    ],
+    "agentCapabilities": [
+      "decide-and-compile-intent-program",
+      "inspect-project",
+      "present-review-evidence",
+      "propose-intent-program"
+    ],
+    "forbiddenHumanAuthoring": [
+      "compare-current-and-candidate",
+      "confirm-intent-program",
+      "decide-intent-program",
+      "direct-animation-authoring",
+      "direct-geometry-authoring",
+      "direct-hierarchy-authoring",
+      "direct-material-authoring",
+      "direct-rig-authoring",
+      "direct-texture-authoring",
+      "edit-intent-program-source-in-workbench",
+      "reject-intent-program"
+    ],
+    "agentDecision": {
+      "compilationAuthority": "agent",
+      "confirmationRequired": false,
+      "requiredEvidence": [
+        "semantic-summary",
+        "candidate-visual",
+        "technical-receipt"
+      ]
+    },
+    "deliveryAuthority": "human"
+  },
+  "engineering": {
+    "style": {
+      "typescriptStrict": true,
+      "indentSpaces": 2,
+      "quotes": "single",
+      "semicolons": "required",
+      "readonlyPublicContracts": true,
+      "mutableDraftsPrivate": true
+    },
+    "principles": [
+      {
+        "id": "atomic-mutation",
+        "rule": "Validate a complete candidate before committing one atomic state transition.",
+        "enforcedBy": [
+          "tests",
+          "typecheck"
+        ]
+      },
+      {
+        "id": "closed-contracts",
+        "rule": "Persisted and transport inputs must pass closed readers that reject unknown keys.",
+        "enforcedBy": [
+          "quality:check",
+          "tests"
+        ]
+      },
+      {
+        "id": "deterministic-output",
+        "rule": "Equivalent accepted input must produce byte-stable ordered output.",
+        "enforcedBy": [
+          "tests"
+        ]
+      },
+      {
+        "id": "interface-first",
+        "rule": "Expose narrow immutable contracts and keep mutable drafts private to implementations.",
+        "enforcedBy": [
+          "quality:architecture",
+          "typecheck"
+        ]
+      },
+      {
+        "id": "no-derived-write-path",
+        "rule": "Derived compiler output must not have an independent authoring path.",
+        "enforcedBy": [
+          "quality:architecture",
+          "tests"
+        ]
+      },
+      {
+        "id": "owner-scoped-files",
+        "rule": "Group related implementations under one owner directory and use short responsibility filenames without repeating the owner prefix.",
+        "enforcedBy": [
+          "quality:architecture",
+          "review"
+        ]
+      },
+      {
+        "id": "preserve-unrelated-work",
+        "rule": "Preserve and do not stage, revert, or reformat work outside the active task.",
+        "enforcedBy": [
+          "review"
+        ]
+      },
+      {
+        "id": "pure-core-io-adapters",
+        "rule": "Keep domain and compiler logic host-independent and place I/O behind adapters.",
+        "enforcedBy": [
+          "quality:architecture",
+          "quality:check"
+        ]
+      },
+      {
+        "id": "single-authority",
+        "rule": "Each decision and state field must have exactly one declared authority.",
+        "enforcedBy": [
+          "quality:architecture",
+          "review"
+        ]
+      },
+      {
+        "id": "source-owned-diagnostics",
+        "rule": "Diagnostics must identify the owning source token or canonical path.",
+        "enforcedBy": [
+          "tests"
+        ]
+      }
+    ],
+    "testing": {
+      "behaviorChangeRequiresRegression": true,
+      "statefulPaths": [
+        "success",
+        "cancellation",
+        "stale-revision",
+        "invalid-input",
+        "exception"
+      ],
+      "userVisibleChangeRequiresDocs": true
+    },
+    "exceptions": []
+  },
+  "workflow": {
+    "dirtyWorktree": "preserve-unrelated",
+    "changeScope": "smallest-complete-slice",
+    "publicContractChange": "reader-version-contract-test",
+    "generatedArtifacts": "edit-source-only",
+    "commits": {
+      "format": "conventional-commits",
+      "subject": "imperative",
+      "types": [
+        "chore",
+        "docs",
+        "feat",
+        "fix",
+        "refactor",
+        "test"
+      ],
+      "atomic": true,
+      "breakingChangeRequiresReview": true
+    },
+    "verification": {
+      "duringChange": "focused",
+      "beforeHandoff": [
+        "git diff --check"
+      ],
+      "beforePullRequest": [
+        "npm run quality"
+      ]
+    }
+  },
+  "versioning": {
+    "product": {
+      "scheme": "semver",
+      "sourceOfTruth": "package.json",
+      "automation": "release-please",
+      "synchronizedFiles": [
+        ".github/release-please/manifest.json",
+        "packages/blockbench-runtime/src/config.ts"
+      ],
+      "changeOwner": "release-pr",
+      "verification": "npm run release:validate"
+    },
+    "intentProgram": {
+      "version": 1,
+      "compatibility": "current-version-only",
+      "authority": "packages/engine-core/src/project/program/language.ts",
+      "breakingChangeRequiresVersion": true
+    },
+    "surfaceSynthesis": {
+      "version": 1,
+      "authority": "packages/engine-core/src/textures/appearance/contract.ts",
+      "rasterAuthority": "packages/engine-core/src/textures/textureRecipe/raster.ts",
+      "receiptAuthority": "packages/engine-core/src/provenance/program/receipt.ts",
+      "breakingChangeRequiresVersion": true
+    },
+    "deliveryTargets": {
+      "scope": "transient-export-input",
+      "canonicalMutation": false
+    }
+  },
+  "quality": {
+    "maxSourceFileLines": 600,
+    "maxCodeFileStemLength": 20,
+    "newSourceFileRatchetLines": 500,
+    "maxFunctionLines": 200,
+    "ownerLayout": {
+      "contractFile": "contract",
+      "testFileSuffix": ".test",
+      "testFileExtension": ".ts",
+      "testFileStem": "lower-word",
+      "maxTestFileStemLength": 18,
+      "maxTestFileLines": 500,
+      "testOwnership": "owner-directory-required",
+      "testDiscovery": "recursive-stable-nonempty",
+      "testOwners": [
+        {
+          "workspace": "apps/web",
+          "roots": [
+            "agent",
+            "application",
+            "capture",
+            "files",
+            "persistence",
+            "presentation",
+            "review",
+            "viewport",
+            "workbench"
+          ]
+        },
+        {
+          "workspace": "packages/blockbench-conformance",
+          "roots": [
+            "protocol",
+            "revision",
+            "schema"
+          ]
+        },
+        {
+          "workspace": "packages/blockbench-runtime",
+          "roots": [
+            "adapters",
+            "config",
+            "dispatcher",
+            "domain",
+            "plugin",
+            "project",
+            "runtime",
+            "schema",
+            "session",
+            "shared",
+            "sidecar",
+            "support",
+            "texture",
+            "trace",
+            "transport",
+            "usecases"
+          ]
+        },
+        {
+          "workspace": "packages/engine-core",
+          "roots": [
+            "animation",
+            "authoring",
+            "commands",
+            "modeling",
+            "program",
+            "project",
+            "textures"
+          ]
+        }
+      ]
+    },
+    "forbiddenSourcePatterns": [
+      {
+        "id": "as-any",
+        "scope": [
+          "apps/",
+          "packages/"
+        ],
+        "allowedPaths": []
+      },
+      {
+        "id": "as-unknown-as",
+        "scope": [
+          "apps/",
+          "packages/"
+        ],
+        "allowedPaths": []
+      },
+      {
+        "id": "bare-document",
+        "scope": [
+          "packages/blockbench-runtime/src/"
+        ],
+        "allowedPaths": []
+      },
+      {
+        "id": "bare-window",
+        "scope": [
+          "packages/blockbench-runtime/src/"
+        ],
+        "allowedPaths": []
+      },
+      {
+        "id": "catch-without-binding",
+        "scope": [
+          "packages/blockbench-runtime/src/"
+        ],
+        "allowedPaths": []
+      },
+      {
+        "id": "console-in-src",
+        "scope": [
+          "apps/",
+          "packages/"
+        ],
+        "allowedPaths": [
+          "packages/blockbench-runtime/src/logging.ts"
+        ]
+      },
+      {
+        "id": "double-assertion",
+        "scope": [
+          "apps/",
+          "packages/"
+        ],
+        "allowedPaths": []
+      },
+      {
+        "id": "engine-core-host-dependency",
+        "scope": [
+          "packages/engine-core/src/"
+        ],
+        "allowedPaths": []
+      },
+      {
+        "id": "explicit-any",
+        "scope": [
+          "apps/",
+          "packages/"
+        ],
+        "allowedPaths": []
+      },
+      {
+        "id": "globalThis-as",
+        "scope": [
+          "packages/blockbench-runtime/src/"
+        ],
+        "allowedPaths": [
+          "packages/blockbench-runtime/src/shared/globalState.ts",
+          "packages/blockbench-runtime/src/types/blockbench.ts"
+        ]
+      },
+      {
+        "id": "throw-in-src",
+        "scope": [
+          "packages/blockbench-runtime/src/"
+        ],
+        "allowedPaths": [
+          "packages/blockbench-runtime/src/plugin/runtime.ts"
+        ]
+      },
+      {
+        "id": "todo-fixme-comment",
+        "scope": [
+          "packages/blockbench-runtime/src/"
+        ],
+        "allowedPaths": []
+      },
+      {
+        "id": "ts-ignore",
+        "scope": [
+          "apps/",
+          "packages/"
+        ],
+        "allowedPaths": []
+      },
+      {
+        "id": "workbench-blockbench-dependency",
+        "scope": [
+          "apps/web/src/"
+        ],
+        "allowedPaths": []
+      }
+    ]
+  },
+  "architecture": {
+    "workspaceSourceScopes": [
+      "apps",
+      "packages"
+    ],
+    "workspacePolicy": {
+      "required": [
+        "apps/site"
+      ],
+      "forbidden": [
+        "apps/mcp-gateway",
+        "apps/worker",
+        "packages/backend-core",
+        "packages/backend-engine"
+      ]
+    },
+    "tombstones": [
+      "apps/ashfox/package.json",
+      "apps/mcp-gateway/package.json",
+      "apps/plugin-desktop/package.json",
+      "apps/web/src/app/api/mcp/route.ts",
+      "apps/worker/package.json",
+      "packages/backend-blockbench/package.json",
+      "packages/backend-core/package.json",
+      "packages/backend-engine/package.json"
+    ],
+    "packageDependencyPolicies": [
+      {
+        "workspace": "apps/site",
+        "sections": [
+          "dependencies",
+          "devDependencies"
+        ],
+        "mode": "allow-only",
+        "values": [
+          "@ashfox/internal-contracts",
+          "marked"
+        ]
+      },
+      {
+        "workspace": "apps/web",
+        "sections": [
+          "dependencies",
+          "devDependencies"
+        ],
+        "mode": "deny-prefixes",
+        "values": [
+          "@ashfox/backend-",
+          "@ashfox/blockbench-",
+          "mcp"
+        ]
+      }
+    ],
+    "sourceImportBoundaries": [
+      {
+        "source": "apps/site/",
+        "extensions": [
+          ".js",
+          ".mjs"
+        ],
+        "allowedExternalImports": [
+          "@ashfox/internal-contracts"
+        ],
+        "forbiddenExternalPrefixes": [
+          "@ashfox/"
+        ],
+        "forbiddenExternalPackageRoots": [
+          "react",
+          "three"
+        ],
+        "forbiddenRelativeTargets": [
+          "apps/web/",
+          "packages/engine-core/"
+        ]
+      }
+    ],
+    "forbiddenDependencies": [
+      {
+        "source": "apps/web/src/application/",
+        "targets": [
+          "apps/web/src/features/"
+        ]
+      },
+      {
+        "source": "apps/web/src/features/agent/",
+        "targets": [
+          "apps/web/src/features/workbench/"
+        ]
+      },
+      {
+        "source": "apps/web/src/features/capture/",
+        "targets": [
+          "apps/web/src/features/workbench/"
+        ]
+      },
+      {
+        "source": "apps/web/src/features/files/",
+        "targets": [
+          "apps/web/src/features/workbench/"
+        ]
+      },
+      {
+        "source": "apps/web/src/rendering/",
+        "targets": [
+          "apps/web/src/features/"
+        ]
+      },
+      {
+        "source": "packages/blockbench-runtime/src/adapters/",
+        "targets": [
+          "packages/blockbench-runtime/src/plugin/",
+          "packages/blockbench-runtime/src/transport/",
+          "packages/blockbench-runtime/src/usecases/"
+        ]
+      },
+      {
+        "source": "packages/blockbench-runtime/src/domain/",
+        "targets": [
+          "packages/blockbench-runtime/src/adapters/",
+          "packages/blockbench-runtime/src/plugin/",
+          "packages/blockbench-runtime/src/transport/",
+          "packages/blockbench-runtime/src/usecases/"
+        ]
+      },
+      {
+        "source": "packages/blockbench-runtime/src/usecases/",
+        "targets": [
+          "packages/blockbench-runtime/src/plugin/",
+          "packages/blockbench-runtime/src/transport/"
+        ]
+      },
+      {
+        "source": "packages/engine-core/src/authoring/",
+        "targets": [
+          "packages/engine-core/src/commands/",
+          "packages/engine-core/src/compiler/",
+          "packages/engine-core/src/validation/"
+        ]
+      },
+      {
+        "source": "packages/engine-core/src/compiler/",
+        "targets": [
+          "packages/engine-core/src/commands/",
+          "packages/engine-core/src/validation/"
+        ]
+      },
+      {
+        "source": "packages/engine-core/src/project/",
+        "targets": [
+          "packages/engine-core/src/commands/",
+          "packages/engine-core/src/compiler/",
+          "packages/engine-core/src/validation/"
+        ]
+      },
+      {
+        "source": "packages/engine-core/src/project/program/constraints/",
+        "targets": [
+          "packages/engine-core/src/project/program/read/"
+        ]
+      }
+    ]
+  }
+}

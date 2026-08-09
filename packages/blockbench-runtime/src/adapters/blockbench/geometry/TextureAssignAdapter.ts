@@ -2,7 +2,7 @@ import type { ToolError } from '@ashfox/blockbench-contracts/types/internal';
 import type { Logger } from '../../../logging';
 import type { AssignTextureCommand } from '../../../ports/editor';
 import { withToolErrorAdapterError } from '../adapterErrors';
-import { getCubeApi, getTextureApi } from '../blockbenchAdapterUtils';
+import { getCubeApi, getTextureApi } from '../api';
 import { resolveTargetCubes, findTextureRef } from '../outlinerLookup';
 import { withUndo, extendEntity } from '../blockbenchUtils';
 import {
@@ -79,4 +79,3 @@ export class BlockbenchTextureAssignAdapter {
     });
   }
 }
-

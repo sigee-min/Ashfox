@@ -1,7 +1,8 @@
 import type { BoneUpdate, SessionState, TrackedBone } from '../types';
+import { cloneTrackedBone } from '../clone';
 
 export const addBone = (state: SessionState, bone: TrackedBone) => {
-  state.bones.push(bone);
+  state.bones.push(cloneTrackedBone(bone));
 };
 
 export const updateBone = (state: SessionState, name: string, updates: BoneUpdate): boolean => {
@@ -22,9 +23,9 @@ export const updateBone = (state: SessionState, name: string, updates: BoneUpdat
   if (updates.parent !== undefined) {
     bone.parent = updates.parent ?? undefined;
   }
-  if (updates.pivot) bone.pivot = updates.pivot;
-  if (updates.rotation) bone.rotation = updates.rotation;
-  if (updates.scale) bone.scale = updates.scale;
+  if (updates.pivot) bone.pivot = [...updates.pivot];
+  if (updates.rotation) bone.rotation = [...updates.rotation];
+  if (updates.scale) bone.scale = [...updates.scale];
   if (typeof updates.visibility === 'boolean') bone.visibility = updates.visibility;
   return true;
 };
@@ -43,5 +44,4 @@ export const removeBones = (
     removedCubes: beforeCubes - state.cubes.length
   };
 };
-
 

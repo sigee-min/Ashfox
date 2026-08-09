@@ -14,7 +14,7 @@ import {
   TOOL_HINT_NOT_IMPLEMENTED,
   TOOL_HINT_UNKNOWN,
   TOOL_HINT_UNSUPPORTED_FORMAT
-} from '../../shared/messages';
+} from '../messages';
 
 const DEFAULT_FIXES: Partial<Record<ToolErrorCode, string>> = {
   invalid_payload: TOOL_FIX_INVALID_PAYLOAD,

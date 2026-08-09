@@ -1,9 +1,7 @@
-export { assertProjectDocument } from './validation/assertProjectDocument';
-export { validateProjectDocument } from './validation/projectDocumentValidator';
+export { assertProjectDocument } from './validation/project/assert';
+export { validateProjectDocument } from './validation/project/validate';
 export {
   ProjectInvariantError,
-  type InvariantCode,
   type InvariantFinding,
-  type InvariantSeverity,
   type ValidationReport
-} from './validation/types';
+} from './validation/contract';

@@ -1,6 +1,5 @@
 export type HeaderMenu =
   | 'new'
-  | 'project'
   | 'export'
   | 'capture'
   | null;

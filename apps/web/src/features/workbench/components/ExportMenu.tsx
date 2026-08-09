@@ -20,10 +20,14 @@ import {
   type ExportAdapterDraft
 } from '../../../application/projectExportTarget';
 import { ProjectTargetFields } from './ProjectTargetFields';
+import type {
+  ExportAvailabilityViewModel
+} from '../exportAvailability';
 
 interface ExportMenuProps {
   document: ProjectDocument;
   busy: boolean;
+  availability: ExportAvailabilityViewModel;
   onExport: (adapter: ExportAdapterInput) => void;
 }
 
@@ -40,6 +44,7 @@ const adapterIsValid = (adapter: ExportAdapterDraft): boolean =>
 export function ExportMenu({
   document,
   busy,
+  availability,
   onExport
 }: ExportMenuProps) {
   const [adapter, setAdapter] = useState<ExportAdapterDraft>(() =>
@@ -54,18 +59,18 @@ export function ExportMenu({
   const label = projectExportTargetLabel(adapter.target);
   const submit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
-    if (busy || !valid) return;
+    if (busy || !valid || !availability.allowed) return;
     onExport(exportAdapterInputFor(adapter));
   };
 
   return (
     <form
       className="header-popover export-menu"
-      aria-label="Export project"
+      aria-label="Export delivery files"
       onSubmit={submit}
     >
       <div className="popover-heading">
-        <strong>Export adapter</strong>
+        <strong>Delivery export</strong>
         <span>Does not change this project</span>
       </div>
       <ProjectTargetFields
@@ -95,13 +100,19 @@ export function ExportMenu({
         canonical model, textures, rig, animation, and Intent Program remain
         unchanged.
       </p>
+      <p
+        className={`export-readiness is-${availability.allowed ? 'ready' : 'blocked'}`}
+        role={availability.allowed ? undefined : 'status'}
+      >
+        {availability.message}
+      </p>
       <button
         type="submit"
         className="popover-primary"
         data-ashfox-action="project.export.submit"
-        disabled={busy || !valid}
+        disabled={busy || !valid || !availability.allowed}
       >
-        {busy ? 'Exporting…' : `Export ${label}`}
+        {busy ? 'Exporting…' : `Export ${label} files`}
       </button>
     </form>
   );

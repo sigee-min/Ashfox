@@ -15,13 +15,16 @@ import {
 } from '../inspectWorkflow';
 import type {
   VisualReviewReceipt
-} from '../../../application/visualReviewReceipt';
+} from '../../../application/review';
 import type {
   InspectResult
 } from '../types';
 import {
   DEFAULT_INSPECT_LIMIT
 } from './inspectResult';
+import {
+  snapshotIntentProgramAuthority
+} from '../../intentProgram/presentation';
 
 /** The agent sees source authority and readiness, never editable compiler internals. */
 export const inspectOverview = (
@@ -57,10 +60,10 @@ export const inspectOverview = (
       },
       intentProgram: {
         confirmed: confirmed
-          ? { hash: confirmed.hash, source: confirmed.source }
+          ? snapshotIntentProgramAuthority(confirmed)
           : null,
         proposal: proposal
-          ? { hash: proposal.hash, source: proposal.source }
+          ? snapshotIntentProgramAuthority(proposal)
           : null
       },
       compilation: {

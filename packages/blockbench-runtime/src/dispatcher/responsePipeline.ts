@@ -3,7 +3,7 @@ import type { ToolName, ToolPayloadMap, ToolResponse } from '@ashfox/blockbench-
 import type { ToolService } from '../usecases/ToolService';
 import { appendMissingRevisionNextActions } from '../shared/tooling/revisionNextActions';
 import { recordTrace } from './trace';
-import type { TraceRecorder } from '../trace/traceRecorder';
+import type { TraceRecorder } from '../trace/recorder';
 
 type ResponsePipelineContext<T> = {
   tool: ToolName;

@@ -1,7 +1,8 @@
 import type { CubeUpdate, SessionState, TrackedCube } from '../types';
+import { cloneTrackedCube } from '../clone';
 
 export const addCube = (state: SessionState, cube: TrackedCube) => {
-  state.cubes.push(cube);
+  state.cubes.push(cloneTrackedCube(cube));
 };
 
 export const updateCube = (state: SessionState, name: string, updates: CubeUpdate): boolean => {
@@ -10,12 +11,12 @@ export const updateCube = (state: SessionState, name: string, updates: CubeUpdat
   if (updates.id) cube.id = updates.id;
   if (updates.newName && updates.newName !== cube.name) cube.name = updates.newName;
   if (updates.bone) cube.bone = updates.bone;
-  if (updates.from) cube.from = updates.from;
-  if (updates.to) cube.to = updates.to;
-  if (updates.origin) cube.origin = updates.origin;
-  if (updates.rotation) cube.rotation = updates.rotation;
-  if (updates.uv) cube.uv = updates.uv;
-  if (updates.uvOffset) cube.uvOffset = updates.uvOffset;
+  if (updates.from) cube.from = [...updates.from];
+  if (updates.to) cube.to = [...updates.to];
+  if (updates.origin) cube.origin = [...updates.origin];
+  if (updates.rotation) cube.rotation = [...updates.rotation];
+  if (updates.uv) cube.uv = [...updates.uv];
+  if (updates.uvOffset) cube.uvOffset = [...updates.uvOffset];
   if (typeof updates.inflate === 'number') cube.inflate = updates.inflate;
   if (typeof updates.mirror === 'boolean') cube.mirror = updates.mirror;
   if (typeof updates.visibility === 'boolean') cube.visibility = updates.visibility;
@@ -29,5 +30,4 @@ export const removeCubes = (state: SessionState, names: string[] | Set<string>):
   state.cubes = state.cubes.filter((c) => !nameSet.has(c.name));
   return before - state.cubes.length;
 };
-
 

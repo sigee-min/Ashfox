@@ -5,41 +5,28 @@ import {
   type Dispatch
 } from 'react';
 
-import type {
-  CommandReceipt,
-  ProjectDocument
+import {
+  serializeProjectFile,
+  type ProjectDocument
 } from '@ashfox/engine-core';
 
 import {
-  compareProjectRevisions,
-  createLocalProjectRecord,
-  areLocalProjectRecordsEqual,
-  isValidLocalProjectRecord,
-  type LocalProjectRecord
+  createLocalProjectRecord
 } from '../../../application/localProjectRecord';
-import type {
-  ProjectAssets
-} from '../../../application/projectAssets';
-import type {
-  VisualReviewReceipt
-} from '../../../application/visualReviewReceipt';
 import {
   saveLocalProject
-} from './indexedDbProjectRepository';
-import {
-  rebaseLocalProject
-} from './localProjectRebase';
+} from './repository';
 import type {
   PersistenceSessionAction,
   PersistenceSessionIdentity,
   PersistenceSessionState
-} from './persistenceSessionState';
+} from './session';
 import {
   publishLocalRevision
-} from './projectRevisionChannel';
+} from './revision';
 import type {
   PersistenceLifecycle
-} from './usePersistenceLifecycle';
+} from './lifecycle';
 
 interface UseLocalProjectSaveInput {
   enabled: boolean;
@@ -48,13 +35,8 @@ interface UseLocalProjectSaveInput {
   session: PersistenceSessionIdentity;
   persistence: PersistenceSessionState;
   document: ProjectDocument;
-  assets: ProjectAssets;
-  activity: readonly CommandReceipt[];
-  visualReviews: readonly VisualReviewReceipt[];
   lifecycle: PersistenceLifecycle;
   dispatch: Dispatch<PersistenceSessionAction>;
-  onHydrate: (record: LocalProjectRecord) => void;
-  onExternal: (record: LocalProjectRecord) => void;
 }
 
 export const useLocalProjectSave = ({
@@ -64,18 +46,10 @@ export const useLocalProjectSave = ({
   session,
   persistence,
   document,
-  assets,
-  activity,
-  visualReviews,
   lifecycle,
-  dispatch,
-  onHydrate,
-  onExternal
+  dispatch
 }: UseLocalProjectSaveInput): void => {
   const {
-    currentDocument,
-    currentAssets,
-    currentActivity,
     session: sessionRef,
     saveRequest
   } = lifecycle;
@@ -85,8 +59,15 @@ export const useLocalProjectSave = ({
       !enabled ||
       persistence.projectId !== projectId ||
       persistence.projectGeneration !== projectGeneration ||
-      !persistence.ready
+      !persistence.ready ||
+      !document.intentProgram ||
+      document.intentProgramProposal
     ) {
+      return;
+    }
+    const serialized = serializeProjectFile(document);
+    if (!serialized.ok) {
+      dispatch({ type: 'error', session });
       return;
     }
     const requestId = saveRequest.current + 1;
@@ -99,10 +80,10 @@ export const useLocalProjectSave = ({
       dispatch({ type: 'saving', session });
       const savedAt = new Date().toISOString();
       const record = createLocalProjectRecord({
-        document,
-        assets,
-        activity,
-        visualReviews,
+        projectId: document.id,
+        revision: document.revision,
+        createdAt: document.createdAt,
+        source: serialized.source,
         savedAt
       });
 
@@ -115,41 +96,10 @@ export const useLocalProjectSave = ({
           ) {
             return;
           }
-          if (result.status === 'blocked') {
-            dispatch({
-              type: 'error',
-              session,
-              ready: false
-            });
-            return;
-          }
-          if (result.status === 'conflict') {
-            if (persistence.authoritative) {
-              onHydrate(
-                rebaseLocalProject(
-                  currentDocument.current,
-                  currentAssets.current,
-                  currentActivity.current,
-                  result.current
-                )
-              );
-              return;
-            }
-            if (
-              isValidLocalProjectRecord(result.current, projectId) &&
-              compareProjectRevisions(
-                result.current.revision,
-                currentDocument.current.revision
-              ) > 0
-            ) {
-              onExternal(result.current);
-              dispatch({
-                type: 'saved',
-                session,
-                lastSavedAt: result.current.savedAt
-              });
-              return;
-            }
+          if (
+            result.status === 'blocked' ||
+            result.status === 'conflict'
+          ) {
             dispatch({ type: 'error', session });
             return;
           }
@@ -158,9 +108,6 @@ export const useLocalProjectSave = ({
             session,
             lastSavedAt: result.current.savedAt
           });
-          if (!areLocalProjectRecordsEqual(result.current, record)) {
-            onExternal(result.current);
-          }
           if (result.status === 'stored') {
             publishLocalRevision({
               projectId,
@@ -184,18 +131,12 @@ export const useLocalProjectSave = ({
       window.clearTimeout(timer);
     };
   }, [
-    activity,
-    assets,
     document,
     enabled,
-    onExternal,
-    onHydrate,
     persistence.projectId,
     persistence.projectGeneration,
-    persistence.authoritative,
     persistence.ready,
     projectGeneration,
-    projectId,
-    visualReviews
+    projectId
   ]);
 };

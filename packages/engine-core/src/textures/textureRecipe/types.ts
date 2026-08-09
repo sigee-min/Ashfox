@@ -6,10 +6,10 @@ import type {
 import type {
   GeneratedSurfaceMarking,
   GeneratedSurfacePattern
-} from '../generatedSurfaceAuthority';
+} from '../appearance/authority';
 import type {
   GeneratedSurfaceTonePolicy
-} from '../generatedToneField';
+} from '../appearance';
 import type { UvAtlasPlacement } from '../uvAtlas';
 
 export interface TextureDerivationSuccess {

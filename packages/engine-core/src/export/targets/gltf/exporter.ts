@@ -2,41 +2,41 @@ import type {
   TextureAsset
 } from '../../../model';
 import type { ExportAdaptedDocument } from '../../adapter';
-import { validateExportTarget } from '../../pipeline/validateTarget';
+import { validateExportTarget } from '../../pipeline/validate';
 import {
   ExportMaterializationRequiredError,
   type BlobCopyExportFile,
   type ExportBundle
-} from '../../types';
-import { compileGltfAnimations } from './animationCompiler';
-import { GltfBinaryWriter } from './binaryWriter';
+} from '../../contract';
+import { compileGltfAnimations } from './animation';
+import { GltfBinaryWriter } from './binary';
 import type {
   CompiledGltf,
   GltfBuildOptions
-} from './buildTypes';
+} from './build';
 import { createGltfBundle } from './bundle';
-import { compressGltfWithMeshopt } from './meshoptCompression';
+import { compressGltfWithMeshopt } from './meshopt';
 import {
   orderedTextures,
   requireResolvedTexture,
   resolveGltfTextures,
   type GltfResolvedExportOptions
-} from './resolvedTextures';
-import { compileGltfScene } from './sceneCompiler';
+} from './textures';
+import { compileGltfScene } from './scene';
 import type {
   GltfDocument,
   GltfImage,
   GltfMaterial,
   GltfSampler
-} from './types';
+} from './contract';
 
 export type {
   CompiledGltf,
   GltfBuildOptions
-} from './buildTypes';
+} from './build';
 export type {
   GltfResolvedExportOptions
-} from './resolvedTextures';
+} from './textures';
 
 const textureExtension = (texture: TextureAsset): 'png' | 'jpg' =>
   texture.source.contentType === 'image/jpeg' ? 'jpg' : 'png';

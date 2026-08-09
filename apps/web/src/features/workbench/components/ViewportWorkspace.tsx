@@ -1,54 +1,53 @@
 import type {
-  ProjectDocument,
-  ValidationReport
+  ProjectDocument
 } from '@ashfox/engine-core';
 
+import type {
+  ProjectAssets
+} from '../../../application/projectAssets';
+import type {
+  ViewportEnvironmentId
+} from '../../../rendering/viewportEnvironment';
+import type {
+  AgentCommandPortStatus
+} from '../../agent/AgentCommandPort';
 import { Icon } from '../Icon';
-import { nodeIcon } from '../presentation/nodePresentation';
-import {
-  Viewport
-} from '../Viewport';
+import { presentAgentConnection } from '../presentation/connection';
+import { Viewport } from '../Viewport';
 import type {
   CameraCommand,
   ViewportOptions,
   ViewportPresentationFrame,
   ViewportStats
 } from '../viewport/viewportTypes';
-import type { ViewportEnvironmentId } from '../../../rendering/viewportEnvironment';
-import type { ProjectAssets } from '../../../application/projectAssets';
-import type {
-  WorkbenchOverlay
-} from '../state/workbenchViewState';
-import { InspectorOverlay } from './InspectorOverlay';
-import { SceneOverlay } from './SceneOverlay';
-import { ViewportEnvironmentToggle } from './ViewportEnvironmentToggle';
+import { ViewportEnvironmentToggle } from './viewport/Environment';
 
 interface ViewportWorkspaceProps {
-  document: ProjectDocument;
-  assets: ProjectAssets;
-  report: ValidationReport;
-  selectedNodeId: string | null;
-  viewportOptions: ViewportOptions;
-  environment: ViewportEnvironmentId;
-  cameraCommand: CameraCommand;
-  viewportStats: ViewportStats;
-  activeClipId: string | null;
-  playhead: number;
-  playing: boolean;
-  presentationNonce: number;
-  activeOverlay: WorkbenchOverlay;
-  onEnvironmentChange: (environment: ViewportEnvironmentId) => void;
-  onOverlayChange: (overlay: WorkbenchOverlay) => void;
-  onSelectNode: (nodeId: string | null) => void;
-  onStats: (stats: ViewportStats) => void;
-  onPresented: (frame: ViewportPresentationFrame) => void;
+  /** Ephemeral candidate projection or the current canonical document. */
+  readonly viewportDocument: Readonly<ProjectDocument>;
+  readonly isCandidatePreview: boolean;
+  readonly assets: ProjectAssets;
+  readonly viewportOptions: ViewportOptions;
+  readonly environment: ViewportEnvironmentId;
+  readonly cameraCommand: CameraCommand;
+  readonly viewportStats: ViewportStats;
+  readonly activeClipId: string | null;
+  readonly playhead: number;
+  readonly playing: boolean;
+  readonly presentationNonce: number;
+  readonly agentStatus: AgentCommandPortStatus;
+  readonly onEnvironmentChange: (environment: ViewportEnvironmentId) => void;
+  readonly onStats: (stats: ViewportStats) => void;
+  readonly onPresented: (frame: ViewportPresentationFrame) => void;
 }
 
+const ignoreSelection = (): void => undefined;
+const ignorePresentation = (): void => undefined;
+
 export function ViewportWorkspace({
-  document,
+  viewportDocument,
+  isCandidatePreview,
   assets,
-  report,
-  selectedNodeId,
   viewportOptions,
   environment,
   cameraCommand,
@@ -57,28 +56,16 @@ export function ViewportWorkspace({
   playhead,
   playing,
   presentationNonce,
-  activeOverlay,
+  agentStatus,
   onEnvironmentChange,
-  onOverlayChange,
-  onSelectNode,
   onStats,
   onPresented
 }: ViewportWorkspaceProps) {
-  const selectedNode = selectedNodeId
-    ? document.scene.nodes[selectedNodeId]
-    : undefined;
-
-  const toggleOverlay = (
-    overlay: Exclude<WorkbenchOverlay, null>
-  ): void => {
-    onOverlayChange(activeOverlay === overlay ? null : overlay);
-  };
-
   return (
     <section className="workspace-grid">
       <section className="viewport-panel">
         <Viewport
-          document={document}
+          document={viewportDocument}
           assets={assets}
           options={viewportOptions}
           environment={environment}
@@ -87,21 +74,33 @@ export function ViewportWorkspace({
           playhead={playhead}
           playing={playing}
           presentationNonce={presentationNonce}
-          onSelectNode={onSelectNode}
+          onSelectNode={ignoreSelection}
           onStats={onStats}
-          onPresented={onPresented}
+          onPresented={isCandidatePreview ? ignorePresentation : onPresented}
         />
+        {Object.keys(viewportDocument.scene.nodes).length === 0 ? (
+          <section className="empty-creation-guide" aria-label="Create your first asset">
+            <span className={`agent-connection is-${agentStatus}`}>
+              {presentAgentConnection(agentStatus)}
+            </span>
+            <h1>Describe what you want in chat</h1>
+            <p>
+              The AI writes, validates, compiles, and reviews the asset. You
+              only need to watch the result and ask for changes.
+            </p>
+            <ol>
+              <li><strong>1</strong><span>Prompt in chat</span></li>
+              <li><strong>2</strong><span>Watch the build</span></li>
+              <li><strong>3</strong><span>Export or capture</span></li>
+            </ol>
+          </section>
+        ) : null}
+        {isCandidatePreview ? (
+          <div className="candidate-preview-badge" role="status">
+            AI preview · decision in progress
+          </div>
+        ) : null}
         <div className="viewport-top-left">
-          <button
-            type="button"
-            className={`panel-trigger${activeOverlay === 'scene' ? ' is-active' : ''}`}
-            aria-expanded={activeOverlay === 'scene'}
-            onClick={() => toggleOverlay('scene')}
-          >
-            <Icon name="cube" />
-            <span>Scene</span>
-            <small>{Object.keys(document.scene.nodes).length}</small>
-          </button>
           <div className="view-chip">
             <Icon name="camera" />
             {cameraCommand.mode}
@@ -116,34 +115,7 @@ export function ViewportWorkspace({
             value={environment}
             onChange={onEnvironmentChange}
           />
-          <button
-            type="button"
-            className={`panel-trigger${activeOverlay === 'inspector' ? ' is-active' : ''}`}
-            aria-expanded={activeOverlay === 'inspector'}
-            onClick={() => toggleOverlay('inspector')}
-          >
-            <span>Inspect</span>
-            <Icon name={selectedNode ? nodeIcon(selectedNode.kind) : 'cube'} />
-          </button>
         </div>
-
-        {activeOverlay === 'scene' ? (
-          <SceneOverlay
-            document={document}
-            selectedNodeId={selectedNodeId}
-            report={report}
-            onSelectNode={onSelectNode}
-          />
-        ) : null}
-
-        {activeOverlay === 'inspector' ? (
-          <InspectorOverlay
-            document={document}
-            node={selectedNode}
-            report={report}
-          />
-        ) : null}
-
       </section>
     </section>
   );

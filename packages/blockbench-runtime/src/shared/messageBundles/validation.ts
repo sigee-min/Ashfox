@@ -23,7 +23,7 @@ import {
   VALIDATION_UV_OVERLAP,
   VALIDATION_UV_SCALE_MISMATCH,
   VALIDATION_UV_SCALE_MISMATCH_SUMMARY
-} from '../messages';
+} from '../messages/validation';
 
 export const buildValidationMessages = () => ({
   noBones: VALIDATION_NO_BONES,

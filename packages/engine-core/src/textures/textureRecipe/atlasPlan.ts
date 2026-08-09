@@ -7,7 +7,7 @@ import {
   effectiveGeneratedFaceEnabled,
   generatedSurfaceFaceKey,
   type CompiledSurfaceAuthority
-} from '../generatedSurfaceAuthority';
+} from '../appearance/authority';
 import {
   packUvAtlasWithGutter,
   type UvAtlasPlacement,

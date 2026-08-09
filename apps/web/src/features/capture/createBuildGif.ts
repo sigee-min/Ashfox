@@ -18,10 +18,10 @@ import type { GifCaptureContext } from './gifCaptureContext';
 import type { GifCaptureFile } from './gifCaptureFile';
 
 export interface BuildGifExportOptions {
-  documents: readonly ProjectDocument[];
-  receipts: readonly CommandReceipt[];
-  environment: ViewportEnvironmentId;
-  cameraMode: CameraMode;
+  readonly documents: readonly ProjectDocument[];
+  readonly receipts: readonly CommandReceipt[];
+  readonly environment: ViewportEnvironmentId;
+  readonly cameraMode: CameraMode;
 }
 
 export const createBuildGif = async (

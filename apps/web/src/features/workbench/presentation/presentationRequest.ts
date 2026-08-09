@@ -15,7 +15,7 @@ import type {
 } from '../../agent/types';
 import type {
   PresentationSession
-} from './presentationSession';
+} from './state';
 
 const FRAME_PRESENTATION_TIMEOUT_MS = 5_000;
 

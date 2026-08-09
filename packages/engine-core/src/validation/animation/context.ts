@@ -5,7 +5,7 @@ import type {
 import type {
   FindingSink,
   IdRegistrar
-} from '../types';
+} from '../contract';
 
 export interface ClipValidationContext {
   readonly clip: AnimationClip;

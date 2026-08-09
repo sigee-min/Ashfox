@@ -13,7 +13,7 @@ import {
   isDenseContractArray
 } from '@ashfox/internal-contracts';
 import { errFromDomain, normalizeToolError, toolError } from './toolResponse';
-import { TOOL_ERROR_GENERIC, TOOL_RESPONSE_MALFORMED } from '../../shared/messages';
+import { TOOL_ERROR_GENERIC, TOOL_RESPONSE_MALFORMED } from '../messages';
 
 type GuardContext = { source?: string };
 

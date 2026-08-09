@@ -1,8 +1,13 @@
 import type { AnimationUpdate, SessionState, TrackedAnimation, TrackedAnimationChannel, TrackedAnimationTrigger } from '../types';
 import { mergeChannelKeys, mergeTriggerKeys } from '../../domain/animation/keyframes';
+import {
+  cloneTrackedAnimation,
+  cloneTrackedAnimationChannel,
+  cloneTrackedAnimationTrigger
+} from '../clone';
 
 export const addAnimation = (state: SessionState, anim: TrackedAnimation) => {
-  state.animations.push(anim);
+  state.animations.push(cloneTrackedAnimation(anim));
 };
 
 export const updateAnimation = (state: SessionState, name: string, updates: AnimationUpdate): boolean => {
@@ -26,37 +31,38 @@ export const removeAnimations = (state: SessionState, names: string[] | Set<stri
 export const upsertAnimationChannel = (state: SessionState, clip: string, channel: TrackedAnimationChannel) => {
   const anim = state.animations.find((a) => a.name === clip);
   if (!anim) return;
+  const clonedChannel = cloneTrackedAnimationChannel(channel);
   anim.channels ??= [];
   const existingIndex = anim.channels.findIndex(
-    (ch) => ch.bone === channel.bone && ch.channel === channel.channel
+    (ch) => ch.bone === clonedChannel.bone && ch.channel === clonedChannel.channel
   );
   if (existingIndex >= 0) {
     const existing = anim.channels[existingIndex];
     anim.channels[existingIndex] = {
       ...existing,
-      ...channel,
-      keys: mergeChannelKeys(existing.keys, channel.keys, state.animationTimePolicy)
+      ...clonedChannel,
+      keys: mergeChannelKeys(existing.keys, clonedChannel.keys, state.animationTimePolicy)
     };
   } else {
-    anim.channels.push(channel);
+    anim.channels.push(clonedChannel);
   }
 };
 
 export const upsertAnimationTrigger = (state: SessionState, clip: string, trigger: TrackedAnimationTrigger) => {
   const anim = state.animations.find((a) => a.name === clip);
   if (!anim) return;
+  const clonedTrigger = cloneTrackedAnimationTrigger(trigger);
   anim.triggers ??= [];
-  const existingIndex = anim.triggers.findIndex((tr) => tr.type === trigger.type);
+  const existingIndex = anim.triggers.findIndex((tr) => tr.type === clonedTrigger.type);
   if (existingIndex >= 0) {
     const existing = anim.triggers[existingIndex];
     anim.triggers[existingIndex] = {
       ...existing,
-      ...trigger,
-      keys: mergeTriggerKeys(existing.keys, trigger.keys, state.animationTimePolicy)
+      ...clonedTrigger,
+      keys: mergeTriggerKeys(existing.keys, clonedTrigger.keys, state.animationTimePolicy)
     };
   } else {
-    anim.triggers.push(trigger);
+    anim.triggers.push(clonedTrigger);
   }
 };
-
 

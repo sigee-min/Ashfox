@@ -2,6 +2,29 @@
 
 Thanks for contributing to ashfox.
 
+The versioned [development manifest](development-manifest.json) is the
+repository development authority. Its
+[closed schema](development-manifest.schema.json) and validator prevent this
+guide from becoming a second, drifting rule source. This file only explains
+how to find and apply that contract.
+
+## Start with the manifests
+
+- Repository contributors and coding agents read
+  [`development-manifest.json`](development-manifest.json). Its
+  `productExperience`, `engineering`, `workflow`, `versioning`, `quality`, and
+  `architecture` sections declare the applicable rules.
+- Agents operating the Web Studio fetch the generated
+  `/workbench/agent-manifest.json`, whose source is
+  [`apps/web/src/features/agent/agentManifest.ts`](apps/web/src/features/agent/agentManifest.ts).
+  That runtime manifest declares asset-creation commands and workflow; it does
+  not govern repository development.
+- Human guides explain both workflows but do not replace either manifest.
+  Integrators fetch the current runtime manifest rather than embedding a copy.
+
+Read [the codebase map](docs/architecture/codebase.md) for rationale and an
+ownership map after reading the development manifest.
+
 ## Project areas
 
 - `apps/web` — the browser-local ashfox studio.
@@ -16,6 +39,15 @@ Thanks for contributing to ashfox.
 Keep the web studio and Blockbench compatibility track independently buildable.
 Share format contracts and fixtures through their existing package boundaries;
 do not import Blockbench runtime code into the web product.
+
+Keep filenames local to their owner. Put shared contracts at
+`owner/contract.ts`, group tests below a workspace owner declared in the
+development manifest, and use one lowercase word such as `reader.test.ts` or
+`raster.test.ts`; fixtures, runners, and support modules follow the same
+one-word filename rule. Tests-only workspaces use semantic owners; product
+workspaces use the production responsibility they exercise. The development
+manifest and architecture gate are authoritative for the exact owner list,
+extension, limits, and discovery semantics.
 
 ## Development setup
 
@@ -42,42 +74,54 @@ Run the complete quality gate before a substantial pull request:
 npm run quality
 ```
 
+## Apply the development manifest
+
+The manifest's `workflow` section identifies the change lifecycle and the
+verification profile. `engineering.testing` defines behavioral coverage, and
+`architecture` and `quality` feed the automated gates. Validate the manifest
+and its consumers with:
+
+```bash
+node scripts/quality/manifest/index.js
+npm run quality:check
+```
+
+Edit the manifest only when intentionally changing repository policy. Change
+its schema, validator fixtures, consuming gates, and this navigation text in
+the same reviewable change.
+
 ## Code conventions
 
-- Keep one authority for each piece of project state.
-- Route web project mutations through the canonical command reducer.
-- Keep `engine-core` free of React, browser, filesystem, and Blockbench APIs.
-- Keep browser and Blockbench I/O in adapters at their respective boundaries.
-- Prefer immutable transitions and stable IDs.
-- Give each module and function one clear responsibility.
-- TypeScript strict mode is required; avoid `any`.
-- Use 2-space indentation, single quotes, and semicolons.
+Use `engineering.style` and `engineering.principles` in the development
+manifest as the rule source. The [codebase map](docs/architecture/codebase.md)
+explains how those rules map to concrete package boundaries.
 
 ## Tests
 
-- Add regression coverage for behavioral changes.
-- Exercise success, cancellation, stale revision, invalid input, and exception
-  paths when changing stateful workflows.
-- Update exporter fixtures when output contracts intentionally change.
-- Keep user-visible documentation aligned with the behavior shipped in the
-  same change.
+The required behavioral and stateful paths are declared in
+`engineering.testing`. Use focused workspace tests while iterating and the
+verification commands declared by `workflow.verification` before handoff and
+pull request.
 
 ## Pull requests
 
-- Keep PR scope focused and reviewable.
-- Explain the user-visible outcome and why the change is needed.
-- Include the checks you ran.
-- Do not commit generated `dist`, local project files, secrets, or editor state.
+Use `workflow` for scope and generated-artifact policy. In the PR description,
+explain the user-visible outcome, why it is needed, and which declared checks
+you ran.
 
 ## Commit messages
 
-Use short imperative subjects, optionally with prefixes:
+`workflow.commits` is the authority for format, allowed types, subject style,
+atomicity, and breaking-change review. release-please consumes that declared
+commit format when preparing a release.
 
-- `fix: ...`
-- `feat: ...`
-- `refactor: ...`
-- `docs: ...`
-- `test: ...`
+## Versioning
+
+The manifest's `versioning.product`, `versioning.intentProgram`, and
+`versioning.deliveryTargets` entries deliberately separate product releases,
+the persisted source compatibility contract, and transient delivery inputs.
+Follow their named authorities, ownership, version, and verification fields;
+do not infer one version from another.
 
 ## Reporting bugs
 

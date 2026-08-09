@@ -7,15 +7,13 @@ export const withToolErrorAdapterError = (
   context: string,
   fallbackMessage: string,
   fn: () => ToolError | null
-): ToolError | null => {
-  try {
-    return fn();
-  } catch (err) {
-    const message = errorMessage(err, fallbackMessage);
-    log.error(`${context} error`, { message });
-    return toolError('unknown', message, { reason: 'adapter_exception', context });
-  }
-};
+): ToolError | null => withAdapterError(
+  log,
+  context,
+  fallbackMessage,
+  fn,
+  (error) => error
+);
 
 export const withAdapterError = <T>(
   log: Logger,
@@ -32,7 +30,3 @@ export const withAdapterError = <T>(
     return onError(toolError('unknown', message, { reason: 'adapter_exception', context }));
   }
 };
-
-
-
-

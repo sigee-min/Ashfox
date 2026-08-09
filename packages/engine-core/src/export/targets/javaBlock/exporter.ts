@@ -6,7 +6,7 @@ import {
   type Vec3
 } from '../../../model';
 import type { ExportAdaptedDocument, ExportTextureAsset } from '../../adapter';
-import type { MinecraftJavaBlockExportProfile } from '../../adapterTypes';
+import type { MinecraftJavaBlockExportProfile } from '../../adapter/contract';
 import {
   effectivelyVisibleSceneNodeIds
 } from '../../../sceneVisibility';
@@ -14,16 +14,16 @@ import {
   supportsJavaBlockMultiAxisRotation
 } from '../../compatibility';
 import { createJsonExportFile } from '../../json';
-import { createExportBundle } from '../../pipeline/createBundle';
-import { validateExportTarget } from '../../pipeline/validateTarget';
+import { createExportBundle } from '../../pipeline/bundle';
+import { validateExportTarget } from '../../pipeline/validate';
 import {
   type BlobCopyExportFile,
   type ExportBundle
-} from '../../types';
+} from '../../contract';
 import {
   buildMinecraftJavaBlockState,
   buildMinecraftJavaPackMetadata
-} from './resourcePack';
+} from './pack';
 
 export interface MinecraftJavaFace {
   uv: [number, number, number, number];

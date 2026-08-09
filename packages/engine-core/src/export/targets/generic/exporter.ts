@@ -6,9 +6,9 @@ import {
   type ExportAdaptedDocument
 } from '../../adapter';
 import { createJsonExportFile } from '../../json';
-import { createExportBundle } from '../../pipeline/createBundle';
-import { validateExportTarget } from '../../pipeline/validateTarget';
-import type { ExportBundle } from '../../types';
+import { createExportBundle } from '../../pipeline/bundle';
+import { validateExportTarget } from '../../pipeline/validate';
+import type { ExportBundle } from '../../contract';
 
 export const exportGenericProject = (
   document: ExportAdaptedDocument

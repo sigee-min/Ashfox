@@ -30,11 +30,6 @@ export type InspectWorkflowAction =
   | {
       kind: 'present';
       request: { review: 'next' };
-    }
-  | {
-      kind: 'user-confirmation';
-      action: 'confirm-intent-program';
-      subject: string;
     };
 
 export interface InspectWorkflowGuidance {

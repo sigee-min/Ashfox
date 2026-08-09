@@ -12,7 +12,7 @@ import {
   setVisibility,
   withUndo
 } from '../blockbenchUtils';
-import { getCubeApi } from '../blockbenchAdapterUtils';
+import { getCubeApi } from '../api';
 import { findCubeRef, findGroup } from '../outlinerLookup';
 import { withToolErrorAdapterError } from '../adapterErrors';
 import { MODEL_BONE_NOT_FOUND, MODEL_CUBE_NOT_FOUND } from '../../../shared/messages';
@@ -194,5 +194,4 @@ const applyBoxUvMode = (target: Record<string, unknown>, boxUv: boolean | undefi
     setUvMode.call(target, boxUv);
   }
 };
-
 

@@ -1,120 +1,42 @@
-import type { CubeFaceDirection, FormatKind } from '@ashfox/blockbench-contracts/types/internal';
+import type {
+  FormatKind,
+  MeshUvPolicy as ContractMeshUvPolicy,
+  TrackedAnimation as ContractTrackedAnimation,
+  TrackedAnimationChannel as ContractTrackedAnimationChannel,
+  TrackedAnimationTrigger as ContractTrackedAnimationTrigger,
+  TrackedBone as ContractTrackedBone,
+  TrackedCube as ContractTrackedCube,
+  TrackedCubeFace as ContractTrackedCubeFace,
+  TrackedMesh as ContractTrackedMesh,
+  TrackedMeshFace as ContractTrackedMeshFace,
+  TrackedMeshFaceUv as ContractTrackedMeshFaceUv,
+  TrackedMeshVertex as ContractTrackedMeshVertex,
+  TrackedTexture as ContractTrackedTexture
+} from '@ashfox/blockbench-contracts/types/internal';
 import type { TextureFrameOrderType, TextureMeta, TexturePbrChannel, TextureRenderMode, TextureRenderSides } from '@ashfox/blockbench-contracts/types/texture';
 import type { AnimationTimePolicy } from '../domain/animation/timePolicy';
-import type { MeshUvPolicy } from '../domain/mesh/autoUv';
 
-export interface TrackedBone {
-  id?: string;
-  name: string;
-  parent?: string;
-  pivot: [number, number, number];
-  rotation?: [number, number, number];
-  scale?: [number, number, number];
-  visibility?: boolean;
-}
+type MutableContract<T> =
+  T extends readonly unknown[]
+    ? { -readonly [TKey in keyof T]: MutableContract<T[TKey]> }
+    : T extends object
+      ? { -readonly [TKey in keyof T]: MutableContract<T[TKey]> }
+      : T;
 
-export interface TrackedCube {
-  id?: string;
-  name: string;
-  from: [number, number, number];
-  to: [number, number, number];
-  bone: string;
-  origin?: [number, number, number];
-  rotation?: [number, number, number];
-  uv?: [number, number];
-  uvOffset?: [number, number];
-  inflate?: number;
-  mirror?: boolean;
-  visibility?: boolean;
-  boxUv?: boolean;
-  shade?: boolean;
-  lightEmission?: number;
-  rescale?: boolean;
-  faces?: Partial<Record<CubeFaceDirection, TrackedCubeFace>>;
-}
-
-export interface TrackedCubeFace {
-  enabled: boolean;
-  texture?: string | false | null;
-  uv?: [number, number, number, number];
-  rotation?: 0 | 90 | 180 | 270;
-  cullface?: CubeFaceDirection;
-  tintIndex?: number;
-  materialInstance?: string;
-}
-
-export interface TrackedMeshVertex {
-  id: string;
-  pos: [number, number, number];
-}
-
-export interface TrackedMeshFaceUv {
-  vertexId: string;
-  uv: [number, number];
-}
-
-export interface TrackedMeshFace {
-  id?: string;
-  vertices: string[];
-  uv?: TrackedMeshFaceUv[];
-  texture?: string | false;
-}
-
-export interface TrackedMesh {
-  id?: string;
-  name: string;
-  bone?: string;
-  origin?: [number, number, number];
-  rotation?: [number, number, number];
-  visibility?: boolean;
-  uvPolicy?: MeshUvPolicy;
-  vertices: TrackedMeshVertex[];
-  faces: TrackedMeshFace[];
-}
-
-export interface TrackedTexture {
-  id?: string;
-  name: string;
-  path?: string;
-  width?: number;
-  height?: number;
-  contentHash?: string;
-  namespace?: TextureMeta['namespace'];
-  folder?: TextureMeta['folder'];
-  particle?: TextureMeta['particle'];
-  visible?: TextureMeta['visible'];
-  renderMode?: TextureRenderMode;
-  renderSides?: TextureRenderSides;
-  pbrChannel?: TexturePbrChannel;
-  group?: TextureMeta['group'];
-  frameTime?: TextureMeta['frameTime'];
-  frameOrderType?: TextureFrameOrderType;
-  frameOrder?: TextureMeta['frameOrder'];
-  frameInterpolate?: TextureMeta['frameInterpolate'];
-  internal?: TextureMeta['internal'];
-  keepSize?: TextureMeta['keepSize'];
-}
-
-export interface TrackedAnimationChannel {
-  bone: string;
-  channel: 'rot' | 'pos' | 'scale';
-  keys: { time: number; value: [number, number, number]; interp?: 'linear' | 'step' | 'catmullrom' }[];
-}
-
-export interface TrackedAnimationTrigger {
-  type: 'sound' | 'particle' | 'timeline';
-  keys: { time: number; value: string | string[] | Record<string, unknown> }[];
-}
-
-export interface TrackedAnimation {
-  id?: string;
-  name: string;
-  length: number;
-  loop: boolean;
-  fps?: number;
-  channels?: TrackedAnimationChannel[];
-  triggers?: TrackedAnimationTrigger[];
-}
+export type MeshUvPolicy = MutableContract<ContractMeshUvPolicy>;
+export type TrackedBone = MutableContract<ContractTrackedBone>;
+export type TrackedCube = MutableContract<ContractTrackedCube>;
+export type TrackedCubeFace = MutableContract<ContractTrackedCubeFace>;
+export type TrackedMeshVertex = MutableContract<ContractTrackedMeshVertex>;
+export type TrackedMeshFaceUv = MutableContract<ContractTrackedMeshFaceUv>;
+export type TrackedMeshFace = MutableContract<ContractTrackedMeshFace>;
+export type TrackedMesh = MutableContract<ContractTrackedMesh>;
+export type TrackedTexture = MutableContract<ContractTrackedTexture>;
+export type TrackedAnimationChannel =
+  MutableContract<ContractTrackedAnimationChannel>;
+export type TrackedAnimationTrigger =
+  MutableContract<ContractTrackedAnimationTrigger>;
+export type TrackedAnimation = MutableContract<ContractTrackedAnimation>;
 
 export type BoneUpdate = {
   id?: string;
@@ -200,4 +122,3 @@ export interface SessionState {
   animationsStatus?: 'available' | 'unavailable';
   animationTimePolicy: AnimationTimePolicy;
 }
-

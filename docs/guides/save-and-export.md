@@ -1,7 +1,7 @@
 # Export a Finished Asset
 
-Ashfox first compiles one target-independent canonical asset from the confirmed
-Intent Program. Choose a delivery adapter only when you are ready to export.
+ashfox first lets the AI compile one target-independent canonical asset from
+Intent Program 1. Choose a delivery adapter only when you are ready to export.
 
 ## Create the canonical project
 
@@ -19,10 +19,15 @@ Ashfox uses its fixed iconic form scale and grows the generated atlas as
 needed. Export-safe resource identifiers are derived from the project and
 validated automatically.
 
+Browser-local source changes are automatic when the rail says **Autosaved**.
+Use **Download source** to save the portable `.ashfox` Intent Program 1 source. Opening
+that file parses and compiles a fresh canonical asset atomically; it does not
+restore a stored geometry, texture, hierarchy, or animation archive.
+
 ## Export a finished asset
 
 ```text
-Open **Export**, choose Java block, GeckoLib 5, Bedrock, GLB, or glTF, and
+Open **Export delivery files**, choose Java block, GeckoLib 5, Bedrock, GLB, or glTF, and
 provide a Minecraft game version, namespace, and path only when that adapter
 needs them. Fix any adapter-specific finding, then export and verify the final
 filename, extension, and size.
@@ -41,10 +46,14 @@ option.
 
 ## Verify delivery
 
-The Export menu reports target-specific compatibility failures before writing an
-artifact. A successful export returns the filename, byte length, SHA-256 content
-hash, and structured `converted` and `omitted` receipt. An omitted item is
-absent from that artifact only; it remains in the canonical project.
+The header says **Export unavailable** while the AI is building, revising, or
+performing required visual checks; open it to read the exact requirement. The
+state clears when the agent finishes a valid compilation and review. Describe
+an asset problem in chat and let the agent diagnose and recompile it. The
+delivery menu reports target-specific compatibility failures before writing an
+artifact. A successful export returns the filename, byte length, SHA-256
+content hash, and structured `converted` and `omitted` receipt. An omitted item
+is absent from that artifact only; it remains in the canonical project.
 
 Expected extensions:
 

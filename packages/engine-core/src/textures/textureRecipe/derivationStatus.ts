@@ -9,21 +9,6 @@ import {
 } from './planMatching';
 import { compileTextureSurfaceAuthority } from './surfaceMetrics';
 
-export const generatedTextureMatchesDerivation = (
-  document: ProjectDocument,
-  textureId: string
-): boolean => {
-  const texture = document.textures[textureId];
-  if (texture?.atlasMode !== 'generate') return true;
-  const authority = compileTextureSurfaceAuthority(document);
-  const plan = buildGeneratedAtlasPlan(document, authority);
-  return Boolean(
-    plan &&
-    textureSettingsMatchPlan(document, plan) &&
-    generatedTextureMatchesPlan(document, textureId, plan, authority)
-  );
-};
-
 export const staleGeneratedTextureIds = (
   document: ProjectDocument
 ): ReadonlySet<string> => {

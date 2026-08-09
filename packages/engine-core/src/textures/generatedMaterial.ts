@@ -2,7 +2,6 @@ import {
   CUBE_FACE_DIRECTIONS,
   type CubeFace,
   type CubeFaces,
-  type CubeNode,
   type ProjectDocument
 } from '../model';
 import { compareStableText } from '../stableOrder';
@@ -10,6 +9,7 @@ import {
   createTextureAsset,
   implicitTextureId
 } from './createTextureAsset';
+import { SURFACE_SYNTHESIS_VERSION } from './appearance';
 
 export interface GeneratedTextureSetup {
   document: ProjectDocument;
@@ -24,8 +24,24 @@ export const ensureGeneratedTexture = (
     .filter((texture) => texture.atlasMode === 'generate')
     .sort((left, right) => compareStableText(left.id, right.id))[0];
   if (existing) {
+    const versioned = existing.metadata?.surfaceSynthesisVersion ===
+      SURFACE_SYNTHESIS_VERSION
+      ? document
+      : {
+          ...document,
+          textures: {
+            ...document.textures,
+            [existing.id]: {
+              ...existing,
+              metadata: {
+                ...existing.metadata,
+                surfaceSynthesisVersion: SURFACE_SYNTHESIS_VERSION
+              }
+            }
+          }
+        };
     return {
-      document,
+      document: versioned,
       textureId: existing.id,
       createdTextureId: null
     };
@@ -63,27 +79,3 @@ export const createGeneratedCubeFaces = (
       return [direction, face];
     })
   ) as CubeFaces;
-
-export const applyGeneratedCubeMaterial = (
-  cube: CubeNode,
-  textureId: string,
-  baseColor: string
-): CubeNode => {
-  const updated: CubeNode = {
-    ...cube,
-    baseColor,
-    boxUv: false,
-    faces: Object.fromEntries(
-      CUBE_FACE_DIRECTIONS.map((direction) => [
-        direction,
-        {
-          ...cube.faces[direction],
-          textureId,
-          rotation: 0
-        }
-      ])
-    ) as CubeFaces
-  };
-  delete updated.uvOffset;
-  return updated;
-};

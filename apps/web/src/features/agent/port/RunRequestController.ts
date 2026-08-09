@@ -14,7 +14,7 @@ import {
 } from './agentCommandResults';
 import type {
   AgentCommandPortDependencies
-} from './agentCommandPortTypes';
+} from './types';
 import type {
   AgentPortLifecycle
 } from './AgentPortLifecycle';

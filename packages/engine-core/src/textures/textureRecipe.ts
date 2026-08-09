@@ -1,22 +1,12 @@
 export { composeTextureRaster } from './textureRecipe/composition';
+export { rasterizeTexture } from './textureRecipe/raster';
+export type {
+  CanonicalRgbaBytes,
+  CanonicalTextureRaster
+} from './textureRecipe/raster';
 export { deriveGeneratedTextures } from './textureRecipe/derive';
-export {
-  generatedTextureMatchesDerivation,
-  staleGeneratedTextureIds
-} from './textureRecipe/derivationStatus';
-export {
-  GENERATED_ATLAS_MAX_RESOLUTION,
-  GENERATED_ATLAS_MIN_RESOLUTION,
-  hasTextureSurfaceArea
-} from './textureRecipe/surfaceMetrics';
+export { staleGeneratedTextureIds } from './textureRecipe/derivationStatus';
 export type {
   TextureComposition,
-  TextureCompositionRegion,
-  TextureDerivationFailure,
-  TextureDerivationResult,
-  TextureDerivationSuccess
+  TextureCompositionRegion
 } from './textureRecipe/types';
-export type {
-  GeneratedSurfaceMarking,
-  GeneratedSurfacePattern
-} from './generatedSurfaceAuthority';

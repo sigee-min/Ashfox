@@ -3,19 +3,34 @@ import type {
   FindingSink,
   IdRegistrar,
   InvariantFinding
-} from './types';
+} from './contract';
 
 export interface ValidationContext {
-  readonly findings: InvariantFinding[];
+  readonly findings: readonly Readonly<InvariantFinding>[];
   readonly add: FindingSink;
   readonly registerId: IdRegistrar;
 }
 
+const immutableFinding = (
+  finding: InvariantFinding
+): Readonly<InvariantFinding> => Object.freeze({
+  ...finding,
+  ...(finding.entityIds
+    ? { entityIds: Object.freeze([...finding.entityIds]) }
+    : {}),
+  ...(finding.assetIds
+    ? { assetIds: Object.freeze([...finding.assetIds]) }
+    : {}),
+  ...(finding.clipIds
+    ? { clipIds: Object.freeze([...finding.clipIds]) }
+    : {})
+});
+
 export const createValidationContext = (): ValidationContext => {
-  const findings: InvariantFinding[] = [];
+  const findings: Readonly<InvariantFinding>[] = [];
   const idPaths = new Map<string, string>();
   const add: FindingSink = (finding) => {
-    findings.push(finding);
+    findings.push(immutableFinding(finding));
   };
   const registerId: IdRegistrar = (id, path) => {
     if (!isNonEmptyString(id)) {
@@ -40,5 +55,11 @@ export const createValidationContext = (): ValidationContext => {
     idPaths.set(id, path);
   };
 
-  return { findings, add, registerId };
+  return {
+    get findings(): readonly Readonly<InvariantFinding>[] {
+      return Object.freeze([...findings]);
+    },
+    add,
+    registerId
+  };
 };

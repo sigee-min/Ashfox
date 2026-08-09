@@ -28,7 +28,7 @@ export const renameProjectCommand = defineCommand({
           path: 'payload.name',
           expected: 'non-empty text'
         }
-      }
+      };
     }
     return {
       ok: true,

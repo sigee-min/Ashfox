@@ -10,6 +10,7 @@ import type {
   CommandName,
   CommandPayloadMap
 } from './types';
+import type { CommandExecutionContext } from './batch/context';
 
 export interface CommandApplicationError extends CommandError {
   pathScope?: 'operation' | 'document';
@@ -39,7 +40,8 @@ export interface CommandDefinition {
   validate: (payload: unknown) => SchemaIssue | null;
   apply: (
     document: ProjectDocument,
-    payload: unknown
+    payload: unknown,
+    context?: CommandExecutionContext
   ) => CommandApplicationResult;
 }
 
@@ -50,7 +52,8 @@ interface CommandDefinitionSpec<TName extends CommandName> {
   inputSchema: CommandInputSchema;
   apply: (
     document: ProjectDocument,
-    payload: CommandPayloadMap[TName]
+    payload: CommandPayloadMap[TName],
+    context?: CommandExecutionContext
   ) => CommandApplicationResult;
 }
 
@@ -66,7 +69,7 @@ export const defineCommand = <TName extends CommandName>(
     purpose: spec.purpose,
     inputSchema: spec.inputSchema,
     validate,
-    apply: (document, payload) => {
+    apply: (document, payload, context) => {
       const issue = validate(payload);
       if (issue) {
         return {
@@ -79,7 +82,11 @@ export const defineCommand = <TName extends CommandName>(
           }
         };
       }
-      return spec.apply(document, payload as CommandPayloadMap[TName]);
+      return spec.apply(
+        document,
+        payload as CommandPayloadMap[TName],
+        context
+      );
     }
   };
 };

@@ -7,7 +7,7 @@ import {
   deliveryVisualReviewsForRevision,
   visualReviewPlanItem,
   type VisualReviewReceipt
-} from '../../application/visualReviewReceipt';
+} from '../../application/review';
 
 /* Reviews always cover canonical motion before an export adapter derives it. */
 const animationReviewClipIds = (

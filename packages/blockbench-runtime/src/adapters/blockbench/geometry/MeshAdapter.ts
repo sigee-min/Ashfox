@@ -19,7 +19,7 @@ import {
   setVisibility,
   withUndo
 } from '../blockbenchUtils';
-import { getMeshApi } from '../blockbenchAdapterUtils';
+import { getMeshApi } from '../api';
 import { findGroup, findMeshRef } from '../outlinerLookup';
 import { withToolErrorAdapterError } from '../adapterErrors';
 import { MODEL_BONE_NOT_FOUND, MODEL_MESH_NOT_FOUND } from '../../../shared/messages';
@@ -185,4 +185,3 @@ const toFaceUvRecord = (uv: MeshFaceUvCommand[] | undefined): Record<string, [nu
   }
   return record;
 };
-

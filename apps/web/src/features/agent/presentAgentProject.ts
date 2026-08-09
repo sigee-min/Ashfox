@@ -6,7 +6,7 @@ import {
 
 import type {
   VisualReviewReceipt
-} from '../../application/visualReviewReceipt';
+} from '../../application/review';
 import type {
   PresentRequest,
   PresentResult,
@@ -15,13 +15,13 @@ import type {
 } from './types';
 import {
   presentedReviewChecks
-} from '../../application/visualReviewContract';
+} from '../../application/review';
 import {
   nextVisualReview
 } from './visualReviewPlan';
 import {
   pendingIntentProgramBlock
-} from './intentProgramProposalGate';
+} from './proposal';
 
 interface PresentAgentProjectInput {
   request: PresentRequest;

@@ -5,28 +5,31 @@ import { useCallback } from 'react';
 import type { ExportAdapterInput } from '@ashfox/engine-core';
 
 import { agentCommandProtocol } from '../agent/agentCommandProtocol';
-import { useProjectFileActions } from '../files/useProjectFileActions';
+import { useProjectFileActions } from '../files/actions';
 import { BottomWorkspace } from './components/BottomWorkspace';
-import { IntentProposalBanner } from './components/IntentProposalBanner';
+import { CreationStatusRail } from './components/CreationStatusRail';
 import { ViewportWorkspace } from './components/ViewportWorkspace';
 import { WorkbenchHeader } from './components/WorkbenchHeader';
 import { WorkbenchToolbar } from './components/WorkbenchToolbar';
 import {
   useWorkbenchAgentController
-} from './controller/useWorkbenchAgentController';
+} from './controller/agent';
 import {
   useWorkbenchProjectSession
-} from './controller/useWorkbenchProjectSession';
+} from './controller/project';
 import {
   useWorkbenchViewController
-} from './controller/useWorkbenchViewController';
+} from './controller/view';
 import {
   useWorkbenchProjectCommands
-} from './hooks/useWorkbenchProjectCommands';
+} from './hooks/commands';
 import {
   useWorkbenchShortcuts
-} from './hooks/useWorkbenchShortcuts';
+} from './hooks/shortcuts';
 import type { NewProjectInput } from './newProject';
+import {
+  useAgentAssetPresentation
+} from './hooks/assets';
 
 export function Workbench() {
   const project = useWorkbenchProjectSession();
@@ -57,10 +60,7 @@ export function Workbench() {
   ]);
 
   useWorkbenchShortcuts({
-    onUndo: commands.undo,
-    onRedo: commands.redo,
-    onTogglePlayback: view.togglePlayback,
-    onClosePanels: view.closePanels
+    onTogglePlayback: view.togglePlayback
   });
 
   const agent = useWorkbenchAgentController({
@@ -82,12 +82,16 @@ export function Workbench() {
     setPlaying: view.setPlaying,
     capture: files.capture
   });
+  const presentation = useAgentAssetPresentation({
+    document: project.document,
+    report: project.report,
+    visualReviews: project.visualReviews,
+    storageStatus: project.storageStatus
+  });
 
   return (
     <main
-      className={`workbench-shell${
-        project.document.intentProgramProposal ? ' has-intent-proposal' : ''
-      }`}
+      className="workbench-shell"
       data-agent-command-port={agent.status}
       data-ashfox-agent-manifest={agentCommandProtocol.href}
       data-ashfox-revision={project.document.revision}
@@ -107,10 +111,10 @@ export function Workbench() {
         environment={view.environment}
         cameraMode={view.cameraCommand.mode}
         captureFile={files.captureFile}
+        exportAvailability={presentation.exportAvailability}
         onCreateProject={createProject}
         onOpen={files.open}
         onSave={files.save}
-        onUpdateProject={commands.updateProjectSettings}
         onExport={(adapter: ExportAdapterInput) => {
           void files.exportTarget(adapter);
         }}
@@ -118,29 +122,15 @@ export function Workbench() {
         onCapture={files.captureGif}
         onCancelFileOperation={files.cancel}
       />
+      <CreationStatusRail status={presentation.status} />
       <WorkbenchToolbar
-        canUndo={project.history.past.length > 0}
-        canRedo={project.history.future.length > 0}
         cameraMode={view.cameraCommand.mode}
-        viewportOptions={view.viewportOptions}
-        onUndo={commands.undo}
-        onRedo={commands.redo}
         onSetCamera={view.setCamera}
-        onToggleViewportOption={view.toggleViewportOption}
-      />
-      <IntentProposalBanner
-        document={project.document}
-        activeOperationOwner={project.operationLease.currentOwner()}
-        onConfirm={() => {
-          if (project.operationLease.currentOwner() !== null) return;
-          commands.compileIntentProgram();
-        }}
       />
       <ViewportWorkspace
-        document={project.document}
+        viewportDocument={presentation.viewportDocument}
+        isCandidatePreview={presentation.isCandidatePreview}
         assets={project.assets}
-        report={project.report}
-        selectedNodeId={view.selectedNodeId}
         viewportOptions={view.viewportOptions}
         environment={view.environment}
         cameraCommand={view.cameraCommand}
@@ -149,23 +139,17 @@ export function Workbench() {
         playhead={view.playhead}
         playing={view.playing}
         presentationNonce={agent.presentationNonce}
-        activeOverlay={view.activeOverlay}
         onEnvironmentChange={view.setEnvironment}
-        onOverlayChange={view.setActiveOverlay}
-        onSelectNode={view.selectNode}
+        agentStatus={agent.status}
         onStats={view.setViewportStats}
         onPresented={agent.onPresented}
       />
       <BottomWorkspace
-        mode={view.bottomMode}
         document={project.document}
-        activity={project.history.activity}
         activeClipId={view.activeClipId}
         activeClip={view.activeClip}
         playhead={view.playhead}
         playing={view.playing}
-        storageStatus={project.storageStatus}
-        onModeChange={view.setBottomMode}
         onActiveClipChange={view.changeActiveClip}
         onTogglePlayback={view.togglePlayback}
         onSeek={view.setPlayhead}

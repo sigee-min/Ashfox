@@ -15,6 +15,7 @@ import {
   RenderPreviewResult,
   SetFaceUvPayload,
   SetProjectTextureResolutionPayload,
+  TextureUsageResult,
   ToolName,
   ToolError,
   ToolPayloadMap
@@ -39,7 +40,7 @@ import type {
   GetProjectDiffResult,
   GetProjectStatePayload,
   GetProjectStateResult
-} from './project/projectServiceContracts';
+} from './project/contract';
 
 export class ToolService {
   private readonly capabilities: Capabilities;
@@ -110,16 +111,9 @@ export class ToolService {
     return this.facades.texture.setProjectTextureResolution(payload);
   }
 
-  getTextureUsage(payload: { textureId?: string; textureName?: string }): UsecaseResult<{
-    textures: Array<{
-      id?: string;
-      name: string;
-      cubeCount: number;
-      faceCount: number;
-      cubes: Array<{ id?: string; name: string; faces: Array<{ face: CubeFaceDirection; uv?: [number, number, number, number] }> }>;
-    }>;
-    unresolved?: Array<{ textureRef: string; cubeId?: string; cubeName: string; face: CubeFaceDirection }>;
-  }> {
+  getTextureUsage(
+    payload: { textureId?: string; textureName?: string }
+  ): UsecaseResult<TextureUsageResult> {
     return this.facades.texture.getTextureUsage(payload);
   }
 
@@ -301,7 +295,5 @@ export class ToolService {
   }
 
 }
-
-
 
 

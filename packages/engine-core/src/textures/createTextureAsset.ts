@@ -3,6 +3,7 @@ import type {
   TextureAsset
 } from '../model';
 import { resourceToken } from '../resourceToken';
+import { SURFACE_SYNTHESIS_VERSION } from './appearance';
 
 export interface CreateTextureAssetInput {
   id: string;
@@ -21,6 +22,7 @@ export const createTextureAsset = (
   const projectToken = resourceToken(document.id, 'project');
   const textureToken = resourceToken(input.id, 'texture');
   const background = input.background ?? '#8e98a3';
+  const atlasMode = input.atlasMode ?? 'generate';
   return {
     id: input.id,
     name: input.name.trim(),
@@ -37,14 +39,17 @@ export const createTextureAsset = (
     colorSpace: 'srgb',
     renderMode: 'default',
     renderSides: 'double',
-    atlasMode: input.atlasMode ?? 'generate',
+    atlasMode,
     pbrChannel: 'color',
     raster: {
       background,
       canvasDetails: []
     },
     metadata: {
-      previewColor: background
+      previewColor: background,
+      ...(atlasMode === 'generate'
+        ? { surfaceSynthesisVersion: SURFACE_SYNTHESIS_VERSION }
+        : {})
     }
   };
 };
