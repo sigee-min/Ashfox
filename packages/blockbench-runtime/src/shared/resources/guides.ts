@@ -16,8 +16,11 @@ export const GUIDE_RESOURCES: ResourceContent[] = [
     uri: 'ashfox://guide/modeling-workflow',
     name: 'Modeling Workflow Guide',
     mimeType: 'text/markdown',
-    description: 'Low-level modeling workflow using add_bone/add_cube.',
-    text: loadGuideMarkdown('modeling-workflow', GUIDE_FALLBACKS['modeling-workflow'])
+    description: 'Compatibility-session modeling reference; canonical Ashfox authoring is workspace-first.',
+    // This resource is intentionally pinned to the workspace-first boundary. A
+    // stale host-side markdown guide must not reintroduce direct geometry
+    // authoring through the compatibility tools.
+    text: GUIDE_FALLBACKS['modeling-workflow']
   },
   {
     uri: 'ashfox://guide/rigging',
@@ -76,9 +79,6 @@ export const GUIDE_RESOURCES: ResourceContent[] = [
     text: loadGuideMarkdown('entity-workflow', GUIDE_FALLBACKS['entity-workflow'])
   }
 ];
-
-
-
 
 
 

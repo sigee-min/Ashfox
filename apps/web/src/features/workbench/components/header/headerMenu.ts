@@ -1,5 +1,4 @@
 export type HeaderMenu =
-  | 'new'
   | 'export'
   | 'capture'
   | null;

@@ -1,8 +1,8 @@
 import type { AssetId } from '../../../model';
 import type {
-  BlobCopyExportFile,
   ResolvedBlob
 } from '../../contract';
+import type { MaterializedTextureFile } from '../../texture';
 import type { GltfDocument } from './contract';
 
 export interface GltfBuildOptions {
@@ -12,5 +12,5 @@ export interface GltfBuildOptions {
 export interface CompiledGltf {
   document: GltfDocument;
   binary: Uint8Array;
-  textureFiles: BlobCopyExportFile[];
+  textureFiles: MaterializedTextureFile[];
 }

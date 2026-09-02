@@ -1,11 +1,12 @@
 import {
   evaluateProductionReadiness,
-  type ProjectDocument,
+  type AssetProject,
   type ValidationReport
 } from '@ashfox/engine-core';
 
-import type {
-  VisualReviewReceipt
+import {
+  isValidVisualReviewReceipt,
+  type VisualReviewReceipt
 } from '../../application/review';
 import type {
   PresentRequest,
@@ -13,67 +14,70 @@ import type {
   VisualReviewDecisionRequest,
   ViewPresentationRequest
 } from './types';
-import {
-  presentedReviewChecks
-} from '../../application/review';
+import { VISUAL_REVIEW_CHECKS } from '../../application/review';
 import {
   nextVisualReview
 } from './visualReviewPlan';
-import {
-  pendingIntentProgramBlock
-} from './proposal';
 
 interface PresentAgentProjectInput {
   request: PresentRequest;
-  document: ProjectDocument;
+  project: AssetProject;
   report: ValidationReport;
   visualReviews: readonly VisualReviewReceipt[];
   review: (
     request: VisualReviewDecisionRequest
   ) => Promise<PresentResult>;
   present: (
-    request: ViewPresentationRequest
+    request: ViewPresentationRequest,
+    document?: AssetProject['document']
   ) => Promise<PresentResult>;
+  candidatePreview?: (token: string) => AssetProject | null;
 }
 
 const previewCamera = (
   request: Extract<PresentRequest, { review: 'preview' }>
-): ViewPresentationRequest['camera'] =>
-  request.camera ??
-    (request.milestone === 'specialists' ? 'front' : 'perspective');
+): ViewPresentationRequest['camera'] => request.camera ?? 'perspective';
 
 export const presentAgentProject = ({
   request,
-  document,
+  project,
   report,
   visualReviews,
   review,
-  present
+  present,
+  candidatePreview
 }: PresentAgentProjectInput): Promise<PresentResult> => {
-  const proposalBlock = pendingIntentProgramBlock(document);
-  if (proposalBlock) {
-    return Promise.resolve({
-      ok: false,
-      revision: document.revision,
-      error: {
-        code: 'invalid_state',
-        ...proposalBlock
-      }
-    });
-  }
+  const document = project.document;
   if (request.review === 'accept' || request.review === 'reject') {
     return review(request);
   }
-  const readiness = evaluateProductionReadiness(document, report);
   if (request.review === 'preview') {
-    if (!document.authoringProfile) {
+    const previewProject = request.previewToken === undefined
+      ? project
+      : candidatePreview?.(request.previewToken) ?? null;
+    if (previewProject === null) {
+      return Promise.resolve({
+        ok: false,
+        revision: document.revision,
+        error: {
+          code: 'not_found',
+          path: 'previewToken',
+          expected: 'an active candidate preview token from workspace inspect'
+        }
+      });
+    }
+    const previewDocument = previewProject.document;
+    const readiness = previewProject === project
+      ? evaluateProductionReadiness(previewDocument, report)
+      : evaluateProductionReadiness(previewDocument);
+    if (previewDocument.scene.roots.length === 0) {
       return Promise.resolve({
         ok: false,
         revision: document.revision,
         error: {
           code: 'invalid_state',
-          path: 'authoringProfile',
-          expected: 'a configured archetype and specialist profile before preview'
+          path: 'scene',
+          expected: 'visible canonical scene geometry before preview'
         }
       });
     }
@@ -84,29 +88,22 @@ export const presentAgentProject = ({
         error: {
           code: 'invalid_state',
           path: 'model',
-          expected: 'visible milestone geometry before preview'
+          expected: 'visible canonical geometry before preview'
         }
       });
     }
-    const milestone = request.milestone ?? null;
     const camera = previewCamera(request);
     return present({
       review: 'preview',
       purpose: 'preview',
-      milestone,
       mode: 'frame',
       camera,
       clipId: null,
       timeSeconds: 0,
-      reviewChecks: presentedReviewChecks(
-        document,
-        camera,
-        false,
-        null,
-        milestone
-      )
-    });
+      reviewChecks: VISUAL_REVIEW_CHECKS
+    }, previewDocument);
   }
+  const readiness = evaluateProductionReadiness(document, report);
   if (!readiness.mechanicallyReady) {
     return Promise.resolve({
       ok: false,
@@ -122,6 +119,7 @@ export const presentAgentProject = ({
   }
   const rejected = visualReviews.find(
     (receipt) =>
+      isValidVisualReviewReceipt(receipt, project) &&
       receipt.observation.data.purpose === 'delivery' &&
       receipt.decision.verdict === 'rejected'
   );
@@ -138,7 +136,7 @@ export const presentAgentProject = ({
     });
   }
   const nextReview = nextVisualReview(
-    document,
+    project,
     readiness,
     visualReviews
   );
@@ -157,15 +155,8 @@ export const presentAgentProject = ({
   return present({
     review: 'next',
     purpose: 'delivery',
-    milestone: null,
     ...nextReview,
     timeSeconds: 0,
-    reviewChecks: presentedReviewChecks(
-      document,
-      nextReview.camera,
-      nextReview.mode === 'cycle',
-      nextReview.clipId,
-      null
-    )
+    reviewChecks: VISUAL_REVIEW_CHECKS
   });
 };

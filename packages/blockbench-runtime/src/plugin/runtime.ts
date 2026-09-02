@@ -24,7 +24,6 @@ import { resolveEndpointConfig } from './endpointConfig';
 import { registerPluginSettings } from './pluginSettings';
 import { resolveTraceLogDestPath } from './traceLogPath';
 import { buildRuntimeServices } from './runtimeServices';
-import { registerCodecs } from './runtimeCodecs';
 import { createRuntimeServerState, restartServer, type RuntimeServerState } from './runtimeServer';
 import { createDefaultPolicies, createTraceLogDefaults } from './runtimeDefaults';
 import type { TraceRecorder } from '../trace/recorder';
@@ -181,22 +180,23 @@ export const registerPlugin = () => {
 
 ashfox exposes a clean MCP-facing tool surface for AI/agents:
 
-- Modeling is low-level only: add_bone/add_cube (one item per call).
+- Canonical Ashfox authoring is workspace-first through the Web Studio agent manifest and workspace.apply.
+- add_bone/add_cube and other live model mutations are compatibility-session tools only; they never update the canonical asset workspace.
 - UVs are fully internal: assign_texture -> paint_faces (no manual UV tools).
-- Deterministic low-level tools only; no high-level pipelines.
+- Deterministic compatibility-session tools only; no second canonical authoring pipeline.
   - Formats: Java Block/Item enabled by default; GeckoLib/Animated Java gated by capability flags.
 - MCP endpoint: set in Settings (ashfox: Server) or ASHFOX_HOST/PORT/PATH env vars (default 127.0.0.1:8787/mcp).
 - Server starts automatically and restarts on endpoint changes.
 
 Recommended flow:
 1) Configure endpoint via Settings or ASHFOX_HOST/PORT/PATH env vars when needed.
-  2) Use \`ashfox.invoke\` with low-level tools (model/texture/animation).
-3) Export, render preview, and run validate to catch issues early.
+  2) Use the Web Studio agent manifest and workspace.apply for canonical Ashfox assets.
+3) Use \`ashfox.invoke\` model/texture/animation tools only for an explicitly requested live compatibility-session edit, then validate that session separately.
 
 Notes:
 - undo/redo is wrapped where applicable using Blockbench.edit/Undo.
 - preview capture falls back to canvas toDataURL; ensure a renderable viewport.
-- export currently writes a session snapshot JSON; format-specific codecs to be extended.
+- game-delivery exports are compiled from the sealed Ashfox project document outside the live Blockbench host.
 - support is limited to the latest Blockbench desktop release (older versions untested).`,
     variant: 'desktop',
     onload() {
@@ -232,10 +232,8 @@ Notes:
         }
       });
       const {
-        session,
         capabilities,
         dispatcher,
-        formats,
         traceRecorder,
         traceLogFileWriter,
         traceLogFlushScheduler
@@ -245,14 +243,6 @@ Notes:
       globalTraceLogWriter = traceLogFileWriter;
       globalTraceLogFlushScheduler = traceLogFlushScheduler;
 
-      registerCodecs({
-        capabilities,
-        session,
-        formats,
-        formatOverrides,
-        exportPolicy: policies.exportPolicy,
-        logger
-      });
       restartServerWithState();
 
       exposeBridgeWithVersion({
@@ -273,7 +263,3 @@ Notes:
     }
   });
 };
-
-
-
-

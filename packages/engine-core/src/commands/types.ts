@@ -1,16 +1,18 @@
-import { INTERNAL_CONTRACT_VERSIONS } from '@ashfox/internal-contracts';
+import { COMMAND_RECEIPT_SCHEMA_VERSION as CURRENT_COMMAND_RECEIPT_SCHEMA_VERSION } from
+  '@ashfox/internal-contracts';
 
 import type {
-  EntityId,
-  ProjectDocument,
-  ProjectId,
-  Revision,
-  SurfacePixelDensity
+  EntityId
 } from '../model';
+import type { AssetProject } from '../project/asset';
+import type {
+  WorkspaceChangeSet,
+  WorkspaceEntrySelector
+} from '../project/workspace';
 import type { InvariantFinding } from '../validation';
 
 export const COMMAND_RECEIPT_SCHEMA_VERSION =
-  INTERNAL_CONTRACT_VERSIONS.commandReceipt;
+  CURRENT_COMMAND_RECEIPT_SCHEMA_VERSION;
 
 export const COMMAND_SOURCES = [
   'web',
@@ -20,39 +22,18 @@ export const COMMAND_SOURCES = [
 ] as const;
 export type CommandSource = (typeof COMMAND_SOURCES)[number];
 
-export interface ProjectCreateInput {
-  name: string;
-  density?: 1;
-}
-
-/** Internal input used while creating a project from its canonical settings. */
-export interface ProjectDocumentCreateInput {
-  id: ProjectId;
-  name: string;
-  createdAt: string;
-  density?: SurfacePixelDensity;
-}
-
-export interface IntentProgramProposalInput {
-  source: string;
-}
-
-export interface IntentProgramCompileInput {
-  /** SHA-256 shown with the reviewed v1 draft. */
-  sourceDigest: string;
+/** One explicit entry selection and one complete workspace change set. */
+export interface WorkspaceApplyInput {
+  readonly entry: WorkspaceEntrySelector;
+  readonly changes: WorkspaceChangeSet;
 }
 
 /**
- * The complete mutation surface. Geometry, materials, authoring profiles, and
- * animation are compiler output, never commands that a caller can issue.
+ * The complete mutation surface. Geometry, materials, and animation are
+ * compiler output, never commands that a caller can issue.
  */
 export interface CommandPayloadMap {
-  'project.create': ProjectCreateInput;
-  'project.rename': {
-    name: string;
-  };
-  'intent.program.propose': IntentProgramProposalInput;
-  'intent.program.compile': IntentProgramCompileInput;
+  'workspace.apply': WorkspaceApplyInput;
 }
 
 export type CommandName = keyof CommandPayloadMap;
@@ -66,8 +47,8 @@ export type ProjectCommandOperation = {
 
 export interface CommandBatch {
   batchId: string;
-  baseProjectId: ProjectId;
-  baseRevision: Revision;
+  baseProjectId: AssetProject['id'];
+  baseRevision: AssetProject['revision'];
   operations: readonly ProjectCommandOperation[];
 }
 
@@ -92,12 +73,12 @@ export interface CommandEffects {
 export interface CommandReceipt {
   schemaVersion: typeof COMMAND_RECEIPT_SCHEMA_VERSION;
   commandId: string;
-  projectId: ProjectId;
+  projectId: AssetProject['id'];
   actorId: string;
   source: CommandSource;
   summary: string;
-  beforeRevision: Revision;
-  revision: Revision;
+  beforeRevision: AssetProject['revision'];
+  revision: AssetProject['revision'];
   completedAt: string;
   durationMs: number;
   effects: CommandEffects;
@@ -121,7 +102,7 @@ export interface CommandError {
 
 export interface CommandBatchSuccess {
   ok: true;
-  document: ProjectDocument;
+  project: AssetProject;
   summary: string;
   effects: CommandEffects;
   findings: readonly InvariantFinding[];
@@ -129,7 +110,7 @@ export interface CommandBatchSuccess {
 
 export interface CommandBatchFailure {
   ok: false;
-  currentRevision: Revision;
+  currentRevision: AssetProject['revision'];
   error: CommandError;
   findings?: readonly InvariantFinding[];
 }

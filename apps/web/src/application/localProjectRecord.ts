@@ -1,60 +1,56 @@
 import {
-  INTERNAL_CONTRACT_VERSIONS,
-  INTENT_PROGRAM_SOURCE_MAX_LENGTH,
-  isCurrentInternalContractVersion
+  writeWorkspaceFile,
+  type AuthoredAssetWorkspace,
+  type WorkspaceEntrySelector
 } from '@ashfox/engine-core';
 import {
   hasExactContractKeys,
   isCanonicalIsoDate,
   isClosedContractRecord,
-  isNonEmptyContractText
+  isNonEmptyContractText,
+  LOCAL_PROJECT_RECORD_SCHEMA_VERSION as CURRENT_LOCAL_PROJECT_RECORD_SCHEMA_VERSION
 } from '@ashfox/internal-contracts';
 
 export const LOCAL_PROJECT_SCHEMA_VERSION =
-  INTERNAL_CONTRACT_VERSIONS.localProjectRecord;
+  CURRENT_LOCAL_PROJECT_RECORD_SCHEMA_VERSION;
 
-/**
- * Durable browser authority. Compiled ProjectDocument output is deliberately
- * absent and must be reconstructed atomically from `source` on every restore.
- */
+/** Durable browser authority; products are rebuilt from the selected entry. */
 export interface LocalProjectRecord {
   readonly schemaVersion: typeof LOCAL_PROJECT_SCHEMA_VERSION;
   readonly projectId: string;
   readonly revision: string;
   readonly createdAt: string;
-  readonly source: string;
+  readonly updatedAt: string;
+  readonly workspace: AuthoredAssetWorkspace;
+  readonly entry: WorkspaceEntrySelector;
   readonly savedAt: string;
 }
 
 const LOCAL_PROJECT_RECORD_KEYS = new Set([
-  'schemaVersion',
-  'projectId',
-  'revision',
-  'createdAt',
-  'source',
-  'savedAt'
+  'schemaVersion', 'projectId', 'revision', 'createdAt', 'updatedAt',
+  'workspace', 'entry', 'savedAt'
 ]);
 
 export interface CreateLocalProjectRecordInput {
   readonly projectId: string;
   readonly revision: string;
   readonly createdAt: string;
-  readonly source: string;
+  readonly updatedAt: string;
+  readonly workspace: AuthoredAssetWorkspace;
+  readonly entry: WorkspaceEntrySelector;
   readonly savedAt: string;
 }
 
 export const createLocalProjectRecord = ({
-  projectId,
-  revision,
-  createdAt,
-  source,
-  savedAt
+  projectId, revision, createdAt, updatedAt, workspace, entry, savedAt
 }: CreateLocalProjectRecordInput): LocalProjectRecord => ({
   schemaVersion: LOCAL_PROJECT_SCHEMA_VERSION,
   projectId,
   revision,
   createdAt,
-  source,
+  updatedAt,
+  workspace,
+  entry,
   savedAt
 });
 
@@ -93,47 +89,74 @@ export const compareProjectRevisions = (
   return projectRevisionSerial(left) - projectRevisionSerial(right);
 };
 
+const isEntrySelector = (value: unknown): value is WorkspaceEntrySelector =>
+  isClosedContractRecord(value) &&
+  hasExactContractKeys(value, new Set(['packageName', 'entryName'])) &&
+  isNonEmptyContractText(value.packageName) &&
+  isNonEmptyContractText(value.entryName) &&
+  /^[A-Za-z_][A-Za-z0-9_]*$/u.test(value.entryName);
+
+const workspaceContainsEntry = (
+  workspace: AuthoredAssetWorkspace,
+  entry: WorkspaceEntrySelector
+): boolean => workspace.manifest.packages.some((pkg) =>
+  pkg.name === entry.packageName &&
+  pkg.manifest.entries.some((candidate) => candidate.name === entry.entryName));
+
 export const isValidLocalProjectRecord = (
   value: unknown,
   projectId: string
-): value is LocalProjectRecord =>
-  isClosedContractRecord(value) &&
-  hasExactContractKeys(value, LOCAL_PROJECT_RECORD_KEYS) &&
-  isCurrentInternalContractVersion(
-    'localProjectRecord',
-    value.schemaVersion
-  ) &&
-  isNonEmptyContractText(value.projectId) &&
-  value.projectId === projectId &&
-  isNonEmptyContractText(value.revision) &&
-  isCanonicalIsoDate(value.createdAt) &&
-  typeof value.source === 'string' &&
-  value.source.length > 0 &&
-  value.source.length <= INTENT_PROGRAM_SOURCE_MAX_LENGTH &&
-  isCanonicalIsoDate(value.savedAt);
+): value is LocalProjectRecord => {
+  if (!isClosedContractRecord(value) ||
+    !hasExactContractKeys(value, LOCAL_PROJECT_RECORD_KEYS) ||
+    value.schemaVersion !== LOCAL_PROJECT_SCHEMA_VERSION ||
+    !isNonEmptyContractText(value.projectId) || value.projectId !== projectId ||
+    !isNonEmptyContractText(value.revision) ||
+    !isCanonicalIsoDate(value.createdAt) || !isCanonicalIsoDate(value.updatedAt) ||
+    !isCanonicalIsoDate(value.savedAt) || !isEntrySelector(value.entry) ||
+    typeof value.workspace !== 'object' || value.workspace === null) return false;
+  try {
+    return writeWorkspaceFile(value.workspace as AuthoredAssetWorkspace).ok &&
+      workspaceContainsEntry(value.workspace as AuthoredAssetWorkspace, value.entry);
+  } catch {
+    return false;
+  }
+};
 
 export const parseLocalProjectRecord = (
   value: unknown,
   projectId: string
 ): LocalProjectRecord => {
   if (!isValidLocalProjectRecord(value, projectId)) {
-    throw new Error('Stored local source failed the closed v1 contract.');
+    throw new Error('Stored local workspace failed the exact-current contract.');
   }
   return {
     schemaVersion: value.schemaVersion,
     projectId: value.projectId,
     revision: value.revision,
     createdAt: value.createdAt,
-    source: value.source,
+    updatedAt: value.updatedAt,
+    workspace: value.workspace,
+    entry: value.entry,
     savedAt: value.savedAt
   };
+};
+
+const workspaceEncoding = (workspace: AuthoredAssetWorkspace): string | null => {
+  try {
+    const result = writeWorkspaceFile(workspace);
+    return result.ok ? result.source : null;
+  } catch {
+    return null;
+  }
 };
 
 export const areLocalProjectRecordsEqual = (
   left: LocalProjectRecord,
   right: LocalProjectRecord
-): boolean =>
-  left.projectId === right.projectId &&
-  left.revision === right.revision &&
-  left.createdAt === right.createdAt &&
-  left.source === right.source;
+): boolean => left.projectId === right.projectId &&
+  left.revision === right.revision && left.createdAt === right.createdAt &&
+  left.updatedAt === right.updatedAt && left.savedAt === right.savedAt &&
+  left.entry.packageName === right.entry.packageName &&
+  left.entry.entryName === right.entry.entryName &&
+  workspaceEncoding(left.workspace) === workspaceEncoding(right.workspace);

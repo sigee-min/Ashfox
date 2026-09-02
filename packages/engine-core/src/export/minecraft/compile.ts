@@ -4,6 +4,9 @@ import {
 import type {
   AnimationClip
 } from '../../model';
+import {
+  assertValidatedExportTargetDocument
+} from '../pipeline/validate';
 import type { ExportAdaptedDocument } from '../adapter';
 import {
   effectivelyVisibleSceneNodeIds
@@ -31,13 +34,15 @@ const compileClip = (
   );
   for (const channel of channels) {
     const target = document.scene.nodes[channel.targetNodeId];
-    if (
-      !target ||
-      target.kind !== 'bone' ||
-      !visibleNodeIds.has(target.id)
-    ) {
-      continue;
-    }
+    if (!target) throw new Error(
+      `Validated Minecraft animation target "${channel.targetNodeId}" is missing from the scene.`
+    );
+    if (target.kind !== 'bone') throw new Error(
+      `Validated Minecraft animation target "${channel.targetNodeId}" is not a bone.`
+    );
+    if (!visibleNodeIds.has(target.id)) throw new Error(
+      `Validated Minecraft animation target "${channel.targetNodeId}" is hidden.`
+    );
     const bone = bones[target.name] ?? {};
     const compiled = compileMinecraftAnimationChannel(channel, options);
     if (
@@ -99,6 +104,7 @@ export const buildMinecraftActorAnimation = (
   document: ExportAdaptedDocument,
   options: MinecraftAnimationCompileOptions
 ): MinecraftActorAnimationFile => {
+  assertValidatedExportTargetDocument(document, ['bedrock', 'geckolib5']);
   assertProjectAnimationsExportable(document, document.formatProfile.id);
   const visibleNodeIds = effectivelyVisibleSceneNodeIds(document);
   const animationNames = minecraftActorAnimationNames(document);

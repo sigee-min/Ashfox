@@ -13,7 +13,6 @@ export type IconName =
   | 'grid'
   | 'key'
   | 'locator'
-  | 'mesh'
   | 'moon'
   | 'move'
   | 'pause'
@@ -86,11 +85,6 @@ const paths: Record<IconName, ReactNode> = {
     <>
       <circle cx="12" cy="12" r="2.3" />
       <path d="M12 2v7M12 15v7M2 12h7M15 12h7" />
-    </>
-  ),
-  mesh: (
-    <>
-      <path d="m4 18 3-12 10-2 3 13-9 3zM7 6l4 14M17 4l-6 16M7 6l13 11M4 18l13-14" />
     </>
   ),
   moon: <path d="M19 15.2A8 8 0 0 1 8.8 5 8 8 0 1 0 19 15.2Z" />,

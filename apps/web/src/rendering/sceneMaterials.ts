@@ -40,26 +40,17 @@ export const configureTextureMap = (
   map: THREE.Texture,
   texture: TextureAsset
 ): THREE.Texture => {
-  if (texture.atlasMode === 'generate') {
-    map.magFilter = THREE.NearestFilter;
-    map.minFilter = THREE.NearestFilter;
-    map.generateMipmaps = false;
-    map.colorSpace =
-      texture.colorSpace === 'srgb'
-        ? THREE.SRGBColorSpace
-        : THREE.NoColorSpace;
-    map.needsUpdate = true;
-    return map;
-  }
   map.magFilter =
     texture.sampling === 'nearest'
       ? THREE.NearestFilter
       : THREE.LinearFilter;
   map.minFilter =
-    texture.sampling === 'nearest'
+    texture.raster?.backgroundAlpha === 0
+      ? THREE.NearestFilter
+      : texture.sampling === 'nearest'
       ? THREE.NearestMipmapNearestFilter
       : THREE.LinearMipmapLinearFilter;
-  map.generateMipmaps = true;
+  map.generateMipmaps = texture.raster?.backgroundAlpha !== 0;
   map.colorSpace =
     texture.colorSpace === 'srgb'
       ? THREE.SRGBColorSpace
@@ -118,14 +109,17 @@ const createStoredTextureMap = (
 export const createProjectMaterials = (
   document: ProjectDocument,
   assets: ProjectAssets,
-  untexturedColor = '#808892'
+  untexturedColor = '#808892',
+  showTextures = true
 ): ProjectMaterialLibrary => {
   const readiness: Promise<void>[] = [];
   const resources = new Map<
     string,
     { texture: TextureAsset; map: THREE.Texture | null }
   >();
-  for (const texture of Object.values(document.textures)) {
+  for (const texture of showTextures
+    ? Object.values(document.textures)
+    : []) {
     let map: THREE.Texture | null;
     if (texture.raster) {
       map = createRasterTextureMap(document, texture);
@@ -168,31 +162,29 @@ export const createProjectMaterials = (
     const common = {
       color: resource.map ? '#ffffff' : previewColor(resource.texture),
       map: resource.map,
-      transparent: additive,
+      transparent: additive || resource.texture.raster?.backgroundAlpha === 0,
       blending: additive
         ? THREE.AdditiveBlending
         : THREE.NormalBlending,
-      depthWrite: !additive,
+      depthWrite: !additive && resource.texture.raster?.backgroundAlpha !== 0,
       side:
         resource.texture.renderSides === 'double'
           ? THREE.DoubleSide
           : THREE.FrontSide
     } as const;
-    const material = resource.texture.atlasMode === 'generate'
-      ? new THREE.MeshBasicMaterial(common)
-      : new THREE.MeshStandardMaterial({
-          ...common,
-          roughness: 0.84,
-          metalness: 0.02,
-          emissive:
-            emission > 0
-              ? resource.map
-                ? '#ffffff'
-                : previewColor(resource.texture)
-              : '#000000',
-          emissiveMap: emission > 0 ? resource.map : null,
-          emissiveIntensity: emission
-        });
+    const material = new THREE.MeshStandardMaterial({
+      ...common,
+      roughness: 0.84,
+      metalness: 0.02,
+      emissive:
+        emission > 0
+          ? resource.map
+            ? '#ffffff'
+            : previewColor(resource.texture)
+          : '#000000',
+      emissiveMap: emission > 0 ? resource.map : null,
+      emissiveIntensity: emission
+    });
     materials.set(key, material);
     return material;
   };

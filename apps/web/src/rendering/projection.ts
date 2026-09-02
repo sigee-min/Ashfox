@@ -16,12 +16,16 @@ import type {
 const disposeObject = (object: THREE.Object3D): void => {
   const mesh = object as THREE.Mesh;
   mesh.geometry?.dispose();
-  if (!object.userData.overlay) return;
   const materials = Array.isArray(mesh.material)
     ? mesh.material
     : mesh.material
       ? [mesh.material]
       : [];
+  if (object.userData.ownsMaterial) {
+    for (const material of materials) material.dispose();
+    return;
+  }
+  if (!object.userData.overlay) return;
   for (const material of materials) disposeMaterial(material);
 };
 
@@ -42,7 +46,8 @@ export const projectToThreeScene = (
   const materials = createProjectMaterials(
     document,
     options.assets,
-    options.untexturedColor
+    options.untexturedColor,
+    options.showTextures !== false
   );
   const readiness: ProjectSceneProjection['readiness'] = {
     status: 'pending',
@@ -63,7 +68,13 @@ export const projectToThreeScene = (
     group.visible = node.visible;
     group.userData.nodeId = node.id;
     group.userData.kind = node.kind;
-    applyNodeTransform(document, node, group);
+    // PlaneNode basis is the signed chart authority. Its retired Euler
+    // rotation is retained for Bedrock lowering only; applying both here
+    // would rotate the basis a second time and mirror east/west patches.
+    const webTransform = node.kind === 'plane' && node.basis
+      ? { ...node.transform, rotation: [0, 0, 0] as const }
+      : node.transform;
+    applyNodeTransform(document, node, group, webTransform);
     objectsByNodeId.set(node.id, group);
     addNodeGeometry(node, group, {
       materials,

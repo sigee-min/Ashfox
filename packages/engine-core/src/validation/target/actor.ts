@@ -1,5 +1,6 @@
 import {
   CUBE_FACE_DIRECTIONS,
+  PLANE_FACE_DIRECTIONS,
   type ProjectDocument
 } from '../../model';
 import type { ExportAdaptedDocument } from '../../export/adapter';
@@ -167,9 +168,58 @@ const validateActorCube = (
       message: `${targetName} cube "${node.name}" has no texture and will export without visible surface art.`,
       path: `${path}.faces`,
       entityIds: [nodeId],
-      fix: 'Create or generate a texture and bind it to the enabled cube faces.'
+      fix: 'Author a texture and bind it to the enabled cube faces.'
     });
   }
+};
+
+const validateActorPlane = (
+  node: Extract<ProjectDocument['scene']['nodes'][string], { kind: 'plane' }>,
+  nodeId: string,
+  path: string,
+  targetName: string,
+  textureCount: number,
+  add: FindingSink
+): void => {
+  if (!isIdentityScale(node.transform.scale)) {
+    add({
+      code: 'format.unbaked_transform',
+      severity: 'error',
+      message: `${targetName} plane scale must be baked into size.`,
+      path: `${path}.transform.scale`,
+      entityIds: [nodeId]
+    });
+  }
+  let textured = false;
+  for (const direction of PLANE_FACE_DIRECTIONS) {
+    const face = node.faces[direction];
+    if (!face.enabled) continue;
+    if (!face.uv) add({
+      code: 'format.uv_missing',
+      severity: 'error',
+      message: `Enabled ${targetName} plane faces require an explicit UV rectangle.`,
+      path: `${path}.faces.${direction}.uv`,
+      entityIds: [nodeId]
+    });
+    if (face.textureId !== null) textured = true;
+    if (node.tags?.includes('canonical-presentation') === true &&
+      face.materialInstance !== 'cutout') {
+      add({
+        code: 'format.unsupported_data',
+        severity: 'error',
+        message: `${targetName} canonical alpha planes require the cutout material instance.`,
+        path: `${path}.faces.${direction}.materialInstance`,
+        entityIds: [nodeId]
+      });
+    }
+  }
+  if (textureCount > 0 && !textured) add({
+    code: 'format.texture_missing',
+    severity: 'warning',
+    message: `${targetName} plane "${node.name}" has no texture.`,
+    path: `${path}.faces`,
+    entityIds: [nodeId]
+  });
 };
 
 const validateActorBone = (
@@ -262,22 +312,18 @@ const validateScene = (
   for (const [nodeId, node] of Object.entries(document.scene.nodes)) {
     const path = `scene.nodes.${nodeId}`;
     if (!isSceneNodeEffectivelyVisible(document, nodeId)) continue;
-    if (node.kind === 'mesh') {
-      add({
-        code: 'format.unsupported_data',
-        severity: 'error',
-        message: `${targetName} geometry does not support freeform mesh nodes.`,
-        path,
-        entityIds: [nodeId]
-      });
-      continue;
-    }
     if (node.kind === 'bone') {
       validateActorBone(node, nodeId, path, targetName, boneNames, add);
       continue;
     }
     if (node.kind === 'locator') {
       validateActorLocator(node, nodeId, path, targetName, locatorNames, add);
+      continue;
+    }
+    if (node.kind === 'plane') {
+      validateActorPlane(
+        node, nodeId, path, targetName, textureCount, add
+      );
       continue;
     }
     validateActorCube(node, nodeId, path, targetName, textureCount, add);

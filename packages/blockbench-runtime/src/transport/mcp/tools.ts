@@ -52,12 +52,6 @@ export const MCP_HIGH_LEVEL_TOOLS: McpToolDefinition[] = [
     description: 'Validates the current project.',
     inputSchema: toolSchemas.validate
   }),
-  defineTool({
-    name: 'export',
-    title: 'Export',
-    description: 'Exports the current project to the requested output format (including native codec targets like glTF/OBJ/FBX when available).',
-    inputSchema: toolSchemas.export
-  })
 ];
 
 export const MCP_LOW_LEVEL_TOOLS: McpToolDefinition[] = [
@@ -102,55 +96,55 @@ export const MCP_LOW_LEVEL_TOOLS: McpToolDefinition[] = [
   defineTool({
     name: 'add_bone',
     title: 'Add Bone',
-    description: 'Adds a bone to the current project.',
+    description: 'Adds a bone to the current Blockbench compatibility session; not a canonical Ashfox authoring path.',
     inputSchema: toolSchemas.add_bone
   }),
   defineTool({
     name: 'update_bone',
     title: 'Update Bone',
-    description: 'Updates a bone by id/name.',
+    description: 'Updates a bone in the current Blockbench compatibility session; not canonical Ashfox source.',
     inputSchema: toolSchemas.update_bone
   }),
   defineTool({
     name: 'delete_bone',
     title: 'Delete Bone',
-    description: 'Deletes a bone by id/name (or ids/names for bulk removal).',
+    description: 'Deletes a bone from the current Blockbench compatibility session; not canonical Ashfox source.',
     inputSchema: toolSchemas.delete_bone
   }),
   defineTool({
     name: 'add_cube',
     title: 'Add Cube',
-    description: 'Adds a cube to the current project.',
+    description: 'Adds a cube to the current Blockbench compatibility session; not a canonical Ashfox authoring path.',
     inputSchema: toolSchemas.add_cube
   }),
   defineTool({
     name: 'update_cube',
     title: 'Update Cube',
-    description: 'Updates a cube by id/name.',
+    description: 'Updates a cube in the current Blockbench compatibility session; not canonical Ashfox source.',
     inputSchema: toolSchemas.update_cube
   }),
   defineTool({
     name: 'delete_cube',
     title: 'Delete Cube',
-    description: 'Deletes a cube by id/name (or ids/names for bulk removal).',
+    description: 'Deletes a cube from the current Blockbench compatibility session; not canonical Ashfox source.',
     inputSchema: toolSchemas.delete_cube
   }),
   defineTool({
     name: 'add_mesh',
     title: 'Add Mesh',
-    description: 'Adds a mesh with explicit vertices/faces (mesh-centered modeling).',
+    description: 'Adds a mesh to the current Blockbench compatibility session; not a canonical Ashfox authoring path.',
     inputSchema: toolSchemas.add_mesh
   }),
   defineTool({
     name: 'update_mesh',
     title: 'Update Mesh',
-    description: 'Updates mesh geometry/transform by id/name.',
+    description: 'Updates mesh geometry in the current Blockbench compatibility session; not canonical Ashfox source.',
     inputSchema: toolSchemas.update_mesh
   }),
   defineTool({
     name: 'delete_mesh',
     title: 'Delete Mesh',
-    description: 'Deletes a mesh by id/name (or ids/names for bulk removal).',
+    description: 'Deletes a mesh from the current Blockbench compatibility session; not canonical Ashfox source.',
     inputSchema: toolSchemas.delete_mesh
   }),
   defineTool({
@@ -197,8 +191,6 @@ export const buildToolRegistry = (options?: { includeLowLevel?: boolean }): Tool
 };
 
 export const DEFAULT_TOOL_REGISTRY = buildToolRegistry({ includeLowLevel: true });
-
-
 
 
 

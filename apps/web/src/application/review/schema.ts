@@ -1,4 +1,5 @@
-import { INTERNAL_CONTRACT_VERSIONS } from '@ashfox/engine-core';
+import { VISUAL_REVIEW_RECEIPT_SCHEMA_VERSION as CURRENT_VISUAL_REVIEW_RECEIPT_SCHEMA_VERSION } from
+  '@ashfox/internal-contracts';
 
 import type {
   VisualReviewIssue,
@@ -6,7 +7,7 @@ import type {
 } from './observation';
 
 export const VISUAL_REVIEW_RECEIPT_SCHEMA_VERSION =
-  INTERNAL_CONTRACT_VERSIONS.visualReviewReceipt;
+  CURRENT_VISUAL_REVIEW_RECEIPT_SCHEMA_VERSION;
 
 export interface VisualReviewDecision {
   readonly verdict: 'accepted' | 'rejected';

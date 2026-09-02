@@ -1,29 +1,11 @@
-export declare const INTERNAL_CONTRACT_VERSIONS: Readonly<{
-  readonly projectDocument: 1;
-  readonly authoringProfile: 1;
-  readonly authoringRouting: 1;
-  readonly commandReceipt: 1;
-  readonly exportBundle: 1;
-  readonly localProjectRecord: 1;
-  readonly visualReviewReceipt: 1;
-  readonly sidecarIpc: 1;
-  readonly traceLog: 1;
-  readonly skillReleaseDescriptor: 1;
-}>;
-
-export type InternalContractVersions =
-  typeof INTERNAL_CONTRACT_VERSIONS;
-export type InternalContractName = keyof InternalContractVersions;
-export type InternalContractVersion<
-  TName extends InternalContractName
-> = InternalContractVersions[TName];
-
-export declare const isCurrentInternalContractVersion: <
-  TName extends InternalContractName
->(
-  name: TName,
-  value: unknown
-) => value is InternalContractVersion<TName>;
+export declare const PROJECT_DOCUMENT_SCHEMA_VERSION: 1;
+export declare const COMMAND_RECEIPT_SCHEMA_VERSION: 1;
+export declare const EXPORT_BUNDLE_SCHEMA_VERSION: 1;
+export declare const LOCAL_PROJECT_RECORD_SCHEMA_VERSION: 1;
+export declare const VISUAL_REVIEW_RECEIPT_SCHEMA_VERSION: 1;
+export declare const SIDECAR_IPC_SCHEMA_VERSION: 1;
+export declare const TRACE_LOG_SCHEMA_VERSION: 1;
+export declare const SKILL_RELEASE_DESCRIPTOR_SCHEMA_VERSION: 1;
 
 export declare const isClosedContractRecord: (
   value: unknown

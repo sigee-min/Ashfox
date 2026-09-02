@@ -35,7 +35,6 @@ export const STATEFUL_TOOL_NAMES = [
   'delete_animation_clip',
   'set_frame_pose',
   'set_trigger_keyframes',
-  'export',
   'validate',
   'render_preview'
 ] as const;
@@ -83,7 +82,6 @@ export const createHandlerMaps = (args: {
   };
 
   const statefulHandlers: StatefulHandlerMap = {
-    export: (payload) => args.service.exportModel(payload),
     validate: (payload) => args.service.validate(payload)
   };
 
@@ -110,4 +108,3 @@ export const createHandlerMaps = (args: {
 
   return { statefulRetryHandlers, statefulHandlers, responseHandlers };
 };
-

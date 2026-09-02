@@ -25,7 +25,6 @@ import type {
   DeleteMeshCommand,
   TriggerKeyframeCommand
 } from '../src/ports/editor';
-import type { ExportPort } from '../src/ports/exporter';
 import type { FormatPort } from '../src/ports/formats';
 import type { HostPort } from '../src/ports/host';
 import type { ResourceStore, ResourceContent, ResourceDescriptor, ResourceTemplate } from '../src/ports/resources';
@@ -183,23 +182,6 @@ export const createFormatPortStub = (
 
 export const createSnapshotPortStub = (session: ProjectSession, override?: () => ReturnType<ProjectSession['snapshot']> | null): SnapshotPort => ({
   readSnapshot: () => (override ? override() : session.snapshot())
-});
-
-export const createExportPortStub = (mode: 'ok' | 'not_implemented' = 'not_implemented'): ExportPort => ({
-  exportNative: () =>
-    mode === 'ok'
-      ? null
-      : {
-          code: 'not_implemented',
-          message: 'export not implemented'
-        },
-  exportGltf: () =>
-    mode === 'ok'
-      ? null
-      : {
-          code: 'not_implemented',
-          message: 'export not implemented'
-        }
 });
 
 export const createHostPortStub = (): HostPort => ({

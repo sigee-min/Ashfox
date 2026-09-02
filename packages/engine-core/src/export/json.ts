@@ -15,11 +15,6 @@ const sortJson = (value: JsonValue): JsonValue => {
   return value;
 };
 
-export const stringifyDeterministicJson = (
-  value: JsonValue | object
-): string =>
-  `${JSON.stringify(sortJson(value as JsonValue), null, 2)}\n`;
-
 export const stringifyCompactDeterministicJson = (
   value: JsonValue | object
 ): string => JSON.stringify(sortJson(value as JsonValue));
@@ -38,22 +33,5 @@ export const createCompactJsonExportFile = (
     contentType,
     data: jsonData,
     text: stringifyCompactDeterministicJson(jsonData)
-  };
-};
-
-export const createJsonExportFile = (
-  role: ExportFileRole,
-  path: string,
-  data: JsonValue | object,
-  contentType: JsonExportFile['contentType'] = 'application/json'
-): JsonExportFile => {
-  const jsonData = data as JsonValue;
-  return {
-    kind: 'json',
-    role,
-    path,
-    contentType,
-    data: jsonData,
-    text: stringifyDeterministicJson(jsonData)
   };
 };

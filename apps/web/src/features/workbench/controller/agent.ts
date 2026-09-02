@@ -7,6 +7,7 @@ import type {
 
 import type {
   CommandReceipt,
+  AssetProject,
   ProjectDocument,
   ValidationReport
 } from '@ashfox/engine-core';
@@ -47,7 +48,7 @@ import type {
 } from '../viewport/viewportTypes';
 
 interface UseWorkbenchAgentControllerInput {
-  document: ProjectDocument;
+  project: AssetProject;
   projectGeneration: number;
   assets: ProjectAssets;
   activity: readonly CommandReceipt[];
@@ -57,7 +58,6 @@ interface UseWorkbenchAgentControllerInput {
   selectedNodeId: string | null;
   report: ValidationReport;
   dispatch: Dispatch<HistoryAction>;
-  buildDocuments: readonly ProjectDocument[];
   operationLease: OperationLease;
   selectNode: (nodeId: string | null) => void;
   prepareView: (request: {
@@ -66,6 +66,7 @@ interface UseWorkbenchAgentControllerInput {
   }) => void;
   setPlayhead: Dispatch<SetStateAction<number>>;
   setPlaying: Dispatch<SetStateAction<boolean>>;
+  onCandidatePreview: (token: string | null) => void;
   capture: (
     request: CaptureArtifactRequest,
     lease: OperationLeaseToken
@@ -73,7 +74,7 @@ interface UseWorkbenchAgentControllerInput {
 }
 
 export const useWorkbenchAgentController = ({
-  document,
+  project,
   projectGeneration,
   assets,
   activity,
@@ -83,14 +84,15 @@ export const useWorkbenchAgentController = ({
   selectedNodeId,
   report,
   dispatch,
-  buildDocuments,
   operationLease,
   selectNode,
   prepareView,
   setPlayhead,
   setPlaying,
+  onCandidatePreview,
   capture
 }: UseWorkbenchAgentControllerInput) => {
+  const document = project.document;
   const {
     presentationNonce,
     present,
@@ -98,7 +100,7 @@ export const useWorkbenchAgentController = ({
     onPresented,
     getVisualReviews
   } = useAgentPresentation({
-    document,
+    project,
     visualReviews,
     onRecordVisualReview,
     prepareView,
@@ -107,7 +109,7 @@ export const useWorkbenchAgentController = ({
   });
 
   const status = useAgentCommandPort({
-    document,
+    project,
     projectGeneration,
     assets,
     activity,
@@ -119,8 +121,8 @@ export const useWorkbenchAgentController = ({
     onPresent: present,
     onReview: review,
     onCapture: capture,
-    buildDocuments,
     getVisualReviews,
+    onCandidatePreview,
     operationLease
   });
 

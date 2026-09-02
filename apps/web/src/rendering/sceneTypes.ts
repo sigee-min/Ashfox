@@ -4,6 +4,7 @@ import type { ProjectAssets } from '../application/projectAssets';
 export interface ProjectSceneOptions {
   assets: ProjectAssets;
   showSkeleton: boolean;
+  showTextures?: boolean;
   showWireframe: boolean;
   untexturedColor?: string;
 }

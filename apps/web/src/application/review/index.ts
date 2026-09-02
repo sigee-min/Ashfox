@@ -1,12 +1,10 @@
 export {
   VISUAL_REVIEW_CAMERAS,
+  VISUAL_REVIEW_CHECKS,
   VISUAL_REVIEW_ISSUES,
-  VISUAL_REVIEW_MILESTONES,
-  presentedReviewChecks,
-  type PresentedReviewCheck,
   type VisualReviewCamera,
   type VisualReviewIssue,
-  type VisualReviewMilestone,
+  type VisualReviewCheck,
   type VisualReviewObservation
 } from './observation';
 export {

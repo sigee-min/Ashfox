@@ -4,6 +4,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { ProjectSceneProjection } from '../../../rendering/sceneTypes';
 import type { CameraCommand } from './viewportTypes';
 import { applyCameraPreset } from '../../../rendering/cameraPresets';
+import type { ProjectForwardDirection } from '@ashfox/engine-core';
 import {
   addViewportLighting,
   createViewportEnvironment,
@@ -106,12 +107,14 @@ export const applyViewportEnvironment = (
 
 export const applyCameraCommand = (
   runtime: ViewportRuntime,
-  command: CameraCommand
+  command: CameraCommand,
+  forward: ProjectForwardDirection = 'north'
 ): void => {
   const target = applyCameraPreset(
     runtime.camera,
     command.mode,
-    runtime.projection?.root
+    runtime.projection?.root,
+    forward
   );
   runtime.orbit.target.copy(target);
   runtime.orbit.update();

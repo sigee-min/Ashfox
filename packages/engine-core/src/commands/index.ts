@@ -6,10 +6,8 @@ export {
   type CommandError,
   type CommandReceipt,
   type CommandSource,
-  type IntentProgramCompileInput,
-  type IntentProgramProposalInput,
   type ProjectCommandOperation,
-  type ProjectCreateInput
+  type WorkspaceApplyInput
 } from './types';
 export {
   executeAgentCommandBatch,
@@ -27,4 +25,3 @@ export {
   getAgentCommandDefinition,
   listAgentCommandDefinitions
 } from './registry';
-export { createProjectFromInput } from './definitions/createProject';

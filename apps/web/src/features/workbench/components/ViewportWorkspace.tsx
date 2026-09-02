@@ -23,9 +23,7 @@ import type {
 import { ViewportEnvironmentToggle } from './viewport/Environment';
 
 interface ViewportWorkspaceProps {
-  /** Ephemeral candidate projection or the current canonical document. */
   readonly viewportDocument: Readonly<ProjectDocument>;
-  readonly isCandidatePreview: boolean;
   readonly assets: ProjectAssets;
   readonly viewportOptions: ViewportOptions;
   readonly environment: ViewportEnvironmentId;
@@ -42,11 +40,9 @@ interface ViewportWorkspaceProps {
 }
 
 const ignoreSelection = (): void => undefined;
-const ignorePresentation = (): void => undefined;
 
 export function ViewportWorkspace({
   viewportDocument,
-  isCandidatePreview,
   assets,
   viewportOptions,
   environment,
@@ -76,7 +72,7 @@ export function ViewportWorkspace({
           presentationNonce={presentationNonce}
           onSelectNode={ignoreSelection}
           onStats={onStats}
-          onPresented={isCandidatePreview ? ignorePresentation : onPresented}
+          onPresented={onPresented}
         />
         {Object.keys(viewportDocument.scene.nodes).length === 0 ? (
           <section className="empty-creation-guide" aria-label="Create your first asset">
@@ -94,11 +90,6 @@ export function ViewportWorkspace({
               <li><strong>3</strong><span>Export or capture</span></li>
             </ol>
           </section>
-        ) : null}
-        {isCandidatePreview ? (
-          <div className="candidate-preview-badge" role="status">
-            AI preview · decision in progress
-          </div>
         ) : null}
         <div className="viewport-top-left">
           <div className="view-chip">

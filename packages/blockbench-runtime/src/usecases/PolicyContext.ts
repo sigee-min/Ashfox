@@ -1,7 +1,7 @@
 import type { FormatOverrides } from '../domain/formats';
 import { DEFAULT_UV_POLICY } from '../domain/uv/policy';
 import type { UvPolicyConfig } from '../domain/uv/policy';
-import type { ExportPolicy, SnapshotPolicy, ToolPolicies } from './policies';
+import type { SnapshotPolicy, ToolPolicies } from './policies';
 import type { PolicyContextLike } from './contextTypes';
 
 export class PolicyContext implements PolicyContextLike {
@@ -17,10 +17,6 @@ export class PolicyContext implements PolicyContextLike {
 
   getFormatOverrides(): FormatOverrides | undefined {
     return this.policies.formatOverrides;
-  }
-
-  getExportPolicy(): ExportPolicy | undefined {
-    return this.policies.exportPolicy;
   }
 
   getAutoDiscardUnsaved(): boolean | undefined {
@@ -56,7 +52,6 @@ export class PolicyContext implements PolicyContextLike {
   }
 
 }
-
 
 
 

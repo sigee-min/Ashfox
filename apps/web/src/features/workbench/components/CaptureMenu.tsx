@@ -14,61 +14,12 @@ export function CaptureMenu(props: CaptureMenuProps) {
   return (
     <section
       className="header-popover capture-menu"
-      aria-label="Capture GIF"
+      aria-label="Build replay"
     >
       <div className="popover-heading">
-        <strong>Capture GIF</strong>
+        <strong>Build replay</strong>
         <span>{view.headingMeta}</span>
       </div>
-
-      <div
-        className="capture-mode-switch"
-        role="tablist"
-        aria-label="Capture mode"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={view.mode === 'build'}
-          className={view.mode === 'build' ? 'is-active' : ''}
-          disabled={view.capturing}
-          onClick={() => controller.selectMode('build')}
-        >
-          Build process
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={view.mode === 'animation'}
-          className={view.mode === 'animation' ? 'is-active' : ''}
-          disabled={view.capturing}
-          onClick={() => controller.selectMode('animation')}
-        >
-          Animation
-        </button>
-      </div>
-
-      {view.showAnimationPicker ? (
-        <label className="popover-field">
-          <span>Animation</span>
-          <select
-            aria-label="Capture animation"
-            value={view.activeClipId}
-            disabled={view.capturing}
-            onChange={(event) =>
-              controller.selectClip(event.target.value || null)}
-          >
-            {view.clips.length === 0 ? (
-              <option value="">No animation clips</option>
-            ) : null}
-            {view.clips.map((clip) => (
-              <option key={clip.id} value={clip.id}>
-                {clip.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
 
       <div className="capture-summary">
         <span>{view.framesLabel}</span>

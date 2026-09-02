@@ -1,10 +1,9 @@
 import {
   executeAgentCommandBatch,
   executeWebCommandBatch,
-  validateProjectDocument,
+  type AssetProject,
   type CommandBatch,
-  type CommandReceipt,
-  type ProjectDocument
+  type CommandReceipt
 } from '@ashfox/engine-core';
 
 import {
@@ -14,7 +13,7 @@ import {
   projectRevisionSerial
 } from './localProjectRecord';
 import {
-  areProjectDocumentsEqual,
+  areAssetProjectsEqual,
   type ProjectSnapshot
 } from './snapshot';
 import {
@@ -29,9 +28,9 @@ const ACTIVITY_LIMIT = 100;
 const COMMAND_OUTCOME_LIMIT = 32;
 
 export interface HistoryState {
-  past: ProjectDocument[];
-  present: ProjectDocument;
-  future: ProjectDocument[];
+  past: AssetProject[];
+  present: AssetProject;
+  future: AssetProject[];
   serial: number;
   activity: CommandReceipt[];
   lastCommandOutcome: CommandOutcome | null;
@@ -39,25 +38,18 @@ export interface HistoryState {
 }
 
 export type HistoryAction =
-  | {
-      type: 'execute';
-      batch: CommandBatch;
-      actorId: string;
-      source: 'agent' | 'web';
-      committedAt: string;
-    }
+  | { type: 'execute'; batch: CommandBatch; actorId: string;
+      source: 'agent' | 'web'; committedAt: string }
   | { type: 'undo'; commandId: string; committedAt: string }
   | { type: 'redo'; commandId: string; committedAt: string }
   | { type: 'hydrate'; record: ProjectSnapshot }
   | { type: 'external'; record: ProjectSnapshot };
 
-export const createHistoryState = (
-  document: ProjectDocument
-): HistoryState => ({
+export const createHistoryState = (project: AssetProject): HistoryState => ({
   past: [],
-  present: document,
+  present: project,
   future: [],
-  serial: projectRevisionSerial(document.revision),
+  serial: projectRevisionSerial(project.revision),
   activity: [],
   lastCommandOutcome: null,
   commandOutcomes: []
@@ -65,76 +57,71 @@ export const createHistoryState = (
 
 export const localRevisionForSerial = localProjectRevisionForSerial;
 
-const stampDocument = (
-  document: ProjectDocument,
+/** Stamp both layers exactly once; document remains a derived projection. */
+const stampProject = (
+  project: AssetProject,
   serial: number,
   updatedAt: string
-): ProjectDocument => ({
-  ...document,
+): AssetProject => Object.freeze({
+  ...project,
   revision: localRevisionForSerial(serial),
-  updatedAt
+  updatedAt,
+  document: Object.freeze({
+    ...project.document,
+    revision: localRevisionForSerial(serial),
+    updatedAt
+  })
 });
 
 const prependActivity = (
   state: HistoryState,
   receipt: CommandReceipt
-): CommandReceipt[] =>
-  [receipt, ...state.activity].slice(0, ACTIVITY_LIMIT);
+): CommandReceipt[] => [receipt, ...state.activity].slice(0, ACTIVITY_LIMIT);
 
 const prependCommandOutcome = (
   state: HistoryState,
   outcome: CommandOutcome
-): readonly CommandOutcome[] =>
-  [
-    outcome,
-    ...state.commandOutcomes.filter(
-      (entry) => entry.commandId !== outcome.commandId
-    )
-  ].slice(0, COMMAND_OUTCOME_LIMIT);
+): readonly CommandOutcome[] => [
+  outcome,
+  ...state.commandOutcomes.filter((entry) => entry.commandId !== outcome.commandId)
+].slice(0, COMMAND_OUTCOME_LIMIT);
 
 const historyReceipt = (
   state: HistoryState,
-  present: ProjectDocument,
+  present: AssetProject,
   commandId: string,
   completedAt: string,
   summary: string
-): CommandReceipt =>
-  createCommandReceipt({
-    commandId,
-    projectId: present.id,
-    source: 'web',
-    actorId: LOCAL_COMMAND_ACTOR_ID,
-    summary,
-    beforeRevision: state.present.revision,
-    revision: present.revision,
-    completedAt,
-    effects: {
-      createdEntityIds: [],
-      changedEntityIds: [],
-      removedEntityIds: [],
-      invalidated: [
-        'scene',
-        'textures',
-        'animations',
-        'validation',
-        'preview'
-      ]
-    },
-    findings: validateProjectDocument(present).findings
-  });
+): CommandReceipt => createCommandReceipt({
+  commandId,
+  projectId: present.id,
+  source: 'web',
+  actorId: LOCAL_COMMAND_ACTOR_ID,
+  summary,
+  beforeRevision: state.present.revision,
+  revision: present.revision,
+  completedAt,
+  effects: {
+    createdEntityIds: [],
+    changedEntityIds: [],
+    removedEntityIds: [],
+    invalidated: ['scene', 'textures', 'animations', 'validation', 'preview']
+  },
+  findings: []
+});
 
 const hydrateHistory = (
   state: HistoryState,
   record: ProjectSnapshot
 ): HistoryState => {
-  const { id: projectId, revision } = record.document;
-  if (projectId !== state.present.id) {
-    const serial = projectRevisionSerial(revision);
+  const project = record.project;
+  if (project.id !== state.present.id) {
+    const serial = projectRevisionSerial(project.revision);
     return {
       past: [],
-      present: isLocalProjectRevision(revision)
-        ? record.document
-        : stampDocument(record.document, serial, record.savedAt),
+      present: isLocalProjectRevision(project.revision)
+        ? project
+        : stampProject(project, serial, record.savedAt),
       future: [],
       serial,
       activity: [...record.activity],
@@ -142,30 +129,16 @@ const hydrateHistory = (
       commandOutcomes: state.commandOutcomes
     };
   }
-
-  if (areProjectDocumentsEqual(record.document, state.present)) {
-    return {
-      ...state,
-      activity: [...record.activity],
-      lastCommandOutcome: null
-    };
+  if (areAssetProjectsEqual(project, state.present)) {
+    return { ...state, activity: [...record.activity], lastCommandOutcome: null };
   }
-
-  const recordSerial = projectRevisionSerial(revision);
-  const replacesCurrentSnapshot = !areProjectDocumentsEqual(
-    record.document,
-    state.present
-  );
-  const serial = replacesCurrentSnapshot && recordSerial <= state.serial
-    ? state.serial + 1
-    : Math.max(state.serial, recordSerial);
-  const present = serial === recordSerial
-    ? record.document
-    : stampDocument(record.document, serial, record.savedAt);
-
+  const recordSerial = projectRevisionSerial(project.revision);
+  const serial = recordSerial <= state.serial ? state.serial + 1 : recordSerial;
   return {
     past: [],
-    present,
+    present: serial === recordSerial
+      ? project
+      : stampProject(project, serial, record.savedAt),
     future: [],
     serial,
     activity: [...record.activity],
@@ -178,23 +151,14 @@ const receiveExternalHistory = (
   state: HistoryState,
   record: ProjectSnapshot
 ): HistoryState => {
-  if (
-    record.document.id !== state.present.id ||
-    compareProjectRevisions(
-      record.document.revision,
-      state.present.revision
-    ) <= 0
-  ) {
-    return state;
-  }
+  if (record.project.id !== state.present.id || compareProjectRevisions(
+    record.project.revision, state.present.revision
+  ) <= 0) return state;
   return {
     past: [...state.past.slice(-(HISTORY_LIMIT - 1)), state.present],
-    present: record.document,
+    present: record.project,
     future: [],
-    serial: Math.max(
-      state.serial,
-      projectRevisionSerial(record.document.revision)
-    ),
+    serial: Math.max(state.serial, projectRevisionSerial(record.project.revision)),
     activity: [...record.activity],
     lastCommandOutcome: null,
     commandOutcomes: state.commandOutcomes
@@ -207,24 +171,15 @@ const undoHistory = (
 ): HistoryState => {
   const previous = state.past.at(-1);
   if (!previous) return state;
-
-  const serial = state.serial + 1;
-  const present = stampDocument(previous, serial, action.committedAt);
+  const present = stampProject(previous, state.serial + 1, action.committedAt);
   return {
     past: state.past.slice(0, -1),
     present,
     future: [state.present, ...state.future].slice(0, HISTORY_LIMIT),
-    serial,
-    activity: prependActivity(
-      state,
-      historyReceipt(
-        state,
-        present,
-        action.commandId,
-        action.committedAt,
-        'Undo last command'
-      )
-    ),
+    serial: state.serial + 1,
+    activity: prependActivity(state, historyReceipt(
+      state, present, action.commandId, action.committedAt, 'Undo last command'
+    )),
     lastCommandOutcome: null,
     commandOutcomes: state.commandOutcomes
   };
@@ -236,24 +191,15 @@ const redoHistory = (
 ): HistoryState => {
   const next = state.future[0];
   if (!next) return state;
-
-  const serial = state.serial + 1;
-  const present = stampDocument(next, serial, action.committedAt);
+  const present = stampProject(next, state.serial + 1, action.committedAt);
   return {
     past: [...state.past.slice(-(HISTORY_LIMIT - 1)), state.present],
     present,
     future: state.future.slice(1),
-    serial,
-    activity: prependActivity(
-      state,
-      historyReceipt(
-        state,
-        present,
-        action.commandId,
-        action.committedAt,
-        'Redo command'
-      )
-    ),
+    serial: state.serial + 1,
+    activity: prependActivity(state, historyReceipt(
+      state, present, action.commandId, action.committedAt, 'Redo command'
+    )),
     lastCommandOutcome: null,
     commandOutcomes: state.commandOutcomes
   };
@@ -266,51 +212,30 @@ const executeBatch = (
   let result;
   try {
     const executeForSource = action.source === 'agent'
-      ? executeAgentCommandBatch
-      : executeWebCommandBatch;
+      ? executeAgentCommandBatch : executeWebCommandBatch;
     result = executeForSource(state.present, action.batch);
   } catch (error) {
     const outcome: CommandOutcome = {
-      status: 'rejected',
-      commandId: action.batch.batchId,
+      status: 'rejected', commandId: action.batch.batchId,
       revision: state.present.revision,
-      error: {
-        code: 'invalid_state',
-        message:
-          error instanceof Error
-            ? `Command execution failed: ${error.message}`
-            : 'Command execution failed.'
-      }
+      error: { code: 'invalid_state', message: error instanceof Error
+        ? `Command execution failed: ${error.message}` : 'Command execution failed.' }
     };
-    return {
-      ...state,
-      lastCommandOutcome: outcome,
-      commandOutcomes: prependCommandOutcome(state, outcome)
-    };
+    return { ...state, lastCommandOutcome: outcome,
+      commandOutcomes: prependCommandOutcome(state, outcome) };
   }
   if (!result.ok) {
     const outcome: CommandOutcome = {
-      status: 'rejected',
-      commandId: action.batch.batchId,
-      revision: state.present.revision,
-      error: result.error,
+      status: 'rejected', commandId: action.batch.batchId,
+      revision: state.present.revision, error: result.error,
       ...boundedCommandFindings(result.findings)
     };
-    return {
-      ...state,
-      lastCommandOutcome: outcome,
-      commandOutcomes: prependCommandOutcome(state, outcome)
-    };
+    return { ...state, lastCommandOutcome: outcome,
+      commandOutcomes: prependCommandOutcome(state, outcome) };
   }
-
   const serial = state.serial + 1;
-  const replacesProject = result.document.id !== state.present.id;
-  const nextSerial = serial;
-  const present = stampDocument(
-    result.document,
-    nextSerial,
-    action.committedAt
-  );
+  const present = stampProject(result.project, serial, action.committedAt);
+  const replacesProject = result.project.id !== state.present.id;
   const receipt = createCommandReceipt({
     commandId: action.batch.batchId,
     projectId: present.id,
@@ -323,41 +248,24 @@ const executeBatch = (
     effects: result.effects,
     findings: result.findings
   });
-  const outcome: CommandOutcome = {
-    status: 'committed',
-    commandId: action.batch.batchId,
-    receipt
-  };
-
+  const outcome: CommandOutcome = { status: 'committed', commandId: action.batch.batchId, receipt };
   return {
-    past: replacesProject
-      ? []
-      : [...state.past.slice(-(HISTORY_LIMIT - 1)), state.present],
+    past: replacesProject ? [] : [...state.past.slice(-(HISTORY_LIMIT - 1)), state.present],
     present,
     future: [],
-    serial: nextSerial,
-    activity: replacesProject
-      ? [receipt]
-      : prependActivity(state, receipt),
+    serial,
+    activity: replacesProject ? [receipt] : prependActivity(state, receipt),
     lastCommandOutcome: outcome,
     commandOutcomes: prependCommandOutcome(state, outcome)
   };
 };
 
-export const historyReducer = (
-  state: HistoryState,
-  action: HistoryAction
-): HistoryState => {
+export const historyReducer = (state: HistoryState, action: HistoryAction): HistoryState => {
   switch (action.type) {
-    case 'hydrate':
-      return hydrateHistory(state, action.record);
-    case 'external':
-      return receiveExternalHistory(state, action.record);
-    case 'undo':
-      return undoHistory(state, action);
-    case 'redo':
-      return redoHistory(state, action);
-    case 'execute':
-      return executeBatch(state, action);
+    case 'hydrate': return hydrateHistory(state, action.record);
+    case 'external': return receiveExternalHistory(state, action.record);
+    case 'undo': return undoHistory(state, action);
+    case 'redo': return redoHistory(state, action);
+    case 'execute': return executeBatch(state, action);
   }
 };

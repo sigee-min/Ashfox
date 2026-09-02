@@ -1,11 +1,8 @@
-import { INTERNAL_CONTRACT_VERSIONS } from '@ashfox/internal-contracts';
+import { PROJECT_DOCUMENT_SCHEMA_VERSION as CURRENT_PROJECT_DOCUMENT_SCHEMA_VERSION } from
+  '@ashfox/internal-contracts';
 
 export const PROJECT_DOCUMENT_SCHEMA_VERSION =
-  INTERNAL_CONTRACT_VERSIONS.projectDocument;
-
-// Delivery-target compatibility version for exported ashfox.generic assets.
-// It is intentionally independent from internal persistence contracts.
-export const ASHFOX_GENERIC_FORMAT_VERSION = '1' as const;
+  CURRENT_PROJECT_DOCUMENT_SCHEMA_VERSION;
 
 export type ProjectId = string;
 export type EntityId = string;
@@ -14,11 +11,17 @@ export type ClipId = string;
 export type ChannelId = string;
 export type KeyframeId = string;
 export type Revision = string;
+export type ProjectForwardDirection = 'north' | 'south' | 'east' | 'west';
 export type Vec2 = readonly [number, number];
 export type Vec3 = readonly [number, number, number];
 export type UvRect = readonly [number, number, number, number];
 
-export const SURFACE_PIXEL_DENSITIES = [1, 2, 4] as const;
+/**
+ * Density is a multiplier over the Minecraft baseline of 16 texels/block.
+ * Asset workspaces fix that baseline; the derived document retains a compact
+ * multiplier for renderer and export APIs.
+ */
+export const SURFACE_PIXEL_DENSITIES = [1, 2, 4, 8] as const;
 export type SurfacePixelDensity =
   (typeof SURFACE_PIXEL_DENSITIES)[number];
 
@@ -35,6 +38,8 @@ export type JsonValue =
   | { [key: string]: JsonValue };
 
 export interface ProjectSettings {
+  /** Canonical viewing direction materialized from workspace semantics. */
+  forward: ProjectForwardDirection;
   textureResolution: {
     width: number;
     height: number;
@@ -43,7 +48,7 @@ export interface ProjectSettings {
   coordinateSystem: {
     up: 'y';
     handedness: 'right';
-    unit: 'pixel' | 'block' | 'meter';
+    unit: 'pixel';
     rotationUnit: 'degree';
     rotationOrder: 'xyz';
   };

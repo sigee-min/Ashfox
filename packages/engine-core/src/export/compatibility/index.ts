@@ -1,13 +1,13 @@
 export {
   EXPORT_PRESETS,
-  MINECRAFT_GAME_VERSIONS,
   exportCompatibilityFor,
-  exportCompatibilityOptions,
-  supportsJavaBlockMultiAxisRotation
+  exportCompatibilityOptions
 } from './queries';
 export {
-  EXPORT_COMPATIBILITY_REGISTRY
-} from './registry';
+  exportPresetForBundle,
+  exportTargetDescriptorForPreset,
+  type CurrentExportTargetDescriptor
+} from './target';
 export {
   isExportModelPathValid,
   isExportNamespaceValid,
@@ -15,6 +15,5 @@ export {
 } from './names';
 export type {
   ExportCompatibilityOption,
-  ExportPreset,
-  MinecraftGameVersion
+  ExportPreset
 } from './contract';

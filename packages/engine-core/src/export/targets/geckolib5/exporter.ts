@@ -1,33 +1,28 @@
 import type { ExportAdaptedDocument, ExportTextureAsset } from '../../adapter';
+import type { AssetBuildIdentity } from '../../../project/asset';
+import { createTextureExportFile } from '../../texture';
 import { createCompactJsonExportFile } from '../../json';
 import { createExportBundle } from '../../pipeline/bundle';
 import { validateExportTarget } from '../../pipeline/validate';
 import { buildMinecraftActorAnimation } from '../../minecraft';
 import { buildMinecraftGeometry } from '../../minecraft/geometry';
-import {
-  type BlobCopyExportFile,
-  type ExportBundle
-} from '../../contract';
+import type { ExportBundle } from '../../contract';
+import { exportTargetDescriptorForPreset } from '../../compatibility';
 
-const createTextureCopy = (texture: ExportTextureAsset): BlobCopyExportFile => {
+const createTextureCopy = (document: ExportAdaptedDocument,
+  texture: ExportTextureAsset) => {
   if (!texture.minecraft) {
     throw new Error(`Texture "${texture.id}" has no Minecraft binding.`);
   }
   const binding = texture.minecraft;
-  return {
-    kind: 'blob-copy',
-    role: 'texture',
-    path: `assets/${binding.resource.namespace}/textures/${binding.resource.path}.${binding.extension}`,
-    contentType: texture.source.contentType,
-    source: texture.source
-  };
+  return createTextureExportFile(document, texture,
+    `assets/${binding.resource.namespace}/textures/${binding.resource.path}.${binding.extension}`);
 };
 
-export const buildGeckoLib5Geometry = (document: ExportAdaptedDocument) => {
-  const profile = document.formatProfile;
-  if (profile.id !== 'minecraft.java.geckolib5') {
-    throw new Error('Project does not use the minecraft.java.geckolib5 profile.');
-  }
+const buildGeckoLib5Geometry = (document: ExportAdaptedDocument,
+  profile: Extract<ExportAdaptedDocument['formatProfile'], {
+    id: 'minecraft.java.geckolib5'
+  }>) => {
   return buildMinecraftGeometry(document, {
     formatVersion: profile.geometryFormatVersion,
     identifier: profile.geometryIdentifier,
@@ -35,48 +30,48 @@ export const buildGeckoLib5Geometry = (document: ExportAdaptedDocument) => {
   });
 };
 
-export const buildGeckoLib5Animations = (document: ExportAdaptedDocument) => {
-  const profile = document.formatProfile;
-  if (profile.id !== 'minecraft.java.geckolib5') {
-    throw new Error('Project does not use the minecraft.java.geckolib5 profile.');
-  }
+const buildGeckoLib5Animations = (document: ExportAdaptedDocument,
+  profile: Extract<ExportAdaptedDocument['formatProfile'], {
+    id: 'minecraft.java.geckolib5'
+  }>) => {
   return buildMinecraftActorAnimation(document, {
     formatVersion: profile.animationFormatVersion,
     dialect: 'geckolib5'
   });
 };
 
-export const exportGeckoLib5 = (document: ExportAdaptedDocument): ExportBundle => {
+export const exportGeckoLib5 = (
+  document: ExportAdaptedDocument,
+  build: AssetBuildIdentity
+): ExportBundle => {
   const validation = validateExportTarget(document, {
     profileId: 'minecraft.java.geckolib5',
     errorMessage: 'GeckoLib 5 export validation failed.'
   });
+  const validatedDocument = validation.document;
   const profile = validation.profile;
   const modelPath =
     `assets/${profile.namespace}/geckolib/models/${profile.assetKind}/${profile.modelPath}.geo.json`;
   const animationPath =
     `assets/${profile.namespace}/geckolib/animations/${profile.assetKind}/${profile.animationPath}.animation.json`;
-  const textureFiles = Object.values(document.textures)
+  const textureFiles = Object.values(validatedDocument.textures)
     .sort((left, right) => left.id.localeCompare(right.id))
-    .map(createTextureCopy);
+    .map((texture) => createTextureCopy(validatedDocument, texture));
 
-  return createExportBundle(document, validation.findings, {
-    target: {
-      id: 'minecraft.java.geckolib5',
-      version: profile.minecraftVersion
-    },
+  return createExportBundle(validatedDocument, build, validation.findings, {
+    target: exportTargetDescriptorForPreset('geckolib5').target,
     rootPath: 'src/main/resources',
     entrypoints: [modelPath, animationPath],
     files: [
       createCompactJsonExportFile(
         'geometry',
         modelPath,
-        buildGeckoLib5Geometry(document)
+        buildGeckoLib5Geometry(validatedDocument, profile)
       ),
       createCompactJsonExportFile(
         'animation',
         animationPath,
-        buildGeckoLib5Animations(document)
+        buildGeckoLib5Animations(validatedDocument, profile)
       ),
       ...textureFiles
     ],

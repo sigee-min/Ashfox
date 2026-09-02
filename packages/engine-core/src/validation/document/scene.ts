@@ -1,6 +1,9 @@
 import { isClosedContractRecord } from '@ashfox/internal-contracts';
 
-import { CUBE_FACE_DIRECTIONS } from '../../model';
+import {
+  CUBE_FACE_DIRECTIONS,
+  PLANE_FACE_DIRECTIONS
+} from '../../model';
 import {
   closedRecord,
   expectBoolean,
@@ -16,30 +19,6 @@ import {
   type ContractContext,
   type ContractRecord
 } from './shared';
-
-const validateJoint = (
-  value: unknown,
-  path: string,
-  context: ContractContext
-): void => {
-  if (!isClosedContractRecord(value)) {
-    reject(context, path, `${path} must be a joint object.`);
-    return;
-  }
-  if (value.kind === 'hinge') {
-    const record = closedRecord(value, path, ['kind', 'axis'], [], context);
-    if (record) {
-      expectLiteral(record.axis, ['x', 'y', 'z'], `${path}.axis`, context);
-    }
-    return;
-  }
-  if (value.kind === 'fixed' || value.kind === 'ball') {
-    closedRecord(value, path, ['kind'], [], context);
-    return;
-  }
-  closedRecord(value, path, ['kind'], [], context);
-  reject(context, `${path}.kind`, `${path}.kind is not a supported joint.`);
-};
 
 const validateTransform = (
   value: unknown,
@@ -60,45 +39,20 @@ const validateTransform = (
   expectNumericTuple(record.pivot, 3, `${path}.pivot`, context);
 };
 
-const validateGeneration = (
+const validatePlaneBasis = (
   value: unknown,
   path: string,
   context: ContractContext
 ): void => {
-  const record = closedRecord(
-    value,
-    path,
-    [
-      'authority',
-      'role',
-      'partId',
-      'parentPartId',
-      'parentPartId',
-      'materialId',
-      'primitive',
-      'joint'
-    ],
-    [],
-    context
-  );
+  const record = closedRecord(value, path,
+    ['normal', 'uAxis', 'vAxis', 'orientation'], [], context);
   if (!record) return;
-  expectLiteral(
-    record.authority,
-    ['ashfox.part-compiler'],
-    `${path}.authority`,
-    context
-  );
-  expectLiteral(record.role, ['bone', 'geometry'], `${path}.role`, context);
-  expectString(record.partId, `${path}.partId`, context);
-  expectNullableString(record.parentPartId, `${path}.parentPartId`, context);
-  expectString(record.materialId, `${path}.materialId`, context);
-  expectLiteral(
-    record.primitive,
-    ['mass', 'segment', 'plate', 'radial'],
-    `${path}.primitive`,
-    context
-  );
-  validateJoint(record.joint, `${path}.joint`, context);
+  expectNumericTuple(record.normal, 3, `${path}.normal`, context);
+  expectNumericTuple(record.uAxis, 3, `${path}.uAxis`, context);
+  expectNumericTuple(record.vAxis, 3, `${path}.vAxis`, context);
+  expectLiteral(record.orientation,
+    ['normal', 'mirror-u', 'mirror-v', 'rotate-90'],
+    `${path}.orientation`, context);
 };
 
 const validateCubeFace = (
@@ -159,64 +113,15 @@ const validateCubeFaces = (
   }
 };
 
-const validateMeshVertex = (
+const validatePlaneFaces = (
   value: unknown,
   path: string,
   context: ContractContext
 ): void => {
-  const record = closedRecord(value, path, ['id', 'position'], [], context);
+  const record = closedRecord(value, path, PLANE_FACE_DIRECTIONS, [], context);
   if (!record) return;
-  expectString(record.id, `${path}.id`, context);
-  expectNumericTuple(record.position, 3, `${path}.position`, context);
-};
-
-const validateMeshFace = (
-  value: unknown,
-  path: string,
-  context: ContractContext
-): void => {
-  const record = closedRecord(
-    value,
-    path,
-    ['id', 'vertexIds', 'uv', 'textureId'],
-    [],
-    context
-  );
-  if (!record) return;
-  expectString(record.id, `${path}.id`, context);
-  expectStringArray(record.vertexIds, `${path}.vertexIds`, context);
-  expectNullableString(record.textureId, `${path}.textureId`, context);
-  validateRecordMap(record.uv, `${path}.uv`, context, (entry, entryPath) => {
-    expectNumericTuple(entry, 2, entryPath, context);
-  });
-};
-
-const validateUvPolicy = (
-  value: unknown,
-  path: string,
-  context: ContractContext
-): void => {
-  const record = closedRecord(
-    value,
-    path,
-    [],
-    ['symmetryAxis', 'texelDensity', 'padding'],
-    context
-  );
-  if (!record) return;
-  if (hasOwn(record, 'symmetryAxis')) {
-    expectLiteral(
-      record.symmetryAxis,
-      ['none', 'x', 'y', 'z'],
-      `${path}.symmetryAxis`,
-      context
-    );
-  }
-  if (hasOwn(record, 'texelDensity')) {
-    expectFiniteNumber(record.texelDensity, `${path}.texelDensity`, context);
-  }
-  if (hasOwn(record, 'padding')) {
-    expectFiniteNumber(record.padding, `${path}.padding`, context);
+  for (const direction of PLANE_FACE_DIRECTIONS) {
+    validateCubeFace(record[direction], `${path}.${direction}`, context);
   }
 };
 
@@ -237,11 +142,12 @@ const validateSceneNode = (
     'transform',
     'visible'
   ];
-  const baseOptional = ['tags', 'generation'];
+  const baseOptional = ['tags'];
   let record: ContractRecord | null;
   switch (value.kind) {
     case 'bone':
-      record = closedRecord(value, path, baseRequired, baseOptional, context);
+      record = closedRecord(value, path, baseRequired,
+        [...baseOptional, 'canonicalFrame'], context);
       break;
     case 'locator':
       record = closedRecord(
@@ -253,34 +159,30 @@ const validateSceneNode = (
       );
       break;
     case 'cube':
+      record = value.geometryMode === 'axis-box'
+        ? closedRecord(value, path, [...baseRequired, 'geometryMode', 'bounds',
+          'inflate', 'mirror', 'boxUv', 'faces'],
+        [...baseOptional, 'uvOffset', 'rescale', 'shade', 'lightEmission'], context)
+        : value.geometryMode === 'oriented-box'
+          ? closedRecord(value, path, [...baseRequired, 'geometryMode',
+            'orientedBox', 'inflate', 'mirror', 'boxUv', 'faces'],
+          [...baseOptional, 'uvOffset', 'rescale', 'shade', 'lightEmission'], context)
+          : (reject(context, `${path}.geometryMode`,
+            'Cube geometryMode must be axis-box or oriented-box.',
+            'scene.invalid_kind'), null);
+      break;
+    case 'plane':
       record = closedRecord(
         value,
         path,
         [
           ...baseRequired,
-          'bounds',
-          'inflate',
-          'mirror',
-          'boxUv',
-          'baseColor',
+          'size',
+          'sidedness',
+          'coverageId',
           'faces'
         ],
-        [
-          ...baseOptional,
-          'uvOffset',
-          'rescale',
-          'shade',
-          'lightEmission'
-        ],
-        context
-      );
-      break;
-    case 'mesh':
-      record = closedRecord(
-        value,
-        path,
-        [...baseRequired, 'vertices', 'faces'],
-        [...baseOptional, 'uvPolicy'],
+        [...baseOptional, 'basis'],
         context
       );
       break;
@@ -302,8 +204,21 @@ const validateSceneNode = (
   if (hasOwn(record, 'tags')) {
     expectStringArray(record.tags, `${path}.tags`, context);
   }
-  if (hasOwn(record, 'generation')) {
-    validateGeneration(record.generation, `${path}.generation`, context);
+  if (value.kind === 'bone' && hasOwn(record, 'canonicalFrame')) {
+    const frame = closedRecord(record.canonicalFrame,
+      `${path}.canonicalFrame`,
+        ['origin', 'xAxis', 'yAxis', 'zAxis', 'determinant', 'rotation'], [], context);
+    if (frame) {
+      for (const axis of ['origin', 'xAxis', 'yAxis', 'zAxis'] as const) {
+        expectNumericTuple(frame[axis], 3, `${path}.canonicalFrame.${axis}`,
+          context);
+      }
+      expectNumericTuple(frame.rotation, 3,
+        `${path}.canonicalFrame.rotation`, context);
+      if (frame.determinant !== 1 && frame.determinant !== -1) reject(context,
+        `${path}.canonicalFrame.determinant`,
+        `${path}.canonicalFrame.determinant must be 1 or -1.`);
+    }
   }
   if (value.kind === 'locator' && hasOwn(record, 'ignoreInheritedScale')) {
     expectBoolean(
@@ -313,21 +228,52 @@ const validateSceneNode = (
     );
   }
   if (value.kind === 'cube') {
-    const bounds = closedRecord(
-      record.bounds,
-      `${path}.bounds`,
-      ['from', 'to'],
-      [],
-      context
-    );
-    if (bounds) {
-      expectNumericTuple(bounds.from, 3, `${path}.bounds.from`, context);
-      expectNumericTuple(bounds.to, 3, `${path}.bounds.to`, context);
+    expectString(record.geometryMode, `${path}.geometryMode`, context);
+    if (record.geometryMode === 'axis-box') {
+      const bounds = closedRecord(record.bounds, `${path}.bounds`,
+        ['from', 'to'], [], context);
+      if (bounds) {
+        expectNumericTuple(bounds.from, 3, `${path}.bounds.from`, context);
+        expectNumericTuple(bounds.to, 3, `${path}.bounds.to`, context);
+      }
+    } else if (record.geometryMode === 'oriented-box') {
+      const oriented = closedRecord(record.orientedBox, `${path}.orientedBox`,
+        ['unrotatedFrom', 'unrotatedTo', 'pivot', 'rotation',
+          'cornerDenominator', 'cornerNumerators', 'cornerDigest',
+          'faceChartDigest', 'coverProofDigest'], [], context);
+      if (oriented) {
+        expectNumericTuple(oriented.unrotatedFrom, 3,
+          `${path}.orientedBox.unrotatedFrom`, context);
+        expectNumericTuple(oriented.unrotatedTo, 3,
+          `${path}.orientedBox.unrotatedTo`, context);
+        expectNumericTuple(oriented.pivot, 3,
+          `${path}.orientedBox.pivot`, context);
+        const rotation = closedRecord(oriented.rotation,
+          `${path}.orientedBox.rotation`, ['axis', 'angle22_5Units'], [], context);
+        if (rotation) {
+          if (!['x', 'y', 'z'].includes(String(rotation.axis))) reject(context,
+            `${path}.orientedBox.rotation.axis`, 'Oriented axis must be x, y, or z.');
+          if (![-2, -1, 1, 2].includes(Number(rotation.angle22_5Units))) reject(
+            context, `${path}.orientedBox.rotation.angle22_5Units`,
+            'Oriented rotation must be a supported 22.5-degree tick.');
+        }
+        expectFiniteNumber(oriented.cornerDenominator,
+          `${path}.orientedBox.cornerDenominator`, context);
+        if (!Array.isArray(oriented.cornerNumerators) ||
+          oriented.cornerNumerators.length !== 8 ||
+          oriented.cornerNumerators.some((corner) => !Array.isArray(corner) ||
+            corner.length !== 3 || corner.some((entry) => typeof entry !== 'string'))) {
+          reject(context, `${path}.orientedBox.cornerNumerators`,
+            'Oriented box must carry eight exact string corner tuples.');
+        }
+        for (const key of ['cornerDigest', 'faceChartDigest',
+          'coverProofDigest'] as const) expectString(oriented[key],
+          `${path}.orientedBox.${key}`, context);
+      }
     }
     expectFiniteNumber(record.inflate, `${path}.inflate`, context);
     expectBoolean(record.mirror, `${path}.mirror`, context);
     expectBoolean(record.boxUv, `${path}.boxUv`, context);
-    expectString(record.baseColor, `${path}.baseColor`, context);
     validateCubeFaces(record.faces, `${path}.faces`, context);
     if (hasOwn(record, 'uvOffset')) {
       expectNumericTuple(record.uvOffset, 2, `${path}.uvOffset`, context);
@@ -342,22 +288,19 @@ const validateSceneNode = (
       expectFiniteNumber(record.lightEmission, `${path}.lightEmission`, context);
     }
   }
-  if (value.kind === 'mesh') {
-    validateRecordMap(
-      record.vertices,
-      `${path}.vertices`,
-      context,
-      (entry, entryPath) => validateMeshVertex(entry, entryPath, context)
-    );
-    validateRecordMap(
-      record.faces,
-      `${path}.faces`,
-      context,
-      (entry, entryPath) => validateMeshFace(entry, entryPath, context)
-    );
-    if (hasOwn(record, 'uvPolicy')) {
-      validateUvPolicy(record.uvPolicy, `${path}.uvPolicy`, context);
+  if (value.kind === 'plane') {
+    if (hasOwn(record, 'basis')) {
+      validatePlaneBasis(record.basis, `${path}.basis`, context);
     }
+    expectNumericTuple(record.size, 2, `${path}.size`, context);
+    expectLiteral(
+      record.sidedness,
+      ['front', 'double'],
+      `${path}.sidedness`,
+      context
+    );
+    expectString(record.coverageId, `${path}.coverageId`, context);
+    validatePlaneFaces(record.faces, `${path}.faces`, context);
   }
 };
 

@@ -1,5 +1,4 @@
 import {
-  intentProgramReviewDigest,
   listAgentCommandDefinitions,
   type ProjectCommandOperation,
   type ProjectDocument
@@ -29,29 +28,15 @@ const command = (
     : [];
 
 const startAction = (): readonly InspectWorkflowAction[] =>
-  command('project.create');
+  command('workspace.apply');
 
 /** Derive the closed next-command set from the current workflow stage. */
 export const deriveWorkflowActions = (
-  document: ProjectDocument,
+  _document: ProjectDocument,
   stage: InspectWorkflowStage,
   _blocker: ReadinessFinding | null,
   _rejectedReview: VisualReviewReceipt | null
 ): DerivedWorkflowActions => {
-  if (document.intentProgramProposal) {
-    const operation = {
-      name: 'intent.program.compile',
-      payload: {
-        sourceDigest: intentProgramReviewDigest(
-          document.intentProgramProposal
-        )
-      }
-    } as const;
-    return {
-      exactOperation: operation,
-      nextActions: [{ kind: 'operation', operation }]
-    };
-  }
   if (stage === 'start') {
     return { exactOperation: null, nextActions: startAction() };
   }
@@ -64,7 +49,7 @@ export const deriveWorkflowActions = (
   if (stage === 'deliver') return { exactOperation: null, nextActions: [] };
   return {
     exactOperation: null,
-    nextActions: command('intent.program.propose')
+    nextActions: command('workspace.apply')
   };
 };
 
@@ -73,14 +58,8 @@ export const fallbackWorkflowFix = (
   actions: readonly InspectWorkflowAction[]
 ): string => {
   const first = actions[0];
-  if (
-    first?.kind === 'operation' &&
-    first.operation.name === 'intent.program.compile'
-  ) {
-    return 'Run the exact compile operation after verifying the staged source and candidate receipt.';
-  }
-  if (first?.kind === 'command' && first.name === 'intent.program.propose') {
-    return 'Revise the complete intent-program source, submit it, then inspect for the exact compile operation.';
+  if (first?.kind === 'command' && first.name === 'workspace.apply') {
+    return 'Revise one complete workspace change set and apply it atomically.';
   }
   if (first?.kind === 'command') {
     return `Correct the project setup with ${first.name}, then inspect again.`;
@@ -91,5 +70,5 @@ export const fallbackWorkflowFix = (
   if (stage === 'deliver') {
     return 'Tell the user to choose an export adapter in the Export menu. Target delivery settings are user-owned and never change the canonical asset.';
   }
-  return 'Inspect the blocker and revise the intent-program source if compiled output is incomplete.';
+  return 'Inspect the blocker and revise the workspace entry if output is incomplete.';
 };

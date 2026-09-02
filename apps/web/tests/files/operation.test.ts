@@ -121,12 +121,13 @@ assert.equal(nextOperation.result, null);
 
 const projectArtifact: ArtifactFile = {
   kind: 'project',
-  name: 'moonveil-kirin.ashfox',
-  contentType: 'text/x-ashfox;charset=utf-8',
+  name: 'moonveil-kirin.ashfoxworkspace',
+  contentType: 'application/vnd.ashfox.workspace+json',
   bytes: new Uint8Array([1, 2, 3]),
   projectId: 'project-moonveil-kirin',
-  sourceRevision: 'local-0001',
-  target: 'glb',
+  revision: 'local-0001',
+  target: 'project',
+  targetVersion: null,
   contentHash: 'sha256:test-artifact'
 };
 const saveRunning = fileOperationReducer<ArtifactFile>(
@@ -135,7 +136,7 @@ const saveRunning = fileOperationReducer<ArtifactFile>(
     type: 'start',
     operationId: 1,
     kind: 'save',
-    message: 'Preparing Intent Program source'
+    message: 'Preparing workspace'
   }
 );
 const artifactReady = fileOperationReducer(saveRunning, {

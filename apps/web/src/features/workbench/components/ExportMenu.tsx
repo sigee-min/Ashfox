@@ -13,7 +13,6 @@ import {
 
 import {
   defaultExportAdapterFor,
-  defaultProjectGameVersionFor,
   exportAdapterInputFor,
   isMinecraftExportTarget,
   projectExportTargetLabel,
@@ -32,13 +31,10 @@ interface ExportMenuProps {
 }
 
 const adapterIsValid = (adapter: ExportAdapterDraft): boolean =>
-  isExportModelPathValid(adapter.target, adapter.modelPath.trim()) &&
+  isExportModelPathValid(adapter.target, adapter.modelPath) &&
   (
     !isMinecraftExportTarget(adapter.target) ||
-    (
-      adapter.gameVersion !== null &&
-      isExportNamespaceValid(adapter.target, adapter.namespace.trim())
-    )
+    isExportNamespaceValid(adapter.target, adapter.namespace)
   );
 
 export function ExportMenu({
@@ -75,18 +71,10 @@ export function ExportMenu({
       </div>
       <ProjectTargetFields
         target={adapter.target}
-        gameVersion={adapter.gameVersion}
         namespace={adapter.namespace}
         modelPath={adapter.modelPath}
         onTargetChange={(target) => {
-          setAdapter((current) => ({
-            ...current,
-            target,
-            gameVersion: defaultProjectGameVersionFor(target)
-          }));
-        }}
-        onGameVersionChange={(gameVersion) => {
-          setAdapter((current) => ({ ...current, gameVersion }));
+          setAdapter((current) => ({ ...current, target }));
         }}
         onNamespaceChange={(namespace) => {
           setAdapter((current) => ({ ...current, namespace }));
@@ -96,8 +84,9 @@ export function ExportMenu({
         }}
       />
       <p className="export-adaptation-note">
-        Target, game version, namespace, and path are delivery settings. The
-        canonical model, textures, rig, animation, and Intent Program remain
+        Target, namespace, and path are delivery settings. The current target
+        version comes from the compiler registry. The
+        canonical model, textures, rig, animation, and authored source remain
         unchanged.
       </p>
       <p

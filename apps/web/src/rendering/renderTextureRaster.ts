@@ -15,7 +15,9 @@ export const renderTextureRaster = (
   if (!context) throw new Error('Texture canvas is unavailable.');
   const raster = rasterizeTexture(document, texture);
   const image = context.createImageData(raster.width, raster.height);
-  image.data.set(raster.rgba);
+  // ImageData owns the mutable renderer buffer; canonical raster bytes stay
+  // immutable at the engine boundary.
+  image.data.set(raster.rgba.copy());
   context.putImageData(image, 0, 0);
   return canvas;
 };

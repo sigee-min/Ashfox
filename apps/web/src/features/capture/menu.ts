@@ -1,29 +1,24 @@
-import type { CommandReceipt, ProjectDocument } from '@ashfox/engine-core';
+import type { ProjectDocument } from '@ashfox/engine-core';
 
 import type { CameraMode } from '../../rendering/cameraPresets';
 import type { ViewportEnvironmentId } from '../../rendering/viewportEnvironment';
 import type { ArtifactFile } from '../files/artifactFile';
 import type { FileOperationState } from '../files/fileOperationState';
-import { createBuildCapturePlan } from './buildCaptureTimeline';
+import {
+  BUILD_CAPTURE_FPS,
+  createBuildCapturePlan
+} from './buildCaptureTimeline';
 import type { GifCaptureFile } from './gifCaptureFile';
 import type { GifCaptureRequest } from './gifCaptureRequest';
-import {
-  createGifFramePlan,
-  GIF_CAPTURE_FPS
-} from './gifFramePlan';
-
-export type CaptureMenuMode = 'build' | 'animation';
 
 export interface CaptureMenuAuthority {
   readonly document: ProjectDocument;
-  readonly buildDocuments: readonly ProjectDocument[];
-  readonly activity: readonly CommandReceipt[];
-  readonly activeClipId: string | null;
   readonly environment: ViewportEnvironmentId;
   readonly cameraMode: CameraMode;
   readonly operation: Readonly<FileOperationState<ArtifactFile>>;
   readonly captureFile: GifCaptureFile | null;
   readonly canDownload: boolean;
+  readonly blockedReason: string | null;
 }
 
 export interface CapturePlanSummary {
@@ -32,23 +27,14 @@ export interface CapturePlanSummary {
   readonly error: string | null;
 }
 
-export interface CapturePlanSnapshot {
-  readonly build: CapturePlanSummary;
-  readonly animation: CapturePlanSummary;
-}
-
 export interface CapturePlanReader {
-  readonly read: (authority: CaptureMenuAuthority) => CapturePlanSnapshot;
+  readonly read: (authority: CaptureMenuAuthority) => CapturePlanSummary;
 }
 
 export interface CaptureMenuViewModel {
-  readonly mode: CaptureMenuMode;
   readonly headingMeta: string;
   readonly capturing: boolean;
   readonly ready: boolean;
-  readonly showAnimationPicker: boolean;
-  readonly clips: readonly Readonly<{ id: string; name: string }>[];
-  readonly activeClipId: string;
   readonly framesLabel: string;
   readonly eventsLabel: string;
   readonly cameraLabel: string;
@@ -59,92 +45,39 @@ export interface CaptureMenuViewModel {
   readonly downloadDisabled: boolean;
 }
 
-export interface CaptureRequestPort {
-  readonly create: (
-    authority: CaptureMenuAuthority,
-    mode: CaptureMenuMode
-  ) => GifCaptureRequest | null;
-}
-
-const failedPlan = (
-  error: unknown,
-  fallback: string
-): CapturePlanSummary => Object.freeze({
+const failedPlan = (error: unknown): CapturePlanSummary => Object.freeze({
   frames: 0,
   events: 0,
-  error: error instanceof Error ? error.message : fallback
+  error: error instanceof Error
+    ? error.message
+    : 'Build replay is unavailable.'
 });
-
-const readBuildPlan = (
-  authority: CaptureMenuAuthority
-): CapturePlanSummary => {
-  try {
-    const plan = createBuildCapturePlan(
-      authority.buildDocuments,
-      authority.activity
-    );
-    return Object.freeze({
-      frames: plan.frames.length,
-      events: plan.events.length,
-      error: null
-    });
-  } catch (error: unknown) {
-    return failedPlan(error, 'Build process capture is unavailable.');
-  }
-};
-
-const readAnimationPlan = (
-  authority: CaptureMenuAuthority
-): CapturePlanSummary => {
-  const clip = authority.activeClipId
-    ? authority.document.animations[authority.activeClipId]
-    : undefined;
-  if (!clip) {
-    return Object.freeze({
-      frames: 0,
-      events: 0,
-      error: 'Add or select an animation clip first.'
-    });
-  }
-  try {
-    const plan = createGifFramePlan(clip);
-    return Object.freeze({
-      frames: plan.frames.length,
-      events: plan.eventCount,
-      error: null
-    });
-  } catch (error: unknown) {
-    return failedPlan(error, 'Animation capture is unavailable.');
-  }
-};
 
 export const capturePlanReader: CapturePlanReader = Object.freeze({
-  read: (authority: CaptureMenuAuthority) => Object.freeze({
-    build: readBuildPlan(authority),
-    animation: readAnimationPlan(authority)
-  })
+  read: (authority: CaptureMenuAuthority) => {
+    try {
+      const plan = createBuildCapturePlan(authority.document);
+      return Object.freeze({
+        frames: plan.frames.length,
+        events: plan.events.length,
+        error: null
+      });
+    } catch (error: unknown) {
+      return failedPlan(error);
+    }
+  }
 });
 
-const readyMessage = (file: GifCaptureFile | null): string | null => {
-  if (!file) return null;
-  const eventText = file.eventCount > 0
-    ? ` · ${file.eventCount} ${
-        file.kind === 'build' ? 'build events' : 'events'
-      }`
-    : '';
-  return `Ready · ${file.frameCount} frames${eventText}`;
-};
+const readyMessage = (file: GifCaptureFile | null): string | null =>
+  file === null
+    ? null
+    : `Ready · ${file.frameCount} frames · ${file.eventCount} replay steps`;
 
 export const presentCaptureMenu = (
   authority: CaptureMenuAuthority,
-  mode: CaptureMenuMode,
   reader: CapturePlanReader = capturePlanReader
 ): CaptureMenuViewModel => {
-  const plans = reader.read(authority);
-  const plan = plans[mode];
-  const readyFile = authority.captureFile?.kind === mode
-    ? authority.captureFile
-    : null;
+  const plan = reader.read(authority);
   const capturing =
     authority.operation.phase === 'running' &&
     authority.operation.kind === 'capture';
@@ -156,59 +89,33 @@ export const presentCaptureMenu = (
   const captureFailed =
     authority.operation.kind === 'capture' &&
     authority.operation.phase === 'failed';
-  const fallbackMessage = mode === 'build'
-    ? 'Committed revisions are grouped into semantic build events.'
-    : 'Sound, particle, and timeline events appear on their sampled frame.';
-  const clips = Object.values(authority.document.animations).map((clip) =>
-    Object.freeze({ id: clip.id, name: clip.name })
-  );
-
+  const blocked = authority.blockedReason !== null;
   return Object.freeze({
-    mode,
-    headingMeta: `${GIF_CAPTURE_FPS} fps · 640 × 360 · browser local`,
+    headingMeta: `${BUILD_CAPTURE_FPS} fps · 640 × 360 · browser local`,
     capturing,
-    ready: readyFile !== null,
-    showAnimationPicker: mode === 'animation',
-    clips: Object.freeze(clips),
-    activeClipId: authority.activeClipId ?? '',
+    ready: authority.captureFile !== null,
     framesLabel: `${plan.frames} frames`,
-    eventsLabel:
-      `${plan.events} ${mode === 'build' ? 'build events' : 'timed events'}`,
+    eventsLabel: `${plan.events} replay steps`,
     cameraLabel: `${authority.cameraMode} camera`,
     statusMessage: capturing
       ? authority.operation.message
-      : plan.error ?? captureMessage ?? readyMessage(readyFile) ?? fallbackMessage,
+      : plan.error ?? captureMessage ?? authority.blockedReason ??
+        readyMessage(authority.captureFile) ??
+        'Starts from an empty scene, places every visible element in deterministic canonical element order, applies each element\'s complete owning texture set atomically, activates canonical authored idle motion when available, and holds on the complete model.',
     statusTone: plan.error || captureFailed ? 'error' : 'default',
-    startLabel: readyFile
+    startLabel: authority.captureFile
       ? 'Capture again'
-      : `Capture ${mode === 'build' ? 'build process' : 'animation'}`,
-    startDisabled:
-      plan.error !== null ||
-      (mode === 'animation' && authority.activeClipId === null),
+      : 'Capture build replay',
+    startDisabled: plan.error !== null || blocked,
     downloadDisabled: !authority.canDownload
   });
 };
 
-export const captureRequestPort: CaptureRequestPort = Object.freeze({
-  create: (
-    authority: CaptureMenuAuthority,
-    mode: CaptureMenuMode
-  ): GifCaptureRequest | null => {
-    if (mode === 'build') {
-      return Object.freeze({
-        kind: 'build',
-        documents: authority.buildDocuments,
-        receipts: authority.activity,
-        environment: authority.environment,
-        cameraMode: authority.cameraMode
-      });
-    }
-    if (!authority.activeClipId) return null;
-    return Object.freeze({
-      kind: 'animation',
-      clipId: authority.activeClipId,
+export const captureRequestPort = Object.freeze({
+  create: (authority: CaptureMenuAuthority): GifCaptureRequest =>
+    Object.freeze({
+      kind: 'build',
       environment: authority.environment,
       cameraMode: authority.cameraMode
-    });
-  }
+    })
 });

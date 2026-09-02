@@ -1,14 +1,12 @@
-import type { AnimationPreviewIssue } from '@ashfox/engine-core';
-
 import {
   advanceCycleObservation,
   type CycleObservation
 } from '../../agent/cycleObservation';
+import { isDenseContractArray } from '@ashfox/internal-contracts';
 import type {
   PresentSuccess,
-  PresentedReviewCheck,
+  VisualReviewCheck,
   PresentResult,
-  VisualReviewMilestone,
   ViewPresentationRequest
 } from '../../agent/types';
 import type {
@@ -24,21 +22,28 @@ import {
 
 const FRAME_EPSILON_SECONDS = 0.000001;
 
+const isPositiveSafeInteger = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
+
+const isFiniteCameraMatrix = (value: unknown): value is readonly number[] =>
+  isDenseContractArray(value) &&
+  value.length === 16 &&
+  value.every((entry) => typeof entry === 'number' && Number.isFinite(entry));
+
 export interface PresentationSession {
   nonce: number;
   projectId: string;
-  sourceRevision: string;
+  revision: string;
+  lastFrameNonce: number | null;
   review: ViewPresentationRequest['review'];
   purpose: ViewPresentationRequest['purpose'];
-  milestone: VisualReviewMilestone | null;
   mode: ViewPresentationRequest['mode'];
   camera: CameraMode;
   clipId: string | null;
   timeSeconds: number;
   cycle: CycleObservation | null;
   phase: 'observing' | 'closing';
-  previewIssues: readonly AnimationPreviewIssue[];
-  reviewChecks: readonly PresentedReviewCheck[];
+  reviewChecks: readonly VisualReviewCheck[];
 }
 
 export type PresentationPlaybackEffect =
@@ -94,7 +99,6 @@ const success = (
     data: {
       review: session.review,
       purpose: session.purpose,
-      milestone: session.milestone,
       verdict: 'pending',
       issues: [],
       acknowledgedCheckIds: [],
@@ -108,7 +112,6 @@ const success = (
       playing: frame.playing,
       observedTimeSeconds: frame.timeSeconds,
       completedCycles,
-      previewIssues: session.previewIssues,
       reviewChecks: session.reviewChecks
     }
   },
@@ -134,15 +137,26 @@ export const observePresentationFrame = (
   }
   if (
     frame.projectId !== session.projectId ||
-    frame.revision !== session.sourceRevision
+    frame.revision !== session.revision
   ) {
     return failure(
       frame.revision,
       'stale_revision',
       'revision',
-      session.sourceRevision
+      session.revision
     );
   }
+  if (
+    !isPositiveSafeInteger(frame.frameNonce) ||
+    session.lastFrameNonce !== null &&
+      frame.frameNonce <= session.lastFrameNonce
+  ) {
+    return pending(session);
+  }
+  const observedSession: PresentationSession = {
+    ...session,
+    lastFrameNonce: frame.frameNonce
+  };
   if (frame.projectionStatus === 'failed') {
     return failure(
       frame.revision,
@@ -157,7 +171,14 @@ export const observePresentationFrame = (
     frame.camera !== session.camera ||
     frame.clipId !== session.clipId
   ) {
-    return pending(session);
+    return pending(observedSession);
+  }
+  if (
+    typeof frame.playing !== 'boolean' ||
+    !Number.isFinite(frame.timeSeconds) ||
+    !isFiniteCameraMatrix(frame.cameraMatrix)
+  ) {
+    return pending(observedSession);
   }
   if (session.mode === 'frame') {
     if (
@@ -165,31 +186,31 @@ export const observePresentationFrame = (
       Math.abs(frame.timeSeconds - session.timeSeconds) >
         FRAME_EPSILON_SECONDS
     ) {
-      return pending(session);
+      return pending(observedSession);
     }
     if (!isPixelFrameEvidence(frame.frameEvidence)) {
       return missingFrameEvidence(frame);
     }
-    return success(session, frame, 0, frame.frameEvidence);
+    return success(observedSession, frame, 0, frame.frameEvidence);
   }
-  if (session.phase === 'closing') {
-    if (frame.playing) return pending(session);
+  if (observedSession.phase === 'closing') {
+    if (frame.playing) return pending(observedSession);
     if (frame.timeSeconds > FRAME_EPSILON_SECONDS) {
-      return pending(session, 'rewind');
+      return pending(observedSession, 'rewind');
     }
     if (!isPixelFrameEvidence(frame.frameEvidence)) {
       return missingFrameEvidence(frame);
     }
-    return success(session, frame, 1, frame.frameEvidence);
+    return success(observedSession, frame, 1, frame.frameEvidence);
   }
-  if (!session.cycle) return pending(session);
+  if (!observedSession.cycle) return pending(observedSession);
 
   const advanced = advanceCycleObservation(
-    session.cycle,
+    observedSession.cycle,
     frame.timeSeconds
   );
   const next = {
-    ...session,
+    ...observedSession,
     cycle: advanced.observation
   };
   if (!frame.playing) {

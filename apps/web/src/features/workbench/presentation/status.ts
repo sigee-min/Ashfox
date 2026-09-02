@@ -1,6 +1,6 @@
 import {
   evaluateProductionReadiness,
-  type ProjectDocument,
+  type AssetProject,
   type ValidationReport
 } from '@ashfox/engine-core';
 
@@ -27,8 +27,6 @@ export interface CreationStatusViewModel {
   readonly autosaveState: 'busy' | 'saved' | 'error';
 }
 
-export type CandidatePreviewState = 'none' | 'available' | 'failed';
-
 const autosave = (
   status: StorageStatus
 ): Pick<CreationStatusViewModel, 'autosaveLabel' | 'autosaveState'> => {
@@ -45,31 +43,14 @@ const autosave = (
 };
 
 export const presentCreationStatus = (
-  document: ProjectDocument,
+  project: AssetProject,
   report: ValidationReport,
   visualReviews: readonly VisualReviewReceipt[],
-  storageStatus: StorageStatus,
-  candidatePreview: CandidatePreviewState = 'none'
+  storageStatus: StorageStatus
 ): CreationStatusViewModel => {
+  const document = project.document;
   const saved = autosave(storageStatus);
-  if (document.intentProgramProposal) {
-    return candidatePreview === 'failed'
-      ? {
-          state: 'attention',
-          label: 'AI is revising the update',
-          detail: 'The current asset remains unchanged.',
-          ...saved
-        }
-      : {
-          state: 'working',
-          label: 'AI is preparing an update',
-          detail: candidatePreview === 'available'
-            ? 'Showing a temporary preview while the AI decides whether to compile or revise.'
-            : 'Validating the next asset version.',
-          ...saved
-        };
-  }
-  if (!document.intentProgram) {
+  if (document.scene.roots.length === 0) {
     return {
       state: 'awaiting-prompt',
       label: 'Ready for your prompt',
@@ -88,7 +69,7 @@ export const presentCreationStatus = (
     };
   }
   const remaining = remainingVisualReviews(
-    document,
+    project,
     readiness,
     visualReviews
   );

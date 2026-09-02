@@ -30,20 +30,9 @@ export const joinPath = (
   return `${base.replace(/[\\/]+$/, '')}/${fileName}`;
 };
 
-export const resolveDirectoryAwarePath = (
-  targetPath: string,
-  defaultFileName: string,
-  fs?: FsPathPolicyModule | null,
-  path?: PathPolicyModule | null
-): string => {
-  if (isDirectoryPath(targetPath, fs)) return joinPath(targetPath, defaultFileName, path);
-  return targetPath;
-};
-
 export const isEisdirError = (err: unknown): boolean => {
   const code = (err as { code?: unknown })?.code;
   if (code === 'EISDIR') return true;
   const message = errorMessage(err, '').toLowerCase();
   return message.includes('eisdir') || message.includes('is a directory');
 };
-

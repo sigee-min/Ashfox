@@ -349,18 +349,18 @@ try {
 
 const projectSource = path.join(
   repoRoot,
-  'packages/engine-core/src/project/program/index.ts'
+  'packages/engine-core/src/project/program/asset/parse.ts'
 );
 const compilerTarget = path.join(
   repoRoot,
-  'packages/engine-core/src/compiler/program/lower/index.ts'
+  'packages/engine-core/src/compiler/program/asset/instantiate.ts'
 );
 const aliasInversion = dependencyGraph(
   [projectSource, compilerTarget],
   new Map([
     [
       projectSource,
-      "import '@ashfox/engine-core/compiler/program/lower';"
+      "import '@ashfox/engine-core/compiler/program/asset/instantiate';"
     ],
     [compilerTarget, '']
   ])
@@ -373,26 +373,28 @@ assert.equal(
 
 const constraintSource = path.join(
   repoRoot,
-  'packages/engine-core/src/project/program/constraints/analysis.ts'
+  'packages/engine-core/src/project/program/asset/parse.ts'
 );
 const tokenReaderTarget = path.join(
   repoRoot,
-  'packages/engine-core/src/project/program/read/schema.ts'
+  'packages/engine-core/src/compiler/program/asset/instantiate.ts'
 );
 const constraintReaderInversion = dependencyGraph(
   [constraintSource, tokenReaderTarget],
   new Map([
-    [constraintSource, "import '../read/schema';"],
+    [constraintSource,
+      "import '../../../compiler/program/asset/instantiate';"],
     [tokenReaderTarget, '']
   ])
 );
 assert.deepEqual(
   dependencyDirectionViolations(constraintReaderInversion),
   [{
-    source: 'packages/engine-core/src/project/program/constraints/analysis.ts',
-    target: 'packages/engine-core/src/project/program/read/schema.ts'
+    source: 'packages/engine-core/src/project/program/asset/parse.ts',
+    target:
+      'packages/engine-core/src/compiler/program/asset/instantiate.ts'
   }],
-  'constraint resolution cannot depend on token reader implementation'
+  'the project parser cannot depend on compiler planning'
 );
 
 console.log('ashfox architecture fixture tests ok');

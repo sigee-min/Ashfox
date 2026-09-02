@@ -8,7 +8,6 @@ import { toDomainTextureUsage } from '../../../src/usecases/domainMappers';
 import { registerAsync } from '../../helpers';
 import {
   createEditorStubWithState,
-  createExportPortStub,
   createFormatPortStub,
   createHostPortStub,
   createMockImage,
@@ -55,7 +54,6 @@ const editorState = createEditorStubWithState({
 const editor = editorState.editor;
 const formats = createFormatPortStub();
 const snapshot = createSnapshotPortStub(session);
-const exporter = createExportPortStub('not_implemented');
 const host = createHostPortStub();
 const tmpStore = createTmpStoreStub();
 const textureRenderer = createTextureRendererStub();
@@ -67,12 +65,11 @@ const service = new ToolService({
   editor,
   formats,
   snapshot,
-  exporter,
   host,
   textureRenderer,
   tmpStore,
   resources,
-  policies: { exportPolicy: 'best_effort', autoAttachActiveProject: true }
+  policies: { autoAttachActiveProject: true }
 });
 
 const ensureRes = service.ensureProject({
@@ -254,12 +251,6 @@ assert.equal(diffRes.ok, true);
 
 const validateRes = service.validate({});
 assert.equal(validateRes.ok, true);
-
-registerAsync(
-  service.exportModel({ format: 'java_block_item_json', destPath: 'out.json' }).then((exportRes) => {
-    assert.equal(exportRes.ok, true);
-  })
-);
 
 const previewSingle = service.renderPreview({ mode: 'fixed', output: 'single', saveToTmp: true });
 assert.equal(previewSingle.ok, true);

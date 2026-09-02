@@ -1,60 +1,47 @@
 import {
-  EXPORT_COMPATIBILITY_REGISTRY,
+  registeredExportCompatibilityEntries,
+  registeredExportCompatibilityFor,
   type ExportCompatibilityEntry
 } from './registry';
 import type {
   ExportCompatibilityOption,
-  ExportPreset,
-  JavaGameVersion,
-  MinecraftGameVersion
+  ExportPreset
 } from './contract';
+import { exportTargetDescriptorForPreset } from './target';
+
+const compatibilityEntries = registeredExportCompatibilityEntries();
 
 export const EXPORT_PRESETS = Object.freeze(
   [...new Set(
-    EXPORT_COMPATIBILITY_REGISTRY.map(({ target }) => target)
+    compatibilityEntries.map(({ target }) => target)
   )]
 ) as readonly ExportPreset[];
 
-export const MINECRAFT_GAME_VERSIONS = Object.freeze(
-  [...new Set(
-    EXPORT_COMPATIBILITY_REGISTRY.flatMap(({ gameVersion }) =>
-      gameVersion === null ? [] : [gameVersion]
-    )
-  )]
-) as readonly MinecraftGameVersion[];
-
-export const exportCompatibilityOptions = (
+export function exportCompatibilityOptions(
   target?: ExportPreset
-): readonly ExportCompatibilityOption[] =>
-  EXPORT_COMPATIBILITY_REGISTRY
+): readonly ExportCompatibilityOption[] {
+  if (arguments.length > 1) throw new TypeError(
+    'exportCompatibilityOptions accepts at most one target.');
+  if (target !== undefined && !EXPORT_PRESETS.includes(target)) throw new TypeError(
+    'exportCompatibilityOptions received an unknown target.');
+  return Object.freeze(compatibilityEntries
     .filter((entry) => target === undefined || entry.target === target)
-    .map((entry) => ({
-      target: entry.target,
-      label: entry.label,
-      gameVersion: entry.gameVersion,
-      gameVersionLabel: entry.gameVersionLabel,
-      isDefaultVersion: entry.isDefaultVersion,
-      animationSupport: entry.animationSupport
+    .map((entry) => {
+      const descriptor = exportTargetDescriptorForPreset(entry.target);
+      return Object.freeze({
+        target: entry.target,
+        label: entry.label,
+        targetVersion: descriptor.target.version,
+        namespaceRequired: descriptor.namespaceRequired,
+        animationSupport: entry.animationSupport
+      });
     }));
+}
 
-export const exportCompatibilityFor = <TTarget extends ExportPreset>(
-  target: TTarget,
-  gameVersion?: MinecraftGameVersion
-): Extract<ExportCompatibilityEntry, { target: TTarget }> | null =>
-  (EXPORT_COMPATIBILITY_REGISTRY.find((entry) =>
-    entry.target === target &&
-    (
-      gameVersion === undefined
-        ? entry.isDefaultVersion
-        : entry.gameVersion === gameVersion
-    )
-  ) as Extract<ExportCompatibilityEntry, { target: TTarget }> | undefined) ??
-  null;
-
-export const supportsJavaBlockMultiAxisRotation = (
-  gameVersion: JavaGameVersion
-): boolean =>
-  exportCompatibilityFor(
-    'java_block',
-    gameVersion
-  )?.supportsJavaBlockMultiAxisRotation ?? false;
+export function exportCompatibilityFor<TTarget extends ExportPreset>(
+  target: TTarget
+): Extract<ExportCompatibilityEntry, { target: TTarget }> | null {
+  if (arguments.length !== 1) throw new TypeError(
+    'exportCompatibilityFor expects exactly one target.');
+  return registeredExportCompatibilityFor(target);
+}

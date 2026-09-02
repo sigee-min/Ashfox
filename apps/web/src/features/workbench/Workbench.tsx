@@ -1,7 +1,5 @@
 'use client';
 
-import { useCallback } from 'react';
-
 import type { ExportAdapterInput } from '@ashfox/engine-core';
 
 import { agentCommandProtocol } from '../agent/agentCommandProtocol';
@@ -21,12 +19,8 @@ import {
   useWorkbenchViewController
 } from './controller/view';
 import {
-  useWorkbenchProjectCommands
-} from './hooks/commands';
-import {
   useWorkbenchShortcuts
 } from './hooks/shortcuts';
-import type { NewProjectInput } from './newProject';
 import {
   useAgentAssetPresentation
 } from './hooks/assets';
@@ -39,32 +33,24 @@ export function Workbench() {
     initialClipId: project.initialClipId
   });
   const files = useProjectFileActions({
-    document: project.document,
+    project: project.project,
     assets: project.assets,
     onLoad: project.replaceProject,
     operationLease: project.operationLease
   });
-  const commands = useWorkbenchProjectCommands({
-    document: project.document,
-    dispatch: project.dispatchUserMutation
-  });
-
-  const createProject = useCallback((input: NewProjectInput): void => {
-    if (project.operationLease.currentOwner() !== null) return;
-    commands.createProject(input);
-    view.resetProjectView();
-  }, [
-    commands.createProject,
-    project.operationLease,
-    view.resetProjectView
-  ]);
-
   useWorkbenchShortcuts({
     onTogglePlayback: view.togglePlayback
   });
 
+  const presentation = useAgentAssetPresentation({
+    project: project.project,
+    report: project.report,
+    visualReviews: project.visualReviews,
+    storageStatus: project.storageStatus
+  });
+
   const agent = useWorkbenchAgentController({
-    document: project.document,
+    project: project.project,
     projectGeneration: project.storage.generation,
     assets: project.assets,
     activity: project.history.activity,
@@ -74,19 +60,13 @@ export function Workbench() {
     selectedNodeId: view.selectedNodeId,
     report: project.report,
     dispatch: project.dispatchProject,
-    buildDocuments: project.buildCaptureDocuments,
     operationLease: project.operationLease,
     selectNode: view.selectNode,
     prepareView: view.prepareAgentView,
     setPlayhead: view.setPlayhead,
     setPlaying: view.setPlaying,
+    onCandidatePreview: presentation.onCandidatePreview,
     capture: files.capture
-  });
-  const presentation = useAgentAssetPresentation({
-    document: project.document,
-    report: project.report,
-    visualReviews: project.visualReviews,
-    storageStatus: project.storageStatus
   });
 
   return (
@@ -105,20 +85,15 @@ export function Workbench() {
         document={project.document}
         fileOperation={files.operation}
         artifactFile={files.artifactFile}
-        buildDocuments={project.buildCaptureDocuments}
-        activity={project.history.activity}
-        activeClipId={view.activeClipId}
         environment={view.environment}
         cameraMode={view.cameraCommand.mode}
         captureFile={files.captureFile}
         exportAvailability={presentation.exportAvailability}
-        onCreateProject={createProject}
         onOpen={files.open}
         onSave={files.save}
         onExport={(adapter: ExportAdapterInput) => {
           void files.exportTarget(adapter);
         }}
-        onActiveClipChange={view.changeActiveClip}
         onCapture={files.captureGif}
         onCancelFileOperation={files.cancel}
       />
@@ -129,7 +104,6 @@ export function Workbench() {
       />
       <ViewportWorkspace
         viewportDocument={presentation.viewportDocument}
-        isCandidatePreview={presentation.isCandidatePreview}
         assets={project.assets}
         viewportOptions={view.viewportOptions}
         environment={view.environment}

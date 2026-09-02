@@ -10,7 +10,6 @@
       "@ashfox/engine-core/*": ["packages/engine-core/src/*"],
       "@ashfox/internal-contracts": ["packages/internal-contracts/src/index.d.ts"],
       "@ashfox/blockbench-contracts/types": ["packages/blockbench-contracts/src/types/index.ts"],
-      "@ashfox/blockbench-contracts/types/projectContract": ["packages/blockbench-contracts/src/types/project/contract.ts"],
       "@ashfox/blockbench-contracts/types/*": ["packages/blockbench-contracts/src/types/*"],
       "@ashfox/blockbench-contracts/mcpSchemas/*": ["packages/blockbench-contracts/src/mcpSchemas/*"],
       "@ashfox/blockbench-contracts/*": ["packages/blockbench-contracts/src/*"]

@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { ProjectSession } from '../../../src/session';
 import { ToolService } from '../../../src/usecases/ToolService';
 import type { Capabilities } from '@ashfox/blockbench-contracts/types/internal';
-import { registerAsync } from '../../helpers';
 import {
   createEditorStubWithState,
   createFormatPortStub,
@@ -41,11 +40,6 @@ const editorState = createEditorStubWithState({
   textureResolution: { width: 32, height: 32 }
 });
 
-const exportCalls = {
-  native: 0,
-  gltf: 0
-};
-
 const service = new ToolService({
   session,
   capabilities,
@@ -54,23 +48,12 @@ const service = new ToolService({
     perTextureUvSize: true
   }),
   snapshot: createSnapshotPortStub(session),
-  exporter: {
-    exportNative: () => {
-      exportCalls.native += 1;
-      return null;
-    },
-    exportGltf: () => {
-      exportCalls.gltf += 1;
-      return null;
-    }
-  },
   host: createHostPortStub(),
   textureRenderer: createTextureRendererStub(),
   tmpStore: createTmpStoreStub(),
   resources: createResourceStoreStub(),
   policies: {
     autoAttachActiveProject: true,
-    exportPolicy: 'strict',
     autoCreateProjectTexture: false
   }
 });
@@ -168,11 +151,3 @@ if (stateRes.ok) {
   assert.ok(cube);
   assert.ok(anim);
 }
-
-registerAsync(
-  service.exportModel({ format: 'gltf', destPath: './out/generic_flow.glb' }).then((exportRes) => {
-    assert.equal(exportRes.ok, true);
-    assert.equal(exportCalls.gltf, 1);
-    assert.equal(exportCalls.native, 0);
-  })
-);

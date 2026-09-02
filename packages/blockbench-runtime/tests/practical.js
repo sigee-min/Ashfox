@@ -6,8 +6,6 @@ const tests = [
   path.join('dispatcher', 'viewport.test.ts'),
   path.join('usecases', 'texture-tools', 'faces', 'guard.test.ts'),
   path.join('usecases', 'texture-tools', 'faces', 'pass.test.ts'),
-  path.join('domain', 'export', 'request.test.ts'),
-  path.join('usecases', 'export', 'service.test.ts'),
   path.join('plugin', 'runtime', 'services.test.ts'),
   path.join('transport', 'mcp', 'tools', 'schemas.test.ts')
 ];

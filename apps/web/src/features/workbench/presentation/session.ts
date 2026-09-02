@@ -121,9 +121,13 @@ export const usePresentationSession = ({
   }, [applyPlaybackEffect, finish]);
 
   const present = useCallback((
-    request: ViewPresentationRequest
+    request: ViewPresentationRequest,
+    presentationDocument: ProjectDocument = document
   ): Promise<PresentResult> => {
-    const resolution = resolvePresentationRequest(document, request);
+    const resolution = resolvePresentationRequest(
+      presentationDocument,
+      request
+    );
     if (!resolution.ok) return Promise.resolve(resolution.result);
     const resolved = resolution.request;
     const previous = pendingRef.current;
@@ -152,7 +156,7 @@ export const usePresentationSession = ({
     return new Promise<PresentResult>((resolve) => {
       const pending: PendingPresentation = {
         session: createPresentationSession(
-          document,
+          presentationDocument,
           request,
           resolved,
           nonce
@@ -191,7 +195,7 @@ export const usePresentationSession = ({
     }
     if (
       pending.session.projectId === document.id &&
-      pending.session.sourceRevision === document.revision
+      pending.session.revision === document.revision
     ) {
       return;
     }
@@ -201,7 +205,7 @@ export const usePresentationSession = ({
       pending,
       stalePresentationResult(
         document.revision,
-        pending.session.sourceRevision
+        pending.session.revision
       )
     );
   }, [document.id, document.revision, finish, setPlaying]);

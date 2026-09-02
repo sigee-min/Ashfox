@@ -1,3 +1,4 @@
+import { canonicalQuaternionFromEuler } from '../../../model/transform';
 import type { Vec3 } from '../../../model';
 
 export const multiplyVec3 = (
@@ -29,23 +30,9 @@ export const addVec3 = (
 
 export const quaternionFromEuler = (
   rotation: Vec3
-): [number, number, number, number] => {
-  const x = (rotation[0] * Math.PI) / 360;
-  const y = (rotation[1] * Math.PI) / 360;
-  const z = (rotation[2] * Math.PI) / 360;
-  const sx = Math.sin(x);
-  const cx = Math.cos(x);
-  const sy = Math.sin(y);
-  const cy = Math.cos(y);
-  const sz = Math.sin(z);
-  const cz = Math.cos(z);
-  return [
-    sx * cy * cz + cx * sy * sz,
-    cx * sy * cz - sx * cy * sz,
-    cx * cy * sz + sx * sy * cz,
-    cx * cy * cz - sx * sy * sz
-  ];
-};
+): [number, number, number, number] => [...canonicalQuaternionFromEuler(rotation)] as [
+  number, number, number, number
+];
 
 export const rotateVec3ByQuaternion = (
   value: Vec3,

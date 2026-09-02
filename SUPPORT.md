@@ -22,8 +22,8 @@ Include:
 - expected and actual results;
 - the shortest safe error message or screenshot that explains the problem.
 
-Do not attach private projects publicly. Create a minimal `.ashfox` reproduction
-only when it contains no sensitive assets.
+Do not attach private projects publicly. Create a minimal
+`.ashfoxworkspace` reproduction only when it contains no sensitive assets.
 
 ## Blockbench MCP issues
 

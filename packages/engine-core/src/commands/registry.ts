@@ -1,32 +1,19 @@
 import type { CommandDefinition } from './definition';
-import { createProjectCommand } from './definitions/createProject';
-import {
-  compileIntentProgramCommand
-} from './program/compile';
-import {
-  proposeIntentProgramCommand
-} from './program/propose';
-import { renameProjectCommand } from './definitions/renameProject';
+import { applyWorkspaceCommand } from './workspace/apply';
 import type { CommandName, CommandSource } from './types';
 
-/** The complete and sole Agent mutation authority. */
+/** The complete and sole mutation authority for every trusted source. */
 export const AGENT_ACCESSIBLE_COMMAND_NAMES = Object.freeze([
-  'intent.program.compile',
-  'intent.program.propose'
+  'workspace.apply'
 ] as const);
 const agentAccessibleCommandNames = new Set<string>(
   AGENT_ACCESSIBLE_COMMAND_NAMES
 );
 
-/** The command registry is intentionally limited to project identity plus the
- * source-authoritative Intent Program boundary. Raw scene,
- * part, material, profile, and animation mutation commands have no registry
- * entry and therefore cannot enter any command batch. */
+/** Raw scene, texture, material, hierarchy, and animation mutation commands
+ * have no registry entry and therefore cannot enter any command batch. */
 const registrations = {
-  'project.create': createProjectCommand,
-  'project.rename': renameProjectCommand,
-  'intent.program.propose': proposeIntentProgramCommand,
-  'intent.program.compile': compileIntentProgramCommand
+  'workspace.apply': applyWorkspaceCommand
 } satisfies Partial<Record<CommandName, CommandDefinition>>;
 
 export const getCommandDefinition = (
@@ -55,5 +42,5 @@ export const commandAllowedForSource = (
   if (source === 'agent') {
     return agentAccessibleCommandNames.has(name);
   }
-  return name === 'project.create';
+  return name === 'workspace.apply';
 };

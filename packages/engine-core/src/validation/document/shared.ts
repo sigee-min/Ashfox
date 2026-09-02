@@ -52,7 +52,7 @@ export const closedRecord = (
     reject(
       context,
       childPath(path, key),
-      `Unknown v1 contract property "${key}".`,
+      `Unknown current-contract property "${key}".`,
       'document.unknown_property'
     );
   }
@@ -61,7 +61,7 @@ export const closedRecord = (
     reject(
       context,
       childPath(path, key),
-      `Required v1 contract property "${key}" is missing.`
+      `Required current-contract property "${key}" is missing.`
     );
   }
   return value;

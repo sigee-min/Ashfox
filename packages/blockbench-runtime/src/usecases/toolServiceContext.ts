@@ -3,7 +3,6 @@ import { ProjectSession } from '../session';
 import type { EditorPort } from '../ports/editor';
 import type { FormatPort } from '../ports/formats';
 import type { SnapshotPort } from '../ports/snapshot';
-import type { ExportPort } from '../ports/exporter';
 import type { HostPort } from '../ports/host';
 import type { ResourceStore } from '../ports/resources';
 import type { TextureRendererPort } from '../ports/textureRenderer';
@@ -21,7 +20,6 @@ import { ProjectService } from './project';
 import { TextureService } from './textureService';
 import { ModelService } from './ModelService';
 import { AnimationService } from './AnimationService';
-import { ExportService } from './export';
 import { RenderService } from './RenderService';
 import { ValidationService } from './ValidationService';
 
@@ -33,7 +31,6 @@ export interface ToolServiceDeps {
   editor: EditorPort;
   formats: FormatPort;
   snapshot: SnapshotPort;
-  exporter: ExportPort;
   host?: HostPort;
   resources?: ResourceStore;
   textureRenderer?: TextureRendererPort;
@@ -50,7 +47,6 @@ export type ToolServiceContext = {
   textureService: TextureService;
   modelService: ModelService;
   animationService: AnimationService;
-  exportService: ExportService;
   renderService: RenderService;
   validationService: ValidationService;
 };
@@ -140,19 +136,6 @@ export const createToolServiceContext = (deps: ToolServiceDeps): ToolServiceCont
     ensureActive: () => snapshotContext.ensureActive(),
     ensureRevisionMatch: (ifRevision?: string) => revisionContext.ensureRevisionMatch(ifRevision)
   });
-  const exportService = new ExportService({
-    capabilities: deps.capabilities,
-    editor: deps.editor,
-    exporter: deps.exporter,
-    formats: deps.formats,
-    projectState,
-    getSnapshot: () => snapshotContext.getSnapshot(),
-    ensureActive: () => snapshotContext.ensureActive(),
-    policies: {
-      formatOverrides: policyContext.getFormatOverrides(),
-      exportPolicy: policyContext.getExportPolicy()
-    }
-  });
   const renderService = new RenderService({
     editor: deps.editor,
     tmpStore: deps.tmpStore,
@@ -174,11 +157,8 @@ export const createToolServiceContext = (deps: ToolServiceDeps): ToolServiceCont
     textureService,
     modelService,
     animationService,
-    exportService,
     renderService,
     validationService
   };
 };
-
-
 

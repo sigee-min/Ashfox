@@ -40,20 +40,9 @@ export interface BlockbenchApi {
   dispatchEvent?: (name: string, payload?: UnknownRecord) => void;
 }
 
-export interface BlockbenchCodec {
-  id?: string;
-  name?: string;
-  extension?: string;
-  compile?: () => unknown;
-  write?: (content: unknown, path: string) => unknown;
-  export?: () => unknown;
-}
-
 export interface FormatEntry {
   name?: string;
   new?: () => void;
-  compile?: () => unknown;
-  codec?: BlockbenchCodec;
   single_texture?: boolean;
   per_texture_uv_size?: boolean;
   box_uv?: boolean;
@@ -367,7 +356,6 @@ export interface BlockbenchGlobals {
   Outliner?: OutlinerApi;
   ModelFormat?: ModelFormatApi;
   Formats?: Record<string, FormatEntry>;
-  Codecs?: Record<string, BlockbenchCodec>;
   Format?: FormatSelection | null;
   Undo?: UndoApi;
   Preview?: PreviewRegistry;
@@ -388,5 +376,4 @@ export interface BlockbenchGlobals {
 
 export const readBlockbenchGlobals = (): BlockbenchGlobals =>
   globalThis as typeof globalThis & BlockbenchGlobals;
-
 

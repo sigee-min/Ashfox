@@ -1,33 +1,33 @@
 import type {
-  CommandReceipt,
-  ProjectDocument
+  AssetProject,
+  CommandReceipt
 } from '@ashfox/engine-core';
 
 import type {
   VisualReviewReceipt
 } from './review';
 
-/** Ephemeral Workbench state reconstructed from source or the active session. */
+/** Ephemeral Workbench state reconstructed from the active AssetProject. */
 export interface ProjectSnapshot {
-  readonly document: ProjectDocument;
+  readonly project: AssetProject;
   readonly activity: readonly CommandReceipt[];
   readonly visualReviews: readonly VisualReviewReceipt[];
   readonly savedAt: string;
 }
 
 export const createProjectSnapshot = (
-  document: ProjectDocument,
+  project: AssetProject,
   savedAt: string,
   activity: readonly CommandReceipt[] = [],
   visualReviews: readonly VisualReviewReceipt[] = []
 ): ProjectSnapshot => ({
-  document,
+  project,
   activity,
   visualReviews,
   savedAt
 });
 
-export const areProjectDocumentsEqual = (
-  left: ProjectDocument,
-  right: ProjectDocument
+export const areAssetProjectsEqual = (
+  left: AssetProject,
+  right: AssetProject
 ): boolean => left === right || JSON.stringify(left) === JSON.stringify(right);

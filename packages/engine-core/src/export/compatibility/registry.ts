@@ -1,47 +1,13 @@
-export const EXPORT_COMPATIBILITY_REGISTRY = [
+import { deepFreeze } from '../../immutable';
+
+const EXPORT_COMPATIBILITY_ENTRIES = deepFreeze([
   {
     target: 'geckolib5',
     label: 'GeckoLib 5',
-    gameVersion: '1.21.5',
-    gameVersionLabel: 'Java 1.21.5',
-    isDefaultVersion: false,
     animationSupport: 'actor',
     profile: {
       id: 'minecraft.java.geckolib5',
-      version: '5',
-      minecraftVersion: '1.21.5',
-      geometryFormatVersion: '1.12.0',
-      animationFormatVersion: '1.8.0',
-      assetKind: 'entity'
-    }
-  },
-  {
-    target: 'geckolib5',
-    label: 'GeckoLib 5',
-    gameVersion: '1.21.11',
-    gameVersionLabel: 'Java 1.21.11',
-    isDefaultVersion: false,
-    animationSupport: 'actor',
-    profile: {
-      id: 'minecraft.java.geckolib5',
-      version: '5',
-      minecraftVersion: '1.21.11',
-      geometryFormatVersion: '1.12.0',
-      animationFormatVersion: '1.8.0',
-      assetKind: 'entity'
-    }
-  },
-  {
-    target: 'geckolib5',
-    label: 'GeckoLib 5',
-    gameVersion: '26.1',
-    gameVersionLabel: 'Java 26.1',
-    isDefaultVersion: true,
-    animationSupport: 'actor',
-    profile: {
-      id: 'minecraft.java.geckolib5',
-      version: '5',
-      minecraftVersion: '26.1',
+      minecraftVersion: '26.2',
       geometryFormatVersion: '1.12.0',
       animationFormatVersion: '1.8.0',
       assetKind: 'entity'
@@ -50,54 +16,6 @@ export const EXPORT_COMPATIBILITY_REGISTRY = [
   {
     target: 'java_block',
     label: 'Java block',
-    gameVersion: '1.21.5',
-    gameVersionLabel: 'Java 1.21.5',
-    isDefaultVersion: false,
-    animationSupport: 'none',
-    supportsJavaBlockMultiAxisRotation: false,
-    profile: {
-      id: 'minecraft.java_block',
-      minecraftVersion: '1.21.5',
-      resourcePackFormat: 55,
-      modelKind: 'block'
-    }
-  },
-  {
-    target: 'java_block',
-    label: 'Java block',
-    gameVersion: '1.21.11',
-    gameVersionLabel: 'Java 1.21.11',
-    isDefaultVersion: false,
-    animationSupport: 'none',
-    supportsJavaBlockMultiAxisRotation: true,
-    profile: {
-      id: 'minecraft.java_block',
-      minecraftVersion: '1.21.11',
-      resourcePackFormat: 75,
-      modelKind: 'block'
-    }
-  },
-  {
-    target: 'java_block',
-    label: 'Java block',
-    gameVersion: '26.1',
-    gameVersionLabel: 'Java 26.1',
-    isDefaultVersion: false,
-    animationSupport: 'none',
-    supportsJavaBlockMultiAxisRotation: true,
-    profile: {
-      id: 'minecraft.java_block',
-      minecraftVersion: '26.1',
-      resourcePackFormat: 84,
-      modelKind: 'block'
-    }
-  },
-  {
-    target: 'java_block',
-    label: 'Java block',
-    gameVersion: '26.2',
-    gameVersionLabel: 'Java 26.2',
-    isDefaultVersion: true,
     animationSupport: 'none',
     supportsJavaBlockMultiAxisRotation: true,
     profile: {
@@ -110,43 +28,10 @@ export const EXPORT_COMPATIBILITY_REGISTRY = [
   {
     target: 'bedrock',
     label: 'Bedrock geometry',
-    gameVersion: '1.21.130',
-    gameVersionLabel: 'Bedrock 1.21.130',
-    isDefaultVersion: false,
     animationSupport: 'actor',
     profile: {
       id: 'minecraft.bedrock',
-      minecraftVersion: '1.21.130',
-      geometryFormatVersion: '1.21.0',
-      animationFormatVersion: '1.8.0',
-      geometryKind: 'entity'
-    }
-  },
-  {
-    target: 'bedrock',
-    label: 'Bedrock geometry',
-    gameVersion: '1.26.0',
-    gameVersionLabel: 'Bedrock 1.26.0',
-    isDefaultVersion: false,
-    animationSupport: 'actor',
-    profile: {
-      id: 'minecraft.bedrock',
-      minecraftVersion: '1.26.0',
-      geometryFormatVersion: '1.21.0',
-      animationFormatVersion: '1.8.0',
-      geometryKind: 'entity'
-    }
-  },
-  {
-    target: 'bedrock',
-    label: 'Bedrock geometry',
-    gameVersion: '1.26.30',
-    gameVersionLabel: 'Bedrock 1.26.30',
-    isDefaultVersion: true,
-    animationSupport: 'actor',
-    profile: {
-      id: 'minecraft.bedrock',
-      minecraftVersion: '1.26.30',
+      minecraftVersion: '26.45',
       geometryFormatVersion: '1.21.0',
       animationFormatVersion: '1.8.0',
       geometryKind: 'entity'
@@ -155,9 +40,6 @@ export const EXPORT_COMPATIBILITY_REGISTRY = [
   {
     target: 'glb',
     label: 'GLB',
-    gameVersion: null,
-    gameVersionLabel: null,
-    isDefaultVersion: true,
     animationSupport: 'scene',
     profile: {
       id: 'gltf.2',
@@ -169,9 +51,6 @@ export const EXPORT_COMPATIBILITY_REGISTRY = [
   {
     target: 'gltf',
     label: 'glTF',
-    gameVersion: null,
-    gameVersionLabel: null,
-    isDefaultVersion: true,
     animationSupport: 'scene',
     profile: {
       id: 'gltf.2',
@@ -180,7 +59,143 @@ export const EXPORT_COMPATIBILITY_REGISTRY = [
       imageStorage: 'external'
     }
   }
-] as const;
+] as const);
 
 export type ExportCompatibilityEntry =
-  (typeof EXPORT_COMPATIBILITY_REGISTRY)[number];
+  (typeof EXPORT_COMPATIBILITY_ENTRIES)[number];
+
+type ExportCompatibilityTarget = ExportCompatibilityEntry['target'];
+const REQUIRED_TARGETS = Object.freeze(EXPORT_COMPATIBILITY_ENTRIES.map(
+  (entry) => entry.target
+));
+
+type OwnDataRecord = ReadonlyMap<string, unknown>;
+
+const ownDataRecord = (value: unknown, path: string): OwnDataRecord => {
+  if (value === null || typeof value !== 'object' || Array.isArray(value) ||
+    Object.getPrototypeOf(value) !== Object.prototype) throw new TypeError(
+    `${path} must be one plain own-data object.`);
+  const result = new Map<string, unknown>();
+  for (const key of Reflect.ownKeys(value)) {
+    if (typeof key !== 'string') throw new TypeError(
+      `${path} must not contain symbol keys.`);
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (descriptor === undefined || !descriptor.enumerable ||
+      !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+      throw new TypeError(`${path}.${key} must be an enumerable own data field.`);
+    }
+    result.set(key, descriptor.value);
+  }
+  return result;
+};
+
+const arrayValues = (value: unknown): readonly unknown[] => {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !==
+    Array.prototype) throw new TypeError(
+    'Export compatibility entries must be one plain dense array.');
+  const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+  if (lengthDescriptor === undefined ||
+    !Object.prototype.hasOwnProperty.call(lengthDescriptor, 'value') ||
+    typeof lengthDescriptor.value !== 'number') throw new TypeError(
+    'Export compatibility entries require one own data length.');
+  const length = lengthDescriptor.value;
+  const keys = Reflect.ownKeys(value);
+  if (!Number.isSafeInteger(length) || length < 0 || keys.length !==
+    length + 1 || keys.some((key) => typeof key !== 'string') ||
+    !keys.includes('length')) throw new TypeError(
+    'Export compatibility entries must be one plain dense array.');
+  const result: unknown[] = [];
+  for (let index = 0; index < length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+    if (descriptor === undefined || !descriptor.enumerable ||
+      !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+      throw new TypeError(
+        'Export compatibility entries must not contain holes or accessors.');
+    }
+    result.push(descriptor.value);
+  }
+  return Object.freeze(result);
+};
+
+const canonicalEntryForTarget = (
+  target: unknown
+): ExportCompatibilityEntry | null => typeof target === 'string'
+  ? EXPORT_COMPATIBILITY_ENTRIES.find((entry) => entry.target === target) ?? null
+  : null;
+
+const exactDataTree = (actual: unknown, expected: unknown,
+  path: string): void => {
+  if (expected === null || typeof expected !== 'object') {
+    if (!Object.is(actual, expected)) throw new TypeError(
+      `${path} does not match the current canonical authority.`);
+    return;
+  }
+  const actualRecord = ownDataRecord(actual, path);
+  const expectedRecord = ownDataRecord(expected, path);
+  const actualKeys = [...actualRecord.keys()].sort();
+  const expectedKeys = [...expectedRecord.keys()].sort();
+  if (actualKeys.length !== expectedKeys.length || actualKeys.some(
+    (key, index) => key !== expectedKeys[index])) throw new TypeError(
+    `${path} does not have the exact current canonical fields.`);
+  for (const key of expectedKeys) exactDataTree(actualRecord.get(key),
+    expectedRecord.get(key), `${path}.${key}`);
+};
+
+type ExportCompatibilityIndex = Readonly<{
+  entryFor<TTarget extends ExportCompatibilityTarget>(target: TTarget):
+    Extract<ExportCompatibilityEntry, { target: TTarget }> | null;
+}>;
+
+/** Builds one current authority per target. Historical target versions and a
+ * default-selection layer are deliberately absent. Exported only from this
+ * internal module for red-team fixtures; it is absent from the package API. */
+export function buildExportCompatibilityIndex(
+  entries: readonly ExportCompatibilityEntry[]
+): ExportCompatibilityIndex {
+  if (arguments.length !== 1) throw new TypeError(
+    'buildExportCompatibilityIndex expects exactly one argument.');
+  const entriesByTarget = new Map<ExportCompatibilityTarget,
+    ExportCompatibilityEntry>();
+  for (const [index, value] of arrayValues(entries).entries()) {
+    const fields = ownDataRecord(value,
+      `exportCompatibilityEntries[${index}]`);
+    const canonical = canonicalEntryForTarget(fields.get('target'));
+    if (canonical === null) throw new TypeError(
+      `Export compatibility entry ${index} has no canonical target.`);
+    exactDataTree(value, canonical, `exportCompatibilityEntries[${index}]`);
+    if (entriesByTarget.has(canonical.target)) throw new TypeError(
+      `Export target ${canonical.target} has more than one authority.`);
+    entriesByTarget.set(canonical.target, canonical);
+  }
+  for (const target of REQUIRED_TARGETS) if (!entriesByTarget.has(target)) {
+    throw new TypeError(`Export target ${target} has no current authority.`);
+  }
+  return Object.freeze({
+    entryFor<TTarget extends ExportCompatibilityTarget>(target: TTarget) {
+      const entry = entriesByTarget.get(target);
+      return (entry?.target === target ? entry : null) as
+        Extract<ExportCompatibilityEntry, { target: TTarget }> | null;
+    }
+  });
+}
+
+const compatibilityIndex = buildExportCompatibilityIndex(
+  EXPORT_COMPATIBILITY_ENTRIES);
+
+/** Internal sealed registry projection. It is intentionally absent from the
+ * package public API; callers select through the exact indexes below. */
+export function registeredExportCompatibilityEntries():
+readonly ExportCompatibilityEntry[] {
+  if (arguments.length !== 0) throw new TypeError(
+    'registeredExportCompatibilityEntries expects no arguments.');
+  return EXPORT_COMPATIBILITY_ENTRIES;
+}
+
+export function registeredExportCompatibilityFor<
+  TTarget extends ExportCompatibilityTarget
+>(target: TTarget):
+Extract<ExportCompatibilityEntry, { target: TTarget }> | null {
+  if (arguments.length !== 1) throw new TypeError(
+    'registeredExportCompatibilityFor expects exactly one target.');
+  return compatibilityIndex.entryFor(target);
+}

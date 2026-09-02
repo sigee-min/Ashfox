@@ -7,6 +7,7 @@ import {
   type Vec2,
   type Vec3
 } from '../../../model';
+import { cubeGeometryPivot, cubeUnrotatedBounds } from '../../../model';
 import type { GltfPrimitiveData } from './data';
 import { multiplyVec3 } from './spatial';
 import type { GltfSceneCompileOptions } from './graph';
@@ -101,11 +102,12 @@ export const compileGltfCubePrimitiveData = (
   cube: CubeNode,
   options: GltfSceneCompileOptions
 ): GltfPrimitiveData[] => {
-  const pivot = cube.transform.pivot;
-  const from = cube.bounds.from.map(
+  const pivot = cubeGeometryPivot(cube);
+  const bounds = cubeUnrotatedBounds(cube);
+  const from = bounds.from.map(
     (value, index) => value - pivot[index] - cube.inflate
   ) as [number, number, number];
-  const to = cube.bounds.to.map(
+  const to = bounds.to.map(
     (value, index) => value - pivot[index] + cube.inflate
   ) as [number, number, number];
   const primitives: GltfPrimitiveData[] = [];

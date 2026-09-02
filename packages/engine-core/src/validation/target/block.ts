@@ -1,10 +1,11 @@
 import {
   CUBE_FACE_DIRECTIONS,
+  PLANE_FACE_DIRECTIONS,
   type ProjectDocument
 } from '../../model';
 import type { ExportAdaptedDocument } from '../../export/adapter';
 import { isSceneNodeEffectivelyVisible } from '../../sceneVisibility';
-import { supportsJavaBlockMultiAxisRotation } from '../../export/compatibility';
+import { exportCompatibilityFor } from '../../export/compatibility';
 import {
   RESOURCE_NAMESPACE_PATTERN,
   validateResourceLocation
@@ -16,6 +17,10 @@ import {
   isIdentityScale
 } from '../shared/value';
 import type { FindingSink } from '../contract';
+
+const javaBlockSupportsMultiAxisRotation =
+  exportCompatibilityFor('java_block')?.supportsJavaBlockMultiAxisRotation ??
+  false;
 
 const TEXTURE_KEY_PATTERN = /^[a-z0-9_.-]+$/;
 const JAVA_MODEL_PATH_PATTERN = /^[a-z0-9_./-]+$/;
@@ -177,6 +182,12 @@ const validateJavaCube = (
 ): void => {
   const profile = document.formatProfile;
   if (profile.id !== 'minecraft.java_block') return;
+  if (node.geometryMode !== 'axis-box') {
+    add({ code: 'format.unsupported_data', severity: 'error',
+      message: 'Minecraft Java block output does not support oriented entity boxes.',
+      path: `${path}.geometryMode`, entityIds: [nodeId] });
+    return;
+  }
   if (!isIdentityScale(node.transform.scale)) {
     add({
       code: 'format.unbaked_transform',
@@ -219,7 +230,7 @@ const validateJavaCube = (
   const activeRotations = node.transform.rotation.filter(
     (value) => Math.abs(value) > EPSILON
   );
-  if (!supportsJavaBlockMultiAxisRotation(profile.minecraftVersion)) {
+  if (!javaBlockSupportsMultiAxisRotation) {
     const angle = activeRotations[0] ?? 0;
     if (
       activeRotations.length > 1 ||
@@ -260,6 +271,74 @@ const validateJavaCube = (
   }
 };
 
+const validateJavaPlane = (
+  node: Extract<ProjectDocument['scene']['nodes'][string], { kind: 'plane' }>,
+  nodeId: string,
+  path: string,
+  document: ExportAdaptedDocument,
+  add: FindingSink
+): void => {
+  const profile = document.formatProfile;
+  if (profile.id !== 'minecraft.java_block') return;
+  if (!isIdentityScale(node.transform.scale)) add({
+    code: 'format.unbaked_transform',
+    severity: 'error',
+    message: 'Java block export requires plane scale to be baked into size.',
+    path: `${path}.transform.scale`,
+    entityIds: [nodeId]
+  });
+  const maximum: readonly [number, number, number] = [
+    node.transform.position[0] + node.size[0],
+    node.transform.position[1] + node.size[1],
+    node.transform.position[2]
+  ];
+  if ([...node.transform.position, ...maximum].some(
+    (value) => value < -16 || value > 32
+  )) add({
+    code: 'format.coordinate_overflow',
+    severity: 'error',
+    message: 'Java block plane coordinates must remain between -16 and 32.',
+    path: `${path}.size`,
+    entityIds: [nodeId]
+  });
+  const activeRotations = node.transform.rotation.filter(
+    (value) => Math.abs(value) > EPSILON
+  );
+  if (!javaBlockSupportsMultiAxisRotation) {
+    const angle = activeRotations[0] ?? 0;
+    if (
+      activeRotations.length > 1 ||
+      !JAVA_ROTATION_ANGLES.some(
+        (allowed) => Math.abs(allowed - angle) <= EPSILON
+      )
+    ) add({
+      code: 'format.rotation_unsupported',
+      severity: 'error',
+      message: `Java ${profile.minecraftVersion} supports one plane rotation axis at -45, -22.5, 0, 22.5, or 45 degrees.`,
+      path: `${path}.transform.rotation`,
+      entityIds: [nodeId]
+    });
+  }
+  for (const direction of PLANE_FACE_DIRECTIONS) {
+    const face = node.faces[direction];
+    if (!face.enabled) continue;
+    if (face.textureId === null) add({
+      code: 'format.texture_binding_missing',
+      severity: 'error',
+      message: 'Enabled Java plane faces require a texture.',
+      path: `${path}.faces.${direction}.textureId`,
+      entityIds: [nodeId]
+    });
+    if (!face.uv) add({
+      code: 'format.uv_missing',
+      severity: 'error',
+      message: 'Enabled Java plane faces require an explicit UV rectangle.',
+      path: `${path}.faces.${direction}.uv`,
+      entityIds: [nodeId]
+    });
+  }
+};
+
 const validateSceneNodes = (
   document: ExportAdaptedDocument,
   add: FindingSink
@@ -268,17 +347,6 @@ const validateSceneNodes = (
     const path = `scene.nodes.${nodeId}`;
     if (!isSceneNodeEffectivelyVisible(document, nodeId)) continue;
     if (node.kind === 'locator') continue;
-    if (node.kind === 'mesh') {
-      add({
-        code: 'format.unsupported_data',
-        severity: 'error',
-        message: 'Java block models do not support mesh nodes.',
-        path,
-        entityIds: [nodeId],
-        fix: 'Bake the mesh into cubes or choose another export target.'
-      });
-      continue;
-    }
     if (node.kind === 'bone') {
       if (
         !isIdentityPosition(node.transform.position) ||
@@ -293,6 +361,10 @@ const validateSceneNodes = (
           entityIds: [nodeId]
         });
       }
+      continue;
+    }
+    if (node.kind === 'plane') {
+      validateJavaPlane(node, nodeId, path, document, add);
       continue;
     }
     validateJavaCube(node, nodeId, path, document, add);

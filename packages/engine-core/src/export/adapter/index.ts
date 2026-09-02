@@ -1,33 +1,37 @@
 import type {
   AssetId,
+  CubeNode,
+  PlaneNode,
   ProjectDocument,
   TextureAsset
 } from '../../model';
+import { cubeGeometryCorners } from '../../model';
+import { effectivelyVisibleSceneNodeIds } from '../../sceneVisibility';
 import { resourceToken } from '../../resourceToken';
 import type {
   ExportFormatProfile,
   MinecraftTextureBinding
 } from './contract';
 import {
-  isExportModelPathValid,
-  isExportNamespaceValid,
-  type ExportPreset,
-  type MinecraftGameVersion
+  type ExportPreset
 } from '../compatibility';
 import { exportProfileForAdapter } from '../compatibility/profiles';
+import {
+  readExportAdapterInput,
+  type ExportAdapterInput
+} from './input';
+
+export {
+  ExportAdapterInputError,
+  readExportAdapterInput,
+  type ExportAdapterInput
+} from './input';
 
 /**
  * Ephemeral delivery configuration.  It is deliberately not part of the
  * persisted project: changing a delivery target cannot alter compiler-owned
  * geometry, texture layout, authoring evidence, or animation state.
  */
-export interface ExportAdapterInput {
-  target: ExportPreset;
-  gameVersion?: MinecraftGameVersion;
-  namespace?: string;
-  modelPath?: string;
-}
-
 export interface ResolvedExportAdapter {
   target: ExportPreset;
   profile: ExportFormatProfile;
@@ -44,10 +48,15 @@ export interface ExportAdaptedDocument extends Omit<
 > {
   formatProfile: ExportFormatProfile;
   textures: Readonly<Record<AssetId, ExportTextureAsset>>;
+  /** Delivery-only transforms applied after canonical compilation. */
+  deliveryAdaptation?: {
+    readonly sceneTranslation?: readonly [number, number, number];
+  };
 }
 
 type DeliveryShapedProject = ProjectDocument & {
   formatProfile?: unknown;
+  deliveryAdaptation?: unknown;
   textures: Readonly<Record<AssetId, ExportTextureAsset>>;
 };
 
@@ -71,14 +80,99 @@ const canonicalProjectFromDeliveryShape = (
 ): ProjectDocument => {
   const {
     formatProfile: _formatProfile,
+    deliveryAdaptation: _deliveryAdaptation,
     textures,
     ...canonicalFields
   } = document;
-  return {
+  const canonical = {
     ...canonicalFields,
     textures: canonicalTextureAssets(textures)
   } as ProjectDocument;
+  const translation = typeof _deliveryAdaptation === 'object' &&
+    _deliveryAdaptation !== null &&
+    'sceneTranslation' in _deliveryAdaptation &&
+    Array.isArray(_deliveryAdaptation.sceneTranslation) &&
+    _deliveryAdaptation.sceneTranslation.length === 3 &&
+    _deliveryAdaptation.sceneTranslation.every(
+      (value: unknown) => typeof value === 'number' && Number.isFinite(value)
+    )
+    ? _deliveryAdaptation.sceneTranslation as [number, number, number]
+    : null;
+  return translation ? {
+    ...canonical,
+    scene: translatedScene(canonical.scene, translation.map(
+      (value) => -value
+    ) as [number, number, number])
+  } : canonical;
 };
+
+const primitiveBounds = (
+  node: CubeNode | PlaneNode
+): readonly [readonly number[], readonly number[]] => {
+  if (node.kind === 'cube') {
+    const corners = cubeGeometryCorners(node);
+    return [
+      [0, 1, 2].map((axis) => Math.min(...corners.map((corner) =>
+        corner[axis]!)) - node.inflate),
+      [0, 1, 2].map((axis) => Math.max(...corners.map((corner) =>
+        corner[axis]!)) + node.inflate)
+    ];
+  }
+  return [
+    node.transform.position,
+    [
+      node.transform.position[0] + node.size[0],
+      node.transform.position[1] + node.size[1],
+      node.transform.position[2]
+    ]
+  ];
+};
+
+const javaBlockSceneTranslation = (
+  document: ProjectDocument
+): readonly [number, number, number] | null => {
+  const visible = effectivelyVisibleSceneNodeIds(document);
+  const primitives = Object.values(document.scene.nodes).filter(
+    (node): node is CubeNode | PlaneNode =>
+      (node.kind === 'cube' || node.kind === 'plane') && visible.has(node.id)
+  );
+  if (primitives.length === 0) return null;
+  const minimum = [Infinity, Infinity, Infinity];
+  const maximum = [-Infinity, -Infinity, -Infinity];
+  for (const primitive of primitives) {
+    const [from, to] = primitiveBounds(primitive);
+    for (let axis = 0; axis < 3; axis += 1) {
+      minimum[axis] = Math.min(minimum[axis]!, from[axis]!);
+      maximum[axis] = Math.max(maximum[axis]!, to[axis]!);
+    }
+  }
+  if (minimum.some((value, axis) => maximum[axis]! - value > 48)) {
+    return null;
+  }
+  return [0, 1, 2].map((axis) =>
+    8 - (minimum[axis]! + maximum[axis]!) / 2
+  ) as [number, number, number];
+};
+
+const translatedScene = (
+  scene: ProjectDocument['scene'],
+  translation: readonly [number, number, number]
+): ProjectDocument['scene'] => ({
+  ...scene,
+  nodes: Object.fromEntries(Object.entries(scene.nodes).map(
+    ([id, node]) => {
+      if (node.kind !== 'cube' && node.kind !== 'plane') return [id, node];
+      return [id, {
+        ...node,
+        transform: {
+          ...node.transform,
+          position: node.transform.position.map((value, axis) =>
+            value + translation[axis]!) as [number, number, number]
+        }
+      }];
+    }
+  ))
+});
 
 /** Removes ephemeral delivery data before canonical validation or persistence. */
 export const canonicalProjectFromExportAdapter = (
@@ -111,56 +205,20 @@ const profileKind = (
       ? profile.geometryKind
       : profile.assetKind;
 
-const normalizedModelPath = (
-  document: ProjectDocument,
-  target: ExportPreset,
-  value: string | undefined
-): string => {
-  const result = value?.trim() ?? resourceToken(document.name, 'asset');
-  if (!result || !isExportModelPathValid(target, result)) {
-    throw new Error(
-      'Export model path must be a safe extensionless relative path.'
-    );
-  }
-  return result;
-};
-
-const normalizedNamespace = (
-  target: ExportPreset,
-  value: string | undefined
-): string => {
-  const result = value?.trim() ?? 'ashfox';
-  if (!isExportNamespaceValid(target, result)) {
-    throw new Error(
-      'Export namespace must use lowercase letters, digits, dots, underscores, or hyphens.'
-    );
-  }
-  return result;
-};
-
-export const resolveExportAdapter = (
+export function resolveExportAdapter(
   document: ProjectDocument,
   input: ExportAdapterInput
-): ResolvedExportAdapter => {
-  const modelPath = normalizedModelPath(
-    document,
-    input.target,
-    input.modelPath
-  );
-  const namespace = normalizedNamespace(input.target, input.namespace);
-  const profile = exportProfileForAdapter(
-    input.target,
-    input.gameVersion,
-    namespace,
-    modelPath
-  );
+): ResolvedExportAdapter {
+  if (arguments.length !== 2) throw new TypeError(
+    'resolveExportAdapter expects a document and closed adapter input.');
+  void document;
+  const snapshot = readExportAdapterInput(input);
+  const profile = exportProfileForAdapter(snapshot);
   if (!profile) {
-    throw new Error(
-      'The requested target and game version are not a supported export adapter.'
-    );
+    throw new TypeError('exportAdapter.target: Unsupported current target.');
   }
-  return { target: input.target, profile };
-};
+  return { target: snapshot.target, profile };
+}
 
 const adapterTextures = (
   document: ProjectDocument,
@@ -211,17 +269,28 @@ const createMinecraftTextureBinding = (
 };
 
 /** Builds a non-persisted target view immediately before export. */
-export const adaptProjectForExport = (
+export function adaptProjectForExport(
   document: ProjectDocument,
   input: ExportAdapterInput
-): ExportAdaptedDocument => {
+): ExportAdaptedDocument {
+  if (arguments.length !== 2) throw new TypeError(
+    'adaptProjectForExport expects a document and closed adapter input.');
   const canonical = canonicalProjectFromDeliveryShape(
     document as DeliveryShapedProject
   );
   const adapter = resolveExportAdapter(canonical, input);
+  const sceneTranslation = adapter.profile.id === 'minecraft.java_block'
+    ? javaBlockSceneTranslation(canonical)
+    : null;
   return {
     ...canonical,
     formatProfile: adapter.profile,
-    textures: adapterTextures(canonical, adapter.profile)
+    textures: adapterTextures(canonical, adapter.profile),
+    ...(sceneTranslation
+      ? {
+          scene: translatedScene(canonical.scene, sceneTranslation),
+          deliveryAdaptation: { sceneTranslation }
+        }
+      : {})
   };
-};
+}

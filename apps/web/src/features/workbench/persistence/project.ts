@@ -1,29 +1,18 @@
 'use client';
 
-import {
-  useReducer
-} from 'react';
+import { useReducer } from 'react';
 
-import type { ProjectDocument } from '@ashfox/engine-core';
-
-import type {
-  ProjectSnapshot
-} from '../../../application/snapshot';
+import type { AssetProject } from '@ashfox/engine-core';
+import type { ProjectSnapshot } from '../../../application/snapshot';
 import {
   createPersistenceSessionState,
   isPersistenceSession,
   persistenceSessionReducer,
   type StorageStatus
 } from './session';
-import {
-  useLocalProjectRestore
-} from './restore';
-import {
-  useLocalProjectSave
-} from './useLocalProjectSave';
-import {
-  usePersistenceLifecycle
-} from './lifecycle';
+import { useLocalProjectRestore } from './restore';
+import { useLocalProjectSave } from './useLocalProjectSave';
+import { usePersistenceLifecycle } from './lifecycle';
 
 export type { StorageStatus } from './session';
 
@@ -32,7 +21,7 @@ interface UseLocalProjectPersistenceInput {
   projectId: string;
   projectGeneration: number;
   restoreFromStorage: boolean;
-  document: ProjectDocument;
+  project: AssetProject;
   onHydrate: (record: ProjectSnapshot) => void;
   onExternal: (record: ProjectSnapshot) => void;
 }
@@ -47,7 +36,7 @@ export const useLocalProjectPersistence = ({
   projectId,
   projectGeneration,
   restoreFromStorage,
-  document,
+  project,
   onHydrate,
   onExternal
 }: UseLocalProjectPersistenceInput): LocalProjectPersistenceState => {
@@ -55,12 +44,9 @@ export const useLocalProjectPersistence = ({
   const [persistence, dispatch] = useReducer(
     persistenceSessionReducer,
     undefined,
-    () => createPersistenceSessionState(
-      session,
-      !restoreFromStorage
-    )
+    () => createPersistenceSessionState(session, !restoreFromStorage)
   );
-  const lifecycle = usePersistenceLifecycle(document);
+  const lifecycle = usePersistenceLifecycle(project);
 
   useLocalProjectRestore({
     enabled,
@@ -79,18 +65,12 @@ export const useLocalProjectPersistence = ({
     projectGeneration,
     session,
     persistence,
-    document,
+    project,
     lifecycle,
     dispatch
   });
 
   return isPersistenceSession(persistence, session)
-    ? {
-        status: persistence.status,
-        lastSavedAt: persistence.lastSavedAt
-      }
-    : {
-        status: 'loading',
-        lastSavedAt: null
-      };
+    ? { status: persistence.status, lastSavedAt: persistence.lastSavedAt }
+    : { status: 'loading', lastSavedAt: null };
 };

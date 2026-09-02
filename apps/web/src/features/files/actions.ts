@@ -7,7 +7,7 @@ import {
 
 import type {
   ExportAdapterInput,
-  ProjectDocument
+  AssetProject
 } from '@ashfox/engine-core';
 
 import type {
@@ -19,9 +19,9 @@ import {
   type TargetArtifactFile
 } from './browserFileWorkflow';
 import {
-  createProjectArtifact,
-  parseProjectFile
-} from './source';
+  createWorkspaceArtifact,
+  parseWorkspaceFile
+} from './workspace';
 import {
   isArtifactCurrent,
   type ArtifactFile
@@ -32,9 +32,7 @@ import {
   useFileOperation,
   type FileOperationRunResult
 } from './useFileOperation';
-import { createAnimatedGif } from '../capture/createAnimatedGif';
 import { createBuildGif } from '../capture/createBuildGif';
-import { createResultPng } from '../capture/createResultPng';
 import {
   isGifCaptureFile,
   type GifCaptureFile
@@ -45,9 +43,9 @@ import type {
 } from './capture';
 
 interface UseProjectFileActionsInput {
-  document: ProjectDocument;
+  project: AssetProject;
   assets: ProjectAssets;
-  onLoad: (document: ProjectDocument) => void;
+  onLoad: (project: AssetProject) => void;
   operationLease: OperationLease;
 }
 
@@ -83,7 +81,7 @@ const adaptationNotice = (
 };
 
 export const useProjectFileActions = ({
-  document,
+  project,
   assets,
   onLoad,
   operationLease
@@ -95,53 +93,63 @@ export const useProjectFileActions = ({
   } = useFileOperation<ArtifactFile>(operationLease);
 
   const open = useCallback((file: File): void => {
+    let openedProject: AssetProject | null = null;
     void run({
       kind: 'open',
-      pendingMessage: 'Compiling Intent Program',
-      execute: () => parseProjectFile(file),
+      pendingMessage: 'Reading workspace',
+      execute: async () => {
+        openedProject = await parseWorkspaceFile(file, project.entry);
+        return openedProject;
+      },
       complete: (opened) => {
-        onLoad(opened);
         return {
           phase: 'succeeded',
-          message: `Opened ${opened.name}`
+          message: `Opened ${opened.document.name}`
         };
       },
-      failureMessage: 'Intent Program open failed'
+      failureMessage: 'Workspace open failed'
+    }).then((result) => {
+      if (result.ok && openedProject !== null) onLoad(openedProject);
     });
-  }, [onLoad, run]);
+  }, [onLoad, project.entry, run]);
 
   const drop = useCallback((event: DragEvent<HTMLElement>): void => {
     event.preventDefault();
     const file = event.dataTransfer.files[0];
     if (!file) return;
+    let openedProject: AssetProject | null = null;
     void run({
       kind: 'drop',
-      pendingMessage: 'Compiling dropped Intent Program',
-      execute: () => parseProjectFile(file),
+      pendingMessage: 'Reading dropped workspace',
+      execute: async () => {
+        openedProject = await parseWorkspaceFile(file, project.entry);
+        return openedProject;
+      },
       complete: (opened) => {
-        onLoad(opened);
         return {
           phase: 'succeeded',
-          message: `Opened ${opened.name}`
+          message: `Opened ${opened.document.name}`
         };
       },
-      failureMessage: 'Dropped Intent Program failed'
+      failureMessage: 'Dropped workspace failed'
+    }).then((result) => {
+      if (result.ok && openedProject !== null) onLoad(openedProject);
     });
-  }, [onLoad, run]);
+  }, [onLoad, project.entry, run]);
 
   const save = useCallback((): void => {
     void run({
       kind: 'save',
-      pendingMessage: 'Preparing Intent Program source',
-      execute: () => createProjectArtifact(document),
+      pendingMessage: 'Preparing workspace',
+      execute: () => createWorkspaceArtifact(project),
       complete: (artifact) => ({
         phase: 'succeeded',
         message: `Ready · ${artifact.name}`,
         result: artifact
       }),
-      failureMessage: 'Source download failed'
+      failureMessage: 'Workspace download failed'
     });
-  }, [document, run]);
+  }, [project, run]);
 
   const exportTarget = useCallback((
     adapter: ExportAdapterInput,
@@ -150,7 +158,7 @@ export const useProjectFileActions = ({
     return run<TargetArtifactFile, TargetArtifactFile>({
       kind: 'export',
       pendingMessage: `Building ${adapter.target} export`,
-      execute: () => createTargetArtifact(document, assets, adapter),
+      execute: () => createTargetArtifact(project, assets, adapter),
       complete: (artifact) => {
         const adaptations = adaptationNotice(artifact);
         return {
@@ -163,7 +171,7 @@ export const useProjectFileActions = ({
       },
       failureMessage: 'Target export failed'
     }, lease);
-  }, [assets, document, run]);
+  }, [assets, project, run]);
 
   const capture = useCallback(
     (
@@ -172,41 +180,23 @@ export const useProjectFileActions = ({
     ): Promise<FileOperationRunResult<ArtifactFile>> =>
       run<ArtifactFile>({
         kind: 'capture',
-        pendingMessage:
-          request.kind === 'build'
-            ? 'Preparing build process GIF'
-            : request.kind === 'animation'
-              ? 'Preparing animation GIF'
-              : 'Preparing result image',
+        pendingMessage: 'Preparing build replay GIF',
         execute: ({ signal, reportProgress }) =>
-          request.kind === 'build'
-            ? createBuildGif(assets, request, {
-                signal,
-                onProgress: (completed, total) => {
-                  reportProgress(`Captured ${completed}/${total} frames`);
-                }
-              })
-            : request.kind === 'animation'
-              ? createAnimatedGif(document, assets, request, {
-                  signal,
-                  onProgress: (completed, total) => {
-                    reportProgress(`Captured ${completed}/${total} frames`);
-                  }
-                })
-              : createResultPng(document, assets, { signal }),
+          createBuildGif(project, assets, request, {
+            signal,
+            onProgress: (completed, total) => {
+              reportProgress(`Captured ${completed}/${total} frames`);
+            }
+          }),
         complete: (capture) => ({
           phase: 'succeeded',
-          message:
-            request.kind === 'result' ? 'Image ready' : 'GIF ready',
+          message: 'Build replay ready',
           result: capture
         }),
-        failureMessage:
-          request.kind === 'result'
-            ? 'Result capture failed'
-            : 'GIF capture failed',
+        failureMessage: 'Build replay failed',
         cancelledMessage: 'Capture cancelled'
       }, lease),
-    [assets, document, run]
+    [assets, project, run]
   );
 
   const captureGif = useCallback(
@@ -219,7 +209,7 @@ export const useProjectFileActions = ({
   const artifactFile =
     operation.phase === 'succeeded' &&
     operation.result !== null &&
-    isArtifactCurrent(document, operation.result)
+    isArtifactCurrent(project, operation.result)
       ? operation.result
       : null;
 

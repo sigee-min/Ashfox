@@ -81,7 +81,7 @@
           "const": "ai-authored-ai-compiled-human-observed"
         },
         "canonicalAuthority": {
-          "const": "intent-program-v1"
+          "const": "closed-asset-workspace"
         },
         "projectFile": {
           "$ref": "#/$defs/projectFile"
@@ -117,10 +117,10 @@
       ],
       "properties": {
         "extension": {
-          "const": ".ashfox"
+          "const": ".ashfoxworkspace"
         },
         "mediaType": {
-          "const": "text/x-ashfox;charset=utf-8"
+          "const": "application/vnd.ashfox.workspace+json"
         },
         "encoding": {
           "const": "utf-8"
@@ -129,10 +129,10 @@
           "const": "forbidden"
         },
         "authority": {
-          "const": "intent-program-source-only"
+          "const": "closed-workspace-source-only"
         },
         "loadMode": {
-          "const": "parse-compile-atomic"
+          "const": "read-validate-build-atomic"
         },
         "compiledState": {
           "const": "ephemeral-cache-only"
@@ -158,34 +158,29 @@
     },
     "agentCapabilities": {
       "type": "array",
-      "minItems": 4,
-      "maxItems": 4,
+      "minItems": 3,
+      "maxItems": 3,
       "uniqueItems": true,
       "prefixItems": [
-        { "const": "decide-and-compile-intent-program" },
+        { "const": "apply-workspace-change-set" },
         { "const": "inspect-project" },
-        { "const": "present-review-evidence" },
-        { "const": "propose-intent-program" }
+        { "const": "present-review-evidence" }
       ],
       "items": false
     },
     "forbiddenHumanAuthoring": {
       "type": "array",
-      "minItems": 11,
-      "maxItems": 11,
+      "minItems": 7,
+      "maxItems": 7,
       "uniqueItems": true,
       "prefixItems": [
-        { "const": "compare-current-and-candidate" },
-        { "const": "confirm-intent-program" },
-        { "const": "decide-intent-program" },
         { "const": "direct-animation-authoring" },
         { "const": "direct-geometry-authoring" },
         { "const": "direct-hierarchy-authoring" },
         { "const": "direct-material-authoring" },
         { "const": "direct-rig-authoring" },
         { "const": "direct-texture-authoring" },
-        { "const": "edit-intent-program-source-in-workbench" },
-        { "const": "reject-intent-program" }
+        { "const": "edit-asset-workspace-in-workbench" }
       ],
       "items": false
     },
@@ -210,8 +205,8 @@
           "maxItems": 3,
           "uniqueItems": true,
           "prefixItems": [
-            { "const": "semantic-summary" },
-            { "const": "candidate-visual" },
+            { "const": "workspace-summary" },
+            { "const": "native-size-review" },
             { "const": "technical-receipt" }
           ],
           "items": false
@@ -471,19 +466,15 @@
       "additionalProperties": false,
       "required": [
         "product",
-        "intentProgram",
-        "surfaceSynthesis",
+        "assetWorkspace",
         "deliveryTargets"
       ],
       "properties": {
         "product": {
           "$ref": "#/$defs/productReleaseVersioning"
         },
-        "intentProgram": {
-          "$ref": "#/$defs/intentProgramVersioning"
-        },
-        "surfaceSynthesis": {
-          "$ref": "#/$defs/surfaceSynthesisVersioning"
+        "assetWorkspace": {
+          "$ref": "#/$defs/assetWorkspaceVersioning"
         },
         "deliveryTargets": {
           "$ref": "#/$defs/deliveryTargetVersioning"
@@ -534,55 +525,47 @@
         }
       }
     },
-    "intentProgramVersioning": {
+    "assetWorkspaceVersioning": {
       "type": "object",
       "additionalProperties": false,
       "required": [
         "version",
+        "sourceGrammar",
+        "container",
         "compatibility",
         "authority",
-        "breakingChangeRequiresVersion"
+        "compiler",
+        "releaseState",
+        "replacementPolicy",
+        "legacyAliases"
       ],
       "properties": {
         "version": {
           "const": 1
+        },
+        "sourceGrammar": {
+          "const": "ashfox-model 1"
+        },
+        "container": {
+          "const": "ashfox-workspace:1"
         },
         "compatibility": {
-          "const": "current-version-only"
+          "const": "exact-current-contract"
         },
         "authority": {
-          "const": "packages/engine-core/src/project/program/language.ts"
+          "const": "packages/engine-core/src/project/workspace/contract.ts"
         },
-        "breakingChangeRequiresVersion": {
-          "const": true
-        }
-      }
-    },
-    "surfaceSynthesisVersioning": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "version",
-        "authority",
-        "rasterAuthority",
-        "receiptAuthority",
-        "breakingChangeRequiresVersion"
-      ],
-      "properties": {
-        "version": {
-          "const": 1
+        "compiler": {
+          "const": "packages/engine-core/src/compiler/program/asset/compile.ts"
         },
-        "authority": {
-          "const": "packages/engine-core/src/textures/appearance/contract.ts"
+        "releaseState": {
+          "const": "unreleased"
         },
-        "rasterAuthority": {
-          "const": "packages/engine-core/src/textures/textureRecipe/raster.ts"
+        "replacementPolicy": {
+          "const": "apply-complete-change-set-atomically"
         },
-        "receiptAuthority": {
-          "const": "packages/engine-core/src/provenance/program/receipt.ts"
-        },
-        "breakingChangeRequiresVersion": {
-          "const": true
+        "legacyAliases": {
+          "const": "forbidden"
         }
       }
     },

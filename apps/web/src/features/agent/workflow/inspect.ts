@@ -1,6 +1,6 @@
 import type {
+  AssetProject,
   ProductionReadinessReport,
-  ProjectDocument,
   ValidationReport
 } from '@ashfox/engine-core';
 
@@ -8,6 +8,7 @@ import {
   WORKBENCH_PLACEHOLDER_PROJECT_ID
 } from '../../../application/projectIdentity';
 import {
+  isValidVisualReviewReceipt,
   rejectedVisualReviewsForRevision,
   visualReviewPlanItem,
   type VisualReviewReceipt
@@ -48,18 +49,6 @@ const workflowPosition = (
   if (findings.startup) {
     return { stage: 'start', blocker: findings.startup };
   }
-  if (findings.intent) {
-    return { stage: 'plan', blocker: findings.intent };
-  }
-  if (findings.geometry) {
-    return { stage: 'model', blocker: findings.geometry };
-  }
-  if (findings.authoring) {
-    return { stage: 'model', blocker: findings.authoring };
-  }
-  if (findings.animation) {
-    return { stage: 'animate', blocker: findings.animation };
-  }
   if (!readiness.mechanicallyReady) {
     return {
       stage: 'model',
@@ -73,11 +62,12 @@ const workflowPosition = (
 };
 
 export const deriveInspectWorkflow = (
-  document: ProjectDocument,
+  project: AssetProject,
   report: ValidationReport,
   readiness: ProductionReadinessReport,
   visualReviews: readonly VisualReviewReceipt[] = []
 ): InspectWorkflowGuidance => {
+  const document = project.document;
   if (document.id === WORKBENCH_PLACEHOLDER_PROJECT_ID) {
     const { nextActions } = deriveWorkflowActions(
       document,
@@ -105,7 +95,7 @@ export const deriveInspectWorkflow = (
   ];
   const classified = classifyWorkflowFindings(findings);
   const remaining = remainingVisualReviews(
-    document,
+    project,
     readiness,
     visualReviews
   );
@@ -113,7 +103,7 @@ export const deriveInspectWorkflow = (
     visualReviews,
     document.id,
     document.revision
-  )[0] ?? null;
+  ).find((receipt) => isValidVisualReviewReceipt(receipt, project)) ?? null;
   const { stage, blocker } = workflowPosition(
     classified,
     readiness,

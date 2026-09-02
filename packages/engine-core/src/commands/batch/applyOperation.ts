@@ -1,4 +1,4 @@
-import type { ProjectDocument } from '../../model';
+import type { AssetProject } from '../../project/asset';
 import type { CommandApplication } from '../definition';
 import { getCommandDefinition } from '../registry';
 import type {
@@ -10,7 +10,7 @@ import { commandBatchFailure } from './failure';
 import type { CommandExecutionContext } from './context';
 
 export const applyCommandOperation = (
-  document: ProjectDocument,
+  project: AssetProject,
   batch: CommandBatch,
   index: number,
   _source: CommandSource,
@@ -19,24 +19,18 @@ export const applyCommandOperation = (
   const operation = batch.operations[index];
   const definition = getCommandDefinition(operation.name);
   if (!definition) {
-    return commandBatchFailure(document, {
+    return commandBatchFailure(project, {
       code: 'invalid_payload',
       message: `Command "${String(operation.name)}" is not registered.`,
       path: `operations[${index}].name`
     });
   }
-  const result = definition.apply(document, operation.payload, context);
+  const result = definition.apply(project, operation.payload, context);
   if (result.ok) return result.value;
-  const {
-    pathScope = 'operation',
-    ...commandError
-  } = result.error;
-  return commandBatchFailure(document, {
-    ...commandError,
-    path: commandError.path
-      ? pathScope === 'document'
-        ? commandError.path
-        : `operations[${index}].${commandError.path}`
+  return commandBatchFailure(project, {
+    ...result.error,
+    path: result.error.path
+      ? `operations[${index}].${result.error.path}`
       : `operations[${index}]`
   });
 };

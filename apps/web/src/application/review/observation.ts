@@ -1,57 +1,24 @@
-import {
-  AUTHORING_REVIEW_CAMERAS,
-  AUTHORING_REVIEW_ISSUES,
-  authoringReviewChecks,
-  resolveArchetypeReference,
-  resolveSpecialistReference,
-  type ProjectDocument
-} from '@ashfox/engine-core';
-import type {
-  AnimationPreviewIssue,
-  AppliedAuthoringReviewCheck,
-  AuthoringAuthorityClaim,
-  AuthoringReviewIssue,
-  EvidenceCriterionDefinition
-} from '@ashfox/engine-core';
 import type { CameraMode } from '../../rendering/cameraPresets';
 import type { PixelFrameEvidence } from '../../rendering/pixelFrameEvidence';
 
-export const VISUAL_REVIEW_ISSUES = AUTHORING_REVIEW_ISSUES;
-export type VisualReviewIssue = AuthoringReviewIssue;
+/** Web-owned observation vocabulary; it does not enforce compiler aesthetics. */
+export const VISUAL_REVIEW_ISSUES = Object.freeze([
+  'silhouette', 'proportion', 'connection', 'clipping', 'feature_detail',
+  'material', 'pivot', 'motion', 'other'
+] as const);
+export type VisualReviewIssue = (typeof VISUAL_REVIEW_ISSUES)[number];
 
-export const VISUAL_REVIEW_MILESTONES = [
-  'archetype',
-  'specialists'
-] as const;
-export type VisualReviewMilestone =
-  (typeof VISUAL_REVIEW_MILESTONES)[number];
-
-export const VISUAL_REVIEW_CAMERAS = AUTHORING_REVIEW_CAMERAS;
+export const VISUAL_REVIEW_CAMERAS = Object.freeze([
+  'perspective', 'native', 'front', 'side', 'top'
+] as const);
 export type VisualReviewCamera =
   (typeof VISUAL_REVIEW_CAMERAS)[number];
 
-export interface PresentedReviewEvidence {
-  readonly criteria: readonly Pick<
-    EvidenceCriterionDefinition,
-    'id' | 'basis' | 'required' | 'instruction'
-  >[];
-  readonly claims: readonly Pick<
-    AuthoringAuthorityClaim,
-    'criterionId' | 'basis' | 'referenceIds' | 'rationale'
-  >[];
+export interface VisualReviewCheck {
+  readonly id: string;
+  readonly issue: VisualReviewIssue;
+  readonly instruction: string;
 }
-
-export type PresentedReviewCheck = Readonly<Pick<
-  AppliedAuthoringReviewCheck,
-  | 'id'
-  | 'facets'
-  | 'issue'
-  | 'instruction'
-  | 'authority'
-  | 'authorityType'
->> & {
-  readonly evidence: PresentedReviewEvidence;
-};
 
 export interface VisualReviewObservation {
   readonly ok: true;
@@ -59,7 +26,6 @@ export interface VisualReviewObservation {
   readonly data: {
     readonly review: 'next' | 'preview' | 'accept' | 'reject';
     readonly purpose: 'delivery' | 'preview';
-    readonly milestone: VisualReviewMilestone | null;
     readonly verdict: 'pending' | 'accepted' | 'rejected';
     readonly issues: readonly VisualReviewIssue[];
     readonly acknowledgedCheckIds: readonly string[];
@@ -73,67 +39,39 @@ export interface VisualReviewObservation {
     readonly playing: boolean;
     readonly observedTimeSeconds: number;
     readonly completedCycles: number;
-    readonly previewIssues: readonly AnimationPreviewIssue[];
-    readonly reviewChecks: readonly PresentedReviewCheck[];
+    readonly reviewChecks: readonly VisualReviewCheck[];
   };
 }
 
-export const presentedReviewChecks = (
-  document: ProjectDocument,
-  camera: CameraMode,
-  motion: boolean,
-  clipId: string | null,
-  milestone: VisualReviewMilestone | null
-): readonly PresentedReviewCheck[] =>
-  authoringReviewChecks(
-    document.authoringProfile,
-    camera,
-    motion
-      ? { facet: 'motion', clipId }
-      : {}
-  )
-    .filter((check) => {
-      if (!motion && check.facets.includes('motion')) return false;
-      if (milestone === null) return true;
-      return milestone === 'archetype'
-        ? check.authorityType === 'archetype'
-        : true;
-    })
-    .map(({
-      id,
-      facets,
-      issue,
-      instruction,
-      authority,
-      authorityType
-    }) => {
-      const definition = authorityType === 'archetype'
-        ? resolveArchetypeReference(authority)
-        : resolveSpecialistReference(authority);
-      return {
-        id,
-        facets,
-        issue,
-        instruction,
-        authority,
-        authorityType,
-        evidence: {
-          criteria: (definition?.evidenceCriteria ?? []).map(
-            (criterion) => ({
-              id: criterion.id,
-              basis: criterion.basis,
-              required: criterion.required,
-              instruction: criterion.instruction
-            })
-          ),
-          claims: (document.authoringProfile?.claims ?? [])
-            .filter((claim) => claim.authority.id === authority.id)
-            .map((claim) => ({
-              criterionId: claim.criterionId,
-              basis: claim.basis,
-              referenceIds: [...claim.referenceIds],
-              rationale: claim.rationale
-            }))
-        }
-      };
-    });
+export const VISUAL_REVIEW_CHECKS: readonly VisualReviewCheck[] = Object.freeze([
+  Object.freeze({
+    id: 'source.silhouette',
+    issue: 'silhouette',
+    instruction:
+      'Inspect label-hidden front, side, top, and perspective views: the gameplay-size silhouette and primary read remain legible.'
+  }),
+  Object.freeze({
+    id: 'source.element-economy',
+    issue: 'other',
+    instruction:
+      'Check element economy in the authored source: every cube, plane, hierarchy edge, pivot, and rotation has a visible structural purpose.'
+  }),
+  Object.freeze({
+    id: 'source.pixel-uv',
+    issue: 'feature_detail',
+    instruction:
+      'Inspect native-size texture and UV evidence: model units and texels stay aligned, clusters are deliberate, and thin planes use explicit binary alpha.'
+  }),
+  Object.freeze({
+    id: 'source.palette-shading',
+    issue: 'material',
+    instruction:
+      'Check the authored palette and shading: restricted colors support form without noise, banding, pillow or pancake shading, or accidental dithering.'
+  }),
+  Object.freeze({
+    id: 'source.pivot-motion',
+    issue: 'pivot',
+    instruction:
+      'Inspect pivots and motion at joints or attachments: keyframed parts remain connected and the movement reads without pops or implausible arcs.'
+  })
+]);

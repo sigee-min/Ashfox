@@ -1,4 +1,4 @@
-import type { ProjectDocument } from '../../model';
+import type { AssetProject } from '../../project/asset';
 import {
   commandAllowedForSource,
   getCommandDefinition
@@ -13,12 +13,12 @@ import { commandBatchFailure } from './failure';
 const MAX_BATCH_OPERATIONS = 64;
 
 export const validateCommandBatch = (
-  document: ProjectDocument,
+  project: AssetProject,
   batch: CommandBatch,
   source: CommandSource
 ): CommandBatchFailure | null => {
   if (batch.batchId.trim().length === 0) {
-    return commandBatchFailure(document, {
+    return commandBatchFailure(project, {
       code: 'invalid_batch',
       message: 'Batch ID is required.',
       path: 'batchId',
@@ -29,31 +29,31 @@ export const validateCommandBatch = (
     typeof batch.baseProjectId !== 'string' ||
     batch.baseProjectId.trim().length === 0
   ) {
-    return commandBatchFailure(document, {
+    return commandBatchFailure(project, {
       code: 'invalid_batch',
       message: 'Base project ID is required.',
       path: 'baseProjectId',
       expected: 'non-empty string'
     });
   }
-  if (batch.baseProjectId !== document.id) {
-    return commandBatchFailure(document, {
+  if (batch.baseProjectId !== project.id) {
+    return commandBatchFailure(project, {
       code: 'project_mismatch',
       message: 'Batch project does not match the active project.',
       path: 'baseProjectId',
-      expected: document.id
+      expected: project.id
     });
   }
-  if (batch.baseRevision !== document.revision) {
-    return commandBatchFailure(document, {
+  if (batch.baseRevision !== project.revision) {
+    return commandBatchFailure(project, {
       code: 'revision_mismatch',
       message: 'Batch revision does not match the active project.',
       path: 'baseRevision',
-      expected: document.revision
+      expected: project.revision
     });
   }
   if (source === 'agent' && batch.operations.length !== 1) {
-    return commandBatchFailure(document, {
+    return commandBatchFailure(project, {
       code: 'invalid_batch',
       message: 'Agent batches must contain exactly one operation.',
       path: 'operations',
@@ -64,7 +64,7 @@ export const validateCommandBatch = (
     batch.operations.length === 0 ||
     batch.operations.length > MAX_BATCH_OPERATIONS
   ) {
-    return commandBatchFailure(document, {
+    return commandBatchFailure(project, {
       code: 'invalid_batch',
       message: 'Batch operation count is outside the allowed range.',
       path: 'operations',
@@ -75,7 +75,7 @@ export const validateCommandBatch = (
     const operation = batch.operations[index];
     const definition = getCommandDefinition(operation.name);
     if (!definition) {
-      return commandBatchFailure(document, {
+      return commandBatchFailure(project, {
         code: 'invalid_payload',
         message: `Command "${String(operation.name)}" is not registered.`,
         path: `operations[${index}].name`,
@@ -83,7 +83,7 @@ export const validateCommandBatch = (
       });
     }
     if (!commandAllowedForSource(operation.name, source)) {
-      return commandBatchFailure(document, {
+      return commandBatchFailure(project, {
         code: 'invalid_payload',
         message:
           `Command "${operation.name}" is not available to ${source}.`,
@@ -93,7 +93,7 @@ export const validateCommandBatch = (
     }
     const issue = definition.validate(operation.payload);
     if (issue) {
-      return commandBatchFailure(document, {
+      return commandBatchFailure(project, {
         code: 'invalid_payload',
         message: issue.message,
         path: `operations[${index}].payload${issue.path.slice(1)}`,

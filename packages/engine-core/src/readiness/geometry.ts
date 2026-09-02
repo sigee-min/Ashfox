@@ -1,5 +1,6 @@
 import {
   CUBE_FACE_DIRECTIONS,
+  PLANE_FACE_DIRECTIONS,
   type ProjectDocument
 } from '../model';
 import {
@@ -37,10 +38,12 @@ const visibleGeometry = (
       textureIds.push(...enabledFaces.map((face) => face.textureId));
       continue;
     }
-    if (node.kind === 'mesh') {
-      const faces = Object.values(node.faces);
-      if (faces.length > 0) geometryIds.push(node.id);
-      textureIds.push(...faces.map((face) => face.textureId));
+    if (node.kind === 'plane') {
+      const enabledFaces = PLANE_FACE_DIRECTIONS
+        .map((direction) => node.faces[direction])
+        .filter((face) => face.enabled);
+      if (enabledFaces.length > 0) geometryIds.push(node.id);
+      textureIds.push(...enabledFaces.map((face) => face.textureId));
     }
   }
   return { geometryIds, textureIds };
@@ -57,7 +60,7 @@ const geometryFindings = (
       severity: 'error',
       message: 'The project has no effectively visible renderable geometry.',
       path: 'scene.nodes',
-      fix: 'Compile one complete Intent Program source.'
+      fix: 'Compile one complete selected workspace entry.'
     }];
   }
   if (faceCount === 0 || untexturedFaceCount > 0) {
@@ -69,7 +72,7 @@ const geometryFindings = (
         'resolve to a texture asset.',
       path: 'scene.nodes',
       entityIds: geometryIds,
-      fix: 'Correct the Intent Program and compile its generated material palette.'
+      fix: 'Correct the authored source and bind an explicit material texture.'
     }];
   }
   return [];

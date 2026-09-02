@@ -5,7 +5,6 @@
   "exports": {
     "./types": "./src/types/index.ts",
     "./types/project": "./src/types/project/index.ts",
-    "./types/projectContract": "./src/types/project/contract.ts",
     "./types/project/*": "./src/types/project/*.ts",
     "./types/*": "./src/types/*.ts",
     "./types/tools/*": "./src/types/tools/*.ts",

@@ -12,32 +12,7 @@ const {
 
 const repoRoot = path.resolve(__dirname, '..', '..');
 
-const compatibilityExports = Object.freeze([
-  // Source-path compatibility facade documented in docs/architecture/codebase.md.
-  ['packages/engine-core/src/model.ts', 'AnimationTriggerKeyframe'],
-  ['packages/engine-core/src/model.ts', 'ChannelId'],
-  ['packages/engine-core/src/model.ts', 'ClipId'],
-  ['packages/engine-core/src/model.ts', 'CubeFaceRotation'],
-  ['packages/engine-core/src/model.ts', 'KeyframeId'],
-  ['packages/engine-core/src/model.ts', 'KeyframeInterpolation'],
-  ['packages/engine-core/src/model.ts', 'MeshFace'],
-  ['packages/engine-core/src/model.ts', 'MeshVertex'],
-  ['packages/engine-core/src/model.ts', 'MolangExpression'],
-  ['packages/engine-core/src/model.ts', 'NodeBase'],
-  ['packages/engine-core/src/model.ts', 'ParticleTriggerTrack'],
-  ['packages/engine-core/src/model.ts', 'ProjectSettings'],
-  ['packages/engine-core/src/model.ts', 'SceneGraph'],
-  ['packages/engine-core/src/model.ts', 'SoundTriggerTrack'],
-  ['packages/engine-core/src/model.ts', 'TextureRaster'],
-  ['packages/engine-core/src/model.ts', 'TimelineTriggerTrack'],
-  ['packages/engine-core/src/model.ts', 'TransformChannelProperty'],
-  ['packages/engine-core/src/model.ts', 'UvRect'],
-  // Named compatibility barrel retained for source-level V1 provenance readers.
-  [
-    'packages/engine-core/src/provenance/program/index.ts',
-    'INTENT_PROGRAM_PROVENANCE_CONTRACT'
-  ]
-].map(([file, symbol]) => Object.freeze({ file, symbol })));
+const compatibilityExports = Object.freeze([]);
 
 const normalizePath = (value) =>
   value.replace(/\\/g, '/').replace(/^\.\//, '');

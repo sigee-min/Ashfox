@@ -5,15 +5,9 @@ import { validateSceneOcclusion } from '../scene/occlusion';
 import { validateScene } from '../scene/validate';
 import { validateTextures } from '../texture/validate';
 import { validateDocument } from './authority';
-import { validateModelParts } from './model';
 import type {
   ValidationReport
 } from '../contract';
-import {
-  DEFAULT_INTENT_VALIDATION_COMPUTATION,
-  type IntentProgramValidationAttestation,
-  type IntentProgramValidationComputation
-} from './candidate';
 
 const sortedByPathAndCode = (
   findings: ValidationReport['findings']
@@ -25,15 +19,12 @@ const sortedByPathAndCode = (
   });
 
 const validateProjectDocumentWithCandidate = (
-  value: unknown,
-  attestation: IntentProgramValidationAttestation | undefined,
-  computation: IntentProgramValidationComputation
+  value: unknown
 ): ValidationReport => {
   const context = createValidationContext();
   if (validateProjectDocumentContract(value, context.add)) {
-    validateDocument(value, context.add, attestation, computation);
+    validateDocument(value, context.add);
     validateScene(value, context.add, context.registerId);
-    validateModelParts(value, context.add);
     validateSceneOcclusion(value, context.add);
     validateTextures(value, context.add, context.registerId);
     validateAnimations(value, context.add, context.registerId);
@@ -46,23 +37,7 @@ const validateProjectDocumentWithCandidate = (
   };
 };
 
-/** Public/raw validation always recomputes source-owned compiler evidence. */
+/** Validate one derived canonical document without consulting workspace source. */
 export const validateProjectDocument = (
   value: unknown
-): ValidationReport => validateProjectDocumentWithCandidate(
-  value,
-  undefined,
-  DEFAULT_INTENT_VALIDATION_COMPUTATION
-);
-
-/** Internal command boundary for one exact, ephemeral candidate reference. */
-export const validateProjectDocumentCandidate = (
-  value: unknown,
-  attestation: IntentProgramValidationAttestation,
-  computation: IntentProgramValidationComputation =
-    DEFAULT_INTENT_VALIDATION_COMPUTATION
-): ValidationReport => validateProjectDocumentWithCandidate(
-  value,
-  attestation,
-  computation
-);
+): ValidationReport => validateProjectDocumentWithCandidate(value);

@@ -1,7 +1,4 @@
 import type { JsonSchema } from '../types';
-import { FILL_SHADE_DIRECTIONS } from '../../texture/shade/contract';
-
-export { FILL_SHADE_DIRECTIONS };
 
 export const TEXTURE_HEX_COLOR_PATTERN =
   '^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$';
@@ -39,37 +36,6 @@ const lineWidthSchema: JsonSchema = {
   description: 'Positive stroke width in source-canvas pixels.'
 };
 
-const shadeUnitSchema = (description: string): JsonSchema => ({
-  type: 'number',
-  minimum: 0,
-  maximum: 1,
-  description
-});
-
-const fillShadeSchema: JsonSchema = {
-  description:
-    'Fill shading. Defaults to enabled; false (or enabled:false) disables it.',
-  anyOf: [
-    { type: 'boolean' },
-    {
-      type: 'object',
-      additionalProperties: false,
-      properties: {
-        enabled: { type: 'boolean', description: 'Enable or disable shading.' },
-        intensity: shadeUnitSchema('Directional shading intensity.'),
-        edge: shadeUnitSchema('Edge darkening strength.'),
-        noise: shadeUnitSchema('Per-pixel tonal noise strength.'),
-        seed: { type: 'number', description: 'Deterministic shading seed.' },
-        lightDir: {
-          type: 'string',
-          enum: [...FILL_SHADE_DIRECTIONS],
-          description: 'Light direction for the directional gradient.'
-        }
-      }
-    }
-  ]
-};
-
 const opSchema = (op: string): JsonSchema => ({
   type: 'string',
   enum: [op]
@@ -99,8 +65,7 @@ export const textureOpSchema: JsonSchema = {
         y: coordinateSchema,
         width: extentSchema,
         height: extentSchema,
-        color: colorSchema,
-        shade: fillShadeSchema
+        color: colorSchema
       }
     },
     {

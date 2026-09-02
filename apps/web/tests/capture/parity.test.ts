@@ -8,11 +8,14 @@ import {
 } from '@ashfox/engine-core';
 
 import {
-  createAnimatedGif
-} from '../../src/features/capture/createAnimatedGif';
-import {
   applyAnimationPose
 } from '../../src/rendering/animationPose';
+import {
+  createBuildCapturePlan
+} from '../../src/features/capture/buildCaptureTimeline';
+import {
+  applyBuildCaptureFrame
+} from '../../src/features/capture/renderBuildGif';
 import {
   createWorkbenchProject
 } from '../fixtures/project';
@@ -31,7 +34,7 @@ const assertArrayClose = (
   });
 };
 
-const document = structuredClone(createWorkbenchProject());
+const document = structuredClone(createWorkbenchProject().document);
 const nodeId = document.scene.roots[0];
 const node = document.scene.nodes[nodeId];
 node.transform = {
@@ -64,9 +67,9 @@ const channels = {
   'channel-preview-scale': createChannel('scale')
 };
 document.animations = {
-  'clip-preview-parity': {
-    id: 'clip-preview-parity',
-    name: 'Idle',
+  idle: {
+    id: 'idle',
+    name: 'idle',
     durationSeconds: 1,
     fps: 20,
     loop: 'loop',
@@ -89,7 +92,7 @@ applyAnimationPose(
     ready: Promise.resolve(),
     dispose: () => undefined
   },
-  'clip-preview-parity',
+  'idle',
   0
 );
 
@@ -122,35 +125,109 @@ assertArrayClose(
   'viewport must consume the engine rest-rotation authority'
 );
 
-const unsupportedCapture = structuredClone(document);
-unsupportedCapture.animations = {
-  ...unsupportedCapture.animations,
-  'clip-preview-parity': {
-  ...unsupportedCapture.animations['clip-preview-parity'],
-  startDelay: {
-    kind: 'molang',
-    source: 'query.life_time'
-  }
-  }
-};
+const projection = (
+  target: THREE.Group
+) => ({
+  root: new THREE.Group(),
+  objectsByNodeId: new Map([[nodeId, target]]),
+  selectable: [],
+  readiness: { status: 'ready' as const, error: null },
+  ready: Promise.resolve(),
+  dispose: () => undefined
+});
+const replayNeutral = projection(new THREE.Group());
+const replayTarget = new THREE.Group();
+const replayTextured = projection(replayTarget);
+applyAnimationPose(document, replayTextured, null, 0);
+const buildPlan = createBuildCapturePlan(document);
+const finalMotionFrame = [...buildPlan.frames].reverse().find(
+  (frame) => frame.event.category === 'motion'
+);
+const completeFrame = buildPlan.frames.find(
+  (frame) => frame.event.category === 'complete'
+);
+if (!finalMotionFrame || !completeFrame) {
+  throw new Error('Build fixture requires motion and complete frames.');
+}
+applyBuildCaptureFrame(
+  finalMotionFrame,
+  document,
+  replayNeutral,
+  replayTextured
+);
+assertArrayClose(
+  replayTarget.position.toArray(),
+  [5, 10, 15],
+  'every motion hold frame must advance the authored pose'
+);
+applyBuildCaptureFrame(
+  completeFrame,
+  document,
+  replayNeutral,
+  replayTextured
+);
+assertArrayClose(
+  replayTarget.position.toArray(),
+  [4, 8, 12],
+  'the complete hold must restore the canonical rest pose'
+);
+assertArrayClose(
+  replayTarget.scale.toArray(),
+  [2, 3, 4],
+  'the complete hold must restore the canonical rest scale'
+);
 
-export const test = assert.rejects(
-  createAnimatedGif(
-    unsupportedCapture,
-    {},
-    {
-      clipId: 'clip-preview-parity',
-      environment: 'studio',
-      cameraMode: 'perspective'
-    },
-    {
-      signal: new AbortController().signal,
-      onProgress: () => undefined
-    }
-  ),
-  (error: unknown) =>
-    error instanceof Error &&
-    error.message.includes('cannot faithfully render') &&
-    error.message.includes('start_delay'),
-  'production animation GIF capture must fail before rendering an unfaithful preview'
+const texturedNodeId = Object.values(document.scene.nodes).find((candidate) =>
+  (candidate.kind === 'cube' || candidate.kind === 'plane') &&
+  Object.values(candidate.faces).some(
+    (face) => face.enabled && face.textureId !== null
+  )
+)?.id;
+if (!texturedNodeId) {
+  throw new Error('Build fixture requires textured geometry.');
+}
+const geometryFrame = buildPlan.frames.find(
+  (frame) =>
+    frame.event.category === 'geometry' &&
+    frame.event.nodeId === texturedNodeId
+);
+const textureFrame = buildPlan.frames.find(
+  (frame) =>
+    frame.event.category === 'texture' &&
+    frame.event.nodeId === texturedNodeId
+);
+if (!geometryFrame || !textureFrame) {
+  throw new Error('Build fixture requires geometry and texture steps.');
+}
+const neutralElement = new THREE.Group();
+const texturedElement = new THREE.Group();
+neutralElement.visible = false;
+texturedElement.visible = false;
+const elementNeutral = {
+  ...projection(new THREE.Group()),
+  objectsByNodeId: new Map([[texturedNodeId, neutralElement]])
+};
+const elementTextured = {
+  ...projection(new THREE.Group()),
+  objectsByNodeId: new Map([[texturedNodeId, texturedElement]])
+};
+applyBuildCaptureFrame(
+  geometryFrame,
+  document,
+  elementNeutral,
+  elementTextured
+);
+assert.equal(neutralElement.visible, true);
+assert.equal(texturedElement.visible, false);
+applyBuildCaptureFrame(
+  textureFrame,
+  document,
+  elementNeutral,
+  elementTextured
+);
+assert.equal(neutralElement.visible, false);
+assert.equal(
+  texturedElement.visible,
+  true,
+  'one texture event must atomically replace the neutral element'
 );

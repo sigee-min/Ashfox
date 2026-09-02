@@ -1,9 +1,6 @@
 export {
-  CANONICAL_IDLE_CLIP_ID
+  CANONICAL_IDLE_CLIP_NAME
 } from '../animation/idle/contract';
-export {
-  isProductionIdleClipName
-} from './animation';
 export {
   evaluateProductionReadiness
 } from './evaluate';

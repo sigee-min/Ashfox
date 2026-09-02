@@ -11,9 +11,6 @@ import type {
   ProjectStateDetail
 } from '../shared';
 import type { MeshUvPolicy } from '../project';
-import type {
-  FillShadeDirection as ContractFillShadeDirection
-} from '../../texture/shade/contract';
 
 export type {
   MeshSymmetryAxis,
@@ -48,23 +45,9 @@ export type UvPaintSpec = {
   anchor?: [number, number];
 };
 
-export type FillShadeDirection =
-  ContractFillShadeDirection;
-
-export type FillRectShadeLike =
-  | boolean
-  | {
-      enabled?: boolean;
-      intensity?: number;
-      edge?: number;
-      noise?: number;
-      seed?: number;
-      lightDir?: FillShadeDirection;
-    };
-
 export type TextureOpLike =
   | { op: 'set_pixel'; x: number; y: number; color: string }
-  | { op: 'fill_rect'; x: number; y: number; width: number; height: number; color: string; shade?: FillRectShadeLike }
+  | { op: 'fill_rect'; x: number; y: number; width: number; height: number; color: string }
   | { op: 'draw_rect'; x: number; y: number; width: number; height: number; color: string; lineWidth?: number }
   | { op: 'draw_line'; x1: number; y1: number; x2: number; y2: number; color: string; lineWidth?: number };
 
@@ -355,22 +338,6 @@ export interface SetTriggerKeyframesPayload extends IncludeStateOption, IncludeD
   clip: string;
   channel: 'sound' | 'particle' | 'timeline';
   keys: [{ time: number; value: string | string[] | Record<string, unknown> }];
-}
-
-export interface ExportPayload extends IncludeStateOption, IfRevisionOption {
-  format:
-    | 'java_block_item_json'
-    | 'gecko_geo_anim'
-    | 'animated_java'
-    | 'generic_model_json'
-    | 'gltf'
-    | 'native_codec';
-  codecId?: string;
-  destPath: string;
-  options?: {
-    fallback?: 'strict' | 'best_effort';
-    includeDiagnostics?: boolean;
-  };
 }
 
 export interface ValidatePayload extends IncludeStateOption, IfRevisionOption {}

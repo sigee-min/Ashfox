@@ -1,12 +1,11 @@
 import {
   createFiniteJsonSnapshot,
   hasExactContractKeys,
-  INTERNAL_CONTRACT_VERSIONS,
   isClosedContractRecord,
-  isCurrentInternalContractVersion,
   isDenseContractArray,
   isFiniteJsonValue,
-  isNonEmptyContractText
+  isNonEmptyContractText,
+  SIDECAR_IPC_SCHEMA_VERSION
 } from '@ashfox/internal-contracts';
 
 import {
@@ -25,7 +24,7 @@ import { toolSchemas } from '@ashfox/blockbench-contracts/mcpSchemas/toolSchemas
 import { validateSchema } from '@ashfox/blockbench-contracts/mcpSchemas/validation';
 
 export const PROTOCOL_VERSION =
-  INTERNAL_CONTRACT_VERSIONS.sidecarIpc;
+  SIDECAR_IPC_SCHEMA_VERSION;
 
 export type SidecarRole = 'plugin' | 'sidecar';
 
@@ -177,12 +176,12 @@ const isSidecarMessageUnchecked = (value: unknown): value is SidecarMessage => {
 
   if (type === 'hello') {
     return hasExactContractKeys(value, HELLO_KEYS) &&
-      isCurrentInternalContractVersion('sidecarIpc', value.version) &&
+      value.version === PROTOCOL_VERSION &&
       (value.role === 'plugin' || value.role === 'sidecar');
   }
   if (type === 'ready') {
     return hasExactContractKeys(value, READY_KEYS) &&
-      isCurrentInternalContractVersion('sidecarIpc', value.version);
+      value.version === PROTOCOL_VERSION;
   }
   if (type === 'request') {
     const schema = typeof value.tool === 'string'

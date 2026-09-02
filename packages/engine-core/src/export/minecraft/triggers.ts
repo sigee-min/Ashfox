@@ -47,7 +47,9 @@ const compileEffect = (
     effect.locatorId,
     visibleNodeIds
   );
-  if (effect.locatorId && !locator) return undefined;
+  if (effect.locatorId && !locator) throw new Error(
+    `Validated Minecraft animation effect locator "${effect.locatorId}" is missing or hidden.`
+  );
   return {
     effect: effect.effect,
     ...(locator ? { locator } : {}),

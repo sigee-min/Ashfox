@@ -3,9 +3,11 @@ import * as THREE from 'three';
 
 import {
   configureTextureMap,
+  createProjectMaterials,
   materialEmissionIntensity
 } from '../../src/rendering/sceneMaterials';
 import type { TextureAsset } from '@ashfox/engine-core';
+import { createWorkbenchProject } from '../fixtures/project';
 
 assert.equal(materialEmissionIntensity('default'), 0);
 assert.equal(materialEmissionIntensity('emissive'), 1.15);
@@ -15,11 +17,10 @@ assert.equal(materialEmissionIntensity('emissive', 10), 10 / 6);
 assert.equal(materialEmissionIntensity('default', -1), 0);
 
 const texture = (
-  atlasMode: TextureAsset['atlasMode'],
   sampling: TextureAsset['sampling']
 ): TextureAsset => ({
-  id: `texture-${atlasMode}-${sampling}`,
-  name: `${atlasMode} ${sampling}`,
+  id: `texture-${sampling}`,
+  name: `${sampling} texture`,
   width: 16,
   height: 16,
   source: {
@@ -32,21 +33,12 @@ const texture = (
   sampling,
   colorSpace: 'srgb',
   renderMode: 'default',
-  renderSides: 'auto',
-  atlasMode
+  renderSides: 'auto'
 });
-
-const generatedMap = configureTextureMap(
-  new THREE.Texture(),
-  texture('generate', 'linear')
-);
-assert.equal(generatedMap.magFilter, THREE.NearestFilter);
-assert.equal(generatedMap.minFilter, THREE.NearestFilter);
-assert.equal(generatedMap.generateMipmaps, false);
 
 const preservedMap = configureTextureMap(
   new THREE.Texture(),
-  texture('preserve', 'nearest')
+  texture('nearest')
 );
 assert.equal(preservedMap.magFilter, THREE.NearestFilter);
 assert.equal(
@@ -58,3 +50,19 @@ assert.equal(
   true,
   'preserved texture sampling behavior must remain unchanged'
 );
+
+export const test = (async (): Promise<void> => {
+  const document = createWorkbenchProject().document;
+  const materials = createProjectMaterials(
+    document,
+    {},
+    '#b59a74',
+    false
+  );
+  await materials.ready;
+  const textureId = Object.keys(document.textures)[0] ?? 'missing';
+  const neutral = materials.resolve(textureId);
+  assert.ok(neutral instanceof THREE.MeshStandardMaterial);
+  assert.equal(neutral.color.getHexString(), 'b59a74');
+  materials.dispose();
+})();

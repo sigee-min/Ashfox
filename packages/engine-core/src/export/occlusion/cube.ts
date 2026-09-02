@@ -1,11 +1,14 @@
 import {
   CUBE_FACE_DIRECTIONS,
+  type CubeFace,
   type CubeFaceDirection,
   type CubeNode,
   type ProjectDocument,
   type TextureAsset
 } from '../../model';
 import { effectivelyVisibleSceneNodeIds } from '../../sceneVisibility';
+import { rasterizeTexture,
+  type CanonicalTextureRaster } from '../../textures/textureRecipe/raster';
 
 type Axis = 0 | 1 | 2;
 
@@ -23,7 +26,6 @@ interface FaceAxes {
 }
 
 const EPSILON = 0.000001;
-const OPAQUE_COLOR = /^#[0-9a-f]{6}$/i;
 
 const FACE_AXES: Record<CubeFaceDirection, FaceAxes> = {
   north: { normal: 2, first: 0, second: 1, positive: false },
@@ -34,26 +36,77 @@ const FACE_AXES: Record<CubeFaceDirection, FaceAxes> = {
   down: { normal: 1, first: 0, second: 2, positive: false }
 };
 
-const textureIsProvablyOpaque = (texture: TextureAsset | undefined): boolean =>
-  texture?.atlasMode === 'generate' &&
-  texture.renderMode === 'default' &&
-  texture.raster !== undefined &&
-  OPAQUE_COLOR.test(texture.raster.background) &&
-  texture.raster.canvasDetails.every((detail) => OPAQUE_COLOR.test(detail.color));
+const textureRasterForOpacity = (
+  document: ProjectDocument,
+  texture: TextureAsset | undefined,
+  cache: Map<string, CanonicalTextureRaster | null>
+): CanonicalTextureRaster | null => {
+  if (texture === undefined) return null;
+  const cached = cache.get(texture.id);
+  if (cached !== undefined) return cached;
+  let raster: CanonicalTextureRaster | null = null;
+  if (texture.renderMode === 'default' && texture.sampling === 'nearest' &&
+    texture.raster !== undefined) {
+    try {
+      raster = rasterizeTexture(document, texture);
+    } catch {
+      raster = null;
+    }
+  }
+  cache.set(texture.id, raster);
+  return raster;
+};
+
+export const canonicalRasterFaceIsOpaque = (
+  raster: CanonicalTextureRaster,
+  face: CubeFace
+): boolean => {
+  if (!face.enabled || face.textureId === null || face.uv === undefined ||
+    face.uv.some((value) => !Number.isFinite(value) ||
+      !Number.isInteger(value))) return false;
+  const minimumU = Math.min(face.uv[0], face.uv[2]);
+  const maximumU = Math.max(face.uv[0], face.uv[2]);
+  const minimumV = Math.min(face.uv[1], face.uv[3]);
+  const maximumV = Math.max(face.uv[1], face.uv[3]);
+  if (minimumU < 0 || minimumV < 0 || maximumU > raster.width ||
+    maximumV > raster.height || minimumU === maximumU ||
+    minimumV === maximumV) return false;
+  for (let v = minimumV; v < maximumV; v += 1) {
+    for (let u = minimumU; u < maximumU; u += 1) {
+      if (raster.rgba.at((v * raster.width + u) * 4 + 3) !== 255) {
+        return false;
+      }
+    }
+  }
+  return true;
+};
+
+const faceHasOpaqueFootprint = (
+  document: ProjectDocument,
+  face: CubeFace,
+  cache: Map<string, CanonicalTextureRaster | null>
+): boolean => {
+  if (face.textureId === null) return false;
+  const raster = textureRasterForOpacity(document,
+    document.textures[face.textureId], cache);
+  return raster !== null && canonicalRasterFaceIsOpaque(raster, face);
+};
 
 const cubeIsClosedAndOpaque = (
   document: ProjectDocument,
-  cube: CubeNode
+  cube: CubeNode,
+  cache: Map<string, CanonicalTextureRaster | null>
 ): boolean => CUBE_FACE_DIRECTIONS.every((direction) => {
   const face = cube.faces[direction];
   return face.enabled &&
     face.textureId !== null &&
     face.materialInstance === undefined &&
-    textureIsProvablyOpaque(document.textures[face.textureId]);
+    faceHasOpaqueFootprint(document, face, cache);
 });
 
 const axisAlignedBounds = (cube: CubeNode): CubeBounds | null => {
   if (
+    cube.geometryMode !== 'axis-box' ||
     cube.inflate !== 0 ||
     cube.transform.rotation.some((value) => Math.abs(value) > EPSILON) ||
     cube.transform.scale.some((value) => Math.abs(value - 1) > EPSILON)
@@ -181,12 +234,13 @@ export const compileOpaqueCubeFaceOcclusion = (
     )
   );
   const groups = new Map<string, CubeBounds[]>();
+  const rasterCache = new Map<string, CanonicalTextureRaster | null>();
   for (const node of Object.values(document.scene.nodes)) {
     if (
       node.kind !== 'cube' ||
       !visible.has(node.id) ||
       animated.has(node.id) ||
-      !cubeIsClosedAndOpaque(document, node)
+      !cubeIsClosedAndOpaque(document, node, rasterCache)
     ) {
       continue;
     }

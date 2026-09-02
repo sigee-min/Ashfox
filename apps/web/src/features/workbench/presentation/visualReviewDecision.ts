@@ -52,6 +52,21 @@ export const resolvePresentationObservation = (
       }
     };
   }
+  if (observation.data.purpose !== 'delivery') {
+    return {
+      ok: false,
+      clear: true,
+      result: {
+        ok: false,
+        revision,
+        error: {
+          code: 'invalid_state',
+          path: 'frameNonce',
+          expected: 'a delivery review frame; preview frames cannot be accepted'
+        }
+      }
+    };
+  }
   return { ok: true, observation };
 };
 

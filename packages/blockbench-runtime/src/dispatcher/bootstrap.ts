@@ -5,7 +5,6 @@ import { BlockbenchEditor } from '../adapters/blockbench/editor';
 import { BlockbenchHost } from '../adapters/blockbench/host';
 import { BlockbenchFormats } from '../adapters/blockbench/formats';
 import { BlockbenchSnapshot } from '../adapters/blockbench/snapshot';
-import { BlockbenchExport } from '../adapters/blockbench/export';
 import { BlockbenchTextureRenderer } from '../adapters/blockbench/texture/renderer';
 import { BlockbenchViewportRefresher } from '../adapters/blockbench/viewport/refresh';
 import { LocalTmpStore } from '../adapters/tmp/LocalTmpStore';
@@ -20,7 +19,6 @@ export const buildDefaultToolService = (
   const host = new BlockbenchHost();
   const formats = new BlockbenchFormats();
   const snapshot = new BlockbenchSnapshot(log);
-  const exporter = new BlockbenchExport(log);
   const textureRenderer = new BlockbenchTextureRenderer();
   const viewportRefresher = new BlockbenchViewportRefresher(log);
   const tmpStore = new LocalTmpStore();
@@ -31,10 +29,9 @@ export const buildDefaultToolService = (
     host,
     formats,
     snapshot,
-    exporter,
     textureRenderer,
     viewportRefresher,
     tmpStore,
-    policies: { snapshotPolicy: 'hybrid', exportPolicy: 'strict' }
+    policies: { snapshotPolicy: 'hybrid' }
   });
 };

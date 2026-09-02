@@ -5,6 +5,7 @@ import type { GltfMesh, GltfNode, GltfSkin } from './contract';
 export interface GltfSceneCompileOptions {
   writer: GltfBinaryWriter;
   materialByTextureId: ReadonlyMap<string, number>;
+  singleSidedMaterialByTextureId: ReadonlyMap<string, number>;
   unitScale: number;
   cubeFaceOcclusion?: CubeFaceOcclusion;
 }

@@ -5,9 +5,10 @@ import {
   useRef
 } from 'react';
 
-import type { ProjectDocument } from '@ashfox/engine-core';
+import type { AssetProject } from '@ashfox/engine-core';
 
 import {
+  isValidVisualReviewReceipt,
   recordVisualReview,
   visualReviewReceiptFrom,
   visualReviewsForRevision,
@@ -27,18 +28,19 @@ import {
 } from './visualReviewDecision';
 
 interface UseVisualReviewControllerInput {
-  document: ProjectDocument;
+  project: AssetProject;
   visualReviews: readonly VisualReviewReceipt[];
   observations: PresentationObservationStore;
   onRecordVisualReview: (receipt: VisualReviewReceipt) => void;
 }
 
 export const useVisualReviewController = ({
-  document,
+  project,
   visualReviews,
   observations,
   onRecordVisualReview
 }: UseVisualReviewControllerInput) => {
+  const document = project.document;
   const receiptsRef = useRef<readonly VisualReviewReceipt[]>(visualReviews);
   receiptsRef.current = visualReviews;
 
@@ -61,7 +63,7 @@ export const useVisualReviewController = ({
     if (!reviewed.ok) return Promise.resolve(reviewed);
     observations.current = new Map();
     const receipt = visualReviewReceiptFrom(
-      document,
+      project,
       resolved.observation,
       reviewed,
       {
@@ -77,7 +79,7 @@ export const useVisualReviewController = ({
       onRecordVisualReview(receipt);
     }
     return Promise.resolve(reviewed);
-  }, [document, observations, onRecordVisualReview]);
+  }, [document.revision, observations, onRecordVisualReview, project]);
 
   const getVisualReviews = useCallback((
     requestedProjectId: string,
@@ -87,7 +89,7 @@ export const useVisualReviewController = ({
       receiptsRef.current,
       requestedProjectId,
       requestedRevision
-    ), []);
+    ).filter((receipt) => isValidVisualReviewReceipt(receipt, project)), [project]);
 
   return { review, getVisualReviews };
 };

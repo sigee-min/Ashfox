@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
 import {
-  type CommandReceipt,
   type ExportAdapterInput,
   type ProjectDocument
 } from '@ashfox/engine-core';
@@ -17,8 +16,6 @@ import type { ViewportEnvironmentId } from '../../../rendering/viewportEnvironme
 import { BrandLogo } from './BrandLogo';
 import { CaptureMenu } from './CaptureMenu';
 import { ExportMenu } from './ExportMenu';
-import { NewProjectMenu } from './NewProjectMenu';
-import type { NewProjectInput } from '../newProject';
 import { HeaderFileActions } from './header/HeaderFileActions';
 import type {
   HeaderMenu,
@@ -32,18 +29,13 @@ interface WorkbenchHeaderProps {
   document: ProjectDocument;
   fileOperation: FileOperationState<ArtifactFile>;
   artifactFile: ArtifactFile | null;
-  buildDocuments: readonly ProjectDocument[];
-  activity: readonly CommandReceipt[];
-  activeClipId: string | null;
   environment: ViewportEnvironmentId;
   cameraMode: CameraMode;
   captureFile: GifCaptureFile | null;
   exportAvailability: ExportAvailabilityViewModel;
-  onCreateProject: (input: NewProjectInput) => void;
   onOpen: (file: File) => void;
   onSave: () => void;
   onExport: (adapter: ExportAdapterInput) => void;
-  onActiveClipChange: (clipId: string | null) => void;
   onCapture: (request: GifCaptureRequest) => void;
   onCancelFileOperation: () => void;
 }
@@ -52,18 +44,13 @@ export function WorkbenchHeader({
   document,
   fileOperation,
   artifactFile,
-  buildDocuments,
-  activity,
-  activeClipId,
   environment,
   cameraMode,
   captureFile,
   exportAvailability,
-  onCreateProject,
   onOpen,
   onSave,
   onExport,
-  onActiveClipChange,
   onCapture,
   onCancelFileOperation
 }: WorkbenchHeaderProps) {
@@ -117,14 +104,6 @@ export function WorkbenchHeader({
       >
         {fileOperation.message}
       </span>
-      {activeMenu === 'new' ? (
-        <NewProjectMenu
-          onCreate={(input) => {
-            onCreateProject(input);
-            setActiveMenu(null);
-          }}
-        />
-      ) : null}
       {activeMenu === 'export' ? (
         <ExportMenu
           document={document}
@@ -139,14 +118,13 @@ export function WorkbenchHeader({
       {activeMenu === 'capture' ? (
         <CaptureMenu
           document={document}
-          buildDocuments={buildDocuments}
-          activity={activity}
-          activeClipId={activeClipId}
           environment={environment}
           cameraMode={cameraMode}
           operation={fileOperation}
           captureFile={captureFile}
-          onActiveClipChange={onActiveClipChange}
+          blockedReason={exportAvailability.allowed
+            ? null
+            : exportAvailability.message}
           onCapture={onCapture}
           onCancel={onCancelFileOperation}
           onDownload={() => artifactAnchorRef.current?.click()}

@@ -27,14 +27,17 @@ export interface ProjectSessionState {
 
 export type ProjectSessionAction =
   | HistoryAction
-  | {
-      type: 'replace';
-      record: ProjectSnapshot;
-    }
-  | {
-      type: 'visualReview.record';
-      receipt: VisualReviewReceipt;
-    };
+  | { type: 'replace'; record: ProjectSnapshot }
+  | { type: 'visualReview.record'; receipt: VisualReviewReceipt };
+
+const validVisualReviewsFor = (
+  project: ProjectSessionState['history']['present'],
+  visualReviews: readonly VisualReviewReceipt[]
+): readonly VisualReviewReceipt[] => visualReviews
+  .filter((receipt) => receipt.projectId === project.id &&
+    receipt.revision === project.revision &&
+    isValidVisualReviewReceipt(receipt, project))
+  .map((receipt) => structuredClone(receipt));
 
 export const createProjectSessionState = (
   history: HistoryState,
@@ -44,11 +47,8 @@ export const createProjectSessionState = (
 ): ProjectSessionState => ({
   history,
   assets,
-  visualReviews,
-  storage: {
-    generation: 0,
-    restoreFromStorage
-  }
+  visualReviews: validVisualReviewsFor(history.present, visualReviews),
+  storage: { generation: 0, restoreFromStorage }
 });
 
 const applyProjectRecord = (
@@ -56,27 +56,14 @@ const applyProjectRecord = (
   action: Extract<HistoryAction, { type: 'hydrate' | 'external' }>
 ): ProjectSessionState => {
   const history = historyReducer(state.history, action);
-  if (action.type === 'external' && history === state.history) {
-    return state;
-  }
-  const recordMatchesHistory =
-    action.record.document.id === history.present.id &&
-    action.record.document.revision === history.present.revision;
+  if (action.type === 'external' && history === state.history) return state;
+  const recordMatchesHistory = action.record.project.id === history.present.id &&
+    action.record.project.revision === history.present.revision;
   const visualReviews = recordMatchesHistory
-    ? action.record.visualReviews
-    : [];
-  if (
-    history === state.history &&
-    areVisualReviewLedgersEqual(state.visualReviews, visualReviews)
-  ) {
-    return state;
-  }
-  return {
-    ...state,
-    history,
-    assets: {},
-    visualReviews
-  };
+    ? validVisualReviewsFor(history.present, action.record.visualReviews) : [];
+  if (history === state.history &&
+    areVisualReviewLedgersEqual(state.visualReviews, visualReviews)) return state;
+  return { ...state, history, assets: {}, visualReviews };
 };
 
 export const projectSessionReducer = (
@@ -84,44 +71,25 @@ export const projectSessionReducer = (
   action: ProjectSessionAction
 ): ProjectSessionState => {
   if (action.type === 'visualReview.record') {
-    if (
-      action.receipt.projectId !== state.history.present.id ||
-      action.receipt.revision !== state.history.present.revision ||
-      !isValidVisualReviewReceipt(
-        action.receipt,
-        state.history.present
-      )
-    ) {
-      return state;
-    }
-    const visualReviews = recordVisualReview(
-      state.visualReviews,
-      action.receipt
-    );
-    return areVisualReviewLedgersEqual(
-      state.visualReviews,
-      visualReviews
-    )
-      ? state
-      : { ...state, visualReviews };
+    const project = state.history.present;
+    if (action.receipt.projectId !== project.id ||
+      action.receipt.revision !== project.revision ||
+      !isValidVisualReviewReceipt(action.receipt, project)) return state;
+    const visualReviews = recordVisualReview(state.visualReviews, action.receipt);
+    return areVisualReviewLedgersEqual(state.visualReviews, visualReviews)
+      ? state : { ...state, visualReviews };
   }
   if (action.type === 'replace') {
     const history = historyReducer(state.history, {
-      type: 'hydrate',
-      record: action.record
+      type: 'hydrate', record: action.record
     });
     return {
       history,
       assets: {},
-      visualReviews:
-        history.present.id === action.record.document.id &&
-        history.present.revision === action.record.document.revision
-          ? action.record.visualReviews
-          : [],
-      storage: {
-        generation: state.storage.generation + 1,
-        restoreFromStorage: false
-      }
+      visualReviews: history.present.id === action.record.project.id &&
+        history.present.revision === action.record.project.revision
+        ? validVisualReviewsFor(history.present, action.record.visualReviews) : [],
+      storage: { generation: state.storage.generation + 1, restoreFromStorage: false }
     };
   }
   if (action.type === 'hydrate' || action.type === 'external') {
@@ -131,21 +99,14 @@ export const projectSessionReducer = (
   if (history === state.history) return state;
   if (history.present.id !== state.history.present.id) {
     return {
-      history,
-      assets: {},
-      visualReviews: [],
-      storage: {
-        generation: state.storage.generation + 1,
-        restoreFromStorage: false
-      }
+      history, assets: {}, visualReviews: [],
+      storage: { generation: state.storage.generation + 1, restoreFromStorage: false }
     };
   }
   return {
     ...state,
     history,
-    visualReviews:
-      history.present.revision === state.history.present.revision
-        ? state.visualReviews
-        : []
+    visualReviews: history.present.revision === state.history.present.revision
+      ? state.visualReviews : []
   };
 };

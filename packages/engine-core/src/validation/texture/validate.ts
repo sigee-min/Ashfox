@@ -1,14 +1,9 @@
+import type { ProjectDocument } from '../../model';
 import {
-  CUBE_FACE_DIRECTIONS,
-  type ProjectDocument
-} from '../../model';
-import { staleGeneratedTextureIds } from '../../textures/textureRecipe';
-import {
-  SURFACE_SYNTHESIS_VERSION
-} from '../../textures/appearance';
-import {
-  GENERATED_ATLAS_MAX_RESOLUTION
-} from '../../textures/textureRecipe/surfaceMetrics';
+  TEXTURE_MAX_RESOLUTION,
+  preserveRasterDetailLimit,
+  preserveRasterTotalDetailLimit
+} from '../../textures/limits';
 import {
   COLOR_PATTERN,
   isNonEmptyString,
@@ -24,18 +19,19 @@ const validateTextureRaster = (
   texture: ProjectDocument['textures'][string],
   path: string,
   add: FindingSink,
-  registerId: IdRegistrar
+  registerId: IdRegistrar,
+  density: ProjectDocument['settings']['surfacePixelDensity']
 ): void => {
   if (!texture.raster) return;
   const canvasDetails = texture.raster.canvasDetails;
   const invalidCanvas =
     !Array.isArray(canvasDetails) ||
-    canvasDetails.length > 512 ||
+    canvasDetails.length > preserveRasterDetailLimit(density) ||
     canvasDetails.some((detail, index) => {
       registerId(detail.id, `${path}.raster.canvasDetails.${index}`);
       return (
-        texture.atlasMode === 'generate' ||
         !COLOR_PATTERN.test(detail.color) ||
+        (detail.alpha !== 0 && detail.alpha !== 255) ||
         !Number.isInteger(detail.x) ||
         !Number.isInteger(detail.y) ||
         !Number.isInteger(detail.width) ||
@@ -48,42 +44,66 @@ const validateTextureRaster = (
         detail.y + detail.height > texture.height
       );
     });
-  if (!COLOR_PATTERN.test(texture.raster.background) || invalidCanvas) {
-    add({
+  const alphaMasks = texture.raster.alphaMasks ?? [];
+  const invalidMasks =
+    !Array.isArray(alphaMasks) ||
+    alphaMasks.length > preserveRasterDetailLimit(density) ||
+    alphaMasks.some((mask, index) => {
+      registerId(mask.id, `${path}.raster.alphaMasks.${index}`);
+      return (
+        !isNonEmptyString(mask.id) ||
+        !Number.isSafeInteger(mask.x) ||
+        !Number.isSafeInteger(mask.y) ||
+        !Number.isSafeInteger(mask.width) ||
+        !Number.isSafeInteger(mask.height) ||
+        mask.x < 0 ||
+        mask.y < 0 ||
+        mask.width <= 0 ||
+        mask.height <= 0 ||
+        mask.x + mask.width > texture.width ||
+        mask.y + mask.height > texture.height ||
+        !/^[01]+$/.test(mask.bits) ||
+        mask.bits.length !== mask.width * mask.height
+      );
+    });
+  if (!COLOR_PATTERN.test(texture.raster.background) ||
+    (texture.raster.backgroundAlpha !== 0 &&
+      texture.raster.backgroundAlpha !== 255) ||
+    invalidCanvas || invalidMasks) {
+      add({
       code: 'texture.invalid_raster',
       severity: 'error',
       message:
-        'Texture raster colors and canvas details must match their ' +
-        'atlas mode and dimensions.',
+        'Texture raster colors, alpha, and canvas details must match ' +
+        'their dimensions.',
       path: `${path}.raster`,
       assetIds: [texture.id]
     });
   }
 };
 
-const usesGeneratedTexture = (
-  document: ProjectDocument,
-  textureId: string
-): boolean =>
-  Object.values(document.scene.nodes).some(
-    (node) =>
-      node.kind === 'cube' &&
-      CUBE_FACE_DIRECTIONS.some(
-        (direction) =>
-          node.faces[direction].enabled &&
-          node.faces[direction].textureId === textureId
-      )
-  );
-
 export const validateTextures = (
   document: ProjectDocument,
   add: FindingSink,
   registerId: IdRegistrar
 ): void => {
-  const staleTextureIds = staleGeneratedTextureIds(document);
+  let preserveDetails = 0;
   for (const [assetKey, texture] of Object.entries(document.textures)) {
     const path = `textures.${assetKey}`;
     registerId(texture.id, path);
+    if (texture.raster !== undefined) {
+      preserveDetails += texture.raster.canvasDetails.length;
+      if (preserveDetails > preserveRasterTotalDetailLimit(
+        document.settings.surfacePixelDensity)) {
+        add({
+          code: 'texture.invalid_raster',
+          severity: 'error',
+          message: 'Preserve-mode raster details exceed the bounded asset budget.',
+          path: 'textures',
+          assetIds: [texture.id]
+        });
+      }
+    }
     if (assetKey !== texture.id) {
       add({
         code: 'identity.key_mismatch',
@@ -96,45 +116,30 @@ export const validateTextures = (
     if (
       !Number.isInteger(texture.width) ||
       texture.width <= 0 ||
-      texture.width > GENERATED_ATLAS_MAX_RESOLUTION ||
+      texture.width > TEXTURE_MAX_RESOLUTION ||
       !Number.isInteger(texture.height) ||
       texture.height <= 0 ||
-      texture.height > GENERATED_ATLAS_MAX_RESOLUTION
+      texture.height > TEXTURE_MAX_RESOLUTION
     ) {
       add({
         code: 'texture.invalid_dimensions',
         severity: 'error',
         message:
           'Texture dimensions must be positive integers no larger than ' +
-          `${GENERATED_ATLAS_MAX_RESOLUTION}.`,
+          `${TEXTURE_MAX_RESOLUTION}.`,
         path,
         assetIds: [texture.id]
       });
     }
     if (
       texture.atlasMode !== undefined &&
-      texture.atlasMode !== 'generate' &&
       texture.atlasMode !== 'preserve'
     ) {
       add({
         code: 'texture.invalid_atlas_mode',
         severity: 'error',
-        message: 'Texture atlas mode must be generate or preserve.',
+        message: 'Texture atlas mode must be preserve when provided.',
         path: `${path}.atlasMode`,
-        assetIds: [texture.id]
-      });
-    }
-    if (
-      texture.atlasMode === 'generate' &&
-      texture.metadata?.surfaceSynthesisVersion !==
-        SURFACE_SYNTHESIS_VERSION
-    ) {
-      add({
-        code: 'texture.invalid_surface_synthesis_version',
-        severity: 'error',
-        message:
-          'Generated textures require the current closed surface synthesis version.',
-        path: `${path}.metadata.surfaceSynthesisVersion`,
         assetIds: [texture.id]
       });
     }
@@ -159,19 +164,7 @@ export const validateTextures = (
         assetIds: [texture.id]
       });
     }
-    validateTextureRaster(texture, path, add, registerId);
-    if (
-      texture.atlasMode === 'generate' &&
-      usesGeneratedTexture(document, texture.id) &&
-      staleTextureIds.has(texture.id)
-    ) {
-      add({
-        code: 'texture.recipe_stale',
-        severity: 'warning',
-        message: 'Generated texture does not match its canonical derivation.',
-        path: 'settings.textureResolution',
-        assetIds: [texture.id]
-      });
-    }
+    validateTextureRaster(texture, path, add, registerId,
+      document.settings.surfacePixelDensity);
   }
 };

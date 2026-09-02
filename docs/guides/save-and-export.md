@@ -1,61 +1,48 @@
-# Export a Finished Asset
+# Save and export
 
-ashfox first lets the AI compile one target-independent canonical asset from
-Intent Program 1. Choose a delivery adapter only when you are ready to export.
+Ashfox saves the complete `.ashfoxworkspace` authority, not a compiled scene.
+The portable file contains canonical JSON with exact source modules, package
+manifests, and the content-addressed lock, followed by exactly one LF.
 
-## Create the canonical project
+## Save and reopen
 
-The project itself needs only a name. Describe the asset's form, support,
-surface, and motion in its Intent Program; do not include coordinates or a
-delivery target.
+Use **Download workspace** to save the active workspace. Opening it validates
+the closed container, selects an explicit package entry, recompiles the exact
+entry closure, and creates a transient `AssetProject`. It never restores or
+trusts cached geometry, textures, animation channels, previews, reviews, or
+exports.
 
-- **Name** — the human-readable project name.
+An agent edit uses one `workspace.apply` operation containing:
 
-```text
-Create a project named Ember Stag.
-```
+- the current expected workspace hash;
+- all file writes and deletes in the change;
+- full manifest or lock replacements when those records change;
+- the package and entry to open after the atomic commit.
 
-Ashfox uses its fixed iconic form scale and grows the generated atlas as
-needed. Export-safe resource identifiers are derived from the project and
-validated automatically.
+Every declared entry must compile. Failure or a stale hash commits nothing.
 
-Browser-local source changes are automatic when the rail says **Autosaved**.
-Use **Download source** to save the portable `.ashfox` Intent Program 1 source. Opening
-that file parses and compiles a fresh canonical asset atomically; it does not
-restore a stored geometry, texture, hierarchy, or animation archive.
+## Capture Build replay
 
-## Export a finished asset
+After current revision-bound reviews are accepted, Build replay starts from an
+empty scene, places concrete nodes in deterministic order, applies each node's
+complete owning texture set atomically, activates the selected canonical
+motion, and holds on the finished product.
 
-```text
-Open **Export delivery files**, choose Java block, GeckoLib 5, Bedrock, GLB, or glTF, and
-provide a Minecraft game version, namespace, and path only when that adapter
-needs them. Fix any adapter-specific finding, then export and verify the final
-filename, extension, and size.
-```
+Replay is transient evidence. It is not source history, an agent decision log,
+or a portable project format.
 
-Java block, GeckoLib 5, Bedrock, and glTF use ZIP when the target needs several
-related files. GLB can contain geometry, animation, and textures in one binary.
+## Export
 
-Export adapts a copy of the canonical project to the selected adapter. It may
-bake portable values or leave out target-only events, but it does not delete
-source clips or events. The export result includes a structured receipt of every
-converted or omitted item alongside the prepared artifact metadata.
+Open **Export delivery files**, choose Java block, GeckoLib 5, Bedrock, GLB, or
+glTF, and provide a namespace/path only when the adapter requires it.
 
-See [Choose an export format](choose-a-format.md) for the exact result of each
-option.
+Export snapshots the active `AssetProject`, recompiles its exact workspace and
+entry, verifies workspace hash, closure hash, build key, compiler fingerprint,
+and product hash, then runs target validation. An artifact cannot be built from
+a swapped workspace, entry, build identity, or canonical document.
 
-## Verify delivery
+The current target version is read-only and comes from the engine registry.
+Target adaptation may describe an explicit conversion or omission in its
+receipt; it cannot rewrite the workspace or silently lose data.
 
-The header says **Export unavailable** while the AI is building, revising, or
-performing required visual checks; open it to read the exact requirement. The
-state clears when the agent finishes a valid compilation and review. Describe
-an asset problem in chat and let the agent diagnose and recompile it. The
-delivery menu reports target-specific compatibility failures before writing an
-artifact. A successful export returns the filename, byte length, SHA-256
-content hash, and structured `converted` and `omitted` receipt. An omitted item
-is absent from that artifact only; it remains in the canonical project.
-
-Expected extensions:
-
-- multi-file target: `.zip`;
-- embedded 3D asset: `.glb`.
+See [Choose an export format](choose-a-format.md) for target-specific files.

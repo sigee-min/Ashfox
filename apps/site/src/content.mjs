@@ -2,7 +2,30 @@ export const landingContent = {
   eyebrow: 'AI-native low-poly workbench',
   titleLines: ['Describe it.', 'Ship it game-ready.'],
   summary:
-    'Your AI agent turns one confirmed Intent Program into one canonical asset, then delivers optimized Bedrock, GeckoLib, glTF, or GLB output.',
+    'Your AI agent builds one closed, reusable Ashfox asset workspace, reviews a selected entry at native size, and delivers Bedrock, GeckoLib, glTF, or GLB output.',
+  showcase: {
+    eyebrow: 'Reconstructed build replay',
+    body:
+      'One closed workspace becomes two selected entries. Each replay starts empty, places geometry in deterministic order, applies complete textures, activates motion, and holds on the validated result.',
+    provenance:
+      'A reconstructed build replay from the final validated entry — not AI history or a decision log.',
+    entries: [
+      {
+        packageName: 'creatures',
+        entryName: 'fox',
+        index: '01',
+        label: 'Red fox',
+        summary: 'Warm ember fur, a bright chest, centered eyes, and a restrained idle.'
+      },
+      {
+        packageName: 'creatures',
+        entryName: 'goblin',
+        index: '02',
+        label: 'Goblin raider',
+        summary: 'A scarred green raider with converging eyes, iron armor, shield, and a forward blade.'
+      }
+    ]
+  },
   quickStart: {
     title: 'One instruction. Then describe what you want.',
     body:
@@ -21,15 +44,15 @@ export const landingContent = {
     {
       index: '02',
       label: 'Author',
-      title: 'Confirm and review',
-      body: 'Describe the asset, confirm its Intent Program, and review the compiled result.',
+      title: 'Build and review',
+      body: 'Describe the asset codebase, reuse nominal rigs, components, surfaces, and motions, then review each selected entry.',
       href: '/docs/guides/authoring-and-review/'
     },
     {
       index: '03',
       label: 'Deliver',
       title: 'Export',
-      body: 'Keep the editable project or export a file ready for your target.',
+      body: 'Keep the portable workspace or export a validated selected entry for your target.',
       href: '/docs/guides/save-and-export/'
     }
   ],

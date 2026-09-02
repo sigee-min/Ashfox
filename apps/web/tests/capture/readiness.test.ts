@@ -57,4 +57,38 @@ export const test = (async (): Promise<void> => {
       error instanceof DOMException &&
       error.name === 'AbortError'
   );
+
+  const alreadyAborted = new AbortController();
+  alreadyAborted.abort();
+  await assert.rejects(
+    waitForProjectionTextures(
+      projection(
+        { status: 'ready', error: null },
+        Promise.resolve()
+      ),
+      alreadyAborted.signal
+    ),
+    (error: unknown) =>
+      error instanceof DOMException &&
+      error.name === 'AbortError' &&
+      error.message === 'Capture cancelled.',
+    'an already-cancelled replay must not pass through a ready projection'
+  );
+
+  const readyRaceAbort = new AbortController();
+  const readyRace = waitForProjectionTextures(
+    projection(
+      { status: 'ready', error: null },
+      Promise.resolve()
+    ),
+    readyRaceAbort.signal
+  );
+  readyRaceAbort.abort();
+  await assert.rejects(
+    readyRace,
+    (error: unknown) =>
+      error instanceof DOMException &&
+      error.name === 'AbortError',
+    'cancellation in the readiness handoff must deterministically win'
+  );
 })();

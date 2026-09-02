@@ -7,7 +7,6 @@ const receiptKey = (receipt: VisualReviewReceipt): string => {
   const data = receipt.observation.data;
   return JSON.stringify([
     data.purpose,
-    data.milestone,
     data.mode,
     data.camera,
     data.clipId

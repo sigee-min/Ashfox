@@ -59,21 +59,12 @@ export interface ToolRegistryInfo {
   count: number;
 }
 
-export interface ExportTargetCapability {
-  kind: 'internal' | 'gltf' | 'native_codec';
-  id: string;
-  label: string;
-  extensions?: string[];
-  available: boolean;
-}
-
 export interface Capabilities {
   pluginVersion: string;
   toolSchemaVersion?: string;
   toolRegistry?: ToolRegistryInfo;
   blockbenchVersion: string;
   formats: Capability[];
-  exportTargets?: ExportTargetCapability[];
   limits: Limits;
   preview?: PreviewCapability;
   guidance?: CapabilitiesGuidance;

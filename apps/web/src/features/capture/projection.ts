@@ -17,11 +17,10 @@ export const createCaptureProjection = (
   assets: ProjectAssets,
   options: CaptureProjectionOptions = {}
 ): ProjectSceneProjection =>
-  projectToThreeScene(options.showTextures === false
-    ? { ...document, textures: {} }
-    : document, {
+  projectToThreeScene(document, {
     assets,
     showSkeleton: false,
+    showTextures: options.showTextures,
     showWireframe: false,
     untexturedColor: '#b59a74'
   });

@@ -123,6 +123,13 @@ fs.writeFileSync(
 /media/*
   Cache-Control: public, max-age=604800
 
+/media/showcase/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/examples/shared-creatures.ashfoxworkspace
+  Cache-Control: public, max-age=0, must-revalidate
+  Content-Type: application/vnd.ashfox.workspace+json
+
 `
 );
 

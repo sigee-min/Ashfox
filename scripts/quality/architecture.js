@@ -269,6 +269,21 @@ const undeclaredWorkspaceDependencies = (files, sources) => {
   return [...findings.values()];
 };
 
+const retiredOwnerPathViolations = (files, sources) => {
+  const retiredPaths = [
+    ['packages', 'engine-core', 'src', 'project', 'program', 'design'],
+    ['packages', 'engine-core', 'src', 'compiler', 'program', 'design'],
+    ['project', 'program', 'design'],
+    ['compiler', 'program', 'design']
+  ].map((segments) => segments.join('/'));
+  return files.flatMap((file) => {
+    const source = sources.get(file) || '';
+    return retiredPaths.some((retiredPath) => source.includes(retiredPath))
+      ? [{ file: relativePath(file) }]
+      : [];
+  });
+};
+
 const main = () => {
   const files = sourceRoots.flatMap(sourceFiles);
   const namedFiles = ownerWorkspaces.flatMap(ownerCodeFiles);
@@ -331,6 +346,7 @@ const main = () => {
     files,
     sources
   );
+  const retiredOwnerPaths = retiredOwnerPathViolations(files, sources);
   if (
     oversizedFiles.length === 0 &&
     oversizedFileStems.length === 0 &&
@@ -343,7 +359,8 @@ const main = () => {
     unsafeEscapes.length === 0 &&
     cycles.length === 0 &&
     directionViolations.length === 0 &&
-    undeclaredDependencies.length === 0
+    undeclaredDependencies.length === 0 &&
+    retiredOwnerPaths.length === 0
   ) {
     console.log(
       `ashfox architecture gate ok: files <= ${maxFileLines}, ` +
@@ -351,7 +368,8 @@ const main = () => {
       `tests <= ${maxTestFileLines} lines, owner contracts/tests canonical, ` +
       `>${sourceSizeRatchetLines}-line files within baseline, ` +
       `functions <= ${maxFunctionLines}, unsafe type escapes 0, cycles 0, ` +
-      'layer direction and workspace manifests valid'
+      'layer direction, retired-owner paths, and workspace ' +
+      'manifests valid'
     );
     return;
   }
@@ -420,6 +438,11 @@ const main = () => {
     console.error(
       `architecture: ${finding.owner} imports undeclared workspace ` +
       `${finding.target} in ${finding.file}`
+    );
+  }
+  for (const finding of retiredOwnerPaths) {
+    console.error(
+      `architecture: retired design owner path remains in ${finding.file}`
     );
   }
   process.exitCode = 1;

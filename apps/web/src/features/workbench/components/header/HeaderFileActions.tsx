@@ -1,7 +1,7 @@
 import type { RefObject } from 'react';
 
 import {
-  ASHFOX_PROJECT_FILE_EXTENSION
+  ASHFOX_WORKSPACE_FILE_EXTENSION
 } from '@ashfox/engine-core';
 
 import type { ArtifactFile } from '../../../files/artifactFile';
@@ -60,18 +60,9 @@ export function HeaderFileActions({
   return (
     <div
       className="file-actions"
-      title={fileOperation.message ?? 'Intent Program files'}
+      title={fileOperation.message ?? 'Authored model files'}
       aria-busy={fileBusy}
     >
-      <button
-        type="button"
-        disabled={fileBusy}
-        aria-expanded={activeMenu === 'new'}
-        data-ashfox-action="project.new.open"
-        onClick={() => onToggleMenu('new')}
-      >
-        New
-      </button>
       <button
         type="button"
         disabled={fileBusy}
@@ -84,8 +75,8 @@ export function HeaderFileActions({
         ref={openInputRef}
         type="file"
         hidden
-        aria-label="Open Intent Program file"
-        accept={`${ASHFOX_PROJECT_FILE_EXTENSION},text/x-ashfox`}
+        aria-label="Open workspace file"
+        accept={`${ASHFOX_WORKSPACE_FILE_EXTENSION},application/json`}
         data-ashfox-action="project.open.input"
         onChange={(event) => {
           const file = event.currentTarget.files?.[0];
@@ -140,7 +131,7 @@ export function HeaderFileActions({
           data-ashfox-artifact-content-type={artifactFile.contentType}
           data-ashfox-artifact-byte-length={artifactFile.bytes.byteLength}
           data-ashfox-artifact-project-id={artifactFile.projectId}
-          data-ashfox-artifact-source-revision={artifactFile.sourceRevision}
+          data-ashfox-artifact-revision={artifactFile.revision}
           data-ashfox-artifact-target={artifactFile.target}
           data-ashfox-artifact-content-hash={artifactFile.contentHash}
         >

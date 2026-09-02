@@ -81,8 +81,7 @@ const MANIFEST_KEYS = Object.freeze({
   ]),
   versioning: frozen([
     'product',
-    'intentProgram',
-    'surfaceSynthesis',
+    'assetWorkspace',
     'deliveryTargets'
   ]),
   productVersioning: frozen([
@@ -93,18 +92,16 @@ const MANIFEST_KEYS = Object.freeze({
     'changeOwner',
     'verification'
   ]),
-  intentProgramVersioning: frozen([
+  assetWorkspaceVersioning: frozen([
     'version',
+    'sourceGrammar',
+    'container',
     'compatibility',
     'authority',
-    'breakingChangeRequiresVersion'
-  ]),
-  surfaceSynthesisVersioning: frozen([
-    'version',
-    'authority',
-    'rasterAuthority',
-    'receiptAuthority',
-    'breakingChangeRequiresVersion'
+    'compiler',
+    'releaseState',
+    'replacementPolicy',
+    'legacyAliases'
   ]),
   deliveryTargetVersioning: frozen(['scope', 'canonicalMutation']),
   quality: frozen([
@@ -165,27 +162,22 @@ const HUMAN_CAPABILITIES = frozen([
   'view-canonical-asset'
 ]);
 const AGENT_CAPABILITIES = frozen([
-  'decide-and-compile-intent-program',
+  'apply-workspace-change-set',
   'inspect-project',
-  'present-review-evidence',
-  'propose-intent-program'
+  'present-review-evidence'
 ]);
 const FORBIDDEN_HUMAN_AUTHORING = frozen([
-  'compare-current-and-candidate',
-  'confirm-intent-program',
-  'decide-intent-program',
   'direct-animation-authoring',
   'direct-geometry-authoring',
   'direct-hierarchy-authoring',
   'direct-material-authoring',
   'direct-rig-authoring',
   'direct-texture-authoring',
-  'edit-intent-program-source-in-workbench',
-  'reject-intent-program'
+  'edit-asset-workspace-in-workbench'
 ]);
 const AGENT_DECISION_EVIDENCE = frozen([
-  'semantic-summary',
-  'candidate-visual',
+  'workspace-summary',
+  'native-size-review',
   'technical-receipt'
 ]);
 const ENGINEERING_PRINCIPLE_IDS = frozen([

@@ -11,15 +11,35 @@ export interface BlobRef {
 export interface TextureCanvasDetail {
   id: EntityId;
   color: string;
+  /** Explicit binary alpha for authored plane/feature coverage. */
+  alpha: 0 | 255;
   x: number;
   y: number;
   width: number;
   height: number;
 }
 
+/**
+ * A source-owned binary coverage chart bound to an explicit atlas rectangle.
+ * The bits are row-major in the rectangle's canonical (top-left) orientation;
+ * the compiler normalizes authored UV winding before storing this record.
+ */
+export interface TextureAlphaMask {
+  id: EntityId;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  bits: string;
+}
+
 export interface TextureRaster {
   background: string;
+  /** Explicit binary background alpha; there is no implicit fallback. */
+  backgroundAlpha: 0 | 255;
   canvasDetails: readonly TextureCanvasDetail[];
+  /** Final alpha-only operations, applied after all color paint. */
+  alphaMasks?: readonly TextureAlphaMask[];
 }
 
 export interface TextureAsset {
@@ -33,7 +53,8 @@ export interface TextureAsset {
   colorSpace: 'srgb' | 'linear';
   renderMode: 'default' | 'emissive' | 'additive' | 'layered';
   renderSides: 'auto' | 'front' | 'double';
-  atlasMode?: 'generate' | 'preserve';
+  /** Explicit source raster; generated atlases are not a document mode. */
+  atlasMode?: 'preserve';
   pbrChannel?: 'color' | 'normal' | 'height' | 'mer';
   raster?: TextureRaster;
   metadata?: Readonly<Record<string, string | number | boolean>>;

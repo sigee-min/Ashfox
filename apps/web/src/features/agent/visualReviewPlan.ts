@@ -1,11 +1,14 @@
 import {
+  type AssetProject,
   type ProjectDocument,
   type ProductionReadinessReport
 } from '@ashfox/engine-core';
 
 import {
   deliveryVisualReviewsForRevision,
+  isValidVisualReviewReceipt,
   visualReviewPlanItem,
+  type VisualReviewCamera,
   type VisualReviewReceipt
 } from '../../application/review';
 
@@ -14,13 +17,6 @@ const animationReviewClipIds = (
   document: ProjectDocument
 ): readonly string[] =>
   Object.keys(document.animations).sort();
-
-export type VisualReviewCamera =
-  | 'perspective'
-  | 'native'
-  | 'front'
-  | 'side'
-  | 'top';
 
 export interface VisualReviewPlanItem {
   mode: 'frame' | 'cycle';
@@ -60,15 +56,16 @@ export const requiredVisualReviews = (
 ];
 
 const completedVisualReviewKeys = (
-  document: ProjectDocument,
+  project: AssetProject,
   receipts: readonly VisualReviewReceipt[]
 ): ReadonlySet<string> =>
   new Set(
     deliveryVisualReviewsForRevision(
       receipts,
-      document.id,
-      document.revision
+      project.id,
+      project.revision
     ).flatMap((receipt) => {
+      if (!isValidVisualReviewReceipt(receipt, project)) return [];
       if (receipt.decision.verdict !== 'accepted') return [];
       if (
         receipt.observation.data.mode === 'cycle' &&
@@ -81,20 +78,20 @@ const completedVisualReviewKeys = (
   );
 
 export const remainingVisualReviews = (
-  document: ProjectDocument,
+  project: AssetProject,
   readiness: ProductionReadinessReport,
   receipts: readonly VisualReviewReceipt[]
 ): readonly VisualReviewPlanItem[] => {
   if (readiness.counts.visibleGeometry === 0) return [];
-  const completed = completedVisualReviewKeys(document, receipts);
-  return requiredVisualReviews(document).filter(
+  const completed = completedVisualReviewKeys(project, receipts);
+  return requiredVisualReviews(project.document).filter(
     (review) => !completed.has(visualReviewKey(review))
   );
 };
 
 export const nextVisualReview = (
-  document: ProjectDocument,
+  project: AssetProject,
   readiness: ProductionReadinessReport,
   receipts: readonly VisualReviewReceipt[]
 ): VisualReviewPlanItem | null =>
-  remainingVisualReviews(document, readiness, receipts)[0] ?? null;
+  remainingVisualReviews(project, readiness, receipts)[0] ?? null;

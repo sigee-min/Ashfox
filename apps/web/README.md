@@ -1,25 +1,21 @@
 # ashfox Web Studio
 
-Zero-install, browser-local observation and delivery surface for AI-authored
-assets.
+Zero-install, browser-local observation and delivery surface for explicit
+`ashfox-model 1` assets.
 
 Current scope:
+
 - canonical `ProjectDocument` live preview;
-- Three.js WebGL2 viewport with orbit, camera presets, and environment controls;
-- responsive full-area viewport from desktop down to narrow in-app panes;
-- IndexedDB persistence of exact Intent Program source and project identity;
-- human-operated new, open, project download, export, and capture boundaries;
-- cross-tab revision notification through `BroadcastChannel`;
+- Three.js WebGL2 viewport with orbit, camera presets, and environments;
+- IndexedDB persistence of the exact authored workspace, selected entry, and
+  host project identity;
+- human-operated project, download, export, and capture boundaries;
 - compiler validation, derived textures, and motion playback;
-- shared Studio, Day, Evening, and Night viewport/capture environments;
-- local 10fps build-process and animation GIF capture with semantic events;
-- AI-authored and AI-compiled Intent Program assets, automatic ephemeral
-  visual feedback, and a compact creation-status rail;
-- cancellable project file operations with stale-completion protection;
-- plain UTF-8 `.ashfox` Intent Program sources compiled atomically on open;
-- one persistent browser artifact handoff for save, export, and capture;
-- one generated machine-readable AI agent workflow with canonical command
-  schemas and reducer outcomes;
+- deterministic local build-replay GIF capture that starts from an empty scene,
+  places every visible element in deterministic canonical element order, applies
+  each element's complete owning texture set atomically, activates canonical
+  authored idle motion when available, and holds on the complete model;
+- atomic workspace replacement through the Agent Command Port;
 - static production build with no application server routes.
 
 Run locally:
@@ -30,42 +26,56 @@ npm install
 npm run dev
 ```
 
-Architecture:
+## Build replay
+
+The human **Build replay** control and `window.ashfox.capture({kind:"build"})`
+use one source-derived replay. It starts from an empty scene, places every
+visible element in deterministic canonical element order, applies each
+element's complete owning texture set atomically, activates canonical authored
+idle motion when available, and holds on the complete model. The resulting GIF
+is the sole capture artifact for the active source revision; it is
+  non-persistent, transient evidence, not an authoring authority or a decision
+log.
+
+## Architecture
 
 - Keep the viewport dominant and the human surface observation-only except for
   project, view, playback, capture, and delivery controls.
-- The current compiled Intent Program source is durable authority; `ProjectDocument`
-  is a disposable compiler projection rebuilt on open and restore.
+- The canonical `.ashfoxworkspace` container is durable authority;
+  `ProjectDocument` is disposable compiled state rebuilt from its selected
+  entry closure.
+- Each `ashfox-model 1` file contains one nominal module or asset. Package
+  manifests and the exact compiler lock close imports and dependencies.
+- Rig, skeleton, surface, component, motion, and asset declarations own their
+  explicit decisions; compiled geometry and textures are never a second source.
 - IndexedDB uses revision compare-and-write and cannot roll back newer state.
-- Three.js objects are disposable render projections.
-- The Agent Command Port owns Intent Program proposal and compilation. Human UI
-  actions do not decide or mutate asset semantics.
-- `/workbench/agent-manifest.json` is the machine authority for AI agent operation and
-  host-side artifact delivery.
-- Blockbench, MCP, Node persistence, SQLite, and worker packages are forbidden
-  dependencies.
+- Three.js objects are ephemeral view state rebuilt from the selected entry.
+- The Agent Command Port atomically applies one complete workspace change set.
+  Human UI actions
+  do not decide or mutate asset semantics, and no generated model becomes a
+  second authority.
+- `/workbench/agent-manifest.json` is the machine authority for agent
+  operation and host-side artifact delivery.
+- Blockbench and MCP are an optional compatibility route outside Web Studio;
+  this browser bundle does not import that runtime or its contracts. Node
+  persistence, SQLite, and worker packages are not Web Studio dependencies.
 
 ## Agent manifest consumers
 
-`/workbench/agent-manifest.json` is the machine authority for an agent that
-operates the Studio. It is generated from
+`/workbench/agent-manifest.json` is generated from
 `src/features/agent/agentManifest.ts`; do not hand-edit built output or treat a
 README, prompt example, or cached command schema as an equivalent contract.
-Its `authoring.program.specification` is a JSON-safe projection of the engine's
-closed language and statement-schema authority.
+Its `authoring.program.specification` publishes the current workspace,
+nominal declaration, import, binding, and selected-entry vocabulary.
 
 An integrating host should:
 
 1. fetch the current manifest at the start of a Studio session;
-2. inspect only the current command schemas named by `nextActions`;
-3. lint and submit complete proposals through the documented command port,
-   then autonomously decide whether to revise or run the exact compile
-   operation returned by inspection;
-4. use inspect, present, and capture responses as revision-bound results,
-   make the compilation decision without human input, and keep source editing
-   out of the human surface;
-5. refetch after a product update instead of assuming a cached grammar still
-   applies.
+2. inspect only current command schemas named by `nextActions`;
+3. lint and atomically submit one complete workspace change through
+   `workspace.apply`;
+4. use inspect, present, and capture responses as revision-bound observations;
+5. refetch after a product update instead of assuming a cached grammar applies.
 
 This runtime asset-creation contract is distinct from the repository root
 [`development-manifest.json`](../../development-manifest.json), which governs
@@ -74,5 +84,4 @@ and architecture for code changes.
 
 Repository contributors must update the manifest source, contract tests, and
 affected human guide together when that workflow changes. See the root
-[contribution guide](../../CONTRIBUTING.md) for how to consume the development
-manifest.
+[contribution guide](../../CONTRIBUTING.md).

@@ -1,3 +1,5 @@
+import { MESH_UV_POLICY_LIMITS } from '@ashfox/blockbench-contracts/mcpSchemas/constants';
+
 export type MeshSymmetryAxis = 'none' | 'x' | 'y' | 'z';
 
 export type MeshUvPolicy = {
@@ -52,15 +54,20 @@ const DEFAULT_POLICY: Required<MeshUvPolicy> = {
   padding: 1
 };
 
-const MIN_DENSITY = 0.25;
-const MAX_DENSITY = 64;
-const MIN_PADDING = 0;
-const MAX_PADDING = 16;
-
 export const normalizeMeshUvPolicy = (policy?: MeshUvPolicy): Required<MeshUvPolicy> => {
   const symmetryAxis = isSymmetryAxis(policy?.symmetryAxis) ? policy!.symmetryAxis : DEFAULT_POLICY.symmetryAxis;
-  const texelDensity = clampFinite(policy?.texelDensity, MIN_DENSITY, MAX_DENSITY, DEFAULT_POLICY.texelDensity);
-  const padding = Math.trunc(clampFinite(policy?.padding, MIN_PADDING, MAX_PADDING, DEFAULT_POLICY.padding));
+  const texelDensity = clampFinite(
+    policy?.texelDensity,
+    MESH_UV_POLICY_LIMITS.minTexelDensity,
+    MESH_UV_POLICY_LIMITS.maxTexelDensity,
+    DEFAULT_POLICY.texelDensity
+  );
+  const padding = Math.trunc(clampFinite(
+    policy?.padding,
+    MESH_UV_POLICY_LIMITS.minPadding,
+    MESH_UV_POLICY_LIMITS.maxPadding,
+    DEFAULT_POLICY.padding
+  ));
   return {
     symmetryAxis,
     texelDensity,
@@ -176,8 +183,8 @@ const packFaceRects = (
     if (packed) {
       return { rects: packed, appliedDensity: density };
     }
-    if (density <= MIN_DENSITY) return null;
-    density = Math.max(MIN_DENSITY, density * 0.82);
+    if (density <= MESH_UV_POLICY_LIMITS.minTexelDensity) return null;
+    density = Math.max(MESH_UV_POLICY_LIMITS.minTexelDensity, density * 0.82);
   }
   return null;
 };

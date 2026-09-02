@@ -1,6 +1,6 @@
 import {
   evaluateProductionReadiness,
-  type ProjectDocument,
+  type AssetProject,
   type ValidationReport
 } from '@ashfox/engine-core';
 
@@ -15,35 +15,24 @@ export interface ExportAvailabilityViewModel {
 }
 
 export const presentExportAvailability = (
-  document: ProjectDocument,
+  project: AssetProject,
   report: ValidationReport,
   visualReviews: readonly VisualReviewReceipt[]
 ): ExportAvailabilityViewModel => {
-  if (document.intentProgramProposal) {
-    return {
-      allowed: false,
-      message: 'The AI is compiling or revising the staged update. Export will unlock when it finishes.'
-    };
-  }
-  if (!document.intentProgram) {
-    return {
-      allowed: false,
-      message: 'Describe the asset in chat. The AI will build and review it before export.'
-    };
-  }
+  const document = project.document;
   const readiness = evaluateProductionReadiness(document, report);
   if (!readiness.mechanicallyReady) {
     return {
       allowed: false,
       message: readiness.firstBlockingFinding?.fix ??
-        'The compiled asset needs attention before export.'
+        'The compiled asset needs attention before delivery.'
     };
   }
-  const remaining = remainingVisualReviews(document, readiness, visualReviews);
+  const remaining = remainingVisualReviews(project, readiness, visualReviews);
   if (remaining.length > 0) {
     return {
       allowed: false,
-      message: `The AI has ${remaining.length} visual ${remaining.length === 1 ? 'check' : 'checks'} remaining before export.`
+      message: `The AI has ${remaining.length} visual ${remaining.length === 1 ? 'check' : 'checks'} remaining before delivery.`
     };
   }
   return {

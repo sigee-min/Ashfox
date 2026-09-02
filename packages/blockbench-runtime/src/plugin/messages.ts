@@ -5,13 +5,8 @@ export const PLUGIN_LOG_INLINE_SERVER_UNAVAILABLE = 'Inline MCP server unavailab
 export const PLUGIN_LOG_SIDECAR_FAILED = 'MCP sidecar failed to start';
 export const PLUGIN_LOG_SERVER_STATUS = 'MCP server status';
 
-export const PLUGIN_UI_EXPORT_FAILED_PREFIX = 'ashfox export failed: ';
-export const PLUGIN_UI_EXPORT_COMPLETE = 'ashfox export complete';
-export const PLUGIN_UI_EXPORT_FAILED_GENERIC = 'export failed';
 export const PLUGIN_UI_LOADED = (version: string) => `ashfox v${version} loaded`;
 export const PLUGIN_UI_UNLOADED = 'ashfox unloaded';
-export const PLUGIN_UI_EXPORT_FAILED = (message: string) => `${PLUGIN_UI_EXPORT_FAILED_PREFIX}${message}`;
 export const PLUGIN_UI_SERVER_STATUS = (mode: string, endpoint: string) => `ashfox MCP ${mode}: ${endpoint}`;
-
 
 

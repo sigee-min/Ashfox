@@ -1,7 +1,5 @@
 import assert from 'node:assert/strict';
 
-import type { ProjectDocument } from '@ashfox/engine-core';
-
 import {
   captureRequestPort,
   presentCaptureMenu,
@@ -11,16 +9,12 @@ import {
 import type { GifCaptureFile } from '../../src/features/capture/gifCaptureFile';
 import { createWorkbenchProject } from '../fixtures/project';
 
-const document = createWorkbenchProject();
-const clipId = Object.keys(document.animations)[0] ?? null;
+const document = createWorkbenchProject().document;
 
 const authority = (
   overrides: Partial<CaptureMenuAuthority> = {}
 ): CaptureMenuAuthority => ({
   document,
-  buildDocuments: [document],
-  activity: [],
-  activeClipId: clipId,
   environment: 'studio',
   cameraMode: 'perspective',
   operation: {
@@ -32,47 +26,32 @@ const authority = (
   },
   captureFile: null,
   canDownload: false,
+  blockedReason: null,
   ...overrides
 });
 
 const planReader: CapturePlanReader = Object.freeze({
-  read: () => Object.freeze({
-    build: Object.freeze({ frames: 7, events: 2, error: null }),
-    animation: Object.freeze({ frames: 11, events: 3, error: null })
-  })
+  read: () => Object.freeze({ frames: 7, events: 4, error: null })
 });
 
-const buildView = presentCaptureMenu(authority(), 'build', planReader);
-assert.equal(buildView.framesLabel, '7 frames');
-assert.equal(buildView.eventsLabel, '2 build events');
-assert.equal(buildView.startLabel, 'Capture build process');
-assert.equal(buildView.statusTone, 'default');
-assert.equal(Object.isFrozen(buildView), true);
-assert.equal(Object.isFrozen(buildView.clips), true);
-assert.equal(buildView.clips.every(Object.isFrozen), true);
-
-const animationRequest = captureRequestPort.create(authority(), 'animation');
-assert.deepEqual(animationRequest, {
-  kind: 'animation',
-  clipId,
-  environment: 'studio',
-  cameraMode: 'perspective'
-});
-assert.equal(Object.isFrozen(animationRequest), true);
+const view = presentCaptureMenu(authority(), planReader);
+assert.equal(view.framesLabel, '7 frames');
+assert.equal(view.eventsLabel, '4 replay steps');
+assert.equal(view.startLabel, 'Capture build replay');
+assert.equal(view.statusTone, 'default');
 assert.equal(
-  captureRequestPort.create(authority({ activeClipId: null }), 'animation'),
-  null
+  view.statusMessage,
+  'Starts from an empty scene, places every visible element in deterministic canonical element order, applies each element\'s complete owning texture set atomically, activates canonical authored idle motion when available, and holds on the complete model.'
 );
+assert.equal(Object.isFrozen(view), true);
 
-const buildRequest = captureRequestPort.create(authority(), 'build');
-assert.deepEqual(buildRequest, {
+const request = captureRequestPort.create(authority());
+assert.deepEqual(request, {
   kind: 'build',
-  documents: [document],
-  receipts: [],
   environment: 'studio',
   cameraMode: 'perspective'
 });
-assert.equal(Object.isFrozen(buildRequest), true);
+assert.equal(Object.isFrozen(request), true);
 
 const readyFile: GifCaptureFile = {
   kind: 'build',
@@ -82,22 +61,22 @@ const readyFile: GifCaptureFile = {
   width: 640,
   height: 360,
   frameCount: 7,
-  eventCount: 2,
+  eventCount: 4,
   fps: 10,
   projectId: document.id,
-  sourceRevision: document.revision,
+  revision: document.revision,
   target: 'capture',
+  targetVersion: null,
   contentHash: `sha256:${'0'.repeat(64)}`
 };
 const readyView = presentCaptureMenu(
   authority({ captureFile: readyFile, canDownload: true }),
-  'build',
   planReader
 );
 assert.equal(readyView.ready, true);
 assert.equal(readyView.startLabel, 'Capture again');
 assert.equal(readyView.downloadDisabled, false);
-assert.equal(readyView.statusMessage, 'Ready · 7 frames · 2 build events');
+assert.equal(readyView.statusMessage, 'Ready · 7 frames · 4 replay steps');
 
 const runningView = presentCaptureMenu(authority({
   operation: {
@@ -107,37 +86,28 @@ const runningView = presentCaptureMenu(authority({
     message: 'Captured 2/7 frames',
     result: null
   }
-}), 'build', planReader);
+}), planReader);
 assert.equal(runningView.capturing, true);
 assert.equal(runningView.statusMessage, 'Captured 2/7 frames');
 
 const failingReader: CapturePlanReader = Object.freeze({
   read: () => Object.freeze({
-    build: Object.freeze({ frames: 0, events: 0, error: 'No history.' }),
-    animation: Object.freeze({ frames: 0, events: 0, error: null })
+    frames: 0,
+    events: 0,
+    error: 'No visible model geometry.'
   })
 });
-const failedView = presentCaptureMenu(authority(), 'build', failingReader);
+const failedView = presentCaptureMenu(authority(), failingReader);
 assert.equal(failedView.startDisabled, true);
 assert.equal(failedView.statusTone, 'error');
-assert.equal(failedView.statusMessage, 'No history.');
+assert.equal(failedView.statusMessage, 'No visible model geometry.');
 
-const defaultView = presentCaptureMenu(authority(), 'animation');
-assert.equal(defaultView.showAnimationPicker, true);
-assert.equal(defaultView.activeClipId, clipId ?? '');
-assert.ok(defaultView.framesLabel.endsWith(' frames'));
-
-const documentWithoutAnimations: ProjectDocument = {
-  ...document,
-  animations: {}
-};
-const emptyView = presentCaptureMenu(authority({
-  document: documentWithoutAnimations,
-  activeClipId: null
-}), 'animation');
-assert.equal(emptyView.clips.length, 0);
-assert.equal(emptyView.startDisabled, true);
+const blockedView = presentCaptureMenu(authority({
+  blockedReason: 'Accept every revision-bound visual review before capture.'
+}), planReader);
+assert.equal(blockedView.startDisabled, true);
+assert.equal(blockedView.statusTone, 'default');
 assert.equal(
-  emptyView.statusMessage,
-  'Add or select an animation clip first.'
+  blockedView.statusMessage,
+  'Accept every revision-bound visual review before capture.'
 );

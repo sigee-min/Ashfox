@@ -1,9 +1,13 @@
 import * as THREE from 'three';
 
-import type {
+import {
+  cubeGeometryPivot,
+  cubeGeometryRotation,
+  cubeUnrotatedBounds,
+  type
   ProjectDocument,
-  SceneNode,
-  TextureAsset
+  type SceneNode,
+  type TextureAsset
 } from '@ashfox/engine-core';
 
 import { subtractVectors } from './sceneTransform';
@@ -121,7 +125,10 @@ const addCubeGeometry = (
   group: THREE.Group,
   context: GeometryBuildContext
 ): void => {
-  const size = subtractVectors(node.bounds.to, node.bounds.from);
+  const bounds = cubeUnrotatedBounds(node);
+  const pivot = cubeGeometryPivot(node);
+  const rotation = cubeGeometryRotation(node);
+  const size = subtractVectors(bounds.to, bounds.from);
   const geometry = new THREE.BoxGeometry(
     size[0] + node.inflate * 2,
     size[1] + node.inflate * 2,
@@ -130,16 +137,27 @@ const addCubeGeometry = (
   applyCubeFaceUvs(geometry, node, context.textures);
   const enabledDirections = retainEnabledCubeFaces(geometry, node);
   const center: [number, number, number] = [
-    (node.bounds.from[0] + node.bounds.to[0]) / 2 - node.transform.pivot[0],
-    (node.bounds.from[1] + node.bounds.to[1]) / 2 - node.transform.pivot[1],
-    (node.bounds.from[2] + node.bounds.to[2]) / 2 - node.transform.pivot[2]
+    (bounds.from[0] + bounds.to[0]) / 2 - pivot[0],
+    (bounds.from[1] + bounds.to[1]) / 2 - pivot[1],
+    (bounds.from[2] + bounds.to[2]) / 2 - pivot[2]
   ];
   const materials = enabledDirections.map((direction) => {
-    const textureId = node.faces[direction].textureId;
+    const textureId = context.options.showTextures === false
+      ? null
+      : node.faces[direction].textureId;
     return context.materials.resolve(textureId, node.lightEmission);
   });
   const mesh = new THREE.Mesh(geometry, materials);
-  mesh.position.fromArray(center);
+  if (node.geometryMode === 'oriented-box') {
+    const euler = new THREE.Euler(...rotation.map(THREE.MathUtils.degToRad) as
+      [number, number, number], 'XYZ');
+    const offset = new THREE.Vector3(...center).applyEuler(euler);
+    mesh.position.set(pivot[0] + offset.x, pivot[1] + offset.y,
+      pivot[2] + offset.z);
+    mesh.rotation.copy(euler);
+  } else {
+    mesh.position.fromArray(center);
+  }
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   mesh.userData.nodeId = node.id;
@@ -157,76 +175,126 @@ const addCubeGeometry = (
     })
   );
   edges.position.copy(mesh.position);
+  if (node.geometryMode === 'oriented-box') edges.rotation.copy(mesh.rotation);
   edges.userData.overlay = true;
   group.add(edges);
 };
 
-const addMeshGeometry = (
-  node: Extract<SceneNode, { kind: 'mesh' }>,
+const applyPlaneFaceUvs = (
+  geometry: THREE.PlaneGeometry,
+  node: Extract<SceneNode, { kind: 'plane' }>,
+  direction: 'front' | 'back',
+  textures: ProjectDocument['textures']
+): void => {
+  const face = node.faces[direction];
+  const texture = face.textureId === null
+    ? undefined : textures[face.textureId];
+  if (!texture || !face.uv) return;
+  const uvs = normalizedFaceUvs(texture, face.uv, face.rotation ?? 0);
+  const attribute = geometry.getAttribute('uv');
+  const order = direction === 'front' ? [2, 3, 0, 1] : [3, 2, 1, 0];
+  for (const [vertex, source] of order.entries()) {
+    const point = uvs[source]!;
+    attribute.setXY(vertex, point[0], point[1]);
+  }
+  attribute.needsUpdate = true;
+};
+
+const planeMaterial = (
+  material: THREE.Material,
+  sidedness: Extract<SceneNode, { kind: 'plane' }>['sidedness']
+): THREE.Material => {
+  const result = material.clone();
+  result.side = sidedness === 'double' ? THREE.DoubleSide : THREE.FrontSide;
+  if ('alphaTest' in result) result.alphaTest = 0.5;
+  // Canonical plane coverage is binary (0/255), so use an alpha-tested
+  // cutout. It must participate in the depth buffer like a cube; blending and
+  // depth-write suppression make intersecting decorative planes order-bound.
+  if ('transparent' in result) result.transparent = false;
+  if ('depthWrite' in result) result.depthWrite = true;
+  result.needsUpdate = true;
+  return result;
+};
+
+const addPlaneGeometry = (
+  node: Extract<SceneNode, { kind: 'plane' }>,
   group: THREE.Group,
   context: GeometryBuildContext
 ): void => {
-  for (const face of Object.values(node.faces)) {
-    const vertices = face.vertexIds
-      .map((id) => node.vertices[id])
-      .filter((vertex) => vertex !== undefined);
-    if (vertices.length < 3) continue;
-
-    const positions: number[] = [];
-    const uvs: number[] = [];
-    const texture =
-      face.textureId === null
-        ? undefined
-        : context.textures[face.textureId];
-    for (let index = 1; index < vertices.length - 1; index += 1) {
-      for (const vertex of [
-        vertices[0],
-        vertices[index],
-        vertices[index + 1]
-      ]) {
-        positions.push(
-          vertex.position[0] - node.transform.pivot[0],
-          vertex.position[1] - node.transform.pivot[1],
-          vertex.position[2] - node.transform.pivot[2]
-        );
-        const uv = face.uv[vertex.id];
-        if (texture && uv) {
-          uvs.push(
-            uv[0] / texture.width,
-            1 - uv[1] / texture.height
-          );
-        }
-      }
-    }
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute(
-      'position',
-      new THREE.Float32BufferAttribute(positions, 3)
+  const center: [number, number, number] = node.basis
+    ? [
+        node.basis.uAxis[0] * (node.size[0] / 2 - node.transform.pivot[0]) +
+          node.basis.vAxis[0] * (node.size[1] / 2 - node.transform.pivot[1]) -
+          node.basis.normal[0] * node.transform.pivot[2],
+        node.basis.uAxis[1] * (node.size[0] / 2 - node.transform.pivot[0]) +
+          node.basis.vAxis[1] * (node.size[1] / 2 - node.transform.pivot[1]) -
+          node.basis.normal[1] * node.transform.pivot[2],
+        node.basis.uAxis[2] * (node.size[0] / 2 - node.transform.pivot[0]) +
+          node.basis.vAxis[2] * (node.size[1] / 2 - node.transform.pivot[1]) -
+          node.basis.normal[2] * node.transform.pivot[2]
+      ]
+    : [
+        node.size[0] / 2 - node.transform.pivot[0],
+        node.size[1] / 2 - node.transform.pivot[1],
+        -node.transform.pivot[2]
+      ];
+  // A canonical double-sided plane has identical front/back material and UV
+  // records. One DoubleSide mesh avoids two coplanar depth writers (and the
+  // resulting z-fighting) while retaining the source sidedness decision.
+  const directions = ['front'] as const;
+  for (const direction of directions) {
+    const face = node.faces[direction];
+    if (!face.enabled) continue;
+    const geometry = new THREE.PlaneGeometry(node.size[0], node.size[1]);
+    applyPlaneFaceUvs(geometry, node, direction, context.textures);
+    const mesh = new THREE.Mesh(
+      geometry,
+      planeMaterial(
+        context.materials.resolve(
+          context.options.showTextures === false ? null : face.textureId
+        ),
+        node.sidedness
+      )
     );
-    if (uvs.length * 3 === positions.length * 2) {
-      geometry.setAttribute(
-        'uv',
-        new THREE.Float32BufferAttribute(uvs, 2)
+    mesh.position.fromArray(center);
+    if (node.basis) {
+      const basisMatrix = new THREE.Matrix4().makeBasis(
+        new THREE.Vector3(...node.basis.uAxis),
+        new THREE.Vector3(...node.basis.vAxis),
+        new THREE.Vector3(...node.basis.normal)
       );
+      mesh.setRotationFromMatrix(basisMatrix);
     }
-    geometry.computeVertexNormals();
-    const material = context.materials.resolve(face.textureId);
-    const mesh = new THREE.Mesh(geometry, material);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     mesh.userData.nodeId = node.id;
     mesh.userData.kind = node.kind;
+    mesh.userData.planeSide = direction;
+    mesh.userData.ownsMaterial = true;
     group.add(mesh);
     context.selectable.push(mesh);
-
-    if (!context.options.showWireframe) continue;
-    const edges = new THREE.LineSegments(
-      new THREE.EdgesGeometry(geometry),
-      new THREE.LineBasicMaterial({ color: '#172028' })
-    );
-    edges.userData.overlay = true;
-    group.add(edges);
   }
+
+  if (!context.options.showWireframe) return;
+  const outline = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.PlaneGeometry(node.size[0], node.size[1])),
+    new THREE.LineBasicMaterial({
+      color: '#172028',
+      transparent: true,
+      opacity: 0.66
+    })
+  );
+  outline.position.fromArray(center);
+  if (node.basis) {
+    const basisMatrix = new THREE.Matrix4().makeBasis(
+      new THREE.Vector3(...node.basis.uAxis),
+      new THREE.Vector3(...node.basis.vAxis),
+      new THREE.Vector3(...node.basis.normal)
+    );
+    outline.setRotationFromMatrix(basisMatrix);
+  }
+  outline.userData.overlay = true;
+  group.add(outline);
 };
 
 const addNodeHelper = (
@@ -258,7 +326,7 @@ export const addNodeGeometry = (
   context: GeometryBuildContext
 ): void => {
   if (node.kind === 'cube') addCubeGeometry(node, group, context);
-  if (node.kind === 'mesh') addMeshGeometry(node, group, context);
+  if (node.kind === 'plane') addPlaneGeometry(node, group, context);
   if (
     context.options.showSkeleton &&
     (node.kind === 'bone' || node.kind === 'locator')

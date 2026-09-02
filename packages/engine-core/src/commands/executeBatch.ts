@@ -1,4 +1,4 @@
-import type { ProjectDocument } from '../model';
+import type { AssetProject } from '../project/asset';
 import { commandBatchFailure } from './batch/failure';
 import { executeCommandBatchPipeline } from './batch/executePipeline';
 import type {
@@ -8,18 +8,18 @@ import type {
 } from './types';
 
 const executeCommandBatch = (
-  document: ProjectDocument,
+  project: AssetProject,
   batch: CommandBatch,
   source: CommandSource
 ): CommandBatchResult => {
   try {
     return executeCommandBatchPipeline(
-      structuredClone(document),
+      structuredClone(project),
       structuredClone(batch),
       source
     );
   } catch (error) {
-    return commandBatchFailure(document, {
+    return commandBatchFailure(project, {
       code: 'invalid_state',
       message:
         error instanceof Error
@@ -30,16 +30,16 @@ const executeCommandBatch = (
 };
 
 export const executeAgentCommandBatch = (
-  document: ProjectDocument,
+  project: AssetProject,
   batch: CommandBatch
-): CommandBatchResult => executeCommandBatch(document, batch, 'agent');
+): CommandBatchResult => executeCommandBatch(project, batch, 'agent');
 
 export const executeWebCommandBatch = (
-  document: ProjectDocument,
+  project: AssetProject,
   batch: CommandBatch
-): CommandBatchResult => executeCommandBatch(document, batch, 'web');
+): CommandBatchResult => executeCommandBatch(project, batch, 'web');
 
 export const executeSystemCommandBatch = (
-  document: ProjectDocument,
+  project: AssetProject,
   batch: CommandBatch
-): CommandBatchResult => executeCommandBatch(document, batch, 'system');
+): CommandBatchResult => executeCommandBatch(project, batch, 'system');

@@ -1,13 +1,13 @@
-import type { ProjectDocument } from '../../model';
+import type { AssetProject } from '../../project/asset';
 import type { CommandBatchFailure } from '../types';
 
 export const commandBatchFailure = (
-  document: ProjectDocument,
+  project: AssetProject,
   error: CommandBatchFailure['error'],
   findings?: CommandBatchFailure['findings']
 ): CommandBatchFailure => ({
   ok: false,
-  currentRevision: document.revision,
+  currentRevision: project.revision,
   error,
   ...(findings ? { findings } : {})
 });

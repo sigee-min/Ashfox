@@ -1,4 +1,4 @@
-import type { Capabilities, Dispatcher, ExportTargetCapability } from '@ashfox/blockbench-contracts/types/internal';
+import type { Capabilities, Dispatcher } from '@ashfox/blockbench-contracts/types/internal';
 import type { Logger } from '../logging';
 import type { ToolPolicies } from '../usecases/policies';
 import { computeCapabilities } from '../config';
@@ -8,7 +8,6 @@ import { BlockbenchEditor } from '../adapters/blockbench/editor';
 import { BlockbenchHost } from '../adapters/blockbench/host';
 import { BlockbenchFormats } from '../adapters/blockbench/formats';
 import { BlockbenchSnapshot } from '../adapters/blockbench/snapshot';
-import { BlockbenchExport } from '../adapters/blockbench/export';
 import { BlockbenchTextureRenderer } from '../adapters/blockbench/texture/renderer';
 import { BlockbenchViewportRefresher } from '../adapters/blockbench/viewport/refresh';
 import { BlockbenchTraceLogWriter } from '../adapters/blockbench/trace/writer';
@@ -60,58 +59,12 @@ type BuildRuntimeServicesOptions = {
 
 const DEFAULT_DETAIL_OPS = ['paint_faces', 'assign_texture', 'add_cube', 'update_cube'];
 
-const INTERNAL_EXPORT_TARGETS: Array<Omit<ExportTargetCapability, 'available'>> = [
-  {
-    kind: 'internal',
-    id: 'java_block_item_json',
-    label: 'Java Block/Item JSON',
-    extensions: ['json']
-  },
-  {
-    kind: 'internal',
-    id: 'gecko_geo_anim',
-    label: 'GeckoLib Geo+Anim JSON',
-    extensions: ['json']
-  },
-  {
-    kind: 'internal',
-    id: 'animated_java',
-    label: 'Animated Java JSON',
-    extensions: ['json']
-  },
-  {
-    kind: 'internal',
-    id: 'generic_model_json',
-    label: 'Generic Model JSON',
-    extensions: ['json']
-  },
-  {
-    kind: 'gltf',
-    id: 'gltf',
-    label: 'glTF (native codec)',
-    extensions: ['gltf', 'glb']
-  },
-  {
-    kind: 'native_codec',
-    id: 'native_codec',
-    label: 'Native Codec Export'
-  }
-];
-
-const FORMAT_TARGET_REQUIREMENTS: Partial<Record<string, Capabilities['formats'][number]['format']>> = {
-  java_block_item_json: 'Java Block/Item',
-  gecko_geo_anim: 'geckolib',
-  animated_java: 'animated_java',
-  generic_model_json: 'Generic Model'
-};
-
 export const buildRuntimeServices = (options: BuildRuntimeServicesOptions): RuntimeServices => {
   const session = new ProjectSession();
   const editor = new BlockbenchEditor(options.logger);
   const host = new BlockbenchHost();
   const formats = new BlockbenchFormats();
   const snapshot = new BlockbenchSnapshot(options.logger);
-  const exporter = new BlockbenchExport(options.logger);
   const textureRenderer = new BlockbenchTextureRenderer();
   const viewportRefresher = new BlockbenchViewportRefresher(options.logger);
   const tmpStore = new LocalTmpStore();
@@ -129,36 +82,6 @@ export const buildRuntimeServices = (options: BuildRuntimeServicesOptions): Runt
   );
   const toolRegistry = DEFAULT_TOOL_REGISTRY;
   capabilities.toolRegistry = { hash: toolRegistry.hash, count: toolRegistry.count };
-  const nativeCodecs =
-    typeof exporter.listNativeCodecs === 'function'
-      ? exporter.listNativeCodecs().map((codec) => ({
-          kind: 'native_codec' as const,
-          id: codec.id,
-          label: codec.label,
-          extensions: codec.extensions,
-          available: true
-        }))
-      : [];
-  const gltfAvailable = nativeCodecs.some(
-    (codec) => codec.id === 'gltf' || codec.extensions.includes('gltf') || codec.extensions.includes('glb')
-  );
-  const hasNativeCodecs = nativeCodecs.length > 0;
-  const isFormatEnabled = (format: Capabilities['formats'][number]['format']) =>
-    Boolean(capabilities.formats.find((entry) => entry.format === format && entry.enabled));
-  const internalTargets: ExportTargetCapability[] = INTERNAL_EXPORT_TARGETS.map((target) => {
-    if (target.kind === 'gltf') {
-      return { ...target, available: gltfAvailable };
-    }
-    if (target.id === 'native_codec') {
-      return { ...target, available: hasNativeCodecs };
-    }
-    const requiredFormat = FORMAT_TARGET_REQUIREMENTS[target.id];
-    if (!requiredFormat) {
-      return { ...target, available: true };
-    }
-    return { ...target, available: isFormatEnabled(requiredFormat) };
-  });
-  capabilities.exportTargets = [...internalTargets, ...nativeCodecs];
   const service = new ToolService({
     session,
     capabilities,
@@ -166,7 +89,6 @@ export const buildRuntimeServices = (options: BuildRuntimeServicesOptions): Runt
     host,
     formats,
     snapshot,
-    exporter,
     textureRenderer,
     viewportRefresher,
     tmpStore,
@@ -265,9 +187,4 @@ export const buildRuntimeServices = (options: BuildRuntimeServicesOptions): Runt
     traceLogService
   };
 };
-
-
-
-
-
 

@@ -1,5 +1,7 @@
+import type { Gltf2ExportProfile } from '../../adapter/contract';
+
 export interface GltfAsset {
-  version: '2.0';
+  version: Gltf2ExportProfile['version'];
   generator: string;
   copyright?: string;
 }
@@ -50,6 +52,12 @@ export interface GltfPrimitive {
   indices?: number;
   material?: number;
   mode?: 4;
+  /** Canonical workspace-authored node for an unmerged primitive. The
+   * field is intentionally absent on merged interchange batches, where
+   * primitive ownership is not part of the source contract. */
+  extras?: {
+    ashfoxSourceNodeId: string;
+  };
 }
 
 export interface GltfMesh {
@@ -67,7 +75,7 @@ export interface GltfNode {
   scale?: [number, number, number];
   extras?: {
     ashfoxId: string;
-    ashfoxKind: 'bone' | 'cube' | 'mesh' | 'locator';
+    ashfoxKind: 'bone' | 'cube' | 'plane' | 'locator';
     visible: boolean;
     ashfoxTags?: string[];
   };
@@ -116,7 +124,8 @@ export interface GltfMaterial {
   };
   emissiveTexture?: { index: number };
   emissiveFactor?: [number, number, number];
-  alphaMode?: 'BLEND';
+  alphaMode?: 'MASK' | 'BLEND';
+  alphaCutoff?: number;
   doubleSided?: boolean;
 }
 

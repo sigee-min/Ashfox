@@ -1,14 +1,19 @@
 import type {
   TextureAsset
 } from '../../../model';
+import type { AssetBuildIdentity } from '../../../project/asset';
 import type { ExportAdaptedDocument } from '../../adapter';
-import { validateExportTarget } from '../../pipeline/validate';
+import { assertValidatedExportTargetDocument,
+  validateExportTarget } from '../../pipeline/validate';
 import {
-  ExportMaterializationRequiredError,
-  type BlobCopyExportFile,
   type ExportBundle
 } from '../../contract';
 import { compileGltfAnimations } from './animation';
+import {
+  canonicalTextureBytes,
+  createTextureExportFile,
+  type MaterializedTextureFile
+} from '../../texture';
 import { GltfBinaryWriter } from './binary';
 import type {
   CompiledGltf,
@@ -55,20 +60,29 @@ const textureMimeType = (
   return texture.source.contentType;
 };
 
-const unitScaleFor = (document: ExportAdaptedDocument): number => {
-  switch (document.settings.coordinateSystem.unit) {
-    case 'pixel':
-      return 1 / 16;
-    case 'block':
-    case 'meter':
-      return 1;
-  }
-};
+const GLTF_UNIT_SCALE = 1 / 16;
+
+const materialForTexture = (texture: TextureAsset, index: number,
+  masked: boolean, forceSingleSided = false): GltfMaterial => ({
+  name: forceSingleSided ? `${texture.name} (front-sided)` : texture.name,
+  pbrMetallicRoughness: {
+    baseColorTexture: { index }, metallicFactor: 0, roughnessFactor: 1
+  },
+  ...(texture.renderMode === 'emissive' ? {
+    emissiveTexture: { index }, emissiveFactor: [1, 1, 1]
+  } : {}),
+  ...(masked ? { alphaMode: 'MASK', alphaCutoff: 0.5 } :
+    texture.renderMode === 'additive' || texture.renderMode === 'layered'
+      ? { alphaMode: 'BLEND' } : {}),
+  ...(texture.renderSides === 'double' && !forceSingleSided
+    ? { doubleSided: true } : {})
+});
 
 export const buildGltf = (
   document: ExportAdaptedDocument,
   options: GltfBuildOptions = {}
 ): CompiledGltf => {
+  assertValidatedExportTargetDocument(document, ['glb', 'gltf']);
   const profile = document.formatProfile;
   if (profile.id !== 'gltf.2') {
     throw new Error('Project does not use the gltf.2 profile.');
@@ -85,45 +99,46 @@ export const buildGltf = (
       : 'textures';
   const textures = orderedTextures(document);
   const materialByTextureId = new Map<string, number>();
+  const singleSidedMaterialByTextureId = new Map<string, number>();
   const samplers: GltfSampler[] = [];
   const materials: GltfMaterial[] = [];
   const images: GltfImage[] = [];
-  const textureFiles: BlobCopyExportFile[] = [];
+  const textureFiles: MaterializedTextureFile[] = [];
+  const planeTextureIds = new Set(
+    Object.values(document.scene.nodes).flatMap((node) =>
+      node.kind === 'plane'
+        ? Object.values(node.faces).flatMap((face) =>
+            face.enabled && face.textureId !== null ? [face.textureId] : []
+          )
+        : []
+    )
+  );
 
   textures.forEach((texture, index) => {
     const mimeType = textureMimeType(texture);
-    materialByTextureId.set(texture.id, index);
+    materialByTextureId.set(texture.id, materials.length);
     samplers.push({
       magFilter: texture.sampling === 'nearest' ? 9728 : 9729,
       minFilter: texture.sampling === 'nearest' ? 9728 : 9729,
       wrapS: 10497,
       wrapT: 10497
     });
-    materials.push({
-      name: texture.name,
-      pbrMetallicRoughness: {
-        baseColorTexture: { index },
-        metallicFactor: 0,
-        roughnessFactor: 1
-      },
-      ...(texture.renderMode === 'emissive'
-        ? {
-            emissiveTexture: { index },
-            emissiveFactor: [1, 1, 1] as [number, number, number]
-          }
-        : {}),
-      ...(texture.renderMode === 'additive' || texture.renderMode === 'layered'
-        ? { alphaMode: 'BLEND' as const }
-        : {}),
-      ...(texture.renderSides === 'double' ? { doubleSided: true } : {})
-    });
+    const masked = planeTextureIds.has(texture.id);
+    materials.push(materialForTexture(texture, index, masked));
+    if (masked && texture.renderSides === 'double') {
+      singleSidedMaterialByTextureId.set(texture.id, materials.length);
+      materials.push(materialForTexture(texture, index, true, true));
+    }
     if (profile.imageStorage === 'embedded') {
-      const resolved = requireResolvedTexture(
-        texture,
-        options.resolvedTextures
-      );
+      const resolved = options.resolvedTextures?.get(texture.id) ??
+        (texture.raster !== undefined
+          ? { bytes: canonicalTextureBytes(document, texture),
+              contentType: 'image/png' }
+          : undefined);
+      const checked = requireResolvedTexture(texture,
+        resolved === undefined ? undefined : new Map([[texture.id, resolved]]));
       images.push({
-        bufferView: writer.addBufferView(resolved.bytes),
+        bufferView: writer.addBufferView(checked.bytes),
         mimeType,
         name: texture.name
       });
@@ -133,20 +148,16 @@ export const buildGltf = (
         mimeType,
         name: texture.name
       });
-      textureFiles.push({
-        kind: 'blob-copy',
-        role: 'texture',
-        path: `${textureDirectory}/texture_${index}.${textureExtension(texture)}`,
-        contentType: texture.source.contentType,
-        source: texture.source
-      });
+      textureFiles.push(createTextureExportFile(document, texture,
+        `${textureDirectory}/texture_${index}.${textureExtension(texture)}`));
     }
   });
 
-  const unitScale = unitScaleFor(document);
+  const unitScale = GLTF_UNIT_SCALE;
   const scene = compileGltfScene(document, {
     writer,
     materialByTextureId,
+    singleSidedMaterialByTextureId,
     unitScale
   });
   const animations = compileGltfAnimations(document, {
@@ -160,7 +171,7 @@ export const buildGltf = (
   const binary = writer.toUint8Array();
   const documentData: GltfDocument = {
     asset: {
-      version: '2.0',
+      version: profile.version,
       generator: 'ashfox engine core',
       ...(profile.copyright ? { copyright: profile.copyright } : {})
     },
@@ -211,43 +222,42 @@ export const buildGltf = (
   };
 };
 
-export const exportGltf = (document: ExportAdaptedDocument): ExportBundle => {
+export const exportGltf = (
+  document: ExportAdaptedDocument,
+  build: AssetBuildIdentity
+): ExportBundle => {
   const validation = validateExportTarget(document, {
     profileId: 'gltf.2',
     errorMessage: 'glTF 2.0 export validation failed.'
   });
-  const profile = validation.profile;
-  if (
-    profile.imageStorage === 'embedded' &&
-    Object.keys(document.textures).length > 0
-  ) {
-    throw new ExportMaterializationRequiredError(
-      'Embedded GLB export requires exportGltfResolved() and a BlobResolver.'
-    );
-  }
-  const compiled = buildGltf(document);
-  return createGltfBundle(document, compiled, validation.findings);
+  const validatedDocument = validation.document;
+  const compiled = buildGltf(validatedDocument);
+  return createGltfBundle(validatedDocument, build, compiled, validation.findings);
 };
 
 export const exportGltfResolved = async (
   document: ExportAdaptedDocument,
+  build: AssetBuildIdentity,
   options: GltfResolvedExportOptions
 ): Promise<ExportBundle> => {
   const validation = validateExportTarget(document, {
     profileId: 'gltf.2',
     errorMessage: 'glTF 2.0 export validation failed.'
   });
+  const validatedDocument = validation.document;
   const profile = validation.profile;
   if (profile.imageStorage === 'external') {
-    const compiled = await compressGltfWithMeshopt(buildGltf(document));
-    return createGltfBundle(document, compiled, validation.findings);
+    const compiled = await compressGltfWithMeshopt(buildGltf(
+      validatedDocument));
+    return createGltfBundle(validatedDocument, build, compiled,
+      validation.findings);
   }
   const resolvedTextures = await resolveGltfTextures(
-    document,
+    validatedDocument,
     options.resolveBlob
   );
   const compiled = await compressGltfWithMeshopt(
-    buildGltf(document, { resolvedTextures })
+    buildGltf(validatedDocument, { resolvedTextures })
   );
-  return createGltfBundle(document, compiled, validation.findings);
+  return createGltfBundle(validatedDocument, build, compiled, validation.findings);
 };

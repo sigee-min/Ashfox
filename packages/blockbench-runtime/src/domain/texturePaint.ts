@@ -2,12 +2,10 @@ import { TEXTURE_HEX_COLOR_PATTERN } from '@ashfox/blockbench-contracts/mcpSchem
 import {
   clipTextureLineToCanvas,
   createTextureRasterPlan,
-  type FillRectShadeLike,
   type TextureOpLike,
   type TextureRasterFailureReason
 } from './textureOps';
 import { clamp } from './math';
-import { applyShadedFillRect, resolveFillRectShade } from './textureFillShade';
 
 export type Rgba = { r: number; g: number; b: number; a: number };
 
@@ -63,7 +61,7 @@ export const applyTextureOps = (
         setPixel(data, width, height, Math.round(op.x), Math.round(op.y), color);
         break;
       case 'fill_rect':
-        fillRect(data, width, height, op.x, op.y, op.width, op.height, color, op.shade);
+        fillRect(data, width, height, op.x, op.y, op.width, op.height, color);
         break;
       case 'draw_rect': {
         const lineWidth = Math.max(1, Math.trunc(op.lineWidth ?? 1));
@@ -112,19 +110,13 @@ const fillRect = (
   y: number,
   w: number,
   h: number,
-  color: Rgba,
-  shade?: FillRectShadeLike
+  color: Rgba
 ) => {
   const xStart = clamp(Math.floor(x), 0, width);
   const yStart = clamp(Math.floor(y), 0, height);
   const xEnd = clamp(Math.ceil(x + w), 0, width);
   const yEnd = clamp(Math.ceil(y + h), 0, height);
   if (xEnd <= xStart || yEnd <= yStart) return;
-  const shadeCfg = resolveFillRectShade(shade, xStart, yStart, xEnd, yEnd, color);
-  if (shadeCfg) {
-    applyShadedFillRect(data, width, xStart, yStart, xEnd, yEnd, color, shadeCfg);
-    return;
-  }
   for (let yy = yStart; yy < yEnd; yy += 1) {
     for (let xx = xStart; xx < xEnd; xx += 1) {
       setPixel(data, width, height, xx, yy, color);

@@ -2,7 +2,6 @@ import {
   hasExactContractKeys,
   isCanonicalIsoDate,
   isClosedContractRecord,
-  isCurrentInternalContractVersion,
   isNonEmptyContractText,
   isUniqueContractTextArray
 } from '@ashfox/internal-contracts';
@@ -10,6 +9,7 @@ import {
 import { INVARIANT_SEVERITIES } from '../../validation/contract';
 import {
   COMMAND_INVALIDATED_AREAS,
+  COMMAND_RECEIPT_SCHEMA_VERSION,
   COMMAND_SOURCES,
   type CommandEffects,
   type CommandReceipt
@@ -108,10 +108,7 @@ export const isValidCommandReceipt = (
   if (
     !isClosedContractRecord(value) ||
     !hasExactContractKeys(value, RECEIPT_KEYS) ||
-    !isCurrentInternalContractVersion(
-      'commandReceipt',
-      value.schemaVersion
-    ) ||
+    value.schemaVersion !== COMMAND_RECEIPT_SCHEMA_VERSION ||
     !isNonEmptyContractText(value.commandId) ||
     !isNonEmptyContractText(value.projectId) ||
     !isNonEmptyContractText(value.actorId) ||

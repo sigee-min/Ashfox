@@ -84,7 +84,7 @@ import { isSidecarMessage } from '../../../../src/transport/protocol';
     }), true, op.op);
   }
   for (const op of [
-    { op: 'set_pixel', x: 0, y: 0, color: '#ffffff', shade: false },
+    { op: 'set_pixel', x: 0, y: 0, color: '#ffffff', extra: false },
     {
       op: 'fill_rect',
       x: 0,
@@ -109,25 +109,7 @@ import { isSidecarMessage } from '../../../../src/transport/protocol';
       width: 1,
       height: 1,
       color: '#ffffff',
-      shade: { intensity: 2 }
-    },
-    {
-      op: 'fill_rect',
-      x: 0,
-      y: 0,
-      width: 1,
-      height: 1,
-      color: '#ffffff',
-      shade: { edge: -0.1 }
-    },
-    {
-      op: 'fill_rect',
-      x: 0,
-      y: 0,
-      width: 1,
-      height: 1,
-      color: '#ffffff',
-      shade: { noise: 1.1 }
+      extra: true
     }
   ]) {
     assert.equal(isSidecarMessage({

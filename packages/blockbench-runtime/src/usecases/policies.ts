@@ -2,12 +2,9 @@ import type { FormatOverrides } from '../domain/formats';
 
 export type SnapshotPolicy = 'session' | 'live' | 'hybrid';
 
-export type ExportPolicy = 'strict' | 'best_effort';
-
 export interface ToolPolicies {
   formatOverrides?: FormatOverrides;
   snapshotPolicy?: SnapshotPolicy;
-  exportPolicy?: ExportPolicy;
   autoDiscardUnsaved?: boolean;
   autoAttachActiveProject?: boolean;
   autoIncludeState?: boolean;
@@ -28,6 +25,5 @@ export interface ToolPolicies {
     autoMaxRetries?: number;
   };
 }
-
 
 

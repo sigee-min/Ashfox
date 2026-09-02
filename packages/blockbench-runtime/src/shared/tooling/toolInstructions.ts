@@ -1,14 +1,20 @@
+export const CANONICAL_AUTHORING_BOUNDARY = [
+  'Canonical Ashfox asset authoring is workspace-first: use the Web Studio agent manifest and workspace.apply for one complete closed change set.',
+  'The Blockbench MCP bridge is an optional compatibility track. Its live bone, cube, mesh, texture, and animation mutations do not create or revise the canonical asset workspace.',
+  'Never use a compatibility-session mutation as a second geometry, hierarchy, material, texture, motion, or workspace authority.'
+].join(' ');
+
 export const RIGGING_WORKFLOW_INSTRUCTIONS = [
   'For animation-ready rigs, ensure a root bone exists (explicit for most formats).',
   'Every non-root part must set parent to an existing part id (no flat bone lists).',
-  'Modeling is low-level only: use add_bone/add_cube/add_mesh/update_mesh one item per call.',
+  'Live bone, cube, and mesh operations are compatibility-session mutations only; canonical Ashfox authoring remains one atomic closed workspace change.',
   'Mesh UV is server-managed only. Do not send face.uv; tune uvPolicy on add_mesh/update_mesh instead.',
   'If cube bone is omitted, the server auto-creates/uses a root bone.',
   'Prefer stable ids; renaming ids can break animation channels.',
   'LLM guidance: iterate step-by-step and re-check get_project_state after each add/update.',
   'If you get invalid_state_revision_mismatch, call get_project_state and retry with the latest ifRevision.',
   'If unsure about hierarchy rules, read ashfox://guide/rigging via resources/read.',
-  'For low-level modeling steps, read ashfox://guide/modeling-workflow via resources/read.'
+  'For compatibility-session modeling details, read ashfox://guide/modeling-workflow via resources/read.'
 ].join(' ');
 
 export const TEXTURE_WORKFLOW_INSTRUCTIONS = [
@@ -18,7 +24,6 @@ export const TEXTURE_WORKFLOW_INSTRUCTIONS = [
   'paint_mesh_face is strict single-op: target one mesh, choose scope single_face/all_faces, and keep one op per call.',
   'paint_mesh_face requires a mesh-enabled format; otherwise it fails with unsupported_format.',
   'paint_mesh_face includes a commit guard and auto-rolls back when the committed texture result is unsafe.',
-  'fill_rect tonal variation defaults to on; set shade=false to disable, or use a shade object to tune.',
   'paint_faces defaults to coordSpace=face; omit width/height to auto-match the target face UV size.',
   'Use coordSpace=texture only when you need texture-space coordinates, and always send width/height.',
   'UV overlaps or scale mismatches trigger automatic recovery; retry paint_faces after fixes.',
@@ -31,11 +36,12 @@ export const TEXTURE_WORKFLOW_INSTRUCTIONS = [
 ].join(' ');
 
 export const SERVER_TOOL_INSTRUCTIONS = [
+  CANONICAL_AUTHORING_BOUNDARY,
   'Tool paths can be session-bound (e.g., /ashfox/link_...).',
   'toolRegistry.hash is the authoritative schema change signal; toolSchemaVersion is coarse.',
   'Tool schemas are strict (extra fields are rejected).',
   'Use get_project_state (or includeState/includeDiff) before and after edits.',
-  'Modeling is low-level only: add_bone/add_cube/add_mesh/update_mesh.',
+  'The add_bone/add_cube/add_mesh/update_mesh tools are compatibility-session operations only, not a canonical Ashfox authoring path.',
   'Mesh UV is server-managed only; face-level mesh UV edits are disabled.',
   'Animations are low-level only: create_animation_clip -> set_frame_pose -> set_trigger_keyframes.',
   'Animation poses are one frame per call: set_frame_pose can include multiple bones at the same frame.',
@@ -58,9 +64,10 @@ export const SERVER_TOOL_INSTRUCTIONS = [
 ].join(' ');
 
 export const SIDECAR_TOOL_INSTRUCTIONS = [
+  CANONICAL_AUTHORING_BOUNDARY,
   'Use get_project_state (or includeState/includeDiff) before mutations and include ifRevision.',
   'toolRegistry.hash is the authoritative schema change signal; toolSchemaVersion is coarse.',
-  'Modeling is low-level only: add_bone/add_cube/add_mesh/update_mesh.',
+  'The add_bone/add_cube/add_mesh/update_mesh tools are compatibility-session operations only, not a canonical Ashfox authoring path.',
   'Mesh UV is server-managed only; face-level mesh UV edits are disabled.',
   'Animations are low-level only: create_animation_clip -> set_frame_pose -> set_trigger_keyframes.',
   'Animation poses are one frame per call: set_frame_pose can include multiple bones at the same frame.',
@@ -79,7 +86,4 @@ export const SIDECAR_TOOL_INSTRUCTIONS = [
   RIGGING_WORKFLOW_INSTRUCTIONS,
   TEXTURE_WORKFLOW_INSTRUCTIONS
 ].join(' ');
-
-
-
 

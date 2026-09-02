@@ -7,7 +7,8 @@ import {
   minecraftNameAdaptations
 } from '../minecraft/adapt';
 import {
-  sceneExportAdaptations
+  sceneExportAdaptations,
+  sceneExportConversions
 } from './scene';
 
 export const createExportAdaptationReceipt = (
@@ -21,6 +22,7 @@ export const createExportAdaptationReceipt = (
     ],
     converted: [
       ...animation.converted,
+      ...sceneExportConversions(document),
       ...minecraftNameAdaptations(document)
     ]
   };

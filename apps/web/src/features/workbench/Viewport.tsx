@@ -65,6 +65,7 @@ export function Viewport({
     onStats: onStatsRef,
     onFrame: onFrameRef
   });
+  const authoredForward = document.settings.forward;
 
   useEffect(() => {
     const runtime = runtimeRef.current;
@@ -83,7 +84,11 @@ export function Viewport({
     runtime.projection = projection;
     runtime.scene.add(projection.root);
     if (framedProjectIdRef.current !== document.id) {
-      applyCameraCommand(runtime, cameraCommandRef.current);
+      applyCameraCommand(
+        runtime,
+        cameraCommandRef.current,
+        authoredForward
+      );
       framedProjectIdRef.current = document.id;
     }
   }, [
@@ -92,6 +97,7 @@ export function Viewport({
     document,
     options.showSkeleton,
     options.showWireframe,
+    authoredForward,
     runtimeRef
   ]);
 
@@ -115,8 +121,12 @@ export function Viewport({
 
   useEffect(() => {
     const runtime = runtimeRef.current;
-    if (runtime) applyCameraCommand(runtime, cameraCommand);
-  }, [cameraCommand, runtimeRef]);
+    if (runtime) applyCameraCommand(
+      runtime,
+      cameraCommand,
+      authoredForward
+    );
+  }, [authoredForward, cameraCommand, runtimeRef]);
 
   useEffect(() => {
     pendingPresentationRef.current =

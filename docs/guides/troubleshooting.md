@@ -1,107 +1,63 @@
 # Troubleshooting
 
-ashfox keeps the AI-staged Intent Program and the compiled canonical asset
-separate. Start with the stage that needs attention: prompt, preparation,
-compilation, AI review, export, capture, or download.
+## A workspace change is rejected
 
-## The agent cannot start ashfox
+- Re-inspect the current workspace hash. `workspace.apply` rejects a stale
+  compare-and-swap guard.
+- Treat the first diagnostic's package, path, and span as the owning source
+  location; do not patch the canonical scene.
+- Make the package manifest list every entry/module and make the lock match the
+  complete source bytes and compiler fingerprint.
+- Use explicit imports. Host paths, URLs, wildcard imports, implicit index
+  files, mutable versions, import cycles, and entry-to-entry imports reject.
+- Ensure every declared module is reachable from at least one declared entry.
+  Whole-workspace commit does not retain orphan source.
+- Compile every declared entry. One invalid entry rejects the entire staged
+  change even if another selected entry would build.
 
-- Verify that the agent can control an in-app or connected browser.
-- Paste the manifest instruction from [Get started](ai-agent-quick-start.md).
-- Ask the agent to report whether it reached the workbench and can read its
-  current workflow state.
+## A symbol or binding is rejected
 
-An agent without browser control cannot use the workbench workflow.
+- Export a declaration before importing it from another module.
+- Use the required `alias.Name` nominal reference; matching strings and shapes
+  are not compatibility.
+- Make each skeleton implement its exact rig and bind every required joint.
+- Bind every component parameter and rig/surface/socket port exactly once.
+- Connect sockets only when contracts, handed frames, and capacities are
+  compatible.
+- Apply a motion only to the nominal rig for which it was declared.
 
-## The AI does not begin the build
+## Texture or geometry is rejected
 
-Create a named project first, then ask for one complete asset description. The
-agent must lint and submit exactly one complete Intent Program at a time. Ask
-the agent to inspect the current workflow blocker. It should use every
-diagnostic and source span to repair the program, not ask you to edit it.
+- Match every consumed primitive to the surface contract's chart layout and
+  exact dimensions.
+- Keep a chart and its concrete texture under the same surface contract.
+- Use lexical bones and explicit rig/socket binding; arbitrary scene-parent
+  escape hatches are not source authority.
+- Keep plane geometry for genuine zero-thickness features. Rebuild masses and
+  contacts as connected volume instead of coplanar overlays.
+- Fix palette, chart, coverage, stamp, pattern, or grain diagnostics in the
+  owning surface module. There is no automatic UV or paint repair.
 
-## The AI preview remains visible
+## The product is valid but looks wrong
 
-The preview is temporary feedback while the agent evaluates a staged program.
-It is neither the canonical asset nor a request for human action. Ask the agent
-to inspect the current workflow state. It must decide whether to repair the
-program or run the exact compilation operation supplied by that inspection.
+This is a visual review issue. Inspect gameplay/native, front, side, top, and
+perspective views, then motion cycles. Revise the owning rig, component,
+surface, motion, or asset assembly and submit a new complete workspace change.
 
-## Compilation is blocked
+Mechanical success proves deterministic closure, typing, lowering, and
+canonical validity. It does not certify silhouette, proportion, focal detail,
+palette quality, or taste.
 
-Compilation is atomic. The existing canonical asset remains unchanged when the
-new source fails. Ask the agent to consume all reported source spans, revise
-the declarations that caused the conflict, and evaluate the complete program
-again.
+## Export is rejected
 
-Common semantic corrections include:
-
-- use `support feet contacts <limb>` only for a bilaterally standing asset;
-- give every relationship an explicit topology `parent`, spatial `anchor`,
-  morphology `growth`, and collision-free `lane`;
-- use a paired surface with `anchor sides`, and state a single surface’s anchor
-  and growth explicitly;
-- give a full face its named host, centered eyes, a nose state, and a mouth
-  state;
-- keep `parent` independent from `anchor` and `growth`; never encode anatomy or
-  placement in an ID;
-- give hero track exactly one focal stage: a full face or `focal <id> parent
-  <body-id>`;
-- declare `idle still`, `idle breathe`, or `idle scan` inside `animation`;
-- express a forward-facing requirement through `orientation forward`,
-  not a coordinate or rotation.
-
-## A compiled detail is wrong
-
-Describe the observed relationship and the intended relationship in one short
-request. For example:
-
-~~~text
-The eyes are too low relative to the face. Keep them centered and make the
-facial read clearer from the three-quarter view.
-~~~
-
-or:
-
-~~~text
-Keep the same body, but make both rear feet point forward and widen the rear
-stance.
-~~~
-
-The agent should submit and evaluate a revised Intent Program, then compile it
-when it is valid. Observe the new result in the viewport and continue the
-conversation if it still misses the intended relationship. This keeps one
-source of truth for the asset.
-
-## Texture readability is poor
-
-Check the compiled asset in the relevant views and lighting. State the desired
-palette or focal relationship, such as “use the ocean palette with clearer eye
-contrast” or “keep the panel readable at a distance.” ashfox derives the
-pixel-surface shading, atlas placement, and focal motif from the revised source.
-
-## Export is blocked
-
-Open **Export unavailable** and read the creation or review blocker. After the
-rail reaches **Ready to export**, open **Export delivery files** and read any
-adapter-specific finding. Pick the required game
-version, namespace, and model path only when the selected Minecraft adapter
-asks for them. If an adapter cannot represent a canonical feature safely,
-choose a compatible adapter or describe the necessary asset revision in chat.
-The agent owns recompilation. The adapter never changes the canonical project
-while it evaluates delivery.
-
-## A file did not reach the requested folder
-
-Ask the agent to report the last completed boundary: artifact preparation,
-download activation, workspace transfer, or file verification. Retry from that
-boundary and report success only for a file that exists. Verify the expected
-extension: .zip for multi-file artifacts or .glb for an embedded 3D asset.
+Run the on-demand target preflight and read its target-specific findings.
+Export request options are transient and cannot change the workspace. A
+stale/swapped build identity, unsupported target feature, or unapproved data
+loss must reject rather than silently flatten the artifact.
 
 ## Recover work
 
-Reopen the browser-local project and inspect its workflow state. The compiled
-program and its canonical result remain available unless the agent completes a
-new atomic compilation. For a reproducible product defect, report the browser
-name, the Intent Program, the selected export adapter if relevant, and the
-shortest reproduction at [GitHub](https://github.com/sigee-min/ashfox/issues).
+Reopen the saved `.ashfoxworkspace`. The reader validates canonical JSON and
+the exact lock, then recompiles the selected entry. Browser caches, derived
+documents, previews, replay frames, reviews, and export receipts are
+discardable products, not recovery authority.

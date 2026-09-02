@@ -3,13 +3,11 @@ import type {
   SceneNode,
   Vec3
 } from '../../../model';
+import { cubeGeometryRotation } from '../../../model';
 import { compileGltfCubePrimitiveData } from './cube';
-import { compileGltfPolygonPrimitiveData } from './polygon';
+import { compileGltfPlanePrimitiveData } from './plane';
 import { compileGltfPrimitive } from './primitive';
-import {
-  mergeGltfPrimitiveData,
-  type GltfPrimitiveData
-} from './data';
+import type { GltfPrimitiveData } from './data';
 import {
   quaternionFromEuler,
   rotateVec3ByQuaternion
@@ -22,6 +20,16 @@ interface PrimitiveBatch {
   hasUvs: boolean;
   primitives: GltfPrimitiveData[];
 }
+
+/** A canonical plane basis already maps its chart into model space.  Its
+ * transform rotation is a basis-less lowering hint for consumers that cannot
+ * read the basis and must never be applied a second time by glTF. */
+export const gltfNodeGeometryRotation = (
+  node: SceneNode
+): Vec3 => node.kind === 'plane' && node.basis !== undefined
+  ? [0, 0, 0]
+  : node.kind === 'cube' ? cubeGeometryRotation(node) :
+    node.transform.rotation;
 
 export interface CompiledRigidBatches {
   meshes: GltfMesh[];
@@ -43,8 +51,8 @@ export const primitiveDataForGltfNode = (
   switch (node.kind) {
     case 'cube':
       return compileGltfCubePrimitiveData(document, node, options);
-    case 'mesh':
-      return compileGltfPolygonPrimitiveData(document, node, options);
+    case 'plane':
+      return compileGltfPlanePrimitiveData(document, node, options);
     case 'bone':
     case 'locator':
       return [];
@@ -78,7 +86,7 @@ export const bakeGltfPrimitiveToParent = (
   translation: Vec3,
   primitive: GltfPrimitiveData
 ): GltfPrimitiveData => {
-  const rotation = quaternionFromEuler(node.transform.rotation);
+  const rotation = quaternionFromEuler(gltfNodeGeometryRotation(node));
   const scale = node.transform.scale;
   const positions: number[] = [];
   const normals: number[] = [];
@@ -118,7 +126,9 @@ export const bakeGltfPrimitiveToParent = (
     indices:
       scale[0] * scale[1] * scale[2] < 0
         ? flipTriangleWinding(primitive.indices)
-        : primitive.indices
+        : primitive.indices,
+    ...(primitive.sourceNodeId === undefined
+      ? {} : { sourceNodeId: primitive.sourceNodeId })
   };
 };
 
@@ -144,7 +154,7 @@ export const compileRigidGltfBatches = (
   const batchesByOwner = new Map<string, Map<string, PrimitiveBatch>>();
 
   for (const node of orderedNodes) {
-    if (node.kind !== 'cube' && node.kind !== 'mesh') continue;
+    if (node.kind !== 'cube' && node.kind !== 'plane') continue;
     const ownerId =
       node.parentId !== null && !animated.has(node.id)
         ? node.parentId
@@ -153,9 +163,10 @@ export const compileRigidGltfBatches = (
     const bake = ownerId !== node.id;
     const translation = restTranslationById.get(node.id) ?? [0, 0, 0];
     for (const source of primitiveDataForGltfNode(document, node, options)) {
+      const authoredSource = { ...source, sourceNodeId: node.id };
       const primitive = bake
-        ? bakeGltfPrimitiveToParent(node, translation, source)
-        : source;
+        ? bakeGltfPrimitiveToParent(node, translation, authoredSource)
+        : authoredSource;
       const key = batchKey(primitive.material, primitive.uvs !== undefined);
       const batch = ownerBatches.get(key) ?? {
         material: primitive.material,
@@ -175,18 +186,19 @@ export const compileRigidGltfBatches = (
     if (!batches || batches.size === 0) continue;
     const primitives = [...batches.values()]
       .sort(compareBatches)
-      .map((batch) => {
-        const merged = mergeGltfPrimitiveData(batch.primitives);
-        return compileGltfPrimitive(
+      .flatMap((batch) => batch.primitives.map((primitive) =>
+        compileGltfPrimitive(
           options.writer,
-          merged.positions,
-          merged.normals,
-          merged.uvs,
-          merged.joints,
-          merged.material,
-          merged.indices
-        );
-      });
+          primitive.positions,
+          primitive.normals,
+          primitive.uvs,
+          primitive.joints,
+          primitive.material,
+          primitive.indices,
+          primitive.sourceNodeId === undefined
+            ? undefined
+            : { ashfoxSourceNodeId: primitive.sourceNodeId }
+        )));
     meshIndexByOwnerId.set(owner.id, meshes.length);
     meshes.push({
       name: `${owner.name} rigid batch`,

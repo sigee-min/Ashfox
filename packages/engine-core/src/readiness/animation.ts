@@ -2,7 +2,7 @@ import {
   blockingCanonicalAnimationPreviewIssues
 } from '../animation/capability';
 import {
-  CANONICAL_IDLE_CLIP_ID,
+  CANONICAL_IDLE_CLIP_NAME,
   idleClipNumericallyCloses
 } from '../animation/idle/contract';
 import {
@@ -25,46 +25,14 @@ export interface AnimationReadiness {
   };
 }
 
-export const isProductionIdleClipName = (name: string): boolean => {
-  const normalized = name.trim().toLowerCase();
-  return (
-    normalized === 'idle' ||
-    /^animation\.[a-z0-9_.-]+\.idle$/.test(normalized)
-  );
-};
-
-const nonCanonicalIdleIds = (
-  document: ProjectDocument
-): readonly string[] =>
-  Object.values(document.animations)
-    .filter(
-      (clip) =>
-        clip.id !== CANONICAL_IDLE_CLIP_ID &&
-        isProductionIdleClipName(clip.name)
-    )
-    .map((clip) => clip.id)
-    .sort();
-
-const missingIdleFinding = (
-  document: ProjectDocument
-): ProductionReadinessFinding => {
-  const allIds = nonCanonicalIdleIds(document);
-  const clipIds = allIds.slice(0, 20);
-  return {
+const missingIdleFinding = (): ProductionReadinessFinding => ({
     code: 'production.idle_missing',
     severity: 'error',
-    message: 'No canonical animation clip has ID "idle".',
+    message: 'No canonical animation clip is named "idle".',
     path: 'animations',
-    ...(clipIds.length > 0
-      ? {
-          clipIds,
-          idsTruncated: allIds.length > clipIds.length
-        }
-      : {}),
     fix:
-      'Correct the reviewed Intent Program source and compile it again.'
-  };
-};
+      'Correct the owning workspace source and compile it again.'
+  });
 
 const idleClipFindings = (
   clip: AnimationClip,
@@ -80,7 +48,7 @@ const idleClipFindings = (
       path: `animations.${clip.id}.channels`,
       clipIds: [clip.id],
       fix:
-        'Correct the reviewed Intent Program source and compile it again.'
+        'Correct the owning workspace source and compile it again.'
     }];
   }
   if (!idleClipNumericallyCloses(clip)) {
@@ -93,7 +61,7 @@ const idleClipFindings = (
       path: `animations.${clip.id}`,
       clipIds: [clip.id],
       fix:
-        'Correct the reviewed Intent Program source and compile it again.'
+        'Correct the owning workspace source and compile it again.'
     }];
   }
   return [];
@@ -104,7 +72,7 @@ const loopFindings = (
 ): readonly ProductionReadinessFinding[] =>
   Object.values(document.animations).flatMap((clip) => {
     if (
-      clip.id === CANONICAL_IDLE_CLIP_ID ||
+      clip.name === CANONICAL_IDLE_CLIP_NAME ||
       clip.loop !== 'loop' ||
       loopClipTransformChannelsClose(clip)
     ) {
@@ -119,7 +87,7 @@ const loopFindings = (
       path: `animations.${clip.id}`,
       clipIds: [clip.id],
       fix:
-        'Correct the reviewed Intent Program source and compile it again.'
+        'Correct the owning workspace source and compile it again.'
     }];
   });
 
@@ -139,7 +107,7 @@ const canonicalPreviewFindings = (
       path: `animations.${clip.id}`,
       clipIds: [clip.id],
       fix:
-        'Correct the reviewed Intent Program source and compile it again.'
+        'Correct the owning workspace source and compile it again.'
     }];
   });
 
@@ -147,8 +115,9 @@ export const evaluateAnimationReadiness = (
   document: ProjectDocument,
   visibleNodeIds: ReadonlySet<string>
 ): AnimationReadiness => {
-  const canonicalIdle = document.animations[CANONICAL_IDLE_CLIP_ID];
-  const idleClips = canonicalIdle ? [canonicalIdle] : [];
+  const idleClips = Object.values(document.animations).filter(
+    (clip) => clip.name === CANONICAL_IDLE_CLIP_NAME
+  );
   const visibleIdleChannels = idleClips.map((clip) =>
     Object.values(clip.channels).filter((channel) =>
       visibleNodeIds.has(channel.targetNodeId)
@@ -160,7 +129,7 @@ export const evaluateAnimationReadiness = (
   );
   const findings: ProductionReadinessFinding[] = [];
   if (idleClips.length === 0) {
-    findings.push(missingIdleFinding(document));
+    findings.push(missingIdleFinding());
   }
   idleClips.forEach((clip, index) => {
     findings.push(

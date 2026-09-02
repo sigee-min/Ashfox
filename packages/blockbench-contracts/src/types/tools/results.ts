@@ -173,18 +173,6 @@ export interface PreflightTextureResult {
   textureUsage?: TextureUsageResult;
 }
 
-export interface ExportResult {
-  path: string;
-  selectedTarget?: {
-    kind: 'internal' | 'gltf' | 'native_codec';
-    id: string;
-    formatId?: string;
-    codecId?: string;
-  };
-  stage?: 'resolve' | 'compile' | 'write' | 'fallback' | 'done';
-  warnings?: string[];
-}
-
 export type ValidateFinding = {
   code: string;
   message: string;
@@ -245,7 +233,6 @@ export interface ToolResultMap {
   delete_animation_clip: WithState<AnimationClipResult & { deleted: DeletedTarget[] }>;
   set_frame_pose: WithState<AnimationFramePoseResult>;
   set_trigger_keyframes: WithState<AnimationTriggerResult>;
-  export: WithState<ExportResult>;
   render_preview: WithState<RenderPreviewResult>;
   validate: WithState<ValidateResult>;
 }

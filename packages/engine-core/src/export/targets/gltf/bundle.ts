@@ -1,4 +1,5 @@
 import type { ExportAdaptedDocument } from '../../adapter';
+import type { AssetBuildIdentity } from '../../../project/asset';
 import type { InvariantFinding } from '../../../validation/contract';
 import { createCompactJsonExportFile } from '../../json';
 import { createExportBundle } from '../../pipeline/bundle';
@@ -8,12 +9,16 @@ import type {
 } from '../../contract';
 import type { CompiledGltf } from './build';
 import { buildGlb } from './glb';
+import { exportTargetDescriptorForPreset } from '../../compatibility';
+import { assertValidatedExportTargetDocument } from '../../pipeline/validate';
 
 export const createGltfBundle = (
   document: ExportAdaptedDocument,
+  build: AssetBuildIdentity,
   compiled: CompiledGltf,
   findings: readonly InvariantFinding[]
 ): ExportBundle => {
+  assertValidatedExportTargetDocument(document, ['glb', 'gltf']);
   const profile = document.formatProfile;
   if (profile.id !== 'gltf.2') {
     throw new Error('Project does not use the gltf.2 profile.');
@@ -46,11 +51,8 @@ export const createGltfBundle = (
         }]
       : [];
 
-  return createExportBundle(document, findings, {
-    target: {
-      id: 'gltf.2',
-      version: profile.version
-    },
+  return createExportBundle(document, build, findings, {
+    target: exportTargetDescriptorForPreset(profile.container).target,
     rootPath: 'gltf',
     entrypoints: [modelPath],
     files: [

@@ -8,7 +8,6 @@ import type { ToolPolicies } from '../../src/usecases/policies';
 import { ToolDispatcherImpl } from '../../src/dispatcher';
 import { DEFAULT_LIMITS, noopLog } from '../helpers';
 import {
-  createExportPortStub,
   createFormatPortStub,
   createHostPortStub,
   createResourceStoreStub,
@@ -69,7 +68,6 @@ export const createBlockbenchSimHarness = (
     editor: engine.editor,
     formats,
     snapshot: engine.snapshotPort,
-    exporter: createExportPortStub('not_implemented'),
     host: createHostPortStub(),
     textureRenderer: createTextureRendererStub(),
     tmpStore: createTmpStoreStub(),

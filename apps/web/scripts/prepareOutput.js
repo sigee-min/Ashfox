@@ -24,7 +24,7 @@ const loadAgentManifest = () => {
   ).agentManifest;
 };
 
-const prepareOutput = () => {
+const prepareOutput = ({ includeShowcaseTooling = false } = {}) => {
   fs.rmSync(outdir, { recursive: true, force: true });
   fs.mkdirSync(outdir, { recursive: true });
   for (const destination of copiedStaticFiles) {
@@ -48,6 +48,14 @@ const prepareOutput = () => {
   fs.cpSync(brandSource, path.join(outdir, 'brand'), {
     recursive: true
   });
+  if (includeShowcaseTooling) {
+    const toolingRoot = path.join(outdir, 'tooling');
+    fs.mkdirSync(toolingRoot, { recursive: true });
+    fs.copyFileSync(
+      path.join(repoRoot, 'examples', 'shared-creatures.ashfoxworkspace'),
+      path.join(toolingRoot, 'shared-creatures.ashfoxworkspace')
+    );
+  }
 };
 
 module.exports = { prepareOutput, staticFiles };

@@ -8,7 +8,6 @@ import { ToolService } from '../../src/usecases/ToolService';
 import { noopLog, registerAsync } from '../helpers';
 import {
   createEditorStub,
-  createExportPortStub,
   createFormatPortStub,
   createHostPortStub,
   createResourceStoreStub,
@@ -34,7 +33,6 @@ const capabilities: Capabilities = {
       editor: createEditorStub(),
       formats: createFormatPortStub(),
       snapshot: createSnapshotPortStub(session),
-      exporter: createExportPortStub('ok'),
       host: createHostPortStub(),
       textureRenderer: createTextureRendererStub(),
       tmpStore: createTmpStoreStub(),

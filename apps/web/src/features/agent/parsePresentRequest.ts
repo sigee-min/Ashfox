@@ -1,14 +1,13 @@
 import {
   VISUAL_REVIEW_CAMERAS,
   VISUAL_REVIEW_ISSUES,
-  VISUAL_REVIEW_MILESTONES,
   type PresentFailure,
   type PresentRequest,
   type VisualReviewCamera,
-  type VisualReviewMilestone,
   type VisualReviewIssue
 } from './types';
 import {
+  isDenseContractArray,
   isClosedContractRecord
 } from '@ashfox/internal-contracts';
 
@@ -40,16 +39,12 @@ const failure = (
 
 const PRESENT_KEYS = new Set([
   'review',
-  'milestone',
   'camera',
+  'previewToken',
   'frameNonce',
   'issues',
   'checkIds',
   'failedCheckIds'
-]);
-
-const REVIEW_MILESTONES = new Set<VisualReviewMilestone>([
-  ...VISUAL_REVIEW_MILESTONES
 ]);
 
 const REVIEW_CAMERAS = new Set<VisualReviewCamera>([
@@ -61,11 +56,12 @@ const REVIEW_ISSUES =
 
 const CHECK_ID_PATTERN = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
 const MAX_CHECK_IDS = 64;
+const PREVIEW_TOKEN_PATTERN = /^[A-Za-z0-9_-]{16,256}$/;
 
 const validCheckIds = (
   value: unknown
 ): value is readonly string[] =>
-  Array.isArray(value) &&
+  isDenseContractArray(value) &&
   value.length <= MAX_CHECK_IDS &&
   value.every(
     (id) =>
@@ -81,7 +77,7 @@ export const parsePresentRequest = (
   if (!isClosedContractRecord(value)) {
     return failure(
       '$',
-      '{review:"next"} | {review:"preview",milestone?,camera?} | ' +
+      '{review:"next"} | {review:"preview",camera?} | ' +
       '{review:"accept",frameNonce,checkIds} | ' +
       '{review:"reject",frameNonce,issues,failedCheckIds}'
     );
@@ -110,27 +106,13 @@ export const parsePresentRequest = (
     const invalidPreviewProperty = Object.keys(value).find(
       (key) =>
         key !== 'review' &&
-        key !== 'milestone' &&
-        key !== 'camera'
+        key !== 'camera' &&
+        key !== 'previewToken'
     );
     if (invalidPreviewProperty) {
       return failure(
         invalidPreviewProperty,
         'no additional properties for preview'
-      );
-    }
-    if (
-      'milestone' in value &&
-      (
-        typeof value.milestone !== 'string' ||
-        !REVIEW_MILESTONES.has(
-          value.milestone as VisualReviewMilestone
-        )
-      )
-    ) {
-      return failure(
-        'milestone',
-        'archetype | specialists'
       );
     }
     if (
@@ -145,15 +127,27 @@ export const parsePresentRequest = (
         'perspective | native | front | side | top'
       );
     }
+    if (
+      'previewToken' in value &&
+      (
+        typeof value.previewToken !== 'string' ||
+        !PREVIEW_TOKEN_PATTERN.test(value.previewToken)
+      )
+    ) {
+      return failure(
+        'previewToken',
+        'opaque candidate preview token'
+      );
+    }
     return {
       ok: true,
       request: {
         review: 'preview',
-        ...('milestone' in value
-          ? { milestone: value.milestone as VisualReviewMilestone }
-          : {}),
         ...('camera' in value
           ? { camera: value.camera as VisualReviewCamera }
+          : {}),
+        ...('previewToken' in value
+          ? { previewToken: value.previewToken as string }
           : {})
       }
     };
@@ -203,7 +197,7 @@ export const parsePresentRequest = (
     );
   }
   if (
-    !Array.isArray(value.issues) ||
+    !isDenseContractArray(value.issues) ||
     value.issues.length === 0 ||
     value.issues.length > REVIEW_ISSUES.size ||
     value.issues.some(

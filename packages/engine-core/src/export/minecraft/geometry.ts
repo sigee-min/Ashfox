@@ -3,10 +3,16 @@ import {
   type BoneNode,
   type CubeFaceDirection,
   type CubeNode,
+  isCanonicalBoneFrame,
+  boneTransformMatchesCanonicalFrame,
   type LocatorNode,
+  type PlaneNode,
   type ProjectDocument,
-  type Vec3
+  type Vec3,
+  canonicalMinecraftRotation
 } from '../../model';
+import { cubeGeometryPivot, cubeGeometryRotation,
+  cubeUnrotatedBounds } from '../../model';
 import {
   effectivelyVisibleSceneNodeIds
 } from '../../sceneVisibility';
@@ -14,6 +20,10 @@ import {
   compileOpaqueCubeFaceOcclusion,
   type CubeFaceOcclusion
 } from '../occlusion/cube';
+import {
+  canonicalPlaneTextureUvTransform,
+  lowerCanonicalPlane
+} from './plane';
 
 export interface MinecraftGeometryFaceUv {
   uv: [number, number];
@@ -117,14 +127,16 @@ const compileCube = (
   cube: CubeNode,
   occlusion: CubeFaceOcclusion
 ): MinecraftGeometryCube => {
-  const from = addPosition(cube.bounds.from, cube.transform.position);
-  const to = addPosition(cube.bounds.to, cube.transform.position);
+  const bounds = cubeUnrotatedBounds(cube);
+  const from = addPosition(bounds.from, cube.transform.position);
+  const to = addPosition(bounds.to, cube.transform.position);
   const size: [number, number, number] = [
     to[0] - from[0],
     to[1] - from[1],
     to[2] - from[2]
   ];
-  const rotation = cube.transform.rotation;
+  const rotation = cubeGeometryRotation(cube);
+  const pivot = cubeGeometryPivot(cube);
   const hasRotation = rotation.some((value) => Math.abs(value) > 0.000001);
 
   return {
@@ -134,17 +146,65 @@ const compileCube = (
     ...(hasRotation
       ? {
           pivot: [
-            negate(cube.transform.pivot[0] + cube.transform.position[0]),
-            cube.transform.pivot[1] + cube.transform.position[1],
-            cube.transform.pivot[2] + cube.transform.position[2]
+            negate(pivot[0] + cube.transform.position[0]),
+            pivot[1] + cube.transform.position[1],
+            pivot[2] + cube.transform.position[2]
           ],
-          rotation: [negate(rotation[0]), negate(rotation[1]), rotation[2]]
+          rotation: canonicalMinecraftRotation(rotation)
         }
       : {}),
     uv: cube.boxUv
       ? [cube.uvOffset?.[0] ?? 0, cube.uvOffset?.[1] ?? 0]
       : compileFaceUv(cube, occlusion.get(cube.id) ?? NO_OCCLUDED_FACES),
     ...(cube.boxUv && cube.mirror ? { mirror: true } : {})
+  };
+};
+
+const compilePlaneUv = (
+  plane: PlaneNode
+): Partial<Record<CubeFaceDirection, MinecraftGeometryFaceUv>> => {
+  const uv: Partial<Record<CubeFaceDirection, MinecraftGeometryFaceUv>> = {};
+  const entries = [
+    ['south', plane.faces.front],
+    ['north', plane.faces.back]
+  ] as const;
+  for (const [direction, face] of entries) {
+    const transform = canonicalPlaneTextureUvTransform(plane, face);
+    if (transform === undefined) continue;
+    const uvEntry: MinecraftGeometryFaceUv = {
+      uv: [...transform.uv],
+      uv_size: [...transform.uvSize],
+      ...(transform.rotation === 0 ? {} : {
+        uv_rotation: transform.rotation as 90 | 180 | 270
+      }),
+      ...(face.materialInstance
+        ? { material_instance: face.materialInstance }
+        : {})
+    };
+    if (transform.mirrorU) {
+      uvEntry.uv[0] += transform.uvSize[0];
+      uvEntry.uv_size[0] *= -1;
+    }
+    if (transform.mirrorV) {
+      uvEntry.uv[1] += transform.uvSize[1];
+      uvEntry.uv_size[1] *= -1;
+    }
+    uv[direction] = uvEntry;
+  }
+  return uv;
+};
+
+/** Exact target lowering of a canonical plane to one zero-depth element. */
+const compilePlane = (plane: PlaneNode): MinecraftGeometryCube => {
+  const lowering = lowerCanonicalPlane(plane);
+  return {
+    origin: lowering.origin,
+    size: lowering.size,
+    ...(lowering.pivot === undefined ? {} : { pivot: lowering.pivot }),
+    ...(lowering.rotation === undefined ? {} : {
+      rotation: lowering.rotation
+    }),
+    uv: compilePlaneUv(plane)
   };
 };
 
@@ -157,9 +217,7 @@ const compileLocator = (
     locator.transform.position[2]
   ],
   rotation: [
-    negate(locator.transform.rotation[0]),
-    negate(locator.transform.rotation[1]),
-    locator.transform.rotation[2]
+    ...canonicalMinecraftRotation(locator.transform.rotation)
   ],
   ...(locator.ignoreInheritedScale
     ? { ignore_inherited_scale: true }
@@ -208,6 +266,11 @@ const compileBone = (
   visibleNodeIds: ReadonlySet<string>,
   occlusion: CubeFaceOcclusion
 ): MinecraftGeometryBone => {
+  if (bone.canonicalFrame !== undefined &&
+    (!isCanonicalBoneFrame(bone.canonicalFrame) ||
+      !boneTransformMatchesCanonicalFrame(bone))) {
+    throw new RangeError(`Bone ${bone.id} has an invalid canonical frame.`);
+  }
   const parent =
     bone.parentId === null ? undefined : document.scene.nodes[bone.parentId];
   const cubes = Object.values(document.scene.nodes)
@@ -219,7 +282,16 @@ const compileBone = (
     )
     .sort((left, right) => left.id.localeCompare(right.id))
     .map((cube) => compileCube(cube, occlusion));
-  const factored = factorCubeDefaults(cubes);
+  const planes = Object.values(document.scene.nodes)
+    .filter(
+      (node): node is PlaneNode =>
+        node.kind === 'plane' &&
+        visibleNodeIds.has(node.id) &&
+        node.parentId === bone.id
+    )
+    .sort((left, right) => left.id.localeCompare(right.id))
+    .map(compilePlane);
+  const factored = factorCubeDefaults([...cubes, ...planes]);
   const locatorEntries = Object.values(document.scene.nodes)
     .filter(
       (node): node is LocatorNode =>
@@ -246,7 +318,7 @@ const compileBone = (
       : {}),
     ...(hasRotation
       ? {
-          rotation: [negate(rotation[0]), negate(rotation[1]), rotation[2]]
+          rotation: canonicalMinecraftRotation(rotation)
         }
       : {}),
     ...(factored.mirror ? { mirror: factored.mirror } : {}),
@@ -272,8 +344,17 @@ const createLooseBone = (
     )
     .sort((left, right) => left.id.localeCompare(right.id))
     .map((cube) => compileCube(cube, occlusion));
-  if (looseCubes.length === 0) return null;
-  const factored = factorCubeDefaults(looseCubes);
+  const loosePlanes = Object.values(document.scene.nodes)
+    .filter(
+      (node): node is PlaneNode =>
+        node.kind === 'plane' &&
+        visibleNodeIds.has(node.id) &&
+        node.parentId === null
+    )
+    .sort((left, right) => left.id.localeCompare(right.id))
+    .map(compilePlane);
+  if (looseCubes.length === 0 && loosePlanes.length === 0) return null;
+  const factored = factorCubeDefaults([...looseCubes, ...loosePlanes]);
   return {
     name: 'ashfox_root',
     ...(factored.mirror ? { mirror: factored.mirror } : {}),

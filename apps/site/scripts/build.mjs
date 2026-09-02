@@ -20,12 +20,161 @@ const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const repoRoot = path.resolve(siteRoot, '..', '..');
 const docsRoot = path.join(repoRoot, 'docs');
 const brandRoot = path.join(repoRoot, 'assets', 'brand');
+const showcaseRoot = path.join(
+  repoRoot,
+  'assets',
+  'showcase',
+  'shared-creatures'
+);
+const showcaseManifestPath = path.join(showcaseRoot, 'showcase.json');
+const canonicalWorkspacePath = path.join(
+  repoRoot,
+  'examples',
+  'shared-creatures.ashfoxworkspace'
+);
 const sourceRoot = path.join(siteRoot, 'src');
 const publicRoot = path.join(siteRoot, 'public');
 const outputRoot = path.join(siteRoot, 'dist');
 
 const workbenchUrl = '/workbench/';
 const siteOrigin = 'https://ashfox.io';
+const canonicalWorkspaceRelativePath =
+  'examples/shared-creatures.ashfoxworkspace';
+
+const isRecord = (value) =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const assertExactKeys = (value, keys, label) => {
+  if (!isRecord(value)) throw new Error(`${label} must be an object.`);
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  if (actual.join('|') !== expected.join('|')) {
+    throw new Error(`${label} must contain exactly ${expected.join(', ')}.`);
+  }
+};
+
+const requiredString = (value, label) => {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error(`${label} must be a non-empty string.`);
+  }
+  return value;
+};
+
+const requiredInteger = (value, label) => {
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${label} must be a positive integer.`);
+  }
+  return value;
+};
+
+const requiredDigest = (value, label) => {
+  const digest = requiredString(value, label);
+  if (!/^sha256:[0-9a-f]{64}$/u.test(digest)) {
+    throw new Error(`${label} must be a lowercase SHA-256 digest.`);
+  }
+  return digest;
+};
+
+const localMediaName = (value, extension, label) => {
+  const fileName = requiredString(value, label);
+  if (
+    path.basename(fileName) !== fileName ||
+    !/^[a-z0-9][a-z0-9-]*\.[a-z0-9]+$/u.test(fileName) ||
+    path.extname(fileName) !== extension
+  ) {
+    throw new Error(`${label} must name one local ${extension} file.`);
+  }
+  return fileName;
+};
+
+const digestBytes = (bytes) =>
+  `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
+
+const readShowcase = async () => {
+  const manifest = JSON.parse(await readFile(showcaseManifestPath, 'utf8'));
+  assertExactKeys(
+    manifest,
+    ['format', 'version', 'workspace', 'capture', 'entries'],
+    'Showcase manifest'
+  );
+  if (manifest.format !== 'ashfox-showcase' || manifest.version !== 1) {
+    throw new Error('Showcase manifest must use ashfox-showcase version 1.');
+  }
+  assertExactKeys(
+    manifest.workspace,
+    ['path', 'sha256', 'workspaceHash'],
+    'Showcase workspace'
+  );
+  if (manifest.workspace.path !== canonicalWorkspaceRelativePath) {
+    throw new Error('Showcase manifest must reference the canonical workspace.');
+  }
+  const workspaceDigest = requiredDigest(
+    manifest.workspace.sha256,
+    'Showcase workspace sha256'
+  );
+  requiredDigest(
+    manifest.workspace.workspaceHash,
+    'Showcase workspace workspaceHash'
+  );
+  assertExactKeys(
+    manifest.capture,
+    ['fingerprint', 'environment', 'camera', 'width', 'height', 'fps'],
+    'Showcase capture'
+  );
+  if (
+    manifest.capture.environment !== 'studio' ||
+    manifest.capture.camera !== 'perspective' ||
+    manifest.capture.width !== 640 ||
+    manifest.capture.height !== 360 ||
+    manifest.capture.fps !== 10
+  ) {
+    throw new Error('Showcase capture settings do not match the public contract.');
+  }
+  requiredString(manifest.capture.fingerprint, 'Showcase capture fingerprint');
+  if (!Array.isArray(manifest.entries) || manifest.entries.length === 0) {
+    throw new Error('Showcase manifest must declare generated entries.');
+  }
+  const expectedEntries = ['creatures/fox', 'creatures/goblin'];
+  const entries = manifest.entries.map((entry, index) => {
+    const label = `Showcase entry ${index}`;
+    assertExactKeys(entry, [
+      'packageName', 'entryName', 'closureHash', 'buildKey', 'productHash',
+      'artifact', 'poster', 'artifactSha256', 'posterSha256', 'byteLength',
+      'frameCount', 'eventCount'
+    ], label);
+    const packageName = requiredString(entry.packageName, `${label} packageName`);
+    const entryName = requiredString(entry.entryName, `${label} entryName`);
+    if (`${packageName}/${entryName}` !== expectedEntries[index]) {
+      throw new Error(`${label} is not in canonical Fox/Goblin order.`);
+    }
+    return {
+      packageName,
+      entryName,
+      closureHash: requiredDigest(entry.closureHash, `${label} closureHash`),
+      buildKey: requiredDigest(entry.buildKey, `${label} buildKey`),
+      productHash: requiredDigest(entry.productHash, `${label} productHash`),
+      artifact: localMediaName(entry.artifact, '.gif', `${label} artifact`),
+      poster: localMediaName(entry.poster, '.png', `${label} poster`),
+      artifactSha256: requiredDigest(
+        entry.artifactSha256,
+        `${label} artifactSha256`
+      ),
+      posterSha256: requiredDigest(entry.posterSha256, `${label} posterSha256`),
+      byteLength: requiredInteger(entry.byteLength, `${label} byteLength`),
+      frameCount: requiredInteger(entry.frameCount, `${label} frameCount`),
+      eventCount: requiredInteger(entry.eventCount, `${label} eventCount`)
+    };
+  });
+  const workspaceBytes = await readFile(canonicalWorkspacePath);
+  if (digestBytes(workspaceBytes) !== workspaceDigest) {
+    throw new Error('Showcase workspace digest is stale. Regenerate its media.');
+  }
+  return {
+    capture: manifest.capture,
+    entries,
+    workspaceBytes
+  };
+};
 
 const hashedAsset = async (sourceName, transform) => {
   const source = await readFile(path.join(sourceRoot, sourceName));
@@ -38,6 +187,22 @@ const hashedAsset = async (sourceName, transform) => {
   const outputName = `${name}-${hash}${extension}`;
   await writeFile(path.join(outputRoot, 'assets', outputName), bytes);
   return `/assets/${outputName}`;
+};
+
+const hashedShowcaseMedia = async (fileName, expectedDigest, byteLength) => {
+  const bytes = await readFile(path.join(showcaseRoot, fileName));
+  const digest = digestBytes(bytes);
+  if (digest !== expectedDigest) {
+    throw new Error(`Showcase media digest is stale: ${fileName}`);
+  }
+  if (byteLength !== undefined && bytes.byteLength !== byteLength) {
+    throw new Error(`Showcase media byte length is stale: ${fileName}`);
+  }
+  const extension = path.extname(fileName);
+  const name = path.basename(fileName, extension);
+  const outputName = `${name}-${digest.slice('sha256:'.length, 19)}${extension}`;
+  await writeFile(path.join(outputRoot, 'media', 'showcase', outputName), bytes);
+  return `/media/showcase/${outputName}`;
 };
 
 const writeRoute = async (route, html) => {
@@ -65,6 +230,8 @@ ${routes.map((route) => `  <url><loc>${escapeXml(new URL(route, siteOrigin).toSt
 
 await rm(outputRoot, { recursive: true, force: true });
 await mkdir(path.join(outputRoot, 'assets'), { recursive: true });
+await mkdir(path.join(outputRoot, 'media', 'showcase'), { recursive: true });
+await mkdir(path.join(outputRoot, 'examples'), { recursive: true });
 
 const assets = {
   css: await hashedAsset('site.css'),
@@ -72,8 +239,31 @@ const assets = {
 };
 const config = { siteOrigin, workbenchUrl };
 const documents = await loadDocumentation(docsRoot);
+const generatedShowcase = await readShowcase();
+const showcase = {
+  capture: generatedShowcase.capture,
+  workspaceHref: `/${canonicalWorkspaceRelativePath}`,
+  sourceHref:
+    'https://github.com/sigee-min/ashfox/blob/main/' +
+    canonicalWorkspaceRelativePath,
+  workbenchHref: workbenchUrl,
+  entries: await Promise.all(generatedShowcase.entries.map(async (entry) => ({
+    packageName: entry.packageName,
+    entryName: entry.entryName,
+    replaySrc: await hashedShowcaseMedia(
+      entry.artifact,
+      entry.artifactSha256,
+      entry.byteLength
+    ),
+    posterSrc: await hashedShowcaseMedia(entry.poster, entry.posterSha256)
+  })))
+};
+await writeFile(
+  path.join(outputRoot, canonicalWorkspaceRelativePath),
+  generatedShowcase.workspaceBytes
+);
 
-await writeRoute('/', renderLandingPage({ assets, config }));
+await writeRoute('/', renderLandingPage({ assets, config, showcase }));
 for (const document of documents) {
   await writeRoute(
     document.route,
@@ -117,6 +307,13 @@ await writeFile(
 
 /media/*
   Cache-Control: public, max-age=604800
+
+/media/showcase/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/examples/*.ashfoxworkspace
+  Content-Type: application/vnd.ashfox.workspace+json
+  Cache-Control: public, max-age=0, must-revalidate
 
 `
 );

@@ -1,6 +1,6 @@
 import type {
+  AssetProject,
   CommandReceipt,
-  ProjectDocument,
   ValidationReport
 } from '@ashfox/engine-core';
 
@@ -14,11 +14,14 @@ import {
   inspectFinding
 } from './inspect/inspectFinding';
 import {
-  inspectIntentProgram
-} from './inspect/inspectIntentProgram';
+  inspectExportTarget
+} from './inspect/inspectExportTarget';
 import {
   inspectOverview
 } from './inspect/inspectOverview';
+import {
+  inspectWorkspace
+} from './inspect/inspectWorkspace';
 import type {
   VisualReviewReceipt
 } from '../../application/review';
@@ -28,7 +31,7 @@ import type {
 } from './types';
 
 export const inspectProject = (
-  document: ProjectDocument,
+  project: AssetProject,
   selectedNodeId: string | null,
   report: ValidationReport,
   request?: InspectRequest,
@@ -37,9 +40,10 @@ export const inspectProject = (
   visualReviews: readonly VisualReviewReceipt[] = [],
   operationOwner: string | null = null
 ): InspectResult => {
+  const document = project.document;
   if (!request) {
     return inspectOverview(
-      document,
+      project,
       selectedNodeId,
       report,
       visualReviews,
@@ -52,16 +56,18 @@ export const inspectProject = (
       return inspectCommand(document, request.name);
     case 'finding':
       return inspectFinding(document, report, request.path);
-    case 'intent-program':
-      return inspectIntentProgram(document, request.source);
+    case 'export-target':
+      return inspectExportTarget(project, request.adapter);
+    case 'workspace':
+      return inspectWorkspace(project, request);
     default:
       return {
         ok: false,
-        revision: document.revision,
+        revision: project.revision,
         error: {
           code: 'invalid_request',
           path: 'kind',
-          expected: 'command, finding, or intent-program'
+          expected: 'command, finding, export-target, or workspace'
         }
       };
   }

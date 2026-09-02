@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   readdir,
   readFile,
@@ -11,6 +12,19 @@ import { landingContent } from '../src/content.mjs';
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repositoryRoot = path.resolve(siteRoot, '../..');
 const outputRoot = path.join(siteRoot, 'dist');
+const showcaseRoot = path.join(
+  repositoryRoot,
+  'assets',
+  'showcase',
+  'shared-creatures'
+);
+const showcaseManifestPath = path.join(showcaseRoot, 'showcase.json');
+const canonicalWorkspaceRelativePath =
+  'examples/shared-creatures.ashfoxworkspace';
+const canonicalWorkspacePath = path.join(
+  repositoryRoot,
+  canonicalWorkspaceRelativePath
+);
 
 const walk = async (directory) => {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -31,14 +45,155 @@ const exists = async (target) => {
   }
 };
 
+const digestBytes = (bytes) =>
+  `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
+
+const attribute = (tag, name) =>
+  tag.match(new RegExp(`\\s${name}="([^"]*)"`, 'u'))?.[1] ?? null;
+
 const failures = [];
 const htmlFiles = (await walk(outputRoot)).filter((file) =>
   file.endsWith('.html')
 );
 const indexedCanonicalUrls = [];
+const retiredAuthoredContractTerms = [
+  /\bminecraft-model\b/iu,
+  /\bIntent Program\b/u,
+  /\bintent-program(?:-v1)?\b/u,
+  /\bintentProgram\b/u,
+  /\bmodel-v\d+\b/iu,
+  /\bsemantic candidate\b/iu,
+  /\bsemantic[ _-]+(?:intent|profile|readiness)\b/iu,
+  /\bauthoring[ _-]+(?:profile|invariant|readiness)\b/iu,
+  /\b(?:AuthoringProfile|authoringProfile)\b/u,
+  /\b(?:invalid[._-](?:intent|authoring(?:[._-](?:profile|invariant))?)|pending[._-]source)\b/iu,
+  /(?:project|compiler)\/program\/(?:semantic|profile|review|design)\b/iu,
+  /\breadiness\/(?:intent|authoring)\b/iu,
+  /\bVisual Form Plan\b/iu,
+  /project\/program\/design/iu,
+  /compiler\/program\/design/iu,
+  /\bAuthoredDesignProgram\b/u,
+  /\bauthoredDesignProgram\b/u,
+  /\bAuthoredDesign\b/u,
+  /\bauthoredDesign\b/u,
+  /authored\.design/iu,
+  /authored-design/iu,
+  /authored visual design/iu,
+  /authored-visual-design/iu,
+  /\bAuthoredModel(?:Source)?\b/u,
+  /\bauthoredModel(?:Source)?\b/u,
+  /\bauthored model source\b/iu,
+  /\bauthored-model\b/iu,
+  /\bexplicit-model-source\b/iu,
+  /\bauthored\.model\.replace\b/iu,
+  /\breplace-authored-model\b/iu,
+  /(?:project|compiler)\/program\/model\b/iu,
+  /\bmask-ref\b/iu,
+  /\b(?:FillRectShadeLike|FillShadeDirection|FILL_SHADE_DIRECTIONS|fillShade|textureFillShade|pixelRectShade|deterministicPixelNoise|stableTextureSeed|pixelTonePalette)\b/iu,
+  /\b(?:support host|body relationships|focal meaning|face host|idle mode)\b/iu,
+  /\b(?:let ashfox|ashfox) derive (?:ids|pivots|uvs|texture pixels)\b/iu,
+];
+const retiredAuthoredStatementSyntax = [
+  /(^|\n)[ \t]*use\s*\{/u,
+  /(^|\n)[ \t]*usage\s*=/u,
+  // `pattern blotch` owns texel scale; reject only the retired static form.
+  /(^|\n)[ \t]*scale\s*=(?!=)(?![^\n]*tx\b)/iu,
+  /(^|\n)[ \t]*symmetry\s*=/u,
+  /\bsampling\s*=(?!=)/iu,
+  /\btranslate\s*=(?!=)/iu,
+  /\brotate\s*=(?!=)/iu,
+  /\bstatic\s+scale\s*=(?!=)/iu,
+  /(^|\n)[ \t]*animation\s+[A-Za-z_$][A-Za-z0-9_$-]*\s*\{/u,
+  /\bfn\s+[A-Za-z_$][A-Za-z0-9_$-]*\s*\(/iu,
+  /(^|\n)[ \t]*macro\s+[A-Za-z_$][A-Za-z0-9_$-]*\s*\(/u,
+  /(^|\n)[ \t]*call\s+[A-Za-z_$][A-Za-z0-9_$-]*\s*\(/u,
+  /(^|\n)[ \t]*(?:class|trait|mixin)\s+[A-Za-z_$][A-Za-z0-9_$-]*/u,
+  /(^|\n)[ \t]*extends\s+[A-Za-z_$][A-Za-z0-9_$-]*/u,
+  /\bbox-uv\s*=(?!=)/iu,
+  /\buv-offset\s*=(?!=)/iu,
+  /\buv-origin\s*=(?!=)/iu,
+  /(^|\n)[ \t]*uv\s*=(?!=)/iu,
+  /(^|\n)[ \t]*alpha\s*=(?!=)/iu,
+  /(^|\n)[ \t]*mask(?:[ \t]+[A-Za-z_$][A-Za-z0-9_$-]*|[ \t]*=)/u,
+  /(^|\n)[ \t]*shade\s*\{/iu,
+  /(^|\n)[ \t]*grain\s+clustered\s*\{[^}]*\b(?:scale|density|phase)\s*=(?!=)/isu,
+  /(^|\n)[ \t]*amount\s*=(?!=)/iu,
+  /(^|\n)[ \t]*colors\s*=/iu,
+  /(^|\n)[ \t]*roughness\s*=(?!=)/iu,
+  /(^|\n)[ \t]*continuity\s*=(?!=)/iu,
+  /(^|\n)[ \t]*(?:pixel|rect)\s*\(/u,
+  /\b(?:direction|cluster)\s*=(?!=)/iu,
+  /(^|\n)[ \t]*(?:shadow|base|light)\s*=\s*#[0-9a-f]{6}\s*;/iu,
+  /(^|\n)[ \t]*(?:annotate|assert)\b/iu
+];
+const retiredCaptureModeTerms = [
+  /\b(?:createResultPng|createAnimatedGif|renderAnimatedGif|resultCaptureFile)\b/u,
+  /\bkind\s*[:=]\s*['"](?:result|animation|history)['"]/iu,
+  /\b(?:result|animation|history)[ _-]+capture\b/iu,
+  /\bcapture[ _-]+(?:result|animation|history)\b/iu
+];
+
+const retiredContractSourceScopes = [
+  path.join(repositoryRoot, 'apps/site/src'),
+  path.join(repositoryRoot, 'apps/web/src'),
+  path.join(repositoryRoot, 'packages/engine-core/src'),
+  path.join(repositoryRoot, 'packages/blockbench-contracts/src'),
+  path.join(repositoryRoot, 'packages/blockbench-runtime/src'),
+  path.join(repositoryRoot, 'packages/internal-contracts/src'),
+  path.join(repositoryRoot, 'docs'),
+  path.join(repositoryRoot, 'examples'),
+  path.join(repositoryRoot, 'skills/ashfox')
+];
+const retiredContractFiles = [
+  path.join(repositoryRoot, 'README.md'),
+  path.join(repositoryRoot, 'CONTRIBUTING.md'),
+  path.join(repositoryRoot, '.github/CHANGELOG.md'),
+  path.join(repositoryRoot, 'development-manifest.json'),
+  path.join(repositoryRoot, 'development-manifest.schema.json')
+];
+const retiredSourceFiles = [
+  ...(await Promise.all(retiredContractSourceScopes.map(async (scope) =>
+    (await walk(scope)).filter((file) =>
+      /\.(?:ashfox|json|md|mjs|js|ts|tsx)$/u.test(file))
+  ))).flat(),
+  ...retiredContractFiles
+];
+for (const file of retiredSourceFiles) {
+  const source = await readFile(file, 'utf8');
+  for (const term of retiredAuthoredContractTerms) {
+    if (term.test(source)) {
+      failures.push(`${file}: retired authored contract term remains in source`);
+    }
+  }
+  for (const term of retiredCaptureModeTerms) {
+    if (term.test(source)) {
+      failures.push(`${file}: retired capture mode term remains in source`);
+    }
+  }
+  // These patterns describe authored DSL statements. Restrict them to
+  // authored/documentation text so ordinary TypeScript/JavaScript `class`,
+  // `extends`, and similar language constructs do not become false positives.
+  if (/\.(?:ashfox|md|html|json)$/u.test(file)) {
+    for (const term of retiredAuthoredStatementSyntax) {
+      if (term.test(source)) {
+        failures.push(`${file}: retired authored statement syntax remains in source`);
+      }
+    }
+  }
+}
 
 for (const file of htmlFiles) {
   const html = await readFile(file, 'utf8');
+  for (const term of retiredAuthoredContractTerms) {
+    if (term.test(html)) {
+      failures.push(`${file}: retired authored contract term is published`);
+    }
+  }
+  for (const term of retiredCaptureModeTerms) {
+    if (term.test(html)) {
+      failures.push(`${file}: retired capture mode term is published`);
+    }
+  }
   const ids = new Set(
     [...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1])
   );
@@ -148,6 +303,164 @@ if (await exists(sitemapPath)) {
 }
 
 const landingHtml = await readFile(path.join(outputRoot, 'index.html'), 'utf8');
+const showcaseManifest = JSON.parse(
+  await readFile(showcaseManifestPath, 'utf8')
+);
+const expectedShowcaseIdentities = ['creatures/fox', 'creatures/goblin'];
+const manifestIdentities = showcaseManifest.entries?.map(
+  (entry) => `${entry.packageName}/${entry.entryName}`
+) ?? [];
+if (
+  showcaseManifest.format !== 'ashfox-showcase' ||
+  showcaseManifest.version !== 1 ||
+  showcaseManifest.workspace?.path !== canonicalWorkspaceRelativePath ||
+  manifestIdentities.join('|') !== expectedShowcaseIdentities.join('|')
+) {
+  failures.push('showcase manifest must describe the canonical Fox/Goblin replay set');
+}
+
+const selectorTags = landingHtml.match(
+  /<button(?=[^>]*\sdata-replay-select(?:\s|>))[^>]*>/gu
+) ?? [];
+const playerTags = landingHtml.match(
+  /<img(?=[^>]*\sdata-replay-player(?:\s|>))[^>]*>/gu
+) ?? [];
+if (selectorTags.length !== manifestIdentities.length) {
+  failures.push(
+    `landing has ${selectorTags.length} replay selectors, ` +
+    `expected ${manifestIdentities.length}`
+  );
+}
+if (playerTags.length !== 1) {
+  failures.push(`landing must contain exactly one shared replay player`);
+} else if (/\ssrc=/u.test(playerTags[0])) {
+  failures.push('landing replay player must start without loading a GIF');
+}
+if (/<img[^>]*\ssrc="[^"]+\.gif(?:[?#][^"]*)?"/u.test(landingHtml)) {
+  failures.push('landing must render its eager poster without an eager GIF');
+}
+
+for (const [index, entry] of (showcaseManifest.entries ?? []).entries()) {
+  const selector = selectorTags[index] ?? '';
+  const identity = `${attribute(selector, 'data-package-name')}/` +
+    `${attribute(selector, 'data-entry-name')}`;
+  if (identity !== manifestIdentities[index]) {
+    failures.push(`landing replay selector ${index} is out of manifest order`);
+  }
+  const replaySource = attribute(selector, 'data-replay-src');
+  const posterSource = attribute(selector, 'data-poster-src');
+  if (!replaySource?.startsWith('/media/showcase/') || !posterSource?.startsWith(
+    '/media/showcase/'
+  )) {
+    failures.push(`landing replay selector ${identity} has unsafe media paths`);
+    continue;
+  }
+  const publishedGifPath = path.join(outputRoot, replaySource);
+  const publishedPosterPath = path.join(outputRoot, posterSource);
+  if (!(await exists(publishedGifPath)) || !(await exists(publishedPosterPath))) {
+    failures.push(`landing replay selector ${identity} has missing media`);
+    continue;
+  }
+  const [publishedGif, publishedPoster, sourceGif, sourcePoster] =
+    await Promise.all([
+      readFile(publishedGifPath),
+      readFile(publishedPosterPath),
+      readFile(path.join(showcaseRoot, entry.artifact)),
+      readFile(path.join(showcaseRoot, entry.poster))
+    ]);
+  const gifSignature = publishedGif.subarray(0, 6).toString('ascii');
+  if (gifSignature !== 'GIF87a' && gifSignature !== 'GIF89a') {
+    failures.push(`landing replay is not a GIF: ${replaySource}`);
+  }
+  if (publishedPoster.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') {
+    failures.push(`landing replay poster is not a PNG: ${posterSource}`);
+  }
+  if (
+    digestBytes(sourceGif) !== entry.artifactSha256 ||
+    digestBytes(publishedGif) !== entry.artifactSha256 ||
+    sourceGif.byteLength !== entry.byteLength
+  ) {
+    failures.push(`landing replay digest is stale: ${entry.artifact}`);
+  }
+  if (
+    digestBytes(sourcePoster) !== entry.posterSha256 ||
+    digestBytes(publishedPoster) !== entry.posterSha256
+  ) {
+    failures.push(`landing replay poster digest is stale: ${entry.poster}`);
+  }
+}
+
+const canonicalWorkspace = await readFile(canonicalWorkspacePath);
+const publishedWorkspacePath = path.join(
+  outputRoot,
+  canonicalWorkspaceRelativePath
+);
+if (!(await exists(publishedWorkspacePath))) {
+  failures.push('landing canonical workspace download is missing');
+} else {
+  const publishedWorkspace = await readFile(publishedWorkspacePath);
+  if (
+    !publishedWorkspace.equals(canonicalWorkspace) ||
+    digestBytes(canonicalWorkspace) !== showcaseManifest.workspace?.sha256
+  ) {
+    failures.push('landing workspace download must be byte-identical and current');
+  }
+}
+const publishedWorkspaceFiles = outputFiles.filter((file) =>
+  file.endsWith('.ashfoxworkspace')
+);
+if (
+  publishedWorkspaceFiles.length !== 1 ||
+  publishedWorkspaceFiles[0] !== publishedWorkspacePath
+) {
+  failures.push('static site must publish exactly one canonical workspace copy');
+}
+const committedPublicWorkspaces = (await walk(path.join(siteRoot, 'public')))
+  .filter((file) => file.endsWith('.ashfoxworkspace'));
+if (committedPublicWorkspaces.length !== 0) {
+  failures.push('apps/site/public must not own a workspace copy');
+}
+if (
+  !landingHtml.includes('href="/examples/shared-creatures.ashfoxworkspace"') ||
+  !landingHtml.includes('href="/workbench/"') ||
+  landingHtml.includes('href="/workbench/?') ||
+  landingHtml.indexOf('Download workspace') >
+    landingHtml.indexOf('Launch Workbench') ||
+  !/reconstructed build replay from the final validated entry/iu.test(
+    landingHtml
+  ) ||
+  !landingHtml.includes('places geometry in deterministic order')
+) {
+  failures.push('landing must present the honest download-then-launch replay flow');
+}
+
+const rootReadme = await readFile(path.join(repositoryRoot, 'README.md'), 'utf8');
+for (const requiredReadmeReference of [
+  'assets/showcase/shared-creatures/fox-build-replay.gif',
+  'assets/showcase/shared-creatures/goblin-build-replay.gif',
+  'examples/shared-creatures.ashfoxworkspace',
+  'https://ashfox.io/#examples',
+  'https://ashfox.io/workbench/'
+]) {
+  if (!rootReadme.includes(requiredReadmeReference)) {
+    failures.push(`README showcase reference is missing: ${requiredReadmeReference}`);
+  }
+}
+if (!/reconstructed build replay from the final validated entry/iu.test(
+  rootReadme
+)) {
+  failures.push('README must identify the replay as a reconstruction');
+}
+for (const readmeReplay of ['fox-build-replay.gif', 'goblin-build-replay.gif']) {
+  if (!(await exists(path.join(
+    repositoryRoot,
+    'assets/showcase/shared-creatures',
+    readmeReplay
+  )))) {
+    failures.push(`README replay target is missing: ${readmeReplay}`);
+  }
+}
+
 const agentInstructionControlCount = (
   landingHtml.match(/\sdata-copy-agent-instruction(?:\s|>)/g) ?? []
 ).length;

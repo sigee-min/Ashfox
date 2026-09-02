@@ -12,6 +12,6 @@ assert.equal(DEFAULT_TOOL_REGISTRY.count, DEFAULT_TOOL_REGISTRY.tools.length);
 assert.equal(DEFAULT_TOOL_REGISTRY.hash, computeToolRegistryHash(DEFAULT_TOOL_REGISTRY.tools));
 
 // Contract test: tool registry signature must be stable unless intentionally changed.
-assert.equal(DEFAULT_TOOL_REGISTRY.hash, '8043388b');
-
-
+assert.equal(DEFAULT_TOOL_REGISTRY.hash, 'ddb1af99');
+assert.equal(DEFAULT_TOOL_REGISTRY.map.has('export'), false);
+assert.equal(DEFAULT_TOOL_REGISTRY.map.has('export_trace_log'), true);

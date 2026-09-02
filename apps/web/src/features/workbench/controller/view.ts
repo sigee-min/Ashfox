@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useReducer, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 
 import type { ProjectDocument } from '@ashfox/engine-core';
 
@@ -12,7 +12,8 @@ import {
 } from '../hooks/useAnimationPlayback';
 import {
   resolveActiveClipId,
-  resolveSelectedNodeId
+  resolveSelectedNodeId,
+  synchronizeActiveClipId
 } from '../state/workbenchSelection';
 import {
   createWorkbenchViewState,
@@ -54,6 +55,7 @@ export const useWorkbenchViewController = ({
     calls: 0,
     triangles: 0
   });
+  const previousProjectId = useRef(document.id);
   const selectedNodeId = resolveSelectedNodeId(
     document,
     view.preferredNodeId
@@ -72,6 +74,25 @@ export const useWorkbenchViewController = ({
     setPlaying
   } = useAnimationPlayback(activeClip);
   const canPlay = activeClip !== undefined;
+
+  useEffect(() => {
+    const projectChanged = previousProjectId.current !== document.id;
+    previousProjectId.current = document.id;
+    const synchronizedClipId = synchronizeActiveClipId(
+      document,
+      view.preferredClipId,
+      projectChanged
+    );
+    if (synchronizedClipId === view.preferredClipId) return;
+    dispatchView({ type: 'clip.select', clipId: synchronizedClipId });
+    setPlaying(false);
+    setPlayhead(0);
+  }, [
+    document,
+    setPlayhead,
+    setPlaying,
+    view.preferredClipId
+  ]);
 
   const selectNode = useCallback((nodeId: string | null): void => {
     dispatchView({ type: 'node.select', nodeId });

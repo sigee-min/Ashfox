@@ -7,6 +7,7 @@ import type { ToolRegistry } from '../../../../src/transport/mcp/tools';
 import { SessionStore } from '../../../../src/transport/mcp/session';
 import { noopLog, registerAsync } from '../../../helpers';
 import { MCP_TOOL_NAME_REQUIRED, MCP_UNKNOWN_TOOL } from '../../../../src/shared/messages';
+import { DEFAULT_TOOL_REGISTRY } from '../../../../src/transport/mcp/tools';
 
 const createContext = (options?: {
   executor?: ToolExecutor;
@@ -60,6 +61,34 @@ registerAsync(
       if (outcome.type !== 'response') return;
       assert.equal(outcome.status, 400);
       assert.equal(outcome.response.error?.message, MCP_UNKNOWN_TOOL('missing'));
+    }
+
+    {
+      let executorCalls = 0;
+      const outcome = await handleToolCall(
+        createContext({
+          tools: DEFAULT_TOOL_REGISTRY,
+          executor: {
+            callTool: async () => {
+              executorCalls += 1;
+              return { ok: true, data: {} };
+            }
+          }
+        }),
+        {
+          jsonrpc: '2.0',
+          method: 'tools/call',
+          params: { name: 'export', arguments: { format: 'gltf', destPath: 'retired.glb' } }
+        },
+        session,
+        5
+      );
+      assert.equal(outcome.type, 'response');
+      if (outcome.type !== 'response') return;
+      assert.equal(outcome.status, 400);
+      assert.equal(outcome.response.error?.code, -32602);
+      assert.equal(outcome.response.error?.message, MCP_UNKNOWN_TOOL('export'));
+      assert.equal(executorCalls, 0);
     }
 
     {

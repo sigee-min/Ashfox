@@ -6,8 +6,6 @@ import {
 } from '../validation';
 import { evaluateAnimationReadiness } from './animation';
 import { evaluateGeometryReadiness } from './geometry';
-import { evaluateIntentReadiness } from './intent';
-import { evaluateAuthoringReadiness } from './authoring';
 import type {
   ProductionReadinessReport
 } from './contract';
@@ -37,13 +35,9 @@ export const evaluateProductionReadiness = (
     document,
     geometry.visibleNodeIds
   );
-  const intent = evaluateIntentReadiness(document);
-  const authoring = evaluateAuthoringReadiness(document);
   const findings = [
     ...geometry.findings,
-    ...animation.findings,
-    ...intent.findings,
-    ...authoring.findings
+    ...animation.findings
   ];
   const blockers = structuralBlockers(validationReport);
   return {
@@ -52,13 +46,11 @@ export const evaluateProductionReadiness = (
       validationReport.valid &&
       blockers.length === 0 &&
       findings.length === 0,
-    semanticReviewRequired: true,
     counts: {
       structuralErrors: severityCount(validationReport, 'error'),
       structuralWarnings: severityCount(validationReport, 'warning'),
       ...geometry.counts,
-      ...animation.counts,
-      ...intent.counts
+      ...animation.counts
     },
     findings,
     firstBlockingFinding:

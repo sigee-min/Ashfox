@@ -1,5 +1,4 @@
 import type { AnimationTimePolicy } from '../domain/animation/timePolicy';
-import type { ExportPolicy } from '../usecases/policies';
 import type { FormatOverrides } from '../domain/formats';
 import { DEFAULT_UV_POLICY } from '../domain/uv/policy';
 
@@ -8,7 +7,6 @@ export const TRACE_LOG_MAX_KB = 2048;
 export const createDefaultPolicies = (formatOverrides: FormatOverrides) => ({
   formatOverrides,
   snapshotPolicy: 'hybrid' as const,
-  exportPolicy: 'strict' as ExportPolicy,
   uvPolicy: { ...DEFAULT_UV_POLICY },
   autoDiscardUnsaved: true,
   autoAttachActiveProject: true,
@@ -35,4 +33,3 @@ export const createTraceLogDefaults = () => ({
   flushEvery: 1,
   flushIntervalMs: 0
 });
-

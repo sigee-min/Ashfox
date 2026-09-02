@@ -1,10 +1,10 @@
 import {
   IDENTITY_TRANSFORM,
-  createProjectDocument,
   type CubeFace,
   type CubeFaces,
   type ProjectDocument
 } from '../src';
+import { createProjectDocument } from '../src/project/create';
 
 const face = (textureId: string): CubeFace => ({
   enabled: true,
@@ -22,7 +22,7 @@ const createFaces = (textureId: string): CubeFaces => ({
   down: face(textureId)
 });
 
-/** Canonical scene-only fixture: delivery adapters are never persisted here. */
+/** Noncanonical scene-consumer fixture used to exercise rotated delivery data. */
 export const createSceneProject = (): ProjectDocument => {
   const document = createProjectDocument({
     id: 'project-crate',
@@ -48,7 +48,8 @@ export const createSceneProject = (): ProjectDocument => {
         },
         'cube-body': {
           id: 'cube-body',
-          kind: 'cube',
+        kind: 'cube',
+        geometryMode: 'axis-box',
           name: 'body',
           parentId: 'bone-root',
           transform: {
@@ -64,7 +65,6 @@ export const createSceneProject = (): ProjectDocument => {
           inflate: 0,
           mirror: false,
           boxUv: false,
-          baseColor: '#8e98a3',
           faces: createFaces('texture-base')
         }
       }

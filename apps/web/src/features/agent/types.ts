@@ -1,18 +1,19 @@
 import { COMMAND_RECEIPT_SCHEMA_VERSION } from '@ashfox/engine-core';
 import type {
   CommandSource,
-  IntentProgramPreviewDiagnostic,
+  ExportAdapterInput,
   InvariantFinding,
-  ProjectCommandOperation
+  ProjectCommandOperation,
+  WorkspaceChangeSet,
+  WorkspaceDiagnostic,
+  WorkspaceEntrySelector
 } from '@ashfox/engine-core';
 import {
   VISUAL_REVIEW_CAMERAS,
   VISUAL_REVIEW_ISSUES,
-  VISUAL_REVIEW_MILESTONES,
-  type PresentedReviewCheck,
+  type VisualReviewCheck,
   type VisualReviewCamera,
   type VisualReviewIssue,
-  type VisualReviewMilestone,
   type VisualReviewObservation
 } from '../../application/review';
 import type {
@@ -21,25 +22,45 @@ import type {
 
 export {
   VISUAL_REVIEW_CAMERAS,
-  VISUAL_REVIEW_ISSUES,
-  VISUAL_REVIEW_MILESTONES
+  VISUAL_REVIEW_ISSUES
 };
 export type {
-  PresentedReviewCheck,
+  VisualReviewCheck,
   VisualReviewCamera,
-  VisualReviewIssue,
-  VisualReviewMilestone
+  VisualReviewIssue
 };
 
 export type InspectRequest =
   | { kind: 'command'; name: string }
   | { kind: 'finding'; path: string }
-  | { kind: 'intent-program'; source: string };
+  | { kind: 'export-target'; adapter: ExportAdapterInput }
+  | {
+      kind: 'workspace';
+      read?: {
+        readonly expectedWorkspaceHash: string;
+        readonly path: string;
+        readonly offset: number;
+        readonly maxCodeUnits: number;
+      };
+      candidate?: {
+        readonly entry: WorkspaceEntrySelector;
+        readonly changes: WorkspaceChangeSet;
+      };
+    };
 
-export interface IntentProgramInspectData {
-  readonly kind: 'intent-program';
+export interface WorkspaceInspectData {
+  readonly kind: 'workspace';
   readonly valid: boolean;
-  readonly diagnostics: readonly IntentProgramPreviewDiagnostic[];
+  readonly diagnostics: readonly WorkspaceDiagnostic[];
+  readonly sourceChunk?: {
+    readonly workspaceHash: string;
+    readonly path: string;
+    readonly offset: number;
+    readonly content: string;
+    readonly done: boolean;
+    readonly totalCodeUnits: number;
+  };
+  readonly previewToken?: string | null;
 }
 
 export interface InspectSuccess {
@@ -120,8 +141,8 @@ export type PresentRequest =
     }
   | {
       review: 'preview';
-      milestone?: VisualReviewMilestone;
       camera?: VisualReviewCamera;
+      previewToken?: string;
     }
   | {
       review: 'accept';
@@ -140,19 +161,17 @@ interface ViewPresentationRequestBase {
   camera: CameraMode;
   clipId: string | null;
   timeSeconds: number;
-  reviewChecks: readonly PresentedReviewCheck[];
+  reviewChecks: readonly VisualReviewCheck[];
 }
 
 export type ViewPresentationRequest =
   | (ViewPresentationRequestBase & {
       review: 'next';
       purpose: 'delivery';
-      milestone: null;
     })
   | (ViewPresentationRequestBase & {
       review: 'preview';
       purpose: 'preview';
-      milestone: VisualReviewMilestone | null;
     });
 
 export type VisualReviewDecisionRequest = Extract<
@@ -181,10 +200,7 @@ export interface PresentFailure {
 
 export type PresentResult = PresentSuccess | PresentFailure;
 
-export type AgentCaptureRequest =
-  | { kind: 'result' }
-  | { kind: 'animation'; clipId?: string }
-  | { kind: 'build' };
+export type AgentCaptureRequest = { kind: 'build' };
 
 export interface CaptureArtifactMetadata {
   kind: AgentCaptureRequest['kind'];

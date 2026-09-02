@@ -13,11 +13,8 @@ import type {
   DeleteMeshPayload,
   DeleteTexturePayload,
   EnsureProjectPayload,
-  ExportPayload,
   ExportTraceLogMode,
   ExportTraceLogPayload,
-  FillRectShadeLike,
-  FillShadeDirection,
   GetProjectStatePayload,
   PaintFacesPayload,
   PaintMeshFacePayload,
@@ -44,7 +41,6 @@ import type {
 import type {
   AutoUvAtlasResult,
   EnsureProjectResult,
-  ExportResult,
   ExportTraceLogResult,
   GetProjectStateResult,
   PaintFacesResult,
@@ -79,7 +75,7 @@ export type {
 
 export type { UvPaintMapping, UvPaintScope, UvPaintSource, UvPaintSpec, UvPaintTarget };
 
-export type { FillRectShadeLike, FillShadeDirection, TextureOpLike };
+export type { TextureOpLike };
 
 export type {
   AddBonePayload,
@@ -94,7 +90,6 @@ export type {
   DeleteMeshPayload,
   DeleteTexturePayload,
   EnsureProjectPayload,
-  ExportPayload,
   ExportTraceLogPayload,
   ExportTraceLogMode,
   GetProjectStatePayload,
@@ -118,7 +113,6 @@ export type {
 export type {
   AutoUvAtlasResult,
   EnsureProjectResult,
-  ExportResult,
   ExportTraceLogResult,
   GetProjectStateResult,
   PaintTextureResult,
@@ -160,7 +154,6 @@ export interface ToolPayloadMap {
   delete_animation_clip: DeleteAnimationClipPayload;
   set_frame_pose: SetFramePosePayload;
   set_trigger_keyframes: SetTriggerKeyframesPayload;
-  export: ExportPayload;
   render_preview: RenderPreviewPayload;
   validate: ValidatePayload;
 }

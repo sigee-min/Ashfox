@@ -4,6 +4,7 @@ import {
   type ProjectDocument
 } from '@ashfox/engine-core';
 import {
+  isDenseContractArray,
   hasExactContractKeys,
   isClosedContractRecord,
   isNonEmptyContractText
@@ -12,10 +13,8 @@ import {
 import { isPixelFrameEvidence } from '../../rendering/pixelFrameEvidence';
 import {
   VISUAL_REVIEW_CAMERAS,
-  VISUAL_REVIEW_MILESTONES,
-  presentedReviewChecks,
+  VISUAL_REVIEW_CHECKS,
   type VisualReviewCamera,
-  type VisualReviewMilestone,
   type VisualReviewObservation
 } from './observation';
 import { isReviewCheckArray } from './checks';
@@ -24,7 +23,6 @@ const OBSERVATION_KEYS = new Set(['ok', 'revision', 'data']);
 const OBSERVATION_DATA_KEYS = new Set([
   'review',
   'purpose',
-  'milestone',
   'verdict',
   'issues',
   'acknowledgedCheckIds',
@@ -38,20 +36,13 @@ const OBSERVATION_DATA_KEYS = new Set([
   'playing',
   'observedTimeSeconds',
   'completedCycles',
-  'previewIssues',
   'reviewChecks'
 ]);
 const CAMERA_SET: ReadonlySet<unknown> = new Set(VISUAL_REVIEW_CAMERAS);
-const MILESTONE_SET: ReadonlySet<unknown> =
-  new Set(VISUAL_REVIEW_MILESTONES);
 
 const isVisualReviewCamera = (
   value: unknown
 ): value is VisualReviewCamera => CAMERA_SET.has(value);
-
-const isVisualReviewMilestone = (
-  value: unknown
-): value is VisualReviewMilestone => MILESTONE_SET.has(value);
 
 const isSafeInteger = (value: unknown): value is number =>
   typeof value === 'number' && Number.isSafeInteger(value);
@@ -63,7 +54,7 @@ const isFiniteNumberArray = (
   value: unknown,
   length: number
 ): value is readonly number[] =>
-  Array.isArray(value) &&
+  isDenseContractArray(value) &&
   value.length === length &&
   value.every(isFiniteNumber);
 
@@ -83,7 +74,6 @@ export const isPendingVisualReviewObservation = (
   }
   const data = value.data;
   const review = data.review;
-  const milestone = data.milestone;
   const clipId = data.clipId;
   const mode = data.mode;
   const camera = data.camera;
@@ -92,10 +82,6 @@ export const isPendingVisualReviewObservation = (
     !(
       (review === 'next' && data.purpose === 'delivery') ||
       (review === 'preview' && data.purpose === 'preview')
-    ) ||
-    !(
-      milestone === null ||
-      (review === 'preview' && isVisualReviewMilestone(milestone))
     ) ||
     !(clipId === null || isNonEmptyContractText(clipId)) ||
     (mode !== 'frame' && mode !== 'cycle') ||
@@ -111,16 +97,17 @@ export const isPendingVisualReviewObservation = (
   const previewPathIsValid = clipId === null ||
     (animation !== undefined && animation !== null &&
       blockingCanonicalAnimationPreviewIssues(animation).length === 0);
-  const generatedPathIsValid = review === 'preview'
+  const observationModeIsValid = review === 'preview'
     ? mode === 'frame' && clipId === null
     : mode === 'frame'
       ? clipId === null
       : camera === 'perspective';
   return data.verdict === 'pending' &&
-    Array.isArray(data.issues) && data.issues.length === 0 &&
-    Array.isArray(data.acknowledgedCheckIds) &&
+    isDenseContractArray(data.issues) && data.issues.length === 0 &&
+    isDenseContractArray(data.acknowledgedCheckIds) &&
       data.acknowledgedCheckIds.length === 0 &&
-    Array.isArray(data.failedCheckIds) && data.failedCheckIds.length === 0 &&
+    isDenseContractArray(data.failedCheckIds) &&
+      data.failedCheckIds.length === 0 &&
     isSafeInteger(data.frameNonce) && data.frameNonce > 0 &&
     isFiniteNumberArray(data.cameraMatrix, 16) &&
     isPixelFrameEvidence(data.frameEvidence) &&
@@ -129,16 +116,9 @@ export const isPendingVisualReviewObservation = (
       data.observedTimeSeconds === 0 &&
     cycleIsValid &&
     previewPathIsValid &&
-    generatedPathIsValid &&
-    Array.isArray(data.previewIssues) && data.previewIssues.length === 0 &&
+    observationModeIsValid &&
     isReviewCheckArray(data.reviewChecks) &&
     canonicalJsonString(data.reviewChecks) === canonicalJsonString(
-      presentedReviewChecks(
-        document,
-        camera,
-        mode === 'cycle',
-        clipId,
-        milestone
-      )
+      VISUAL_REVIEW_CHECKS
     );
 };

@@ -1,49 +1,54 @@
 import type { ExportFormatProfile } from '../adapter/contract';
+import type { ExportAdapterInput } from '../adapter/input';
 import { exportCompatibilityFor } from './queries';
-import type {
-  ExportPreset,
-  MinecraftGameVersion
-} from './contract';
 
-export const exportProfileForAdapter = (
-  target: ExportPreset,
-  gameVersion: MinecraftGameVersion | undefined,
-  namespace: string,
-  modelPath: string
-): ExportFormatProfile | null => {
-  const compatibility = exportCompatibilityFor(target, gameVersion);
-  if (!compatibility) return null;
-
-  switch (compatibility.target) {
+export function exportProfileForAdapter(
+  input: ExportAdapterInput
+): ExportFormatProfile | null {
+  if (arguments.length !== 1) throw new TypeError(
+    'exportProfileForAdapter expects exactly one closed input.');
+  switch (input.target) {
     case 'gltf':
-    case 'glb':
+    case 'glb': {
+      const compatibility = exportCompatibilityFor(input.target);
+      if (!compatibility) return null;
       return {
         ...compatibility.profile,
-        modelPath
+        modelPath: input.modelPath
       };
-    case 'java_block':
+    }
+    case 'java_block': {
+      const compatibility = exportCompatibilityFor('java_block');
+      if (!compatibility) return null;
       return {
         ...compatibility.profile,
-        namespace,
-        modelPath
+        namespace: input.namespace,
+        modelPath: input.modelPath
       };
-    case 'bedrock':
+    }
+    case 'bedrock': {
+      const compatibility = exportCompatibilityFor('bedrock');
+      if (!compatibility) return null;
       return {
         ...compatibility.profile,
-        namespace,
-        modelPath,
-        animationPath: modelPath,
+        namespace: input.namespace,
+        modelPath: input.modelPath,
+        animationPath: input.modelPath,
         geometryIdentifier:
-          `geometry.${modelPath.split('/').join('.')}`
+          `geometry.${input.modelPath.split('/').join('.')}`
       };
-    case 'geckolib5':
+    }
+    case 'geckolib5': {
+      const compatibility = exportCompatibilityFor('geckolib5');
+      if (!compatibility) return null;
       return {
         ...compatibility.profile,
-        namespace,
-        modelPath,
-        animationPath: modelPath,
+        namespace: input.namespace,
+        modelPath: input.modelPath,
+        animationPath: input.modelPath,
         geometryIdentifier:
-          `geometry.${modelPath.split('/').join('.')}`
+          `geometry.${input.modelPath.split('/').join('.')}`
       };
+    }
   }
-};
+}

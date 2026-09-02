@@ -1,8 +1,11 @@
-import { useMemo } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useState
+} from 'react';
 
 import {
-  intentProgramReviewDigest,
-  previewIntentProgram,
+  type AssetProject,
   type ProjectDocument,
   type ValidationReport
 } from '@ashfox/engine-core';
@@ -15,71 +18,76 @@ import type {
 } from '../persistence/project';
 import {
   presentCreationStatus,
-  type CandidatePreviewState,
   type CreationStatusViewModel
 } from '../presentation/status';
 import {
   presentExportAvailability,
   type ExportAvailabilityViewModel
 } from '../exportAvailability';
+import {
+  CANDIDATE_PREVIEW_TTL_MS,
+  candidatePreviewFor
+} from '../../agent/candidatePreview';
 
 interface UseAgentAssetPresentationInput {
-  readonly document: ProjectDocument;
+  readonly project: AssetProject;
   readonly report: ValidationReport;
   readonly visualReviews: readonly VisualReviewReceipt[];
   readonly storageStatus: StorageStatus;
 }
 
 export interface AgentAssetPresentationController {
-  /** The only candidate-bearing output; it belongs exclusively to Viewport. */
   readonly viewportDocument: Readonly<ProjectDocument>;
-  readonly isCandidatePreview: boolean;
   readonly status: CreationStatusViewModel;
   readonly exportAvailability: ExportAvailabilityViewModel;
+  readonly onCandidatePreview: (token: string | null) => void;
 }
 
-/**
- * A staged candidate is passive visual evidence. It cannot enter persistence,
- * history, export, Agent review receipts, or any human action surface.
- */
 export const useAgentAssetPresentation = ({
-  document,
+  project,
   report,
   visualReviews,
   storageStatus
 }: UseAgentAssetPresentationInput): AgentAssetPresentationController => {
-  const proposalDigest = document.intentProgramProposal
-    ? intentProgramReviewDigest(document.intentProgramProposal)
-    : null;
-  const candidateResult = useMemo(
-    () => document.intentProgramProposal
-      ? previewIntentProgram(document, document.intentProgramProposal)
-      : null,
-    [document, proposalDigest]
-  );
-  const isCandidatePreview = candidateResult?.ok === true;
-  const candidatePreview: CandidatePreviewState = !candidateResult
-    ? 'none'
-    : candidateResult.ok
-      ? 'available'
-      : 'failed';
+  const document = project.document;
+  const [candidateToken, setCandidateToken] = useState<string | null>(null);
+  const candidateDocument = candidateToken === null
+    ? null
+    : candidatePreviewFor(project, candidateToken)?.document ?? null;
+
+  const onCandidatePreview = useCallback((token: string | null): void => {
+    if (token === null || candidatePreviewFor(project, token) === null) {
+      setCandidateToken(null);
+      return;
+    }
+    setCandidateToken(token);
+  }, [project]);
+
+  useEffect(() => {
+    setCandidateToken(null);
+  }, [project.id, project.revision]);
+
+  useEffect(() => {
+    if (candidateToken === null) return;
+    const timeout = window.setTimeout(() => {
+      setCandidateToken(null);
+    }, CANDIDATE_PREVIEW_TTL_MS);
+    return () => window.clearTimeout(timeout);
+  }, [candidateToken]);
 
   return {
-    viewportDocument: isCandidatePreview
-      ? candidateResult.preview.candidateDocument
-      : document,
-    isCandidatePreview,
+    viewportDocument: candidateDocument ?? document,
     status: presentCreationStatus(
-      document,
+      project,
       report,
       visualReviews,
-      storageStatus,
-      candidatePreview
+      storageStatus
     ),
     exportAvailability: presentExportAvailability(
-      document,
+      project,
       report,
       visualReviews
-    )
+    ),
+    onCandidatePreview
   };
 };

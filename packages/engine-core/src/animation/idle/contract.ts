@@ -3,7 +3,7 @@ import type {
   TransformChannel
 } from '../../model';
 
-export const CANONICAL_IDLE_CLIP_ID = 'idle';
+export const CANONICAL_IDLE_CLIP_NAME = 'idle';
 
 const EPSILON = 0.000001;
 
@@ -70,7 +70,7 @@ export const idleClipNumericallyCloses = (
 ): boolean => {
   const channels = Object.values(clip.channels);
   return (
-    clip.id === CANONICAL_IDLE_CLIP_ID &&
+    clip.name === CANONICAL_IDLE_CLIP_NAME &&
     clip.loop === 'loop' &&
     channels.length > 0 &&
     channels.every((channel) =>

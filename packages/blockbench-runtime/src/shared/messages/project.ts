@@ -14,14 +14,3 @@ export const PROJECT_FORMAT_ID_MISSING_FIX = 'Set a format ID override in settin
 export const PROJECT_NAME_REQUIRED_FIX = 'Provide a non-empty project name.';
 export const PROJECT_FORMAT_UNSUPPORTED_FIX = 'Use list_capabilities to pick an enabled format.';
 export const PROJECT_UV_PIXELS_PER_BLOCK_INVALID = 'uvPixelsPerBlock must be a positive number.';
-
-export const EXPORT_FORMAT_NOT_ENABLED = (format: string) => `Export format not enabled: ${format}`;
-export const EXPORT_FORMAT_MISMATCH = 'Export format does not match active format';
-export const EXPORT_FORMAT_ID_MISSING = 'No matching format ID for export';
-export const EXPORT_FORMAT_ID_MISSING_FOR_KIND = (kind: string) => `No format ID for ${kind}`;
-export const EXPORT_CODEC_ID_REQUIRED = 'codecId is required when format=native_codec.';
-export const EXPORT_CODEC_ID_EMPTY = 'codecId must be a non-empty string when format=native_codec.';
-export const EXPORT_CODEC_ID_FORBIDDEN = 'codecId is only allowed when format=native_codec.';
-export const EXPORT_CODEC_UNSUPPORTED = (codecId: string) => `Native codec not available: ${codecId}`;
-
-

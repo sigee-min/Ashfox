@@ -1,6 +1,7 @@
 'use client';
 
 import type {
+  AssetProject,
   ProjectDocument
 } from '@ashfox/engine-core';
 
@@ -28,7 +29,7 @@ interface PresentationViewRequest {
 }
 
 interface UseAgentPresentationInput {
-  document: ProjectDocument;
+  project: AssetProject;
   visualReviews: readonly VisualReviewReceipt[];
   onRecordVisualReview: (receipt: VisualReviewReceipt) => void;
   prepareView: (request: PresentationViewRequest) => void;
@@ -38,7 +39,10 @@ interface UseAgentPresentationInput {
 
 interface AgentPresentationController {
   presentationNonce: number;
-  present: (request: ViewPresentationRequest) => Promise<PresentResult>;
+  present: (
+    request: ViewPresentationRequest,
+    document?: ProjectDocument
+  ) => Promise<PresentResult>;
   review: (
     request: VisualReviewDecisionRequest
   ) => Promise<PresentResult>;
@@ -50,13 +54,14 @@ interface AgentPresentationController {
 }
 
 export const useAgentPresentation = ({
-  document,
+  project,
   visualReviews,
   onRecordVisualReview,
   prepareView,
   setPlayhead,
   setPlaying
 }: UseAgentPresentationInput): AgentPresentationController => {
+  const document = project.document;
   const session = usePresentationSession({
     document,
     prepareView,
@@ -64,7 +69,7 @@ export const useAgentPresentation = ({
     setPlaying
   });
   const reviews = useVisualReviewController({
-    document,
+    project,
     visualReviews,
     observations: session.observations,
     onRecordVisualReview

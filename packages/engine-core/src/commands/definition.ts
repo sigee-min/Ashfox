@@ -1,4 +1,4 @@
-import type { ProjectDocument } from '../model';
+import type { AssetProject } from '../project/asset';
 import {
   validateCommandInput,
   type CommandInputSchema,
@@ -12,12 +12,10 @@ import type {
 } from './types';
 import type { CommandExecutionContext } from './batch/context';
 
-export interface CommandApplicationError extends CommandError {
-  pathScope?: 'operation' | 'document';
-}
+export type CommandApplicationError = CommandError;
 
 export interface CommandApplication {
-  document: ProjectDocument;
+  project: AssetProject;
   summary: string;
   effects: CommandEffects;
 }
@@ -39,7 +37,7 @@ export interface CommandDefinition {
   inputSchema: CommandInputSchema;
   validate: (payload: unknown) => SchemaIssue | null;
   apply: (
-    document: ProjectDocument,
+    project: AssetProject,
     payload: unknown,
     context?: CommandExecutionContext
   ) => CommandApplicationResult;
@@ -51,7 +49,7 @@ interface CommandDefinitionSpec<TName extends CommandName> {
   purpose: string;
   inputSchema: CommandInputSchema;
   apply: (
-    document: ProjectDocument,
+    project: AssetProject,
     payload: CommandPayloadMap[TName],
     context?: CommandExecutionContext
   ) => CommandApplicationResult;
@@ -69,7 +67,7 @@ export const defineCommand = <TName extends CommandName>(
     purpose: spec.purpose,
     inputSchema: spec.inputSchema,
     validate,
-    apply: (document, payload, context) => {
+    apply: (project, payload, context) => {
       const issue = validate(payload);
       if (issue) {
         return {
@@ -83,7 +81,7 @@ export const defineCommand = <TName extends CommandName>(
         };
       }
       return spec.apply(
-        document,
+        project,
         payload as CommandPayloadMap[TName],
         context
       );

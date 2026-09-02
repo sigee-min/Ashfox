@@ -1,78 +1,27 @@
-import {
-  CUBE_FACE_DIRECTIONS,
-  type ProjectDocument,
-  type TextureAsset
-} from '../../model';
-import {
-  effectiveGeneratedFaceEnabled,
-  generatedSurfaceFaceKey
-} from '../appearance/authority';
-import {
-  compileTextureSurfaceAuthority,
-  generatedTextureBaseColor,
-  generatedTextureGutter,
-  hasTextureSurfaceArea
-} from './surfaceMetrics';
-import type {
-  TextureComposition,
-  TextureCompositionRegion
-} from './types';
+import type { ProjectDocument, TextureAsset } from '../../model';
+import type { TextureComposition } from './types';
 
-const compareText = (left: string, right: string): number =>
-  left < right ? -1 : left > right ? 1 : 0;
-
+/**
+ * Materialize the explicit raster already present on the document. There is
+ * no inferred atlas, surface authority, or region in this stage.
+ */
 export const composeTextureRaster = (
-  document: ProjectDocument,
+  _document: ProjectDocument,
   texture: TextureAsset
 ): TextureComposition => {
-  const generated = texture.atlasMode === 'generate';
-  const authority = compileTextureSurfaceAuthority(document);
-  const regions: TextureCompositionRegion[] = [];
-  if (generated) {
-    for (const node of Object.values(document.scene.nodes)) {
-      if (node.kind !== 'cube') continue;
-      for (const face of CUBE_FACE_DIRECTIONS) {
-        const surface = node.faces[face];
-        const uv = surface.uv;
-        if (
-          !effectiveGeneratedFaceEnabled(node, face, authority) ||
-          surface.textureId !== texture.id ||
-          !uv ||
-          !hasTextureSurfaceArea(node, face)
-        ) {
-          continue;
-        }
-        const compiledFace = authority.faces.get(
-          generatedSurfaceFaceKey(node.id, face)
-        );
-        regions.push({
-          nodeId: node.id,
-          face,
-          tonePolicy: compiledFace?.tonePolicy ?? 'regular',
-          x: uv[0],
-          y: uv[1],
-          width: uv[2] - uv[0],
-          height: uv[3] - uv[1],
-          color: node.baseColor,
-          ...(compiledFace?.pattern
-            ? { pattern: compiledFace.pattern }
-            : {}),
-          ...(compiledFace?.markings?.length
-            ? { markings: compiledFace.markings }
-            : {})
-        });
-      }
-    }
+  const raster = texture.raster;
+  if (raster === undefined ||
+    (raster.backgroundAlpha !== 0 && raster.backgroundAlpha !== 255) ||
+    raster.canvasDetails.some((detail) => detail.alpha !== 0 &&
+      detail.alpha !== 255)) {
+    throw new TypeError('Texture raster alpha must be explicit.');
   }
   return {
-    background: generatedTextureBaseColor(texture),
-    generated,
-    gutter: generated ? generatedTextureGutter(document) : 0,
-    regions: regions.sort((left, right) =>
-      compareText(`${left.nodeId}:${left.face}`, `${right.nodeId}:${right.face}`)
-    ),
-    canvasDetails: [...(texture.raster?.canvasDetails ?? [])].sort(
-      (left, right) => compareText(left.id, right.id)
-    )
+    background: raster.background,
+    backgroundAlpha: raster.backgroundAlpha,
+    // Source order is the paint order. Sorting by generated IDs would make
+    // overlapping author operations change meaning.
+    canvasDetails: [...raster.canvasDetails],
+    alphaMasks: [...(raster.alphaMasks ?? [])]
   };
 };

@@ -8,7 +8,8 @@ export const compileGltfPrimitive = (
   uvs: readonly number[] | undefined,
   joints: readonly number[] | undefined,
   material: number | undefined,
-  indices: readonly number[]
+  indices: readonly number[],
+  extras?: { readonly ashfoxSourceNodeId: string }
 ): GltfPrimitive => {
   const attributes = writer.addInterleavedVertexAccessors(
     positions,
@@ -32,6 +33,7 @@ export const compileGltfPrimitive = (
     },
     indices: writer.addIndexAccessor(indices),
     ...(material === undefined ? {} : { material }),
-    mode: 4
+    mode: 4,
+    ...(extras === undefined ? {} : { extras })
   };
 };

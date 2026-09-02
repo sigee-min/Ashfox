@@ -31,8 +31,6 @@ import * as validation from '../../../src/shared/messages/validation';
 {
   assert.equal(project.PROJECT_UNSUPPORTED_FORMAT('custom').includes('custom'), true);
   assert.equal(project.PROJECT_FORMAT_ID_MISSING('geckolib').includes('geckolib'), true);
-  assert.equal(project.EXPORT_FORMAT_NOT_ENABLED('geckolib').includes('geckolib'), true);
-  assert.equal(project.EXPORT_FORMAT_ID_MISSING_FOR_KIND('modded').includes('modded'), true);
 }
 
 {

@@ -1,66 +1,38 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type Dispatch
-} from 'react';
+'use client';
 
-import {
-  type CommandReceipt,
-  type ProjectDocument,
-  type ValidationReport
+import { useEffect, useMemo, useRef, useState, type Dispatch } from 'react';
+import type {
+  AssetProject,
+  CommandReceipt,
+  ProjectDocument,
+  ValidationReport
 } from '@ashfox/engine-core';
-
-import type {
-  CommandOutcome
-} from '../../application/commandOutcome';
-import type {
-  HistoryAction
-} from '../../application/historyReducer';
-import type {
-  OperationLease,
-  OperationLeaseToken
-} from '../../application/operationLease';
-import type {
-  ProjectAssets
-} from '../../application/projectAssets';
-import type {
-  ArtifactFile
-} from '../files/artifactFile';
-import type {
-  CaptureArtifactRequest
-} from '../files/capture';
-import type {
-  FileOperationRunResult
-} from '../files/useFileOperation';
+import type { CommandOutcome } from '../../application/commandOutcome';
+import type { HistoryAction } from '../../application/historyReducer';
+import type { OperationLease, OperationLeaseToken } from '../../application/operationLease';
+import type { ProjectAssets } from '../../application/projectAssets';
+import type { ArtifactFile } from '../files/artifactFile';
+import type { CaptureArtifactRequest } from '../files/capture';
+import type { FileOperationRunResult } from '../files/useFileOperation';
 import { useLatestValue } from '../../hooks/useLatestValue';
-import {
-  AgentCommandPort,
-  type AgentCommandPortStatus
-} from './AgentCommandPort';
+import { AgentCommandPort, type AgentCommandPortStatus } from './AgentCommandPort';
 import { inspectProject } from './inspect';
-import {
-  presentAgentProject
-} from './presentAgentProject';
-import {
-  useAgentCommandSubmission
-} from './port/submission';
-import type {
-  VisualReviewReceipt
-} from '../../application/review';
+import { presentAgentProject } from './presentAgentProject';
+import { useAgentCommandSubmission } from './port/submission';
+import type { VisualReviewReceipt } from '../../application/review';
 import type {
   AgentCaptureRequest,
+  InspectResult,
+  InspectRequest,
   PresentResult,
   VisualReviewDecisionRequest,
   ViewPresentationRequest
 } from './types';
-import {
-  captureAgentProject
-} from './captureAgentProject';
+import { captureAgentProject } from './captureAgentProject';
+import { candidatePreviewFor } from './candidatePreview';
 
 interface UseAgentCommandPortInput {
-  document: ProjectDocument;
+  project: AssetProject;
   projectGeneration: number;
   assets: ProjectAssets;
   activity: readonly CommandReceipt[];
@@ -69,26 +41,22 @@ interface UseAgentCommandPortInput {
   report: ValidationReport;
   dispatch: Dispatch<HistoryAction>;
   onFocusEntity: (nodeId: string) => void;
-  onPresent: (
-    request: ViewPresentationRequest
-  ) => Promise<PresentResult>;
-  onReview: (
-    request: VisualReviewDecisionRequest
-  ) => Promise<PresentResult>;
-  onCapture: (
-    request: CaptureArtifactRequest,
-    lease: OperationLeaseToken
-  ) => Promise<FileOperationRunResult<ArtifactFile>>;
-  buildDocuments: readonly ProjectDocument[];
-  getVisualReviews: (
-    projectId: string,
-    revision: string
-  ) => readonly VisualReviewReceipt[];
+  onPresent: (request: ViewPresentationRequest, document?: ProjectDocument) => Promise<PresentResult>;
+  onReview: (request: VisualReviewDecisionRequest) => Promise<PresentResult>;
+  onCapture: (request: CaptureArtifactRequest, lease: OperationLeaseToken) => Promise<FileOperationRunResult<ArtifactFile>>;
+  getVisualReviews: (projectId: string, revision: string) => readonly VisualReviewReceipt[];
+  onCandidatePreview: (token: string | null) => void;
   operationLease: OperationLease;
 }
 
+const candidatePreviewTokenFrom = (result: InspectResult): string | null => {
+  if (!result.ok || typeof result.data !== 'object' || result.data === null) return null;
+  const data = result.data as { previewToken?: unknown };
+  return typeof data.previewToken === 'string' ? data.previewToken : null;
+};
+
 export const useAgentCommandPort = ({
-  document,
+  project,
   projectGeneration,
   assets,
   activity,
@@ -100,16 +68,14 @@ export const useAgentCommandPort = ({
   onPresent,
   onReview,
   onCapture,
-  buildDocuments,
   getVisualReviews,
+  onCandidatePreview,
   operationLease
 }: UseAgentCommandPortInput): AgentCommandPortStatus => {
-  const [status, setStatus] =
-    useState<AgentCommandPortStatus>('connecting');
+  const [status, setStatus] = useState<AgentCommandPortStatus>('connecting');
   const mountedRef = useRef(true);
-  const documentRef = useLatestValue(document);
-  const projectGenerationRef =
-    useLatestValue(projectGeneration);
+  const projectRef = useLatestValue(project);
+  const projectGenerationRef = useLatestValue(projectGeneration);
   const activityRef = useLatestValue(activity);
   const assetsRef = useLatestValue(assets);
   const selectedNodeIdRef = useLatestValue(selectedNodeId);
@@ -117,78 +83,67 @@ export const useAgentCommandPort = ({
   const onPresentRef = useLatestValue(onPresent);
   const onReviewRef = useLatestValue(onReview);
   const onCaptureRef = useLatestValue(onCapture);
-  const buildDocumentsRef = useLatestValue(buildDocuments);
   const getVisualReviewsRef = useLatestValue(getVisualReviews);
+  const onCandidatePreviewRef = useLatestValue(onCandidatePreview);
   const { submit, cancelPending } = useAgentCommandSubmission({
-    document,
+    project,
     commandOutcomes,
     dispatch,
     onFocusEntity
   });
 
-  const port = useMemo<AgentCommandPort>(
-    () =>
-      new AgentCommandPort({
-        inspect: (request) =>
-          inspectProject(
-            documentRef.current,
-            selectedNodeIdRef.current,
-            reportRef.current,
-            request,
-            activityRef.current,
-            assetsRef.current,
-            getVisualReviewsRef.current(
-              documentRef.current.id,
-              documentRef.current.revision
-            ),
-            operationLease.currentOwner()
-          ),
-        currentProjectId: () => documentRef.current.id,
-        currentProjectSession: () =>
-          `${projectGenerationRef.current}:${documentRef.current.id}`,
-        currentRevision: () => documentRef.current.revision,
-        submit,
-        operationLease,
-        present: (request) => {
-          const current = documentRef.current;
-          return presentAgentProject({
-            request,
-            document: current,
-            report: reportRef.current,
-            visualReviews: getVisualReviewsRef.current(
-              current.id,
-              current.revision
-            ),
-            review: onReviewRef.current,
-            present: onPresentRef.current
-          });
-        },
-        capture: (
-          request: AgentCaptureRequest,
-          lease: OperationLeaseToken
-        ) => {
-          const current = documentRef.current;
-          return captureAgentProject({
-            request,
-            document: current,
-            report: reportRef.current,
-            visualReviews: getVisualReviewsRef.current(
-              current.id,
-              current.revision
-            ),
-            buildDocuments: buildDocumentsRef.current,
-            activity: activityRef.current,
-            currentDocument: () => documentRef.current,
-            capture: onCaptureRef.current,
-            lease
-          });
-        },
-        onStatusChange: (nextStatus) => {
-          if (mountedRef.current) setStatus(nextStatus);
-        }
-      }),
-    [operationLease, submit]
-  );
+  const port = useMemo<AgentCommandPort>(() => new AgentCommandPort({
+    inspect: (request?: InspectRequest) => {
+      const current = projectRef.current;
+      const result = inspectProject(
+        current,
+        selectedNodeIdRef.current,
+        reportRef.current,
+        request,
+        activityRef.current,
+        assetsRef.current,
+        getVisualReviewsRef.current(current.id, current.revision),
+        operationLease.currentOwner()
+      );
+      if (request?.kind === 'workspace' && request.candidate !== undefined) {
+        onCandidatePreviewRef.current(candidatePreviewTokenFrom(result));
+      }
+      return result;
+    },
+    currentProjectId: () => projectRef.current.id,
+    currentProjectSession: () => `${projectGenerationRef.current}:${projectRef.current.id}`,
+    currentRevision: () => projectRef.current.revision,
+    submit,
+    operationLease,
+    present: (request) => {
+      const current = projectRef.current;
+      return presentAgentProject({
+        request,
+        project: current,
+        report: reportRef.current,
+        visualReviews: getVisualReviewsRef.current(current.id, current.revision),
+        review: onReviewRef.current,
+        present: (viewRequest, presentationDocument) =>
+          onPresentRef.current(viewRequest, presentationDocument),
+        candidatePreview: (token) => candidatePreviewFor(current, token)
+      });
+    },
+    capture: (request: AgentCaptureRequest, lease: OperationLeaseToken) => {
+      const current = projectRef.current;
+      return captureAgentProject({
+        request,
+        project: current,
+        report: reportRef.current,
+        visualReviews: getVisualReviewsRef.current(current.id, current.revision),
+        currentProject: () => projectRef.current,
+        capture: onCaptureRef.current,
+        lease
+      });
+    },
+    onStatusChange: (nextStatus) => {
+      if (mountedRef.current) setStatus(nextStatus);
+    }
+  }), [operationLease, submit]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -197,8 +152,7 @@ export const useAgentCommandPort = ({
     try {
       disconnect = port.connect(window);
       setStatus('connected');
-    } catch (error) {
-      void error;
+    } catch {
       setStatus('disconnected');
     }
     return () => {

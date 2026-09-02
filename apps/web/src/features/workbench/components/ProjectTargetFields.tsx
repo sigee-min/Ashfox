@@ -1,37 +1,32 @@
 import {
   isMinecraftExportTarget,
   PROJECT_EXPORT_TARGETS,
-  projectGameVersionOptionsFor,
+  projectTargetVersionFor,
   type VisibleExportPreset
 } from '../../../application/projectExportTarget';
 import {
   isExportModelPathValid,
-  isExportNamespaceValid,
-  type MinecraftGameVersion
+  isExportNamespaceValid
 } from '@ashfox/engine-core';
 
 interface ProjectTargetFieldsProps {
   target: VisibleExportPreset | null;
-  gameVersion: MinecraftGameVersion | null;
   namespace: string;
   modelPath: string;
   onTargetChange: (target: VisibleExportPreset) => void;
-  onGameVersionChange: (gameVersion: MinecraftGameVersion) => void;
   onNamespaceChange: (namespace: string) => void;
   onModelPathChange: (modelPath: string) => void;
 }
 
 export function ProjectTargetFields({
   target,
-  gameVersion,
   namespace,
   modelPath,
   onTargetChange,
-  onGameVersionChange,
   onNamespaceChange,
   onModelPathChange
 }: ProjectTargetFieldsProps) {
-  const gameVersions = projectGameVersionOptionsFor(target);
+  const targetVersion = projectTargetVersionFor(target);
   return (
     <>
       <div
@@ -56,25 +51,12 @@ export function ProjectTargetFields({
       {target === null ? null : (
         <div className="export-fields">
           {isMinecraftExportTarget(target) ? (
-            <label className="popover-field">
-              <span>Game version</span>
-              <select
-                aria-label="Minecraft game version"
-                value={gameVersion ?? ''}
-                onChange={(event) => {
-                  const next = gameVersions.find(
-                    (option) => option.value === event.target.value
-                  );
-                  if (next) onGameVersionChange(next.value);
-                }}
-              >
-                {gameVersions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="popover-field">
+              <span>Current target version</span>
+              <output aria-label="Current target version">
+                {targetVersion}
+              </output>
+            </div>
           ) : null}
           {isMinecraftExportTarget(target) ? (
             <label className="popover-field">
@@ -82,7 +64,7 @@ export function ProjectTargetFields({
               <input
                 aria-label="Export namespace"
                 aria-invalid={
-                  !isExportNamespaceValid(target, namespace.trim())
+                  !isExportNamespaceValid(target, namespace)
                 }
                 value={namespace}
                 onChange={(event) =>
@@ -96,7 +78,7 @@ export function ProjectTargetFields({
             <input
                 aria-label="Export model path"
               aria-invalid={
-                !isExportModelPathValid(target, modelPath.trim())
+                !isExportModelPathValid(target, modelPath)
               }
               value={modelPath}
               onChange={(event) =>

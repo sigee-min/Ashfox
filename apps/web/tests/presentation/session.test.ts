@@ -22,10 +22,10 @@ const session = (
 ): PresentationSession => ({
   nonce: 7,
   projectId: 'project-test',
-  sourceRevision: 'local-0001',
+  revision: 'local-0001',
+  lastFrameNonce: null,
   review,
   purpose: review === 'next' ? 'delivery' : 'preview',
-  milestone: review === 'preview' ? 'specialists' : null,
   mode,
   camera: 'front',
   clipId: mode === 'cycle' ? 'clip-idle' : null,
@@ -35,31 +35,10 @@ const session = (
       ? createCycleObservation(1, 20)
       : null,
   phase: 'observing',
-  previewIssues: [],
   reviewChecks: [{
-    id: 'specialist.mechanic.role-read',
-    facets: ['role-prop'],
-    issue: 'focal_detail',
-    instruction: 'Read the mechanic role.',
-    authority: {
-      id: 'specialist.role-props',
-      version: 1
-    },
-    authorityType: 'specialist',
-    evidence: {
-      criteria: [{
-        id: 'criterion.role-cue',
-        basis: 'either',
-        required: true,
-        instruction: 'Ground the role cue.'
-      }],
-      claims: [{
-        criterionId: 'criterion.role-cue',
-        basis: 'requested',
-        referenceIds: ['intent.subject'],
-        rationale: 'The requested subject carries this role.'
-      }]
-    }
+    id: 'source.mechanic.role-read',
+    issue: 'feature_detail',
+    instruction: 'Read the mechanic role.'
   }]
 });
 
@@ -71,7 +50,12 @@ const frame = (
   projectId: 'project-test',
   revision: 'local-0001',
   camera: 'front',
-  cameraMatrix: [1, 0, 0, 0],
+  cameraMatrix: [
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    0, 0, 0, 1
+  ],
   frameEvidence: structuredClone(FRAME_EVIDENCE_FIXTURE),
   frameEvidenceError: null,
   clipId: null,
@@ -91,7 +75,6 @@ assert.equal(frameResult.result?.ok, true);
 if (frameResult.result?.ok) {
   assert.equal(frameResult.result.data.review, 'next');
   assert.equal(frameResult.result.data.purpose, 'delivery');
-  assert.equal(frameResult.result.data.milestone, null);
   assert.equal(frameResult.result.data.verdict, 'pending');
   assert.equal(frameResult.result.data.completedCycles, 0);
   assert.deepEqual(
@@ -100,7 +83,7 @@ if (frameResult.result?.ok) {
   );
   assert.deepEqual(
     frameResult.result.data.reviewChecks.map((check) => check.id),
-    ['specialist.mechanic.role-read']
+    ['source.mechanic.role-read']
   );
   const snapshot = snapshotPresentationObservation(
     frameResult.result
@@ -109,20 +92,19 @@ if (frameResult.result?.ok) {
     configurable: true,
     value: 'mutated.by.caller'
   });
-  Object.defineProperty(
-    frameResult.result.data.reviewChecks[0].evidence.claims[0],
-    'criterionId',
-    { configurable: true, value: 'criterion.mutated' }
-  );
+  Object.defineProperty(frameResult.result.data.frameEvidence, 'pixelHash', {
+    configurable: true,
+    value: 'sha256:forged'
+  });
   assert.equal(
     snapshot.data.reviewChecks[0].id,
-    'specialist.mechanic.role-read',
+    'source.mechanic.role-read',
     'the stored observation must not share mutable result data'
   );
   assert.equal(
-    snapshot.data.reviewChecks[0].evidence.claims[0].criterionId,
-    'criterion.role-cue',
-    'the stored observation must deeply snapshot authority evidence'
+    snapshot.data.frameEvidence.pixelHash,
+    FRAME_EVIDENCE_FIXTURE.pixelHash,
+    'the stored observation must not share mutable frame evidence'
   );
 }
 
@@ -137,16 +119,75 @@ if (missingEvidence.result && !missingEvidence.result.ok) {
   assert.equal(missingEvidence.result.error.path, 'frameEvidence');
 }
 
-const milestoneResult = observePresentationFrame(
+const previewResult = observePresentationFrame(
   session('frame', 'preview'),
   frame()
 );
-assert.equal(milestoneResult.result?.ok, true);
-if (milestoneResult.result?.ok) {
-  assert.equal(milestoneResult.result.data.review, 'preview');
-  assert.equal(milestoneResult.result.data.purpose, 'preview');
-  assert.equal(milestoneResult.result.data.milestone, 'specialists');
+assert.equal(previewResult.result?.ok, true);
+if (previewResult.result?.ok) {
+  assert.equal(previewResult.result.data.review, 'preview');
+  assert.equal(previewResult.result.data.purpose, 'preview');
 }
+
+const wrongCamera = observePresentationFrame(
+  session(),
+  frame({ camera: 'side', frameNonce: 12 })
+);
+assert.equal(wrongCamera.result, null);
+assert.equal(wrongCamera.session?.lastFrameNonce, 12);
+
+const invalidFrameNonce = observePresentationFrame(
+  session(),
+  frame({ frameNonce: 0 })
+);
+assert.equal(invalidFrameNonce.result, null);
+assert.equal(invalidFrameNonce.session?.lastFrameNonce, null);
+
+const invalidCameraMatrix = observePresentationFrame(
+  session(),
+  frame({ cameraMatrix: [1, 0, 0, 0] })
+);
+assert.equal(invalidCameraMatrix.result, null);
+assert.equal(invalidCameraMatrix.session?.lastFrameNonce, 11);
+
+const sparseCameraMatrix = new Array(16) as number[];
+const sparseFrame = frame();
+Object.defineProperty(sparseFrame, 'cameraMatrix', {
+  configurable: true,
+  value: sparseCameraMatrix
+});
+const invalidSparseCameraMatrix = observePresentationFrame(
+  session(),
+  sparseFrame
+);
+assert.equal(invalidSparseCameraMatrix.result, null);
+assert.equal(invalidSparseCameraMatrix.session?.lastFrameNonce, 11);
+
+const firstCycleFrame = observePresentationFrame(
+  session('cycle'),
+  frame({
+    clipId: 'clip-idle',
+    frameNonce: 30,
+    playing: true,
+    timeSeconds: 0
+  })
+);
+assert.ok(firstCycleFrame.session);
+const repeatedCycleFrame = observePresentationFrame(
+  firstCycleFrame.session as PresentationSession,
+  frame({
+    clipId: 'clip-idle',
+    frameNonce: 30,
+    playing: true,
+    timeSeconds: 0.25
+  })
+);
+assert.equal(repeatedCycleFrame.result, null);
+assert.equal(
+  repeatedCycleFrame.session?.cycle?.previousTimeSeconds,
+  0,
+  'a repeated frame nonce cannot advance cycle evidence'
+);
 
 const stale = observePresentationFrame(
   session(),
@@ -176,11 +217,12 @@ if (projectionFailure.result && !projectionFailure.result.ok) {
 }
 
 let cycle = session('cycle');
-for (const timeSeconds of [0, 0.25, 0.5, 0.75]) {
+for (const [index, timeSeconds] of [0, 0.25, 0.5, 0.75].entries()) {
   const transition = observePresentationFrame(
     cycle,
     frame({
       clipId: 'clip-idle',
+      frameNonce: 20 + index,
       playing: true,
       timeSeconds
     })
@@ -193,6 +235,7 @@ const completed = observePresentationFrame(
   cycle,
   frame({
     clipId: 'clip-idle',
+    frameNonce: 24,
     playing: true,
     timeSeconds: 1
   })
@@ -205,6 +248,7 @@ const closed = observePresentationFrame(
   completed.session as PresentationSession,
   frame({
     clipId: 'clip-idle',
+    frameNonce: 25,
     playing: false,
     timeSeconds: 0
   })

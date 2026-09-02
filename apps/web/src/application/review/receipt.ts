@@ -1,7 +1,7 @@
 import {
   canonicalJsonString,
-  isCurrentInternalContractVersion,
-  type ProjectDocument
+  isAssetProjectAuthorityValid,
+  type AssetProject
 } from '@ashfox/engine-core';
 import {
   hasExactContractKeys,
@@ -37,69 +37,74 @@ const RECEIPT_KEYS = new Set([
 ]);
 
 export const visualReviewReceiptFrom = (
-  document: ProjectDocument,
+  project: AssetProject,
   observation: VisualReviewObservation,
   reviewed: VisualReviewObservation,
   metadata: VisualReviewReceiptMetadata
 ): VisualReviewReceipt | null => {
-  const reconstructedObservation: VisualReviewObservation = {
-    ...reviewed,
-    data: {
-      ...reviewed.data,
-      review: observation.data.review,
-      verdict: 'pending',
-      issues: [],
-      acknowledgedCheckIds: [],
-      failedCheckIds: []
+  try {
+    const reconstructedObservation: VisualReviewObservation = {
+      ...reviewed,
+      data: {
+        ...reviewed.data,
+        review: observation.data.review,
+        verdict: 'pending',
+        issues: [],
+        acknowledgedCheckIds: [],
+        failedCheckIds: []
+      }
+    };
+    if (
+      observation.data.verdict !== 'pending' ||
+      reviewed.data.verdict === 'pending' ||
+      observation.revision !== reviewed.revision ||
+      canonicalJsonString(reconstructedObservation) !==
+        canonicalJsonString(observation) ||
+      project.id.length === 0 ||
+      project.revision !== observation.revision ||
+      observation.data.purpose !== 'delivery' ||
+      reviewed.data.purpose !== 'delivery'
+    ) {
+      return null;
     }
-  };
-  if (
-    observation.data.verdict !== 'pending' ||
-    reviewed.data.verdict === 'pending' ||
-    observation.revision !== reviewed.revision ||
-    canonicalJsonString(reconstructedObservation) !==
-      canonicalJsonString(observation) ||
-    document.id.length === 0 ||
-    document.revision !== observation.revision
-  ) {
+    const receipt: UnsignedVisualReviewReceipt = {
+      schemaVersion: VISUAL_REVIEW_RECEIPT_SCHEMA_VERSION,
+      projectId: project.id,
+      revision: project.revision,
+      observation: structuredClone(observation),
+      decision: {
+        verdict: reviewed.data.verdict,
+        issues: [...reviewed.data.issues],
+        acknowledgedCheckIds: [...reviewed.data.acknowledgedCheckIds],
+        failedCheckIds: [...reviewed.data.failedCheckIds]
+      },
+      recordedAt: metadata.recordedAt,
+      rendererIdentifier: VISUAL_REVIEW_RENDERER_IDENTIFIER,
+      actorId: metadata.actorId
+    };
+    const complete: VisualReviewReceipt = {
+      ...receipt,
+      evidenceFingerprint: visualReviewEvidenceFingerprint(project, receipt)
+    };
+    return isValidVisualReviewReceipt(complete, project) ? complete : null;
+  } catch {
     return null;
   }
-  const receipt: UnsignedVisualReviewReceipt = {
-    schemaVersion: VISUAL_REVIEW_RECEIPT_SCHEMA_VERSION,
-    projectId: document.id,
-    revision: document.revision,
-    observation: structuredClone(observation),
-    decision: {
-      verdict: reviewed.data.verdict,
-      issues: [...reviewed.data.issues],
-      acknowledgedCheckIds: [...reviewed.data.acknowledgedCheckIds],
-      failedCheckIds: [...reviewed.data.failedCheckIds]
-    },
-    recordedAt: metadata.recordedAt,
-    rendererIdentifier: VISUAL_REVIEW_RENDERER_IDENTIFIER,
-    actorId: metadata.actorId
-  };
-  const complete: VisualReviewReceipt = {
-    ...receipt,
-    evidenceFingerprint: visualReviewEvidenceFingerprint(document, receipt)
-  };
-  return isValidVisualReviewReceipt(complete, document) ? complete : null;
 };
 
 export const isValidVisualReviewReceipt = (
   value: unknown,
-  document: ProjectDocument
+  project: AssetProject
 ): value is VisualReviewReceipt => {
   if (
+    !isAssetProjectAuthorityValid(project) ||
     !isClosedContractRecord(value) ||
     !hasExactContractKeys(value, RECEIPT_KEYS) ||
-    !isCurrentInternalContractVersion(
-      'visualReviewReceipt',
-      value.schemaVersion
-    ) ||
-    value.projectId !== document.id ||
-    value.revision !== document.revision ||
-    !isPendingVisualReviewObservation(value.observation, document) ||
+    value.schemaVersion !== VISUAL_REVIEW_RECEIPT_SCHEMA_VERSION ||
+    value.projectId !== project.id ||
+    value.revision !== project.revision ||
+    !isPendingVisualReviewObservation(value.observation, project.document) ||
+    value.observation.data.purpose !== 'delivery' ||
     !isVisualReviewDecision(value.decision, value.observation) ||
     !isCanonicalIsoDate(value.recordedAt) ||
     value.rendererIdentifier !== VISUAL_REVIEW_RENDERER_IDENTIFIER ||
@@ -110,8 +115,8 @@ export const isValidVisualReviewReceipt = (
   }
   const receipt: UnsignedVisualReviewReceipt = {
     schemaVersion: VISUAL_REVIEW_RECEIPT_SCHEMA_VERSION,
-    projectId: document.id,
-    revision: document.revision,
+    projectId: project.id,
+    revision: project.revision,
     observation: value.observation,
     decision: value.decision,
     recordedAt: value.recordedAt,
@@ -119,5 +124,5 @@ export const isValidVisualReviewReceipt = (
     actorId: value.actorId
   };
   return value.evidenceFingerprint ===
-    visualReviewEvidenceFingerprint(document, receipt);
+    visualReviewEvidenceFingerprint(project, receipt);
 };

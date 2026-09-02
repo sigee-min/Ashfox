@@ -4,14 +4,21 @@ const { createBuildOptions, outdir } = require('./buildOptions');
 const { prepareOutput } = require('./prepareOutput');
 
 const run = async () => {
-  prepareOutput();
+  prepareOutput({ includeShowcaseTooling: true });
+  const requestedPort = Number.parseInt(
+    process.env.ASHFOX_WEB_PORT ?? '3000',
+    10
+  );
+  if (!Number.isInteger(requestedPort) || requestedPort < 1024 || requestedPort > 65_535) {
+    throw new Error('ASHFOX_WEB_PORT must be an available port from 1024 to 65535.');
+  }
   const context = await esbuild.context(
     createBuildOptions({ minify: false, sourcemap: 'inline' })
   );
   await context.watch();
   const server = await context.serve({
     host: '127.0.0.1',
-    port: 3000,
+    port: requestedPort,
     servedir: outdir
   });
 

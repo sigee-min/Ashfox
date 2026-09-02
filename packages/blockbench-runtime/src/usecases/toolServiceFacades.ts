@@ -1,5 +1,4 @@
 import type { ToolServiceContext } from './toolServiceContext';
-import type { ExportService } from './export';
 import type { ModelService } from './ModelService';
 import type { ProjectService } from './project';
 import type { RenderService } from './RenderService';
@@ -12,7 +11,6 @@ export type ToolServiceFacades = {
   texture: TextureService;
   model: ModelService;
   animation: AnimationService;
-  exporter: ExportService;
   render: RenderService;
   validation: ValidationService;
 };
@@ -22,8 +20,6 @@ export const createToolServiceFacades = (context: ToolServiceContext): ToolServi
   texture: context.textureService,
   model: context.modelService,
   animation: context.animationService,
-  exporter: context.exportService,
   render: context.renderService,
   validation: context.validationService
 });
-

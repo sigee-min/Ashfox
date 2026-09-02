@@ -1,5 +1,6 @@
 import type { ExportAdaptedDocument } from '../../adapter';
 import type { MinecraftJavaBlockExportProfile } from '../../adapter/contract';
+import { assertValidatedExportTargetDocument } from '../../pipeline/validate';
 
 const MODERN_RESOURCE_PACK_FORMAT_MINIMUM = 65;
 
@@ -34,6 +35,7 @@ export type MinecraftJavaPackMetadata =
 const javaProfile = (
   document: ExportAdaptedDocument
 ): MinecraftJavaBlockExportProfile => {
+  assertValidatedExportTargetDocument(document, 'java_block');
   const profile = document.formatProfile;
   if (profile.id !== 'minecraft.java_block') {
     throw new Error(

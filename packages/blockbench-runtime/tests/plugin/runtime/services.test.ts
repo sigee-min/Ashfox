@@ -6,63 +6,99 @@ import { buildRuntimeServices } from '../../../src/plugin/runtimeServices';
 import { noopLog } from '../../helpers';
 import { withGlobals } from '../../support/globals';
 
-const buildRuntime = (overrides: Record<string, unknown>) => {
-  const built: { runtime?: ReturnType<typeof buildRuntimeServices> } = {};
-  withGlobals(overrides, () => {
-    built.runtime = buildRuntimeServices({
-      blockbenchVersion: '5.0.7',
-      formatOverrides: {},
-      policies: createDefaultPolicies({}),
-      resourceStore: new InMemoryResourceStore(),
-      logger: noopLog,
-      traceLog: { enabled: false }
-    });
-  });
-  if (!built.runtime) throw new Error('runtime build failed');
-  return built.runtime;
-};
+let compileReads = 0;
+let codecReads = 0;
+let codecsReads = 0;
+let projectReads = 0;
+let deliveryWrites = 0;
+let deliveryWriterReads = 0;
 
-{
-  const runtime = buildRuntime({
-    Formats: {
-      geckolib: { name: 'GeckoLib', animation_mode: true },
-      animated_java: { name: 'Animated Java', animation_mode: true },
-      java_block: { name: 'Java Block/Item', animation_mode: false },
-      free: { name: 'Generic Model', animation_mode: true, meshes: true }
-    },
-    Codecs: {
-      gltf: { id: 'gltf', name: 'glTF', extension: 'gltf glb' },
-      obj: { id: 'obj', name: 'OBJ', extension: 'obj' }
+const javaFormat: Record<string, unknown> = {
+  name: 'Java Block/Item',
+  animation_mode: false
+};
+Object.defineProperty(javaFormat, 'compile', {
+  enumerable: true,
+  get() {
+    compileReads += 1;
+    throw new Error('delivery compiler must not be read');
+  }
+});
+Object.defineProperty(javaFormat, 'codec', {
+  enumerable: true,
+  get() {
+    codecReads += 1;
+    throw new Error('delivery codec must not be read');
+  }
+});
+
+const codecs = new Proxy<Record<string, unknown>>({}, {
+  get() {
+    codecsReads += 1;
+    throw new Error('Codecs registry must not be read');
+  },
+  ownKeys() {
+    codecsReads += 1;
+    throw new Error('Codecs registry must not be enumerated');
+  }
+});
+
+const blockbench: Record<string, unknown> = {};
+for (const key of ['writeFile', 'exportFile']) {
+  Object.defineProperty(blockbench, key, {
+    enumerable: true,
+    get() {
+      deliveryWriterReads += 1;
+      return () => {
+        deliveryWrites += 1;
+      };
     }
   });
-
-  const targets = runtime.capabilities.exportTargets ?? [];
-  const gltf = targets.find((target) => target.id === 'gltf');
-  const native = targets.find((target) => target.id === 'native_codec');
-  const obj = targets.find((target) => target.id === 'obj' && target.kind === 'native_codec');
-
-  assert.equal(gltf?.kind, 'gltf');
-  assert.equal(gltf?.available, true);
-  assert.equal(native?.kind, 'native_codec');
-  assert.equal(native?.available, true);
-  assert.equal(Boolean(obj), true);
 }
+Object.defineProperty(blockbench, 'project', {
+  enumerable: true,
+  get() {
+    projectReads += 1;
+    throw new Error('live project must not be read during startup');
+  }
+});
 
-{
-  const runtime = buildRuntime({
-    Formats: {
-      geckolib: { name: 'GeckoLib', animation_mode: true },
-      animated_java: { name: 'Animated Java', animation_mode: true },
-      java_block: { name: 'Java Block/Item', animation_mode: false },
-      free: { name: 'Generic Model', animation_mode: true, meshes: true }
-    },
-    Codecs: {}
+let runtime: ReturnType<typeof buildRuntimeServices> | undefined;
+withGlobals({
+  Formats: {
+    java_block: javaFormat,
+    geckolib_model: { name: 'GeckoLib', animation_mode: true },
+    animated_java: { name: 'Animated Java', animation_mode: true },
+    free: { name: 'Generic Model', animation_mode: true, meshes: true }
+  },
+  Codecs: codecs,
+  Blockbench: blockbench,
+  Project: new Proxy<Record<string, unknown>>({}, {
+    get() {
+      projectReads += 1;
+      throw new Error('global Project must not be read during startup');
+    }
+  })
+}, () => {
+  runtime = buildRuntimeServices({
+    blockbenchVersion: '5.1.6',
+    formatOverrides: {},
+    policies: createDefaultPolicies({}),
+    resourceStore: new InMemoryResourceStore(),
+    logger: noopLog,
+    traceLog: { enabled: false }
   });
+});
 
-  const targets = runtime.capabilities.exportTargets ?? [];
-  const gltf = targets.find((target) => target.id === 'gltf');
-  const native = targets.find((target) => target.id === 'native_codec');
-
-  assert.equal(gltf?.available, false);
-  assert.equal(native?.available, false);
-}
+assert.ok(runtime);
+assert.equal(compileReads, 0);
+assert.equal(codecReads, 0);
+assert.equal(codecsReads, 0);
+assert.equal(projectReads, 0);
+assert.equal(deliveryWrites, 0);
+assert.equal(deliveryWriterReads, 0);
+assert.equal(Object.prototype.hasOwnProperty.call(runtime.capabilities, 'exportTargets'), false);
+assert.equal(runtime.capabilities.formats.find((entry) =>
+  entry.format === 'Java Block/Item')?.enabled, true);
+assert.equal(runtime.capabilities.formats.find((entry) =>
+  entry.format === 'geckolib')?.enabled, true);

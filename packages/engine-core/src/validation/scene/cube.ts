@@ -4,14 +4,15 @@ import {
   type CubeNode,
   type ProjectDocument
 } from '../../model';
+import { cubeUnrotatedBounds } from '../../model';
 import {
-  COLOR_PATTERN,
   EPSILON,
   isFiniteNumber,
   isNonEmptyString,
   validateVec
 } from '../shared/value';
 import type { FindingSink } from '../contract';
+import { validateOrientedCubeAuthority } from './orientedCube';
 
 const CUBE_FACE_ROTATIONS = [0, 90, 180, 270] as const;
 const CUBE_FACE_DIRECTION_SET = new Set<string>(CUBE_FACE_DIRECTIONS);
@@ -22,8 +23,15 @@ export const validateCube = (
   path: string,
   add: FindingSink
 ): void => {
-  validateVec(cube.bounds.from, 3, `${path}.bounds.from`, add, cube.id);
-  validateVec(cube.bounds.to, 3, `${path}.bounds.to`, add, cube.id);
+  const bounds = cubeUnrotatedBounds(cube);
+  const boundsPath = cube.geometryMode === 'axis-box' ? `${path}.bounds` :
+    `${path}.orientedBox`;
+  validateVec(bounds.from, 3, cube.geometryMode === 'axis-box'
+    ? `${boundsPath}.from` : `${boundsPath}.unrotatedFrom`, add, cube.id);
+  validateVec(bounds.to, 3, cube.geometryMode === 'axis-box'
+    ? `${boundsPath}.to` : `${boundsPath}.unrotatedTo`, add, cube.id);
+  if (cube.geometryMode === 'oriented-box') validateOrientedCubeAuthority(
+    cube, path, add);
   if (!isFiniteNumber(cube.inflate)) {
     add({
       code: 'value.not_finite',
@@ -33,30 +41,20 @@ export const validateCube = (
       entityIds: [cube.id]
     });
   }
-  if (!COLOR_PATTERN.test(cube.baseColor)) {
-    add({
-      code: 'cube.invalid_face',
-      severity: 'error',
-      message: 'Cube baseColor must use six-digit hex.',
-      path: `${path}.baseColor`,
-      entityIds: [cube.id]
-    });
-  }
-
-  const positiveAxes = cube.bounds.from.reduce(
+  const positiveAxes = bounds.from.reduce(
     (count, from, index) =>
-      count + (cube.bounds.to[index] - from > EPSILON ? 1 : 0),
+      count + (bounds.to[index] - from > EPSILON ? 1 : 0),
     0
   );
-  const reversedAxis = cube.bounds.from.findIndex(
-    (from, index) => cube.bounds.to[index] < from
+  const reversedAxis = bounds.from.findIndex(
+    (from, index) => bounds.to[index] < from
   );
   if (reversedAxis >= 0 || positiveAxes < 2) {
     add({
       code: 'cube.invalid_bounds',
       severity: 'error',
       message: 'Cube bounds must not be reversed and must span at least two axes.',
-      path: `${path}.bounds`,
+      path: boundsPath,
       entityIds: [cube.id]
     });
   }
@@ -162,7 +160,6 @@ export const validateCube = (
     if (
       face.enabled &&
       faceTexture &&
-      faceTexture.atlasMode !== 'generate' &&
       face.uv &&
       (!Array.isArray(face.uv) ||
         face.uv.length !== 4 ||

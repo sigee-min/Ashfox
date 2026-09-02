@@ -1,5 +1,7 @@
 import {
   evaluateProductionReadiness,
+  exportCompatibilityOptions,
+  type AssetProject,
   type ProjectDocument,
   type ValidationReport
 } from '@ashfox/engine-core';
@@ -7,9 +9,6 @@ import {
 import {
   boundedSuccess
 } from '../boundedResult';
-import {
-  agentCommandProtocol
-} from '../agentCommandProtocol';
 import {
   deriveInspectWorkflow
 } from '../inspectWorkflow';
@@ -22,62 +21,53 @@ import type {
 import {
   DEFAULT_INSPECT_LIMIT
 } from './inspectResult';
-import {
-  snapshotIntentProgramAuthority
-} from '../../intentProgram/presentation';
 
-/** The agent sees source authority and readiness, never editable compiler internals. */
+const targetPreflight = Object.freeze({
+  availableTargets: Object.freeze(
+    exportCompatibilityOptions().map(({ target }) => target)
+  ),
+  mode: 'on-demand' as const
+});
+
+/** The agent sees workspace/build identity and readiness, never source bytes. */
 export const inspectOverview = (
-  document: ProjectDocument,
+  project: AssetProject,
   _selectedNodeId: string | null,
   report: ValidationReport,
   visualReviews: readonly VisualReviewReceipt[],
-  operationOwner: string | null
+  _operationOwner: string | null
 ): InspectResult => {
+  const document: ProjectDocument = project.document;
   const readiness = evaluateProductionReadiness(document, report);
   const workflow = deriveInspectWorkflow(
-    document,
+    project,
     report,
     readiness,
     visualReviews
   );
-  const confirmed = document.intentProgram;
-  const proposal = document.intentProgramProposal;
   return boundedSuccess(
     document.revision,
     {
-      commandPort: {
-        status: operationOwner === null ? 'connected' : 'working',
-        operation: operationOwner
+      revision: document.revision,
+      workspaceHash: project.build.workspaceHash,
+      entry: project.entry,
+      build: {
+        packageName: project.build.packageName,
+        entryName: project.build.entryName,
+        path: project.build.path,
+        closureHash: project.build.closureHash,
+        buildKey: project.build.buildKey,
+        compilerFingerprint: project.build.compilerFingerprint,
+        productHash: project.build.productHash
       },
-      protocol: {
-        workbench: agentCommandProtocol.workbench,
-        manifest: agentCommandProtocol.href,
-        commandSchema: {
-          kind: 'command',
-          name: '<commands entry>'
-        }
-      },
-      intentProgram: {
-        confirmed: confirmed
-          ? snapshotIntentProgramAuthority(confirmed)
-          : null,
-        proposal: proposal
-          ? snapshotIntentProgramAuthority(proposal)
-          : null
-      },
-      compilation: {
-        status: confirmed === null || confirmed === undefined
-          ? 'no-confirmed-source'
-          : readiness.structurallyValid
-            ? 'ready'
-            : 'blocked',
+      counts: readiness.counts,
+      readiness: {
         structurallyValid: readiness.structurallyValid,
         mechanicallyReady: readiness.mechanicallyReady,
-        semanticReviewRequired: readiness.semanticReviewRequired,
-        firstBlockingFinding: readiness.firstBlockingFinding ?? null
       },
-      workflow
+      blocker: workflow.blocker,
+      nextActions: workflow.nextActions,
+      targetPreflight
     },
     DEFAULT_INSPECT_LIMIT
   );

@@ -1,160 +1,96 @@
 import type {
   ProjectForwardDirection,
-  ProjectIntent,
   Vec3
 } from '../model';
-import { PART_CONTRACT_LIMITS } from '../modeling/part';
+export const PROJECT_SIGNED_VIEWS = Object.freeze([
+  'front', 'rear', 'left', 'right', 'up', 'down'
+] as const);
+export type ProjectSignedView = typeof PROJECT_SIGNED_VIEWS[number];
+export type ProjectAxisVector = Vec3;
 
-export const PROJECT_SYMMETRY_MAX_PLANE_TWICE =
-  PART_CONTRACT_LIMITS.maxAbsoluteCoordinate * 2;
-
-export type ProjectLateralAxis = 'x' | 'z';
-export type ProjectLateralSign = -1 | 1;
-export type ProjectLateralSide = 'left' | 'center' | 'right';
-
-export interface ProjectSpatialFrame {
-  direction: ProjectForwardDirection;
-  forward: Vec3;
-  up: Vec3;
-  left: Vec3;
-  right: Vec3;
-  lateralAxis: ProjectLateralAxis;
-  lateralSign: ProjectLateralSign;
-  plane: number | null;
-  planeTwice: number | null;
+export interface ProjectViewFrame {
+  /** Screen-right axis; always exactly cross × depth. */
+  readonly inline: ProjectAxisVector;
+  readonly cross: ProjectAxisVector;
+  /** Camera position is on this positive axis and looks toward its negative. */
+  readonly depth: ProjectAxisVector;
 }
 
-/** Reflection plane available to global bilateral or local paired topology. */
-export const projectPairPlaneTwice = (
-  symmetry: ProjectIntent['symmetry']
-): number | null => symmetry.kind === 'bilateral'
-  ? symmetry.planeTwice
-  : symmetry.pairPlaneTwice ?? null;
+interface FrameBasis {
+  readonly forward: Vec3;
+  readonly up: Vec3;
+  readonly left: Vec3;
+  readonly right: Vec3;
+}
 
 const FRAME_BY_FORWARD: Readonly<
-  Record<ProjectForwardDirection, Omit<
-    ProjectSpatialFrame,
-    'direction' | 'plane' | 'planeTwice'
-  >>
+  Record<ProjectForwardDirection, FrameBasis>
 > = {
   north: {
     forward: [0, 0, -1],
     up: [0, 1, 0],
     left: [-1, 0, 0],
-    right: [1, 0, 0],
-    lateralAxis: 'x',
-    lateralSign: 1
+    right: [1, 0, 0]
   },
   south: {
     forward: [0, 0, 1],
     up: [0, 1, 0],
     left: [1, 0, 0],
-    right: [-1, 0, 0],
-    lateralAxis: 'x',
-    lateralSign: -1
+    right: [-1, 0, 0]
   },
   east: {
     forward: [1, 0, 0],
     up: [0, 1, 0],
     left: [0, 0, -1],
-    right: [0, 0, 1],
-    lateralAxis: 'z',
-    lateralSign: 1
+    right: [0, 0, 1]
   },
   west: {
     forward: [-1, 0, 0],
     up: [0, 1, 0],
     left: [0, 0, 1],
-    right: [0, 0, -1],
-    lateralAxis: 'z',
-    lateralSign: -1
+    right: [0, 0, -1]
   }
 };
 
-export const projectSpatialFrame = (
-  intent: Pick<ProjectIntent, 'forward' | 'symmetry'>
-): ProjectSpatialFrame => {
-  const basis = FRAME_BY_FORWARD[intent.forward];
-  const planeTwice = projectPairPlaneTwice(intent.symmetry);
-  return {
-    direction: intent.forward,
-    ...basis,
-    plane: planeTwice === null ? null : planeTwice / 2,
-    planeTwice
-  };
+const frozenVector = (value: Vec3): ProjectAxisVector =>
+  Object.freeze(value);
+
+const negateVector = (value: ProjectAxisVector): ProjectAxisVector =>
+  frozenVector([-value[0], -value[1], -value[2]]);
+
+export const projectWorldBasis = (
+  forward: ProjectForwardDirection
+): Readonly<Record<'longitudinal' | 'transverse' | 'vertical',
+  ProjectAxisVector>> => {
+  const basis = FRAME_BY_FORWARD[forward];
+  return Object.freeze({
+    longitudinal: frozenVector(basis.forward),
+    transverse: frozenVector(basis.right),
+    vertical: frozenVector(basis.up)
+  });
 };
 
-const axisIndex = (axis: ProjectLateralAxis): 0 | 2 =>
-  axis === 'x' ? 0 : 2;
-
-const requiredPlaneTwice = (frame: ProjectSpatialFrame): number => {
-  if (frame.planeTwice === null) {
-    throw new RangeError(
-      'A bilateral project symmetry plane is required for reflection.'
-    );
-  }
-  return frame.planeTwice;
-};
-
-const withLateralCoordinate = (
-  value: Vec3,
-  frame: ProjectSpatialFrame,
-  coordinate: number
-): Vec3 => {
-  const reflected: [number, number, number] = [...value];
-  reflected[axisIndex(frame.lateralAxis)] = coordinate;
-  return reflected;
-};
-
-/** Reflects a lattice vertex or authored point across the project plane. */
-export const reflectProjectPoint = (
-  point: Vec3,
-  frame: ProjectSpatialFrame
-): Vec3 => {
-  const index = axisIndex(frame.lateralAxis);
-  return withLateralCoordinate(
-    point,
-    frame,
-    requiredPlaneTwice(frame) - point[index]
-  );
-};
-
-/** Reflects the minimum coordinate of one unit lattice cell. */
-export const reflectProjectCell = (
-  cell: Vec3,
-  frame: ProjectSpatialFrame
-): Vec3 => {
-  const index = axisIndex(frame.lateralAxis);
-  return withLateralCoordinate(
-    cell,
-    frame,
-    requiredPlaneTwice(frame) - cell[index] - 1
-  );
-};
-
-const sideFromSignedDistance = (distance: number): ProjectLateralSide =>
-  distance < 0 ? 'left' : distance > 0 ? 'right' : 'center';
-
-/** Classifies a lattice vertex relative to the semantic left/right frame. */
-export const projectPointLateralSide = (
-  point: Vec3,
-  frame: ProjectSpatialFrame
-): ProjectLateralSide => {
-  const coordinate = point[axisIndex(frame.lateralAxis)];
-  const distanceTwice = frame.lateralSign * (
-    2 * coordinate - requiredPlaneTwice(frame)
-  );
-  return sideFromSignedDistance(distanceTwice);
-};
-
-/** Classifies a unit lattice cell by its center relative to the project plane. */
-export const projectCellLateralSide = (
-  cell: Vec3,
-  frame: ProjectSpatialFrame
-): ProjectLateralSide => {
-  const coordinate = cell[axisIndex(frame.lateralAxis)];
-  const distanceTwice = frame.lateralSign * (
-    2 * coordinate + 1 - requiredPlaneTwice(frame)
-  );
-  return sideFromSignedDistance(distanceTwice);
+/** Closed signed orthographic frame shared by proof, renderer, and capture. */
+export const projectSignedViewFrame = (
+  forward: ProjectForwardDirection,
+  view: ProjectSignedView
+): Readonly<ProjectViewFrame> => {
+  const basis = projectWorldBasis(forward);
+  if (view === 'front') return Object.freeze({
+    inline: negateVector(basis.transverse),
+    cross: basis.vertical, depth: basis.longitudinal });
+  if (view === 'rear') return Object.freeze({
+    inline: basis.transverse, cross: basis.vertical,
+    depth: negateVector(basis.longitudinal) });
+  if (view === 'left') return Object.freeze({
+    inline: negateVector(basis.longitudinal),
+    cross: basis.vertical, depth: negateVector(basis.transverse) });
+  if (view === 'right') return Object.freeze({
+    inline: basis.longitudinal, cross: basis.vertical,
+    depth: basis.transverse });
+  if (view === 'up') return Object.freeze({
+    inline: negateVector(basis.longitudinal),
+    cross: basis.transverse, depth: basis.vertical });
+  return Object.freeze({ inline: negateVector(basis.longitudinal),
+    cross: negateVector(basis.transverse), depth: negateVector(basis.vertical) });
 };

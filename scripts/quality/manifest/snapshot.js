@@ -73,10 +73,7 @@ const freezeManifest = (value) => Object.freeze({
       changeOwner: value.versioning.product.changeOwner,
       verification: value.versioning.product.verification
     }),
-    intentProgram: Object.freeze({ ...value.versioning.intentProgram }),
-    surfaceSynthesis: Object.freeze({
-      ...value.versioning.surfaceSynthesis
-    }),
+    assetWorkspace: Object.freeze({ ...value.versioning.assetWorkspace }),
     deliveryTargets: Object.freeze({ ...value.versioning.deliveryTargets })
   }),
   quality: Object.freeze({

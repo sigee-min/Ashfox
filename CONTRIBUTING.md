@@ -44,7 +44,7 @@ Keep filenames local to their owner. Put shared contracts at
 `owner/contract.ts`, group tests below a workspace owner declared in the
 development manifest, and use one lowercase word such as `reader.test.ts` or
 `raster.test.ts`; fixtures, runners, and support modules follow the same
-one-word filename rule. Tests-only workspaces use semantic owners; product
+one-word filename rule. Tests-only workspaces use domain owners; product
 workspaces use the production responsibility they exercise. The development
 manifest and architecture gate are authoritative for the exact owner list,
 extension, limits, and discovery semantics.
@@ -67,6 +67,26 @@ npm run test:blockbench
 npm run build:public
 npm run build:blockbench
 ```
+
+## Showcase media
+
+The homepage and README replays are reconstructed from the final validated
+entries in `examples/shared-creatures.ashfoxworkspace`; they are not an
+authoring history or a decision log. Regenerate all checked-in replay and
+poster media through the real Web renderer with:
+
+```bash
+npm run showcase:capture
+npm run showcase:check
+```
+
+The capture command starts an isolated local Workbench, renders both entries,
+and seals `assets/showcase/shared-creatures/showcase.json`. It requires Chrome
+or Chromium; set `ASHFOX_CHROME_PATH` when the executable is outside a standard
+location. Do not hand-edit the generated media or descriptor. Event ordering,
+source/build provenance, dimensions, frame counts, and artifact hashes are
+checked; exact GIF bytes are not claimed to be stable across browser, GPU, and
+operating-system implementations.
 
 Run the complete quality gate before a substantial pull request:
 
@@ -117,11 +137,11 @@ commit format when preparing a release.
 
 ## Versioning
 
-The manifest's `versioning.product`, `versioning.intentProgram`, and
+The manifest's `versioning.product`, `versioning.assetWorkspace`, and
 `versioning.deliveryTargets` entries deliberately separate product releases,
-the persisted source compatibility contract, and transient delivery inputs.
-Follow their named authorities, ownership, version, and verification fields;
-do not infer one version from another.
+the exact-current portable workspace and source grammar, and transient delivery
+inputs. Follow their named authorities, ownership, and verification fields; do
+not infer one contract from another.
 
 ## Reporting bugs
 

@@ -1,13 +1,25 @@
 import assert from 'node:assert/strict';
 
 import {
-  createProjectFromInput,
   validateProjectDocument
 } from '@ashfox/engine-core';
 
 import {
   presentCreationStatus
 } from '../../src/features/workbench/presentation/status';
+import {
+  isValidVisualReviewReceipt,
+  visualReviewReceiptFrom
+} from '../../src/application/review';
+import {
+  createHistoryState
+} from '../../src/application/historyReducer';
+import {
+  createProjectSnapshot
+} from '../../src/application/snapshot';
+import {
+  isPendingVisualReviewObservation
+} from '../../src/application/review/reader';
 import {
   presentExportAvailability
 } from '../../src/features/workbench/exportAvailability';
@@ -20,28 +32,16 @@ import {
 import {
   createVisualReviewReceiptFixture
 } from '../fixtures/review';
-
-const empty = createProjectFromInput({
-  id: 'project-creation-status-empty',
-  name: 'Empty creation status',
-  createdAt: '2026-08-09T00:00:00.000Z'
-}, 'local-0001');
-const emptyReport = validateProjectDocument(empty);
-assert.equal(
-  presentCreationStatus(empty, emptyReport, [], 'saved').state,
-  'awaiting-prompt'
-);
-assert.equal(
-  presentCreationStatus(empty, emptyReport, [], 'saved').label,
-  'Ready for your prompt'
-);
-assert.equal(
-  presentExportAvailability(empty, emptyReport, []).allowed,
-  false
-);
+import {
+  FRAME_EVIDENCE_FIXTURE
+} from '../fixtures/frame';
+import {
+  createProjectSessionState,
+  projectSessionReducer
+} from '../../src/features/workbench/state/session';
 
 const compiled = createWorkbenchProject();
-const compiledReport = validateProjectDocument(compiled);
+const compiledReport = validateProjectDocument(compiled.document);
 const reviewing = presentCreationStatus(
   compiled,
   compiledReport,
@@ -51,13 +51,32 @@ const reviewing = presentCreationStatus(
 assert.equal(reviewing.state, 'reviewing');
 assert.match(reviewing.detail, /visual checks remaining/);
 
-const reviews = requiredVisualReviews(compiled).map((review, index) =>
+const reviews = requiredVisualReviews(compiled.document).map((review, index) =>
   createVisualReviewReceiptFixture(compiled, {
     mode: review.mode,
     camera: review.camera,
     clipId: review.clipId,
     frameNonce: index + 1
   })
+);
+const required = requiredVisualReviews(compiled.document);
+assert.deepEqual(
+  required.slice(0, 5).map((review) => review.camera),
+  ['perspective', 'native', 'front', 'side', 'top'],
+  'delivery review covers every static camera'
+);
+assert.deepEqual(
+  required.slice(5).map((review) => [
+    review.mode,
+    review.camera,
+    review.clipId
+  ]),
+  Object.keys(compiled.document.animations).sort().map((clipId) => [
+    'cycle',
+    'perspective',
+    clipId
+  ]),
+  'delivery review covers every canonical animation clip'
 );
 const ready = presentCreationStatus(
   compiled,
@@ -74,37 +93,174 @@ assert.deepEqual(
   }
 );
 
-if (!compiled.intentProgram) {
-  throw new Error('Compiled fixture requires an authoritative Intent Program.');
-}
-const pending = {
+const firstReceipt = reviews[0]!;
+assert.equal(isValidVisualReviewReceipt(firstReceipt, compiled), true);
+assert.equal(isValidVisualReviewReceipt(firstReceipt, {
   ...compiled,
-  intentProgramProposal: compiled.intentProgram
+  build: {
+    ...compiled.build,
+    workspaceHash: `sha256:${'0'.repeat(64)}`
+  }
+}), false, 'visual review receipts bind the complete compiler build identity');
+const swappedReviewWorkspace = structuredClone(compiled.workspace);
+const swappedReviewFile = swappedReviewWorkspace.files[0];
+if (!swappedReviewFile) throw new Error('review fixture workspace is empty');
+Object.defineProperty(swappedReviewFile, 'source', {
+  configurable: true,
+  value: `${swappedReviewFile.source}\n`
+});
+assert.equal(isValidVisualReviewReceipt(firstReceipt, {
+  ...compiled,
+  workspace: swappedReviewWorkspace
+}), false, 'visual review receipts bind the exact workspace authority');
+const cyclicObservation = structuredClone(firstReceipt.observation);
+(cyclicObservation.data.reviewChecks as unknown as unknown[]).push(
+  cyclicObservation.data.reviewChecks
+);
+const reviewedObservation = {
+  ...firstReceipt.observation,
+  data: {
+    ...firstReceipt.observation.data,
+    review: 'accept' as const,
+    verdict: 'accepted' as const,
+    acknowledgedCheckIds: firstReceipt.observation.data.reviewChecks.map(
+      (check) => check.id
+    )
+  }
 };
-const pendingReport = validateProjectDocument(pending);
-const working = presentCreationStatus(
-  pending,
-  pendingReport,
-  reviews,
-  'saved',
-  'available'
-);
-assert.deepEqual(
-  { state: working.state, label: working.label },
-  { state: 'working', label: 'AI is preparing an update' }
-);
-assert.match(working.detail, /temporary preview/);
 assert.equal(
-  presentCreationStatus(
-    pending,
-    pendingReport,
-    reviews,
-    'saved',
-    'failed'
-  ).state,
-  'attention'
+  visualReviewReceiptFrom(
+    compiled,
+    cyclicObservation,
+    reviewedObservation,
+    {
+      actorId: 'test-agent',
+      recordedAt: '2026-08-09T00:00:00.000Z'
+    }
+  ),
+  null,
+  'cyclic review observations fail closed without throwing'
 );
-assert.match(
-  presentExportAvailability(pending, pendingReport, reviews).message,
-  /AI is compiling or revising/
+const forgedCamera = structuredClone(firstReceipt);
+Object.defineProperty(forgedCamera.observation.data, 'camera', {
+  configurable: true,
+  value: 'side'
+});
+assert.equal(
+  isValidVisualReviewReceipt(forgedCamera, compiled),
+  false,
+  'changing the observed camera invalidates the receipt fingerprint'
+);
+const forgedRevision = structuredClone(firstReceipt);
+Object.defineProperty(forgedRevision, 'revision', {
+  configurable: true,
+  value: 'local-forged'
+});
+assert.equal(
+  isValidVisualReviewReceipt(forgedRevision, compiled),
+  false,
+  'a receipt from another source revision is rejected'
+);
+const initialSession = createProjectSessionState(
+  createHistoryState(compiled)
+);
+const forgedSession = projectSessionReducer(initialSession, {
+  type: 'replace',
+  record: createProjectSnapshot(
+    compiled,
+    '2026-08-09T00:00:00.000Z',
+    [],
+    [forgedCamera]
+  )
+});
+assert.deepEqual(
+  forgedSession.visualReviews,
+  [],
+  'session hydration rejects a forged visual review receipt'
+);
+const hydratedSession = projectSessionReducer(initialSession, {
+  type: 'replace',
+  record: createProjectSnapshot(
+    compiled,
+    '2026-08-09T00:00:00.000Z',
+    [],
+    [structuredClone(firstReceipt)]
+  )
+});
+assert.equal(
+  hydratedSession.visualReviews.length,
+  1,
+  'session hydration preserves a valid revision-bound receipt'
+);
+const hydratedInput = structuredClone(firstReceipt);
+const isolatedSession = projectSessionReducer(initialSession, {
+  type: 'replace',
+  record: createProjectSnapshot(
+    compiled,
+    '2026-08-09T00:00:00.000Z',
+    [],
+    [hydratedInput]
+  )
+});
+Object.defineProperty(hydratedInput.observation.data.frameEvidence, 'pixelHash', {
+  configurable: true,
+  value: 'sha256:forged'
+});
+assert.equal(
+  isolatedSession.visualReviews[0]?.observation.data.frameEvidence.pixelHash,
+  FRAME_EVIDENCE_FIXTURE.pixelHash,
+  'session hydration isolates mutable receipt evidence'
+);
+const forgedReviews = reviews.map((receipt) => {
+  const forged = structuredClone(receipt);
+  Object.defineProperty(forged, 'evidenceFingerprint', {
+    configurable: true,
+    value: 'sha256:forged'
+  });
+  return forged;
+});
+assert.equal(
+  presentExportAvailability(compiled, compiledReport, forgedReviews).allowed,
+  false,
+  'delivery gating ignores receipts with invalid evidence fingerprints'
+);
+const obsoleteObservationField = structuredClone(firstReceipt.observation);
+Object.defineProperty(obsoleteObservationField.data, 'previewIssues', {
+  configurable: true,
+  value: []
+});
+assert.equal(
+  isPendingVisualReviewObservation(obsoleteObservationField, compiled.document),
+  false,
+  'the pending observation contract rejects removed no-op fields'
+);
+const sparseObservation = structuredClone(firstReceipt.observation);
+Object.defineProperty(sparseObservation.data, 'cameraMatrix', {
+  configurable: true,
+  value: new Array(16)
+});
+assert.equal(
+  isPendingVisualReviewObservation(sparseObservation, compiled.document),
+  false,
+  'the pending observation contract rejects sparse camera matrices'
+);
+const decoratedObservation = structuredClone(firstReceipt.observation);
+Object.defineProperty(decoratedObservation.data.reviewChecks, 'decorative', {
+  configurable: true,
+  enumerable: true,
+  value: true
+});
+assert.equal(
+  isPendingVisualReviewObservation(decoratedObservation, compiled.document),
+  false,
+  'the pending observation contract rejects decorated check arrays'
+);
+assert.equal(
+  presentExportAvailability(
+    compiled,
+    compiledReport,
+    reviews.slice(0, -1)
+  ).allowed,
+  false,
+  'delivery remains gated until every camera and animation review is accepted'
 );

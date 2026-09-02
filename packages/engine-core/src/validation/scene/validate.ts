@@ -5,7 +5,7 @@ import type {
   IdRegistrar
 } from '../contract';
 import { validateCube } from './cube';
-import { validateMesh } from './mesh';
+import { validatePlane } from './plane';
 
 const validateRoots = (
   document: ProjectDocument,
@@ -147,8 +147,8 @@ const validateNodes = (
 
     if (node.kind === 'cube') {
       validateCube(node, document, path, add);
-    } else if (node.kind === 'mesh') {
-      validateMesh(node, document, path, add, registerId);
+    } else if (node.kind === 'plane') {
+      validatePlane(node, document, path, add);
     } else if (node.kind !== 'bone' && node.kind !== 'locator') {
       add({
         code: 'scene.invalid_kind',

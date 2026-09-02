@@ -16,7 +16,6 @@ export const analyzeAnimationExport = (
   targetId: AnimationExportTarget
 ): readonly AnimationExportIssue[] => {
   switch (targetId) {
-    case 'ashfox.generic':
     case 'minecraft.java_block':
       return [];
     case 'minecraft.bedrock':
@@ -32,7 +31,6 @@ export const analyzeAnimationExportAdaptations = (
   targetId: AnimationExportTarget
 ): readonly AnimationExportAdaptation[] => {
   switch (targetId) {
-    case 'ashfox.generic':
     case 'minecraft.bedrock':
     case 'minecraft.java.geckolib5':
       return [];

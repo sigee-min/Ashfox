@@ -1,7 +1,16 @@
 import * as THREE from 'three';
 
+import type {
+  ProjectDocument,
+  ProjectForwardDirection,
+  ProjectSignedView
+} from '@ashfox/engine-core';
+
 import type { CameraMode } from '../../rendering/cameraPresets';
-import { applyCameraPreset } from '../../rendering/cameraPresets';
+import {
+  applyCameraPreset,
+  applySignedProjectViewPreset
+} from '../../rendering/cameraPresets';
 import type {
   ProjectSceneProjection
 } from '../../rendering/sceneTypes';
@@ -21,10 +30,26 @@ export interface CaptureDimensions {
   height: number;
 }
 
-export interface CaptureSurfaceOptions extends CaptureDimensions {
+interface CaptureSurfaceSharedOptions extends CaptureDimensions {
   environment: ViewportEnvironmentId;
-  cameraMode: CameraMode;
+  forward?: ProjectForwardDirection;
 }
+
+/** Deterministic exports must use the explicit authored forward, never a camera default. */
+export const requiredCaptureForward = (
+  document: ProjectDocument
+): ProjectForwardDirection => document.settings.forward;
+
+export type CaptureSurfaceOptions = Readonly<
+  | CaptureSurfaceSharedOptions & {
+      cameraMode: CameraMode;
+      signedView?: never;
+    }
+  | CaptureSurfaceSharedOptions & {
+      cameraMode?: never;
+      signedView: ProjectSignedView;
+    }
+>;
 
 export interface CaptureSurface extends CaptureDimensions {
   renderer: THREE.WebGLRenderer;
@@ -32,6 +57,9 @@ export interface CaptureSurface extends CaptureDimensions {
   camera: THREE.PerspectiveCamera;
   renderCanvas: HTMLCanvasElement;
   environment: ViewportEnvironment;
+  forward: ProjectForwardDirection;
+  /** The exact signed proof view, when this surface was created for one. */
+  signedView: ProjectSignedView | null;
 }
 
 const createRenderer = (
@@ -72,7 +100,13 @@ export const createCaptureSurface = (
     0.05,
     300
   );
-  applyCameraPreset(camera, options.cameraMode);
+  const forward = options.forward ?? 'north';
+  const signedView = options.signedView ?? null;
+  if (options.signedView === undefined) {
+    applyCameraPreset(camera, options.cameraMode, undefined, forward);
+  } else {
+    applySignedProjectViewPreset(camera, options.signedView, undefined, forward);
+  }
 
   return {
     renderer,
@@ -80,6 +114,8 @@ export const createCaptureSurface = (
     camera,
     renderCanvas,
     environment,
+    forward,
+    signedView,
     width: options.width,
     height: options.height
   };
@@ -92,11 +128,19 @@ export const frameCaptureObject = (
   cameraMode: CameraMode,
   object: THREE.Object3D
 ): void => {
-  const target = applyCameraPreset(
-    surface.camera,
-    cameraMode,
-    object
-  );
+  const target = surface.signedView === null
+    ? applyCameraPreset(
+        surface.camera,
+        cameraMode,
+        object,
+        surface.forward
+      )
+    : applySignedProjectViewPreset(
+        surface.camera,
+        surface.signedView,
+        object,
+        surface.forward
+      );
   const offset = surface.camera.position
     .clone()
     .sub(target)
@@ -105,7 +149,7 @@ export const frameCaptureObject = (
   surface.camera.lookAt(target);
   surface.camera.updateProjectionMatrix();
 
-  // Gallery and process captures must keep every authored edge readable.
+  // Build replays must keep every authored edge readable.
   // Environment fog remains available in the live viewport, but it should
   // not wash out large models in exported marketing artifacts.
   surface.scene.fog = null;
@@ -115,29 +159,6 @@ export const renderCaptureSurface = (
   surface: CaptureSurface
 ): void => {
   surface.renderer.render(surface.scene, surface.camera);
-};
-
-export const canvasToPngBytes = (
-  canvas: HTMLCanvasElement
-): Promise<Uint8Array> =>
-  new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        reject(new Error('PNG capture could not be encoded.'));
-        return;
-      }
-      void blob.arrayBuffer().then(
-        (buffer) => resolve(new Uint8Array(buffer)),
-        reject
-      );
-    }, 'image/png');
-  });
-
-export const captureSurfacePngBytes = async (
-  surface: CaptureSurface
-): Promise<Uint8Array> => {
-  renderCaptureSurface(surface);
-  return canvasToPngBytes(surface.renderCanvas);
 };
 
 export const disposeCaptureSurface = (

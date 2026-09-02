@@ -42,42 +42,32 @@ assert.equal(
   manifest.productExperience.interactionModel,
   'ai-authored-ai-compiled-human-observed'
 );
-assert.equal(manifest.productExperience.canonicalAuthority, 'intent-program-v1');
+assert.equal(manifest.productExperience.canonicalAuthority,
+  'closed-asset-workspace');
 assert.deepEqual(manifest.productExperience.projectFile, {
-  extension: '.ashfox',
-  mediaType: 'text/x-ashfox;charset=utf-8',
+  extension: '.ashfoxworkspace',
+  mediaType: 'application/vnd.ashfox.workspace+json',
   encoding: 'utf-8',
   bom: 'forbidden',
-  authority: 'intent-program-source-only',
-  loadMode: 'parse-compile-atomic',
+  authority: 'closed-workspace-source-only',
+  loadMode: 'read-validate-build-atomic',
   compiledState: 'ephemeral-cache-only'
 });
 assert.equal(manifest.productExperience.agentDecision.compilationAuthority, 'agent');
 assert.equal(manifest.productExperience.agentDecision.confirmationRequired, false);
-assert.equal(
-  manifest.productExperience.humanCapabilities.includes('confirm-intent-program'),
-  false
-);
-assert.ok(
-  manifest.productExperience.forbiddenHumanAuthoring.includes(
-    'confirm-intent-program'
-  )
-);
+assert.equal(manifest.productExperience.agentCapabilities.includes(
+  'apply-workspace-change-set'), true);
 assert.equal(manifest.productExperience.deliveryAuthority, 'human');
-assert.deepEqual(manifest.versioning.intentProgram, {
+assert.deepEqual(manifest.versioning.assetWorkspace, {
   version: 1,
-  compatibility: 'current-version-only',
-  authority: 'packages/engine-core/src/project/program/language.ts',
-  breakingChangeRequiresVersion: true
-});
-assert.deepEqual(manifest.versioning.surfaceSynthesis, {
-  version: 1,
-  authority: 'packages/engine-core/src/textures/appearance/contract.ts',
-  rasterAuthority:
-    'packages/engine-core/src/textures/textureRecipe/raster.ts',
-  receiptAuthority:
-    'packages/engine-core/src/provenance/program/receipt.ts',
-  breakingChangeRequiresVersion: true
+  sourceGrammar: 'ashfox-model 1',
+  container: 'ashfox-workspace:1',
+  compatibility: 'exact-current-contract',
+  authority: 'packages/engine-core/src/project/workspace/contract.ts',
+  compiler: 'packages/engine-core/src/compiler/program/asset/compile.ts',
+  releaseState: 'unreleased',
+  replacementPolicy: 'apply-complete-change-set-atomically',
+  legacyAliases: 'forbidden'
 });
 assert.equal(manifest.quality.maxSourceFileLines, 600);
 assert.equal(manifest.quality.maxCodeFileStemLength, 20);
@@ -95,7 +85,7 @@ assert.deepEqual(manifest.quality.ownerLayout, {
   testOwners: rawManifest.quality.ownerLayout.testOwners
 });
 assert.deepEqual(manifest.architecture.workspaceSourceScopes, ['apps', 'packages']);
-assert.equal(manifest.architecture.forbiddenDependencies.length, 12);
+assert.equal(manifest.architecture.forbiddenDependencies.length, 10);
 
 assert.ok(Object.isFrozen(manifest));
 assert.ok(Object.isFrozen(manifest.productExperience.projectFile));
@@ -104,7 +94,7 @@ assert.ok(Object.isFrozen(manifest.engineering.principles));
 assert.ok(Object.isFrozen(manifest.engineering.principles[0].enforcedBy));
 assert.ok(Object.isFrozen(manifest.workflow.commits.types));
 assert.ok(Object.isFrozen(manifest.versioning.product.synchronizedFiles));
-assert.ok(Object.isFrozen(manifest.versioning.surfaceSynthesis));
+assert.ok(Object.isFrozen(manifest.versioning.assetWorkspace));
 assert.ok(Object.isFrozen(manifest.quality.forbiddenSourcePatterns));
 assert.ok(Object.isFrozen(manifest.quality.ownerLayout));
 assert.ok(Object.isFrozen(manifest.quality.ownerLayout.testOwners));
@@ -316,13 +306,14 @@ expectSchemaInvalid(
   'unknown synchronized version file'
 );
 
-const mutableSynthesisVersion = copyManifest();
-mutableSynthesisVersion.versioning.surfaceSynthesis.version = 2;
+const mutableAssetCompiler = copyManifest();
+mutableAssetCompiler.versioning.assetWorkspace.compiler =
+  'packages/engine-core/src/textures/textureRecipe/raster.ts';
 expectInvalid(
-  mutableSynthesisVersion,
-  'versioning.surfaceSynthesis.version'
+  mutableAssetCompiler,
+  'versioning.assetWorkspace.compiler'
 );
-expectSchemaInvalid(mutableSynthesisVersion, 'unsupported synthesis version');
+expectSchemaInvalid(mutableAssetCompiler, 'unsupported asset compiler');
 
 const deliveryMayMutate = copyManifest();
 deliveryMayMutate.versioning.deliveryTargets.canonicalMutation = true;

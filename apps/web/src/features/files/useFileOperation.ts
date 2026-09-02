@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useEffect,
   useReducer,
   useRef
 } from 'react';
@@ -70,11 +71,19 @@ export const useFileOperation = <TResult>(
     INITIAL_FILE_OPERATION
   );
   const serialRef = useRef(0);
+  const mountedRef = useRef(true);
   const activeRef = useRef<{
     operationId: number;
     controller: AbortController;
     cancelledMessage: string;
   } | null>(null);
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+    const active = activeRef.current;
+    activeRef.current = null;
+    active?.controller.abort();
+  }, []);
 
   const run = useCallback(
     async <T, TCompletion extends TResult = TResult>(
@@ -121,7 +130,9 @@ export const useFileOperation = <TResult>(
         const value = await spec.execute({
           signal: controller.signal,
           reportProgress: (message) => {
-            dispatch({ type: 'progress', operationId, message });
+            if (mountedRef.current) {
+              dispatch({ type: 'progress', operationId, message });
+            }
           }
         });
         if (controller.signal.aborted) {
@@ -131,13 +142,15 @@ export const useFileOperation = <TResult>(
           );
         }
         const completion = spec.complete(value);
-        dispatch({
-          type: 'settle',
-          operationId,
-          phase: completion.phase,
-          message: completion.message,
-          result: completion.result ?? null
-        });
+        if (mountedRef.current) {
+          dispatch({
+            type: 'settle',
+            operationId,
+            phase: completion.phase,
+            message: completion.message,
+            result: completion.result ?? null
+          });
+        }
         if (completion.phase === 'cancelled') {
           return {
             ok: false,
@@ -155,15 +168,17 @@ export const useFileOperation = <TResult>(
         const cancelled =
           controller.signal.aborted ||
           (error instanceof DOMException && error.name === 'AbortError');
-        dispatch({
-          type: 'settle',
-          operationId,
-          phase: cancelled ? 'cancelled' : 'failed',
-          message: cancelled
-            ? spec.cancelledMessage ?? 'Operation cancelled'
-            : errorMessage(error, spec.failureMessage),
-          result: null
-        });
+        if (mountedRef.current) {
+          dispatch({
+            type: 'settle',
+            operationId,
+            phase: cancelled ? 'cancelled' : 'failed',
+            message: cancelled
+              ? spec.cancelledMessage ?? 'Operation cancelled'
+              : errorMessage(error, spec.failureMessage),
+            result: null
+          });
+        }
         return {
           ok: false,
           operationId,

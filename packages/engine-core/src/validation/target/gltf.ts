@@ -1,10 +1,12 @@
 import {
   CUBE_FACE_DIRECTIONS,
+  PLANE_FACE_DIRECTIONS,
   type ProjectDocument
 } from '../../model';
 import type { ExportAdaptedDocument } from '../../export/adapter';
 import { isSceneNodeEffectivelyVisible } from '../../sceneVisibility';
 import type { FindingSink } from '../contract';
+import { exportCompatibilityFor } from '../../export/compatibility';
 
 const MODEL_PATH_PATTERN = /^[A-Za-z0-9_./-]+$/;
 
@@ -12,11 +14,14 @@ const validateProfile = (
   profile: Extract<ExportAdaptedDocument['formatProfile'], { id: 'gltf.2' }>,
   add: FindingSink
 ): void => {
-  if (profile.version !== '2.0') {
+  const currentVersion = exportCompatibilityFor(profile.container)?.profile;
+  const expectedVersion = currentVersion?.id === 'gltf.2'
+    ? currentVersion.version : null;
+  if (expectedVersion === null || profile.version !== expectedVersion) {
     add({
       code: 'format.unsupported_data',
       severity: 'error',
-      message: 'glTF target version must be 2.0.',
+      message: `glTF target version must be ${expectedVersion ?? 'current'}.`,
       path: 'formatProfile.version'
     });
   }
@@ -177,19 +182,30 @@ const validateScene = (
     if (!isSceneNodeEffectivelyVisible(document, nodeId)) continue;
     if (node.kind === 'cube') {
       validateCube(node, nodeId, path, add);
-    } else if (node.kind === 'mesh') {
-      for (const [faceId, face] of Object.entries(node.faces)) {
-        if (
-          face.textureId !== null &&
-          face.vertexIds.some((vertexId) => face.uv[vertexId] === undefined)
-        ) {
+    }
+    if (node.kind === 'plane') {
+      for (const direction of PLANE_FACE_DIRECTIONS) {
+        const face = node.faces[direction];
+        if (!face.enabled) continue;
+        if (face.textureId !== null && !face.uv) add({
+          code: 'format.uv_missing',
+          severity: 'error',
+          message: 'Textured glTF plane faces require explicit UV rectangles.',
+          path: `${path}.faces.${direction}.uv`,
+          entityIds: [nodeId],
+          assetIds: [face.textureId]
+        });
+        if (face.tintIndex !== undefined ||
+          (face.materialInstance !== undefined &&
+            face.materialInstance !== 'cutout')) {
           add({
-            code: 'format.uv_missing',
+            code: 'format.unsupported_data',
             severity: 'error',
-            message: 'Textured glTF mesh faces require a UV for every face vertex.',
-            path: `${path}.faces.${faceId}.uv`,
-            entityIds: [nodeId, faceId],
-            assetIds: [face.textureId]
+            message: face.tintIndex !== undefined
+              ? 'glTF cannot preserve Minecraft plane tint indices.'
+              : 'glTF only maps the canonical cutout material instance to alpha MASK.',
+            path: `${path}.faces.${direction}`,
+            entityIds: [nodeId]
           });
         }
       }

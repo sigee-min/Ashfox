@@ -30,6 +30,7 @@ export const createProjectDocument = ({
     name: requiredText(name, 'Project name'),
     revision: requiredText(revision, 'Project revision'),
     settings: {
+      forward: 'north',
       textureResolution: {
         width: 16,
         height: 16

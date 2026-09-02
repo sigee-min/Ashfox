@@ -1,7 +1,6 @@
 import {
   blockingCanonicalAnimationPreviewIssues,
   type AnimationClip,
-  type AnimationPreviewIssue,
   type ProjectDocument
 } from '@ashfox/engine-core';
 
@@ -22,7 +21,6 @@ const FRAME_PRESENTATION_TIMEOUT_MS = 5_000;
 export interface ResolvedPresentationRequest {
   clip: AnimationClip | null;
   timeSeconds: number;
-  previewIssues: readonly AnimationPreviewIssue[];
 }
 
 export type PresentationRequestResolution =
@@ -79,8 +77,7 @@ export const resolvePresentationRequest = (
       clip,
       timeSeconds: clip
         ? Math.min(request.timeSeconds, clip.durationSeconds)
-        : 0,
-      previewIssues
+        : 0
     }
   };
 };
@@ -93,10 +90,10 @@ export const createPresentationSession = (
 ): PresentationSession => ({
   nonce,
   projectId: document.id,
-  sourceRevision: document.revision,
+  revision: document.revision,
+  lastFrameNonce: null,
   review: request.review,
   purpose: request.purpose,
-  milestone: request.milestone,
   mode: request.mode,
   camera: request.camera,
   clipId: resolved.clip?.id ?? null,
@@ -109,7 +106,6 @@ export const createPresentationSession = (
         )
       : null,
   phase: 'observing',
-  previewIssues: resolved.previewIssues,
   reviewChecks: request.reviewChecks
 });
 

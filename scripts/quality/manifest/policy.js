@@ -1,8 +1,5 @@
 'use strict';
 
-const fs = require('node:fs');
-const path = require('node:path');
-
 const {
   AGENT_CAPABILITIES,
   AGENT_DECISION_EVIDENCE,
@@ -39,7 +36,7 @@ const validateProductExperience = (value) => {
   );
   assertExactValue(
     product.canonicalAuthority,
-    'intent-program-v1',
+    'closed-asset-workspace',
     'productExperience.canonicalAuthority'
   );
   const projectFile = assertClosedOrderedRecord(
@@ -49,12 +46,12 @@ const validateProductExperience = (value) => {
   );
   assertExactValue(
     projectFile.extension,
-    '.ashfox',
+    '.ashfoxworkspace',
     'productExperience.projectFile.extension'
   );
   assertExactValue(
     projectFile.mediaType,
-    'text/x-ashfox;charset=utf-8',
+    'application/vnd.ashfox.workspace+json',
     'productExperience.projectFile.mediaType'
   );
   assertExactValue(
@@ -69,12 +66,12 @@ const validateProductExperience = (value) => {
   );
   assertExactValue(
     projectFile.authority,
-    'intent-program-source-only',
+    'closed-workspace-source-only',
     'productExperience.projectFile.authority'
   );
   assertExactValue(
     projectFile.loadMode,
-    'parse-compile-atomic',
+    'read-validate-build-atomic',
     'productExperience.projectFile.loadMode'
   );
   assertExactValue(
@@ -304,82 +301,58 @@ const validateVersioning = (value, repoRoot) => {
     );
   }
 
-  const intentProgram = assertClosedOrderedRecord(
-    versioning.intentProgram,
-    'versioning.intentProgram',
-    MANIFEST_KEYS.intentProgramVersioning
-  );
-  assertExactValue(intentProgram.version, 1, 'versioning.intentProgram.version');
-  assertExactValue(
-    intentProgram.compatibility,
-    'current-version-only',
-    'versioning.intentProgram.compatibility'
+  const assetWorkspace = assertClosedOrderedRecord(
+    versioning.assetWorkspace,
+    'versioning.assetWorkspace',
+    MANIFEST_KEYS.assetWorkspaceVersioning
   );
   assertExactValue(
-    intentProgram.authority,
-    'packages/engine-core/src/project/program/language.ts',
-    'versioning.intentProgram.authority'
+    assetWorkspace.version,
+    1,
+    'versioning.assetWorkspace.version'
   );
   assertExactValue(
-    intentProgram.breakingChangeRequiresVersion,
-    true,
-    'versioning.intentProgram.breakingChangeRequiresVersion'
+    assetWorkspace.sourceGrammar,
+    'ashfox-model 1',
+    'versioning.assetWorkspace.sourceGrammar'
   );
-  assertExistingFile(
-    repoRoot,
-    intentProgram.authority,
-    'versioning.intentProgram.authority'
+  assertExactValue(
+    assetWorkspace.container,
+    'ashfox-workspace:1',
+    'versioning.assetWorkspace.container'
   );
-
-  const surfaceSynthesis = assertClosedOrderedRecord(
-    versioning.surfaceSynthesis,
-    'versioning.surfaceSynthesis',
-    MANIFEST_KEYS.surfaceSynthesisVersioning
+  assertExactValue(
+    assetWorkspace.compatibility,
+    'exact-current-contract',
+    'versioning.assetWorkspace.compatibility'
   );
-  const expectedSynthesis = {
-    version: 1,
-    authority: 'packages/engine-core/src/textures/appearance/contract.ts',
-    rasterAuthority:
-      'packages/engine-core/src/textures/textureRecipe/raster.ts',
-    receiptAuthority:
-      'packages/engine-core/src/provenance/program/receipt.ts',
-    breakingChangeRequiresVersion: true
-  };
-  for (const [key, expectedValue] of Object.entries(expectedSynthesis)) {
-    assertExactValue(
-      surfaceSynthesis[key],
-      expectedValue,
-      `versioning.surfaceSynthesis.${key}`
-    );
-  }
-  for (const key of ['authority', 'rasterAuthority', 'receiptAuthority']) {
+  assertExactValue(
+    assetWorkspace.authority,
+    'packages/engine-core/src/project/workspace/contract.ts',
+    'versioning.assetWorkspace.authority'
+  );
+  assertExactValue(
+    assetWorkspace.compiler,
+    'packages/engine-core/src/compiler/program/asset/compile.ts',
+    'versioning.assetWorkspace.compiler'
+  );
+  assertExactValue(
+    assetWorkspace.releaseState,
+    'unreleased',
+    'versioning.assetWorkspace.releaseState'
+  );
+  assertExactValue(
+    assetWorkspace.replacementPolicy,
+    'apply-complete-change-set-atomically',
+    'versioning.assetWorkspace.replacementPolicy'
+  );
+  assertExactValue(assetWorkspace.legacyAliases, 'forbidden',
+    'versioning.assetWorkspace.legacyAliases');
+  for (const key of ['authority', 'compiler']) {
     assertExistingFile(
       repoRoot,
-      surfaceSynthesis[key],
-      `versioning.surfaceSynthesis.${key}`
-    );
-  }
-  const synthesisAuthority = fs.readFileSync(
-    path.join(repoRoot, surfaceSynthesis.authority),
-    'utf8'
-  );
-  if (!new RegExp(
-    `SURFACE_SYNTHESIS_VERSION\\s*=\\s*${surfaceSynthesis.version}\\s+as const`
-  ).test(synthesisAuthority)) {
-    fail(
-      'versioning.surfaceSynthesis.version',
-      'must match SURFACE_SYNTHESIS_VERSION in its authority'
-    );
-  }
-  const receiptAuthority = fs.readFileSync(
-    path.join(repoRoot, surfaceSynthesis.receiptAuthority),
-    'utf8'
-  );
-  if (!receiptAuthority.includes('intentProgramRasterProjection') ||
-      !receiptAuthority.includes('rgbaDigest')) {
-    fail(
-      'versioning.surfaceSynthesis.receiptAuthority',
-      'must bind the canonical RGBA digest into output provenance'
+      assetWorkspace[key],
+      `versioning.assetWorkspace.${key}`
     );
   }
 

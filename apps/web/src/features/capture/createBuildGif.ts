@@ -1,7 +1,4 @@
-import type {
-  CommandReceipt,
-  ProjectDocument
-} from '@ashfox/engine-core';
+import type { AssetProject } from '@ashfox/engine-core';
 
 import {
   createArtifactBinding,
@@ -18,21 +15,20 @@ import type { GifCaptureContext } from './gifCaptureContext';
 import type { GifCaptureFile } from './gifCaptureFile';
 
 export interface BuildGifExportOptions {
-  readonly documents: readonly ProjectDocument[];
-  readonly receipts: readonly CommandReceipt[];
   readonly environment: ViewportEnvironmentId;
   readonly cameraMode: CameraMode;
 }
 
 export const createBuildGif = async (
+  project: AssetProject,
   assets: ProjectAssets,
   options: BuildGifExportOptions,
   context: GifCaptureContext
 ): Promise<GifCaptureFile> => {
-  const document = options.documents.at(-1);
-  if (!document) throw new Error('Build process is unavailable.');
+  const document = project.document;
   const captureOptions: BuildGifCaptureOptions = {
     ...options,
+    document,
     assets,
     signal: context.signal,
     onProgress: context.onProgress
@@ -40,9 +36,9 @@ export const createBuildGif = async (
   const capture = await renderBuildGif(captureOptions);
   return {
     ...capture,
-    ...await createArtifactBinding(document, capture.bytes),
+    ...await createArtifactBinding(project, capture.bytes, 'capture'),
     kind: 'build',
-    name: `${safeArtifactName(document.name)}-build-process.gif`,
+    name: `${safeArtifactName(document.name)}-build-replay.gif`,
     contentType: 'image/gif'
   };
 };

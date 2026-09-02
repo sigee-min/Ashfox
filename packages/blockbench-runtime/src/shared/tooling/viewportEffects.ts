@@ -29,7 +29,6 @@ export const TOOL_VIEWPORT_EFFECTS: Record<ToolName, ViewportEffect> = {
   delete_animation_clip: 'animation',
   set_frame_pose: 'animation',
   set_trigger_keyframes: 'animation',
-  export: 'none',
   render_preview: 'none',
   validate: 'none'
 };

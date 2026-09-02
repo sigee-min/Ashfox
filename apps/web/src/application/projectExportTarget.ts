@@ -1,8 +1,8 @@
 import {
   exportCompatibilityOptions,
+  exportTargetDescriptorForPreset,
   type ExportAdapterInput,
   type ExportPreset,
-  type MinecraftGameVersion,
   type ProjectDocument
 } from '@ashfox/engine-core';
 
@@ -12,19 +12,12 @@ export interface ExportAdapterDraft {
   target: VisibleExportPreset;
   namespace: string;
   modelPath: string;
-  gameVersion: MinecraftGameVersion | null;
 }
 
 export interface ProjectExportTargetOption {
   id: VisibleExportPreset;
   label: string;
   detail: string;
-}
-
-export interface ProjectGameVersionOption {
-  value: MinecraftGameVersion;
-  label: string;
-  isDefaultVersion: boolean;
 }
 
 const TARGET_DETAILS: Readonly<Record<VisibleExportPreset, string>> = {
@@ -35,47 +28,19 @@ const TARGET_DETAILS: Readonly<Record<VisibleExportPreset, string>> = {
   geckolib5: 'Java animated asset'
 };
 
-const targetOptions = new Map<
-  VisibleExportPreset,
-  ProjectExportTargetOption
->();
-for (const option of exportCompatibilityOptions()) {
-  if (targetOptions.has(option.target)) continue;
-  targetOptions.set(option.target, {
+export const PROJECT_EXPORT_TARGETS = Object.freeze(
+  exportCompatibilityOptions().map((option) => ({
     id: option.target,
     label: option.label,
     detail: TARGET_DETAILS[option.target]
-  });
-}
-
-export const PROJECT_EXPORT_TARGETS = Object.freeze(
-  [...targetOptions.values()]
+  }))
 ) as readonly ProjectExportTargetOption[];
 
-export const projectGameVersionOptionsFor = (
+export const projectTargetVersionFor = (
   target: VisibleExportPreset | null
-): readonly ProjectGameVersionOption[] => {
-  if (target === null) return [];
-  const options: ProjectGameVersionOption[] = [];
-  for (const option of exportCompatibilityOptions(target)) {
-    if (option.gameVersion === null) continue;
-    options.push({
-      value: option.gameVersion,
-      label: option.gameVersionLabel ?? option.gameVersion,
-      isDefaultVersion: option.isDefaultVersion
-    });
-  }
-  return options;
-};
-
-export const defaultProjectGameVersionFor = (
-  target: VisibleExportPreset | null
-): MinecraftGameVersion | null => {
-  const options = projectGameVersionOptionsFor(target);
-  return (
-    options.find((option) => option.isDefaultVersion) ?? options[0]
-  )?.value ?? null;
-};
+): string | null => target === null
+  ? null
+  : exportTargetDescriptorForPreset(target).target.version;
 
 export const projectResourceToken = (value: string): string =>
   value
@@ -88,23 +53,27 @@ export const defaultExportAdapterFor = (
   document: ProjectDocument
 ): ExportAdapterDraft => ({
   target: 'glb',
-  gameVersion: null,
   namespace: 'ashfox',
   modelPath: projectResourceToken(document.name)
 });
 
 export const exportAdapterInputFor = (
   draft: ExportAdapterDraft
-): ExportAdapterInput => ({
-  target: draft.target,
-  ...(draft.gameVersion === null
-    ? {}
-    : { gameVersion: draft.gameVersion }),
-  ...(isMinecraftExportTarget(draft.target)
-    ? { namespace: draft.namespace.trim() }
-    : {}),
-  modelPath: draft.modelPath.trim()
-});
+): ExportAdapterInput => {
+  switch (draft.target) {
+    case 'bedrock':
+    case 'geckolib5':
+    case 'java_block':
+      return {
+        target: draft.target,
+        namespace: draft.namespace,
+        modelPath: draft.modelPath
+      };
+    case 'glb':
+    case 'gltf':
+      return { target: draft.target, modelPath: draft.modelPath };
+  }
+};
 
 export const projectExportTargetLabel = (
   target: VisibleExportPreset
@@ -114,5 +83,5 @@ export const projectExportTargetLabel = (
 
 export const isMinecraftExportTarget = (
   target: VisibleExportPreset | null
-): boolean =>
-  projectGameVersionOptionsFor(target).length > 0;
+): boolean => target !== null &&
+  exportTargetDescriptorForPreset(target).namespaceRequired;

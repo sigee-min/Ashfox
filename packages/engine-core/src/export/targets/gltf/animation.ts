@@ -4,6 +4,8 @@ import type {
   TransformChannel,
   Vec3
 } from '../../../model';
+import type { ExportAdaptedDocument } from '../../adapter';
+import { canonicalQuaternionFromEuler } from '../../../model/transform';
 import {
   sampleComposedNumericTransformChannel,
   type NumericAnimationVec3
@@ -11,6 +13,7 @@ import {
 import {
   assertProjectAnimationsExportable
 } from '../../../animation/capability';
+import { assertValidatedExportTargetDocument } from '../../pipeline/validate';
 import { GltfBinaryWriter } from './binary';
 import { optimizeGltfAnimationSamples } from './samples';
 import type { GltfAnimation } from './contract';
@@ -32,23 +35,9 @@ export interface GltfAnimationCompileOptions {
 
 const quaternionFromEuler = (
   rotation: Vec3
-): [number, number, number, number] => {
-  const x = (rotation[0] * Math.PI) / 360;
-  const y = (rotation[1] * Math.PI) / 360;
-  const z = (rotation[2] * Math.PI) / 360;
-  const sx = Math.sin(x);
-  const cx = Math.cos(x);
-  const sy = Math.sin(y);
-  const cy = Math.cos(y);
-  const sz = Math.sin(z);
-  const cz = Math.cos(z);
-  return [
-    sx * cy * cz + cx * sy * sz,
-    cx * sy * cz - sx * cy * sz,
-    cx * cy * sz + sx * sy * cz,
-    cx * cy * cz - sx * sy * sz
-  ];
-};
+): [number, number, number, number] => [...canonicalQuaternionFromEuler(rotation)] as [
+  number, number, number, number
+];
 
 const compileValues = (
   channel: TransformChannel,
@@ -193,6 +182,8 @@ export const compileGltfAnimations = (
   document: ProjectDocument,
   options: GltfAnimationCompileOptions
 ): GltfAnimation[] => {
+  assertValidatedExportTargetDocument(document as ExportAdaptedDocument,
+    ['glb', 'gltf']);
   assertProjectAnimationsExportable(document, 'gltf.2');
   const animations: GltfAnimation[] = [];
   const timeAccessorByValues = new Map<string, number>();
@@ -239,7 +230,9 @@ export const compileGltfAnimations = (
     )) {
       if (channel.keys.length === 0) continue;
       const node = options.nodeIndexById.get(channel.targetNodeId);
-      if (node === undefined) continue;
+      if (node === undefined) throw new Error(
+        `Validated glTF animation target "${channel.targetNodeId}" is missing from the emitted scene.`
+      );
       const sampled = sampleChannel(channel, clip, options);
       const compiled = compileValues(channel, sampled.values);
       const optimized = optimizeGltfAnimationSamples(channel, {

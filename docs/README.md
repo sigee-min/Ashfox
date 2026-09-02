@@ -1,73 +1,41 @@
-# ashfox Docs
+# Ashfox Docs
 
-ashfox has one authored asset authority: an Agent-authored and Agent-compiled
-Intent Program. It is a
-small, coordinate-free description of the asset’s classification, orientation,
-support contacts, topology, attachment anchors, morphology, focal stage, idle
-mode, supported surfaces, and appearance. The compiler derives the canonical
-model from that source.
+Ashfox persists one asset authority: a closed workspace of exact
+`ashfox-model 1` source modules, package manifests, and a content-addressed
+lock. Opening, changing, inspecting, capturing, and exporting rebuild
+immutable entry products from that workspace. There is no editable generated
+model.
 
-The browser workbench is local-first: create a named project, prompt the Agent,
-observe its temporary candidate and compiled result, then download, capture, or
-select an export adapter for the receiving runtime.
-
-## Start in three steps
+## Start
 
 1. Follow [Get started](guides/ai-agent-quick-start.md).
-2. Describe the asset in ordinary language.
-3. Watch the Agent build and review it, then export or capture the result.
+2. Describe the asset and its visible relationships in ordinary language.
+3. Review native and enlarged viewport captures.
+4. Export only after mechanical verification and independent visual review.
 
-The Agent authors, validates, stages, decides, compiles, and visually reviews.
-It never directly patches compiler-owned model data. A changed requirement
-means a new prompt, revised program, and atomic compilation.
+## Guides
 
-## What you can make
+- [Create and refine](guides/authoring-and-review.md)
+- [Save and export](guides/save-and-export.md)
+- [Choose an export format](guides/choose-a-format.md)
+- [Troubleshooting](guides/troubleshooting.md)
 
-- creatures, figures, props, vehicles, and other assets from coordinate-free
-  structural modules;
-- compact essential assets and detailed hero assets;
-- standing, base-supported, wheel-grounded, and contact-free neutral assets;
-- bilateral or explicitly asymmetric forms, with compiler-enforced reflected
-  surfaces and exactly one hero focal stage where required;
-- generated pixel surfaces, canonical hierarchy, and source-declared idle
-  motion;
-- Java block, GeckoLib 5, Bedrock, GLB, and glTF delivery artifacts.
+## Architecture
 
-## Choose a guide
+- [Codebase map](architecture/codebase.md) defines authority and dependency
+  direction.
+- [Asset codebase](architecture/asset-codebase.md) defines packages, nominal
+  reuse, compiler-private typed forms, entry builds, and deliberate exclusions.
+- [Asset language](architecture/asset-language.md) defines modules, contracts,
+  components, surfaces, motions, and explicit assembly.
+- [Review and delivery](architecture/review.md) separates rendered judgment and
+  target delivery from source authority.
 
-- [Get started](guides/ai-agent-quick-start.md) — create and compile a first
-  Intent Program.
-- [Create and refine](guides/authoring-and-review.md) — write source that
-  expresses the intended result and review it safely.
-- [Export a finished asset](guides/save-and-export.md) — deliver an artifact
-  without changing the project.
-- [Choose an export format](guides/choose-a-format.md) — select an adapter at
-  delivery time.
-- [Troubleshooting](guides/troubleshooting.md) — resolve proposal,
-  compilation, review, export, and download problems.
+These names identify one exact-current contract, not selectable runtime
+pipelines or compatibility aliases. Only the current explicit source reader
+is executable.
 
-## Develop or integrate
+## Local data
 
-- [Development manifest](https://github.com/sigee-min/ashfox/blob/main/development-manifest.json)
-  is the versioned authority for repository product, engineering, workflow,
-  versioning, quality, and architecture rules.
-- [Repository contribution rules](https://github.com/sigee-min/ashfox/blob/main/CONTRIBUTING.md?plain=1)
-  explain how contributors consume that manifest.
-- [Codebase map](architecture/codebase.md) defines ownership, dependency
-  direction, and structural gates.
-- [Intent Program 1](architecture/intent-program-v1.md) defines the four source
-  authorities, orthogonal vocabulary, typed statement schemas, and compiler
-  stage boundaries.
-- [Surface Appearance V1](architecture/surface-appearance-v1.md) separates the
-  implemented base-dominant material field, semantic source markings, and
-  generated raw-raster provenance contract.
-- [Web Studio integration notes](https://github.com/sigee-min/ashfox/blob/main/apps/web/README.md?plain=1#agent-manifest-consumers)
-  explain how a host consumes the runtime agent manifest. The published
-  runtime manifest governs Studio asset creation and is distinct from the
-  repository development manifest.
-
-## Your files stay local
-
-ashfox stores the working project in your browser. It does not require a
-database or project upload. An artifact leaves the browser only when you
-export it.
+The Workbench stores the closed workspace locally in the browser. Artifacts
+leave it only when explicitly downloaded or exported.

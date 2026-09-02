@@ -17,6 +17,7 @@ declare module 'gifenc' {
     ) => void;
     finish: () => void;
     bytes: () => Uint8Array;
+    bytesView: () => Uint8Array;
   }
 
   export const GIFEncoder: () => GifEncoder;

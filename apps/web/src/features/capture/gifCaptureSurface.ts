@@ -4,6 +4,8 @@ import {
   quantize
 } from 'gifenc';
 
+import type { ProjectForwardDirection } from '@ashfox/engine-core';
+
 import type { CameraMode } from '../../rendering/cameraPresets';
 import type { ViewportEnvironmentId } from '../../rendering/viewportEnvironment';
 import {
@@ -13,7 +15,7 @@ import {
   type CaptureDimensions,
   type CaptureSurface
 } from './captureSurface';
-import { GIF_CAPTURE_FPS } from './gifFramePlan';
+import { BUILD_CAPTURE_FPS } from './buildCaptureTimeline';
 
 export const GIF_CAPTURE_WIDTH = 640;
 export const GIF_CAPTURE_HEIGHT = 360;
@@ -37,7 +39,8 @@ export type GifFrameOverlay = (
 
 export const createGifCaptureSurface = (
   environmentId: ViewportEnvironmentId,
-  cameraMode: CameraMode
+  cameraMode: CameraMode,
+  forward?: ProjectForwardDirection
 ): GifCaptureSurface => {
   const outputCanvas = window.document.createElement('canvas');
   outputCanvas.width = GIF_CAPTURE_WIDTH;
@@ -54,7 +57,8 @@ export const createGifCaptureSurface = (
       width: GIF_CAPTURE_WIDTH,
       height: GIF_CAPTURE_HEIGHT,
       environment: environmentId,
-      cameraMode
+      cameraMode,
+      forward
     }),
     outputContext,
     encoder: GIFEncoder(),
@@ -99,7 +103,7 @@ export const encodeGifSurfaceFrame = (
     GIF_CAPTURE_HEIGHT,
     {
       palette,
-      delay: 1000 / GIF_CAPTURE_FPS,
+      delay: 1000 / BUILD_CAPTURE_FPS,
       repeat: surface.frameCount === 0 ? 0 : undefined
     }
   );
@@ -112,6 +116,10 @@ export const finishGifCaptureSurface = (
   surface.encoder.finish();
   return surface.encoder.bytes();
 };
+
+export const gifCaptureByteLength = (
+  surface: GifCaptureSurface
+): number => surface.encoder.bytesView().byteLength;
 
 export const disposeGifCaptureSurface = (
   surface: GifCaptureSurface

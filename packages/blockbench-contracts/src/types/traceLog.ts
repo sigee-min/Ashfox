@@ -1,8 +1,7 @@
 import {
-  INTERNAL_CONTRACT_VERSIONS,
+  TRACE_LOG_SCHEMA_VERSION as CURRENT_TRACE_LOG_SCHEMA_VERSION,
   isCanonicalIsoDate,
   isClosedContractRecord,
-  isCurrentInternalContractVersion,
   isFiniteJsonValue,
   isNonEmptyContractText,
   isUniqueContractTextArray
@@ -29,7 +28,7 @@ import {
 export type TraceLogRoute = 'tool';
 
 export const TRACE_LOG_SCHEMA_VERSION =
-  INTERNAL_CONTRACT_VERSIONS.traceLog;
+  CURRENT_TRACE_LOG_SCHEMA_VERSION;
 
 // The deepest finite-JSON leaf is a trigger value nested under a changed
 // animation in ProjectDiff (record -> diff -> ... -> key -> value).
@@ -211,7 +210,7 @@ export const isTraceLogHeader = (
     'notes'
   ]) &&
   value.kind === 'header' &&
-  isCurrentInternalContractVersion('traceLog', value.schemaVersion) &&
+  value.schemaVersion === TRACE_LOG_SCHEMA_VERSION &&
   isCanonicalIsoDate(value.createdAt) &&
   isOptional(value, 'pluginVersion', isNonEmptyContractText) &&
   isOptional(value, 'blockbenchVersion', isNonEmptyContractText) &&

@@ -1,4 +1,4 @@
-import type { ProjectDocument } from '../../model';
+import type { AssetProject } from '../../project/asset';
 import type { ExportAdapterInput } from '../adapter';
 import {
   evaluateProductionReadiness,
@@ -25,26 +25,26 @@ export class ProductionExportError extends Error {
   }
 }
 
-const assertProductionReady = (document: ProjectDocument): void => {
-  const report = evaluateProductionReadiness(document);
+const assertProductionReady = (project: AssetProject): void => {
+  const report = evaluateProductionReadiness(project.document);
   if (!report.mechanicallyReady) {
     throw new ProductionExportError(report);
   }
 };
 
 export const exportProductionProject = (
-  document: ProjectDocument,
+  project: AssetProject,
   adapter: ExportAdapterInput
 ): ExportBundle => {
-  assertProductionReady(document);
-  return compileProjectBundle(document, adapter);
+  assertProductionReady(project);
+  return compileProjectBundle(project, adapter);
 };
 
 export const exportProductionProjectResolved = async (
-  document: ProjectDocument,
+  project: AssetProject,
   adapter: ExportAdapterInput,
   options: GltfResolvedExportOptions
 ): Promise<ExportBundle> => {
-  assertProductionReady(document);
-  return compileProjectBundleResolved(document, adapter, options);
+  assertProductionReady(project);
+  return compileProjectBundleResolved(project, adapter, options);
 };

@@ -12,11 +12,17 @@ export const validateSettings = (
   const record = closedRecord(
     value,
     'settings',
-    ['textureResolution', 'surfacePixelDensity', 'coordinateSystem'],
+    ['forward', 'textureResolution', 'surfacePixelDensity', 'coordinateSystem'],
     [],
     context
   );
   if (!record) return;
+  expectLiteral(
+    record.forward,
+    ['north', 'south', 'east', 'west'],
+    'settings.forward',
+    context
+  );
   const resolution = closedRecord(
     record.textureResolution,
     'settings.textureResolution',
@@ -58,7 +64,7 @@ export const validateSettings = (
   );
   expectLiteral(
     coordinates.unit,
-    ['pixel', 'block', 'meter'],
+    ['pixel'],
     'settings.coordinateSystem.unit',
     context
   );

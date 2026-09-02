@@ -4,19 +4,17 @@ import type {
 } from '../../validation/contract';
 import {
   exportCompatibilityFor,
-  exportCompatibilityOptions,
-  type ExportPreset,
-  type MinecraftGameVersion
+  type ExportPreset
 } from '../compatibility';
 
 const supportedGameVersionText = (
   target: ExportPreset
-): string =>
-  exportCompatibilityOptions(target)
-    .flatMap(({ gameVersion }) =>
-      gameVersion === null ? [] : [gameVersion]
-    )
-    .join(' | ');
+): string => {
+  const entry = exportCompatibilityFor(target);
+  return entry === null || entry.profile.id === 'gltf.2'
+    ? ''
+    : entry.profile.minecraftVersion;
+};
 
 export const validateExportCompatibilityProfile = (
   document: ExportAdaptedDocument
@@ -35,16 +33,31 @@ export const validateExportCompatibilityProfile = (
         `Game version "${String(value)}" is not supported by ${target}.`,
       path,
       fix:
-        `Use one curated version: ${supportedGameVersionText(target)}.`
+        `Use the current version: ${supportedGameVersionText(target)}.`
     });
   };
 
+  if (profile.id === 'gltf.2') {
+    const target = profile.container === 'glb' ? 'glb' : 'gltf';
+    const compatibility = exportCompatibilityFor(target);
+    for (const [path, actual, expected] of [
+      ['formatProfile.version', profile.version,
+        compatibility?.profile.version],
+      ['formatProfile.container', profile.container,
+        compatibility?.profile.container],
+      ['formatProfile.imageStorage', profile.imageStorage,
+        compatibility?.profile.imageStorage]
+    ] as const) if (actual !== expected) findings.push({
+      code: 'format.unsupported_data', severity: 'error', path,
+      message: `${target} requires the current canonical ${path.split('.').at(-1)} value ${String(expected)}.`
+    });
+    return findings;
+  }
+
   if (profile.id === 'minecraft.java_block') {
-    const compatibility = exportCompatibilityFor(
-      'java_block',
-      profile.minecraftVersion as MinecraftGameVersion
-    );
-    if (!compatibility) {
+    const compatibility = exportCompatibilityFor('java_block');
+    if (!compatibility || profile.minecraftVersion !==
+      compatibility.profile.minecraftVersion) {
       unsupportedGameVersion(
         'java_block',
         profile.minecraftVersion,
@@ -65,15 +78,18 @@ export const validateExportCompatibilityProfile = (
         path: 'formatProfile.resourcePackFormat'
       });
     }
+    if (profile.modelKind !== compatibility.profile.modelKind) findings.push({
+      code: 'format.unsupported_data', severity: 'error',
+      message: `Java ${profile.minecraftVersion} requires the current canonical model kind ${compatibility.profile.modelKind}.`,
+      path: 'formatProfile.modelKind'
+    });
     return findings;
   }
 
   if (profile.id === 'minecraft.bedrock') {
-    const compatibility = exportCompatibilityFor(
-      'bedrock',
-      profile.minecraftVersion as MinecraftGameVersion
-    );
-    if (!compatibility) {
+    const compatibility = exportCompatibilityFor('bedrock');
+    if (!compatibility || profile.minecraftVersion !==
+      compatibility.profile.minecraftVersion) {
       unsupportedGameVersion(
         'bedrock',
         profile.minecraftVersion,
@@ -91,6 +107,11 @@ export const validateExportCompatibilityProfile = (
         'formatProfile.animationFormatVersion',
         profile.animationFormatVersion,
         compatibility.profile.animationFormatVersion
+      ],
+      [
+        'formatProfile.geometryKind',
+        profile.geometryKind,
+        compatibility.profile.geometryKind
       ]
     ] as const) {
       if (actual === expected) continue;
@@ -109,11 +130,9 @@ export const validateExportCompatibilityProfile = (
     return findings;
   }
 
-  const compatibility = exportCompatibilityFor(
-    'geckolib5',
-    profile.minecraftVersion as MinecraftGameVersion
-  );
-  if (!compatibility) {
+  const compatibility = exportCompatibilityFor('geckolib5');
+  if (!compatibility || profile.minecraftVersion !==
+    compatibility.profile.minecraftVersion) {
     unsupportedGameVersion(
       'geckolib5',
       profile.minecraftVersion,
@@ -123,11 +142,6 @@ export const validateExportCompatibilityProfile = (
   }
   for (const [path, actual, expected] of [
     [
-      'formatProfile.version',
-      profile.version,
-      compatibility.profile.version
-    ],
-    [
       'formatProfile.geometryFormatVersion',
       profile.geometryFormatVersion,
       compatibility.profile.geometryFormatVersion
@@ -136,6 +150,11 @@ export const validateExportCompatibilityProfile = (
       'formatProfile.animationFormatVersion',
       profile.animationFormatVersion,
       compatibility.profile.animationFormatVersion
+    ],
+    [
+      'formatProfile.assetKind',
+      profile.assetKind,
+      compatibility.profile.assetKind
     ]
   ] as const) {
     if (actual === expected) continue;

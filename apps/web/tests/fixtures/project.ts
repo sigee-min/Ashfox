@@ -1,79 +1,8 @@
-import {
-  createProjectFromInput,
-  executeAgentCommandBatch,
-  intentProgramReviewDigest,
-  type ProjectDocument
-} from '@ashfox/engine-core';
+import type { AssetProject } from '@ashfox/engine-core';
+import { createBlankWorkbenchProject } from '../../src/features/workbench/newProject';
 
-export const WORKBENCH_PROJECT_ID = 'project-workbench-unit-fixture';
+export const WORKBENCH_PROJECT_ID = 'project-local-workbench';
 
-const createUnitFixture = (): ProjectDocument => {
-  const empty = createProjectFromInput({
-    id: WORKBENCH_PROJECT_ID,
-    name: 'Workbench unit fixture',
-    createdAt: '2026-07-29T00:00:00.000Z'
-  }, 'local-0001');
-  const source = [
-    'metadata {',
-    '  name "Workbench unit fixture"',
-    '  track essential',
-    '  domain constructed',
-    '}',
-    'model {',
-    '  orientation forward north',
-    '  symmetry bilateral',
-    '  support base contacts body',
-    '  body {',
-    '    core body',
-    '  }',
-    '  face {',
-    '    none',
-    '  }',
-    '}',
-    'animation {',
-    '  idle still',
-    '}',
-    'appearance {',
-    '  palette ocean',
-    '  texture brushed scale medium density sparse contrast subtle',
-    '  seed auto',
-    '}'
-  ].join('\n');
-  const proposed = executeAgentCommandBatch(empty, {
-    batchId: 'workbench-unit-fixture-proposal',
-    baseProjectId: empty.id,
-    baseRevision: empty.revision,
-    operations: [{
-      name: 'intent.program.propose',
-      payload: { source }
-    }]
-  });
-  if (!proposed.ok || !proposed.document.intentProgramProposal) {
-    throw new Error('Could not propose the workbench unit Intent Program.');
-  }
-  const result = executeAgentCommandBatch(proposed.document, {
-    batchId: 'workbench-unit-fixture-compile',
-    baseProjectId: proposed.document.id,
-    baseRevision: proposed.document.revision,
-    operations: [{
-      name: 'intent.program.compile',
-      payload: {
-        sourceDigest: intentProgramReviewDigest(
-          proposed.document.intentProgramProposal
-        )
-      }
-    }]
-  });
-  if (!result.ok) {
-    throw new Error(
-      `Could not compile the workbench unit fixture: ${result.error.message}`
-    );
-  }
-  return result.document;
-};
-
-const UNIT_FIXTURE = createUnitFixture();
-
-/** Returns an isolated canonical project fixture for Workbench tests. */
-export const createWorkbenchProject = (): ProjectDocument =>
-  structuredClone(UNIT_FIXTURE);
+/** Returns an isolated compiler-created AssetProject for Workbench tests. */
+export const createWorkbenchProject = (): AssetProject =>
+  createBlankWorkbenchProject('2026-07-29T00:00:00.000Z');

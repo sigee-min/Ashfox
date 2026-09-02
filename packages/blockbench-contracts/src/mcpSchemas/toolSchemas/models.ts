@@ -197,34 +197,6 @@ export const modelToolSchemas: Record<string, JsonSchema> = {
       ...metaProps
     }
   },
-  export: {
-    type: 'object',
-    required: ['format', 'destPath'],
-    additionalProperties: false,
-    properties: {
-      format: {
-        enum: [
-          'java_block_item_json',
-          'gecko_geo_anim',
-          'animated_java',
-          'generic_model_json',
-          'gltf',
-          'native_codec'
-        ]
-      },
-      codecId: { type: 'string' },
-      destPath: { type: 'string' },
-      options: {
-        type: 'object',
-        additionalProperties: false,
-        properties: {
-          fallback: { type: 'string', enum: ['strict', 'best_effort'] },
-          includeDiagnostics: { type: 'boolean' }
-        }
-      },
-      ...stateProps
-    }
-  },
   validate: {
     type: 'object',
     additionalProperties: false,
@@ -233,4 +205,3 @@ export const modelToolSchemas: Record<string, JsonSchema> = {
     }
   }
 };
-

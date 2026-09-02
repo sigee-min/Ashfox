@@ -32,7 +32,6 @@ export const TOOL_NAMES = [
   'delete_animation_clip',
   'set_frame_pose',
   'set_trigger_keyframes',
-  'export',
   'render_preview',
   'validate'
 ] as const;

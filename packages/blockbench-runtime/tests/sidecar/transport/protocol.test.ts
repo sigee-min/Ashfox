@@ -11,7 +11,10 @@ import {
   SIDECAR_IPC_MAX_FRAME_BYTES,
   encodeMessage
 } from '../../../src/transport/codec';
-import type { SidecarMessage } from '../../../src/transport/protocol';
+import {
+  normalizeSidecarMessage,
+  type SidecarMessage
+} from '../../../src/transport/protocol';
 import { noopLog, registerAsync, unsafePayload } from '../../helpers';
 
 const createReadable = () => {
@@ -52,6 +55,14 @@ const createWritable = () => {
 
 const readMessage = (line: string): Record<string, unknown> =>
   JSON.parse(line) as Record<string, unknown>;
+
+assert.equal(normalizeSidecarMessage({
+  type: 'request',
+  id: 'retired-export',
+  ts: 0,
+  tool: 'export',
+  payload: { format: 'gltf', destPath: 'retired.glb' }
+}), null);
 
 registerAsync((async () => {
   const input = createReadable();

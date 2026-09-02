@@ -26,7 +26,7 @@ const hasIdentityRotationAndScale = (cube: CubeNode): boolean =>
     (value) => Math.abs(value - 1) <= EPSILON
   );
 
-const isOpaqueGeneratedCube = (
+const isOpaqueTexturedCube = (
   document: ProjectDocument,
   cube: CubeNode
 ): boolean =>
@@ -36,14 +36,14 @@ const isOpaqueGeneratedCube = (
       face.textureId === null
         ? undefined
         : document.textures[face.textureId];
-    return (
-      face.enabled &&
-      texture?.atlasMode === 'generate' &&
-      texture.renderMode === 'default'
-    );
+    return face.enabled && texture?.renderMode === 'default' &&
+      texture.raster !== undefined &&
+      texture.raster.backgroundAlpha === 255 &&
+      texture.raster.canvasDetails.every((detail) => detail.alpha === 255);
   });
 
 const renderedBounds = (cube: CubeNode): CubeBounds | null => {
+  if (cube.geometryMode !== 'axis-box') return null;
   const minimum = cube.bounds.from.map(
     (value, index) =>
       value + cube.transform.position[index] - cube.inflate
@@ -114,7 +114,7 @@ export const findFullyOccludedCubes = (
           if (
             candidate.cube.id === inner.cube.id ||
             candidate.cube.parentId !== inner.cube.parentId ||
-            !isOpaqueGeneratedCube(document, candidate.cube) ||
+            !isOpaqueTexturedCube(document, candidate.cube) ||
             !contains(candidate.bounds, inner.bounds)
           ) {
             return false;

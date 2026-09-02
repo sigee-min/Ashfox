@@ -7,12 +7,13 @@ import {
 
 const file: ArtifactFile = {
   kind: 'project',
-  name: 'moonveil-kirin.ashfox',
-  contentType: 'text/x-ashfox;charset=utf-8',
+  name: 'moonveil-kirin.ashfoxworkspace',
+  contentType: 'application/vnd.ashfox.workspace+json',
   bytes: new Uint8Array([1, 2, 3, 4]),
   projectId: 'project-moonveil-kirin',
-  sourceRevision: 'local-0001',
-  target: 'glb',
+  revision: 'local-0001',
+  target: 'project',
+  targetVersion: null,
   contentHash: 'sha256:test-artifact'
 };
 const blobs: Blob[] = [];

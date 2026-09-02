@@ -3,11 +3,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { zipSync } = require('fflate');
 const {
-  INTERNAL_CONTRACT_VERSIONS
+  SKILL_RELEASE_DESCRIPTOR_SCHEMA_VERSION
 } = require('@ashfox/internal-contracts');
-
-const SKILL_RELEASE_DESCRIPTOR_SCHEMA_VERSION =
-  INTERNAL_CONTRACT_VERSIONS.skillReleaseDescriptor;
 
 const repoRoot = path.resolve(__dirname, '..');
 const skillRoot = path.join(repoRoot, 'skills', 'ashfox');

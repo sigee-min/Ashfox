@@ -3,11 +3,18 @@ import type {
   SceneNode
 } from '../../../model';
 import {
+  boneTransformMatchesCanonicalFrame,
+  cubeGeometryPivot,
+  isCanonicalBoneFrame
+} from '../../../model';
+import {
   effectivelyVisibleSceneNodeIds
 } from '../../../sceneVisibility';
 import { compileOpaqueCubeFaceOcclusion } from '../../occlusion/cube';
-import { compileRigidGltfBatches } from './rigid';
-import { compileGlobalGltfBatch } from './skin';
+import {
+  compileRigidGltfBatches,
+  gltfNodeGeometryRotation
+} from './rigid';
 import {
   addVec3,
   isIdentityRotation,
@@ -45,7 +52,9 @@ const restTranslation = (
   if (node.kind === 'locator') {
     return multiplyVec3(node.transform.position, unitScale);
   }
-  const origin = addVec3(node.transform.pivot, node.transform.position);
+  const geometryPivot = node.kind === 'cube' ? cubeGeometryPivot(node) :
+    node.transform.pivot;
+  const origin = addVec3(geometryPivot, node.transform.position);
   return multiplyVec3(
     subtractVec3(origin, parentOrigin(document, node)),
     unitScale
@@ -55,13 +64,15 @@ const restTranslation = (
 const createGltfNode = (
   node: SceneNode,
   translation: [number, number, number]
-): GltfNode => ({
+): GltfNode => {
+  const rotation = gltfNodeGeometryRotation(node);
+  return ({
   name: node.name,
   ...(translation.some((value) => Math.abs(value) > 0.000001)
     ? { translation }
     : {}),
-  ...(!isIdentityRotation(node.transform.rotation)
-    ? { rotation: quaternionFromEuler(node.transform.rotation) }
+  ...(!isIdentityRotation(rotation)
+    ? { rotation: quaternionFromEuler(rotation) }
     : {}),
   ...(!isIdentityScale(node.transform.scale)
     ? {
@@ -76,9 +87,13 @@ const createGltfNode = (
     ashfoxId: node.id,
     ashfoxKind: node.kind,
     visible: node.visible,
-    ...(node.tags ? { ashfoxTags: [...node.tags] } : {})
+    ...(node.tags ? { ashfoxTags: [...node.tags] } : {}),
+    ...(node.kind === 'bone' && node.canonicalFrame !== undefined ? {
+      ashfoxCanonicalFrame: node.canonicalFrame
+    } : {})
   }
-});
+  });
+};
 
 export const compileGltfScene = (
   document: ProjectDocument,
@@ -99,43 +114,31 @@ export const compileGltfScene = (
   };
 
   for (const node of orderedNodes) {
+    if (node.kind === 'bone' && node.canonicalFrame !== undefined &&
+      (!isCanonicalBoneFrame(node.canonicalFrame) ||
+        !boneTransformMatchesCanonicalFrame(node))) {
+      throw new RangeError(`Bone ${node.id} has an invalid canonical frame.`);
+    }
     const translation = restTranslation(document, node, options.unitScale);
     const gltfNode = createGltfNode(node, translation);
     nodeIndexById.set(node.id, nodes.length);
     restTranslationById.set(node.id, translation);
-    restRotationById.set(node.id, [...node.transform.rotation]);
+    restRotationById.set(node.id, [...gltfNodeGeometryRotation(node)]);
     restScaleById.set(node.id, [...node.transform.scale]);
     nodes.push(gltfNode);
   }
 
-  const globalBatch = compileGlobalGltfBatch(
+  const compiledBatches = compileRigidGltfBatches(
     document,
     orderedNodes,
-    nodeIndexById,
     restTranslationById,
     compileOptions
   );
-  let meshes = globalBatch ? [globalBatch.mesh] : [];
-  const skins = globalBatch?.skin ? [globalBatch.skin] : [];
-  let optimizedMeshNode: number | undefined;
-  if (globalBatch) {
-    optimizedMeshNode = nodes.length;
-    nodes.push({
-      name: `${document.name} optimized mesh`,
-      ...globalBatch.meshNode
-    });
-  } else {
-    const compiledBatches = compileRigidGltfBatches(
-      document,
-      orderedNodes,
-      restTranslationById,
-      compileOptions
-    );
-    meshes = compiledBatches.meshes;
-    for (const [ownerId, mesh] of compiledBatches.meshIndexByOwnerId) {
-      const nodeIndex = nodeIndexById.get(ownerId);
-      if (nodeIndex !== undefined) nodes[nodeIndex].mesh = mesh;
-    }
+  const meshes = compiledBatches.meshes;
+  const skins: [] = [];
+  for (const [ownerId, mesh] of compiledBatches.meshIndexByOwnerId) {
+    const nodeIndex = nodeIndexById.get(ownerId);
+    if (nodeIndex !== undefined) nodes[nodeIndex].mesh = mesh;
   }
 
   for (const node of orderedNodes) {
@@ -151,32 +154,6 @@ export const compileGltfScene = (
     .map((id) => nodeIndexById.get(id))
     .filter((index): index is number => index !== undefined);
   const rootNodeIndices = [...authoredRootNodeIndices];
-  if (optimizedMeshNode !== undefined) rootNodeIndices.push(optimizedMeshNode);
-
-  if (skins.length > 0 && authoredRootNodeIndices.length > 0) {
-    if (authoredRootNodeIndices.length === 1) {
-      skins[0] = {
-        ...skins[0],
-        skeleton: authoredRootNodeIndices[0]
-      };
-    } else {
-      const commonRootIndex = nodes.length;
-      nodes.push({
-        name: `${document.name} common rig root`,
-        children: [...authoredRootNodeIndices]
-      });
-      skins[0] = {
-        ...skins[0],
-        skeleton: commonRootIndex
-      };
-      rootNodeIndices.splice(
-        0,
-        rootNodeIndices.length,
-        commonRootIndex,
-        ...(optimizedMeshNode === undefined ? [] : [optimizedMeshNode])
-      );
-    }
-  }
 
   return {
     nodes,

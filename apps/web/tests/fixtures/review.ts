@@ -1,17 +1,14 @@
-import type {
-  ProjectDocument
-} from '@ashfox/engine-core';
+import type { AssetProject } from '@ashfox/engine-core';
 
 import {
-  presentedReviewChecks,
+  VISUAL_REVIEW_CHECKS,
   visualReviewReceiptFrom,
   type VisualReviewReceipt
 } from '../../src/application/review';
 import type {
   PresentSuccess,
-  PresentedReviewCheck,
-  VisualReviewIssue,
-  VisualReviewMilestone
+  VisualReviewCheck,
+  VisualReviewIssue
 } from '../../src/features/agent/types';
 import type {
   PixelFrameEvidence
@@ -28,7 +25,6 @@ const IDENTITY_MATRIX = [
 interface VisualReviewReceiptFixtureInput {
   revision?: string;
   purpose?: 'delivery' | 'preview';
-  milestone?: VisualReviewMilestone | null;
   mode?: 'frame' | 'cycle';
   camera?: PresentSuccess['data']['camera'];
   cameraMatrix?: readonly number[];
@@ -39,36 +35,32 @@ interface VisualReviewReceiptFixtureInput {
   frameNonce?: number;
   verdict?: 'accepted' | 'rejected';
   issues?: readonly VisualReviewIssue[];
-  reviewChecks?: readonly PresentedReviewCheck[];
+  reviewChecks?: readonly VisualReviewCheck[];
   failedCheckIds?: readonly string[];
   recordedAt?: string;
 }
 
 export const createVisualReviewReceiptFixture = (
-  sourceDocument: ProjectDocument,
+  sourceProject: AssetProject,
   input: VisualReviewReceiptFixtureInput = {}
 ): VisualReviewReceipt => {
-  const revision = input.revision ?? sourceDocument.revision;
-  const document = revision === sourceDocument.revision
-    ? sourceDocument
-    : { ...sourceDocument, revision };
+  const revision = input.revision ?? sourceProject.revision;
+  const project = revision === sourceProject.revision
+    ? sourceProject
+    : {
+        ...sourceProject,
+        revision,
+        document: { ...sourceProject.document, revision }
+      };
+  const document = project.document;
   const purpose = input.purpose ?? 'delivery';
   const mode = input.mode ?? 'frame';
   const frameNonce = input.frameNonce ?? 1;
   const camera = input.camera ?? 'perspective';
-  const milestone = purpose === 'preview'
-    ? input.milestone ?? null
-    : null;
   const clipId = mode === 'cycle'
     ? input.clipId ?? Object.keys(document.animations)[0] ?? 'clip-idle'
     : null;
-  const reviewChecks = input.reviewChecks ?? presentedReviewChecks(
-    document,
-    camera,
-    mode === 'cycle',
-    clipId,
-    milestone
-  );
+  const reviewChecks = input.reviewChecks ?? VISUAL_REVIEW_CHECKS;
   const verdict = input.verdict ?? 'accepted';
   const failedCheckIds = verdict === 'rejected'
     ? input.failedCheckIds ?? reviewChecks.slice(0, 1).map((check) => check.id)
@@ -88,7 +80,6 @@ export const createVisualReviewReceiptFixture = (
     data: {
       review: purpose === 'delivery' ? 'next' : 'preview',
       purpose,
-      milestone,
       verdict: 'pending',
       issues: [],
       acknowledgedCheckIds: [],
@@ -105,7 +96,6 @@ export const createVisualReviewReceiptFixture = (
       completedCycles: mode === 'cycle'
         ? input.completedCycles ?? 1
         : 0,
-      previewIssues: [],
       reviewChecks
     }
   };
@@ -124,7 +114,7 @@ export const createVisualReviewReceiptFixture = (
     }
   };
   const receipt = visualReviewReceiptFrom(
-    document,
+    project,
     observation,
     reviewed,
     {

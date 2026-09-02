@@ -2,24 +2,14 @@
 
 import { useRef } from 'react';
 
-import type { ProjectDocument } from '@ashfox/engine-core';
-import {
-  useLatestValue
-} from '../../../hooks/useLatestValue';
+import type { AssetProject } from '@ashfox/engine-core';
+import { useLatestValue } from '../../../hooks/useLatestValue';
 
-export const usePersistenceLifecycle = (
-  document: ProjectDocument
-) => {
-  const currentDocument = useLatestValue(document);
+export const usePersistenceLifecycle = (project: AssetProject) => {
+  const currentProject = useLatestValue(project);
   const session = useRef(0);
   const saveRequest = useRef(0);
-  return {
-    currentDocument,
-    session,
-    saveRequest
-  };
+  return { currentProject, session, saveRequest };
 };
 
-export type PersistenceLifecycle = ReturnType<
-  typeof usePersistenceLifecycle
->;
+export type PersistenceLifecycle = ReturnType<typeof usePersistenceLifecycle>;

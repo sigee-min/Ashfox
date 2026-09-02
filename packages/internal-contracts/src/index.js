@@ -1,24 +1,15 @@
 'use strict';
 
-/**
- * Internal ashfox persistence and transport contract versions.
- * Each field advances independently from external delivery formats.
- */
-const INTERNAL_CONTRACT_VERSIONS = Object.freeze({
-  projectDocument: 1,
-  authoringProfile: 1,
-  authoringRouting: 1,
-  commandReceipt: 1,
-  exportBundle: 1,
-  localProjectRecord: 1,
-  visualReviewReceipt: 1,
-  sidecarIpc: 1,
-  traceLog: 1,
-  skillReleaseDescriptor: 1
-});
-
-const isCurrentInternalContractVersion = (name, value) =>
-  value === INTERNAL_CONTRACT_VERSIONS[name];
+/** Current-only serialized schema authorities. Historical internal registries,
+ * generic version lookup, and unused routing versions are deliberately absent. */
+const PROJECT_DOCUMENT_SCHEMA_VERSION = 1;
+const COMMAND_RECEIPT_SCHEMA_VERSION = 1;
+const EXPORT_BUNDLE_SCHEMA_VERSION = 1;
+const LOCAL_PROJECT_RECORD_SCHEMA_VERSION = 1;
+const VISUAL_REVIEW_RECEIPT_SCHEMA_VERSION = 1;
+const SIDECAR_IPC_SCHEMA_VERSION = 1;
+const TRACE_LOG_SCHEMA_VERSION = 1;
+const SKILL_RELEASE_DESCRIPTOR_SCHEMA_VERSION = 1;
 
 const isClosedContractRecord = (value) => {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
@@ -300,17 +291,23 @@ const utf8ContractByteLength = (value) => {
 };
 
 module.exports = {
+  COMMAND_RECEIPT_SCHEMA_VERSION,
   createFiniteJsonSnapshot,
+  EXPORT_BUNDLE_SCHEMA_VERSION,
   FINITE_JSON_CONTRACT_MAX_CONTAINERS,
   FINITE_JSON_CONTRACT_MAX_DEPTH,
   hasExactContractKeys,
-  INTERNAL_CONTRACT_VERSIONS,
   isCanonicalIsoDate,
   isClosedContractRecord,
-  isCurrentInternalContractVersion,
   isDenseContractArray,
   isFiniteJsonValue,
   isNonEmptyContractText,
   isUniqueContractTextArray,
+  LOCAL_PROJECT_RECORD_SCHEMA_VERSION,
+  PROJECT_DOCUMENT_SCHEMA_VERSION,
+  SIDECAR_IPC_SCHEMA_VERSION,
+  SKILL_RELEASE_DESCRIPTOR_SCHEMA_VERSION,
+  TRACE_LOG_SCHEMA_VERSION,
+  VISUAL_REVIEW_RECEIPT_SCHEMA_VERSION,
   utf8ContractByteLength
 };

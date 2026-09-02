@@ -1,69 +1,54 @@
 import assert from 'node:assert/strict';
 
-import type { IntentProgramSourceV1 } from '@ashfox/engine-core';
-
 import {
-  presentIntentProgramAuthority,
-  presentIntentProgramDigest,
-  snapshotIntentProgramAuthority
-} from '../../src/features/intentProgram/presentation';
-
-const fingerprint = (character: string): string =>
-  `sha256:${character.repeat(64)}`;
-const presenterSource = [
-  'metadata {',
-  '  name "Presenter fixture"',
-  '  track essential',
-  '  domain constructed',
-  '}',
-  'model {',
-  '  orientation forward north',
-  '  symmetry bilateral',
-  '  support base contacts body',
-  '  body {',
-  '    core body',
-  '  }',
-  '  face {',
-  '    none',
-  '  }',
-  '}',
-  'animation {',
-  '  idle still',
-  '}',
-  'appearance {',
-  '  palette metal',
-  '  texture brushed scale medium density sparse contrast subtle',
-  '  seed auto',
-  '}'
-].join('\n');
-const confirmed: IntentProgramSourceV1 = {
-  version: 1,
-  source: presenterSource,
-  hash: 'intent:presenter',
-  receipt: {
-    sourceDigest: fingerprint('1'),
-    semanticDigest: fingerprint('2'),
-    compilerVersion: 1,
-    specificationVersion: 1,
-    outputDigest: fingerprint('3')
-  }
-};
-
-const digest = presentIntentProgramDigest(confirmed.receipt.sourceDigest);
-assert.equal(digest.full, confirmed.receipt.sourceDigest);
-assert.match(digest.compact, /^sha256:[a-f0-9]{10}…[a-f0-9]{8}$/);
-
-const authority = presentIntentProgramAuthority(confirmed);
-assert.equal(authority.versionLabel, 'Intent Program 1');
-assert.equal(authority.receipt.source.full, confirmed.receipt.sourceDigest);
-assert.equal(authority.compactReviewDigest, digest.compact);
-assert.deepEqual(
-  snapshotIntentProgramAuthority(confirmed),
-  {
-    version: 1,
-    source: confirmed.source,
-    sourceHash: confirmed.hash,
-    receipt: confirmed.receipt
-  },
-  'Agent inspect receives a stable raw snapshot without human authoring UI'
+  VISUAL_REVIEW_CHECKS
+} from '../../src/application/review';
+import { parsePresentRequest } from '../../src/features/agent/parsePresentRequest';
+assert.equal(
+  VISUAL_REVIEW_CHECKS.length,
+  5,
+  'the live visual checklist must cover the current review dimensions'
 );
+assert.ok(VISUAL_REVIEW_CHECKS.every((check) => check.instruction.length > 0),
+  'each live visual check carries an agent-readable instruction');
+assert.equal(new Set(VISUAL_REVIEW_CHECKS.map((check) => check.id)).size,
+  VISUAL_REVIEW_CHECKS.length);
+assert.ok(VISUAL_REVIEW_CHECKS.every((check) =>
+  Object.keys(check).sort().join(',') ===
+  'id,instruction,issue'
+));
+
+const decoratedCheckIds = ['source.silhouette'];
+Object.defineProperty(decoratedCheckIds, 'decorative', {
+  configurable: true,
+  enumerable: true,
+  value: true
+});
+assert.equal(
+  parsePresentRequest({
+    review: 'accept',
+    frameNonce: 1,
+    checkIds: decoratedCheckIds
+  }).ok,
+  false,
+  'presentation requests reject decorated check arrays'
+);
+
+const decoratedIssues = ['silhouette'];
+Object.defineProperty(decoratedIssues, 'decorative', {
+  configurable: true,
+  enumerable: true,
+  value: true
+});
+assert.equal(
+  parsePresentRequest({
+    review: 'reject',
+    frameNonce: 1,
+    issues: decoratedIssues,
+    failedCheckIds: []
+  }).ok,
+  false,
+  'presentation requests reject decorated issue arrays'
+);
+
+console.log('authored review presentation ok');

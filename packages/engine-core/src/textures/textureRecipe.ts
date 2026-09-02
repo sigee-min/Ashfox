@@ -1,12 +1,17 @@
 export { composeTextureRaster } from './textureRecipe/composition';
-export { rasterizeTexture } from './textureRecipe/raster';
+export {
+  rasterizeCanonicalTexture,
+  rasterizeTexture
+} from './textureRecipe/raster';
+export {
+  canonicalPngDigest,
+  canonicalRgbaDigest,
+  encodeCanonicalPng
+} from './textureRecipe/png';
 export type {
   CanonicalRgbaBytes,
   CanonicalTextureRaster
 } from './textureRecipe/raster';
-export { deriveGeneratedTextures } from './textureRecipe/derive';
-export { staleGeneratedTextureIds } from './textureRecipe/derivationStatus';
 export type {
-  TextureComposition,
-  TextureCompositionRegion
+  TextureComposition
 } from './textureRecipe/types';
