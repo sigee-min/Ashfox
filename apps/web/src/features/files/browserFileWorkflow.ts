@@ -3,7 +3,6 @@ import {
   type AssetProject,
   type BlobRef,
   type ExportAdapterInput,
-  type ExportAdaptationReceipt,
   type ExportBundle,
   type ExportFile,
   type ProjectDocument,
@@ -16,23 +15,14 @@ import type {
   ProjectAsset,
   ProjectAssets
 } from '../../application/projectAssets';
-import { createStoredZip } from './zip';
+import type { TargetArtifactData } from './artifact/contract';
 import {
   artifactContentHash,
-  exportPresetForBundle,
-  createArtifactBinding,
+  createSealedTargetArtifact,
   prepareTargetArtifactDocument,
-  safeArtifactName,
-  sealTargetArtifact,
-  type ArtifactFile
 } from './artifactFile';
 
-export interface TargetArtifactFile extends ArtifactFile {
-  kind: 'target';
-  sourceFileCount: number;
-  adaptationCount: number;
-  adaptations: ExportAdaptationReceipt;
-}
+export type TargetArtifactFile = TargetArtifactData;
 
 const textureForSource = (
   document: ProjectDocument,
@@ -131,34 +121,6 @@ const fileBytes = async (
   }
 };
 
-const adaptationCount = (adaptations: ExportAdaptationReceipt): number =>
-  adaptations.converted.length + adaptations.omitted.length;
-
-const targetArtifactBinding = async (
-  project: AssetProject,
-  bytes: Uint8Array,
-  target: TargetArtifactFile['target'],
-  targetVersion: string
-): Promise<Pick<TargetArtifactFile, 'projectId' | 'revision' | 'target' |
-  'targetVersion' | 'contentHash' | 'lineage'>> => {
-  const contentHash = await artifactContentHash(bytes);
-  const binding = await createArtifactBinding(project, bytes, 'project');
-  return {
-    projectId: binding.projectId,
-    revision: binding.revision,
-    target,
-    targetVersion,
-    contentHash,
-    lineage: {
-      ...binding.lineage!,
-      target,
-      targetVersion,
-      artifactSha256: contentHash,
-      captureSha256: null
-    }
-  };
-};
-
 export const createTargetArtifact = async (
   project: AssetProject,
   assets: ProjectAssets,
@@ -166,27 +128,10 @@ export const createTargetArtifact = async (
 ): Promise<TargetArtifactFile> => {
   const prepared = await createExportBundle(project, assets, adapter);
   const { bundle } = prepared;
-  const target = exportPresetForBundle(bundle);
-  if (target === null) throw new TypeError(
-    'The compiler bundle does not identify one exact delivery preset.');
-  const targetVersion = bundle.target.version;
   const entries = await Promise.all(bundle.files.map(async (file) => ({
     path: file.path,
     bytes: await fileBytes(prepared.document, assets, file)
   })));
-  const bytes = createStoredZip(entries);
-  const artifact: TargetArtifactFile = {
-    ...await targetArtifactBinding(project, bytes, target, targetVersion),
-    kind: 'target',
-    name:
-      `${safeArtifactName(project.document.name)}-${safeArtifactName(bundle.target.id)}` +
-      `${['bedrock', 'geckolib5', 'java_block'].includes(target)
-        ? `-${safeArtifactName(targetVersion)}` : ''}.zip`,
-    bytes,
-    contentType: 'application/zip',
-    sourceFileCount: entries.length,
-    adaptationCount: adaptationCount(bundle.adaptations),
-    adaptations: bundle.adaptations
-  };
-  return sealTargetArtifact(project, artifact, bundle, prepared.document);
+  return createSealedTargetArtifact(
+    project, bundle, prepared.document, entries);
 };

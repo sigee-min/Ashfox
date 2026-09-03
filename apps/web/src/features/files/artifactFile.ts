@@ -2,6 +2,7 @@ import {
   canonicalJsonString,
   exportPresetForBundle,
   isAssetProjectAuthorityValid,
+  sha256ByteDigest,
   type AssetProject,
   type ExportAdaptationReceipt,
   type ExportBundle,
@@ -10,7 +11,6 @@ import {
 import { verifyExportBundleForProject } from '@ashfox/engine-core';
 
 import type { VisibleExportPreset } from '../../application/projectExportTarget';
-import { sha256DigestSync } from './artifactDigest';
 import { createStoredZip, readStoredZip } from './zip';
 import {
   readTargetArtifact,
@@ -47,23 +47,17 @@ type TargetArtifactSeal = Readonly<{
 }>;
 
 const sealedTargetArtifacts = new WeakMap<object, TargetArtifactSeal>();
-const preparedTargetDocuments = new WeakMap<object, Readonly<{
-  source: ProjectDocument;
-  sourceDigest: string;
-  preparedDigest: string;
-}>>();
 
 const documentStateDigest = (document: ProjectDocument): string =>
-  sha256DigestSync(new TextEncoder().encode(canonicalJsonString(document)));
+  sha256ByteDigest(new TextEncoder().encode(canonicalJsonString(document)));
 
 const buildStateDigest = (project: AssetProject): string =>
-  sha256DigestSync(new TextEncoder().encode(canonicalJsonString(project.build)));
+  sha256ByteDigest(new TextEncoder().encode(canonicalJsonString(project.build)));
 
 /** Creates the delivery projection for raster bytes without changing authority. */
 export const prepareTargetArtifactDocument = (
   document: ProjectDocument
-): ProjectDocument => {
-  const prepared: ProjectDocument = {
+): ProjectDocument => ({
     ...document,
     textures: Object.fromEntries(Object.entries(document.textures).map(
       ([id, texture]) => [id, texture.raster ? {
@@ -75,17 +69,10 @@ export const prepareTargetArtifactDocument = (
           contentHash: texture.source.contentHash
         }
       } : texture]))
-  };
-  preparedTargetDocuments.set(prepared, Object.freeze({
-    source: document,
-    sourceDigest: documentStateDigest(document),
-    preparedDigest: documentStateDigest(prepared)
-  }));
-  return prepared;
-};
+  });
 
 const targetMetadataDigest = (target: TargetArtifactData): string =>
-  sha256DigestSync(new TextEncoder().encode(JSON.stringify({
+  sha256ByteDigest(new TextEncoder().encode(JSON.stringify({
     sourceFileCount: target.sourceFileCount,
     adaptationCount: target.adaptationCount,
     adaptations: target.adaptations
@@ -117,12 +104,7 @@ const validTargetArtifactMetadata = (
 
 export const artifactContentHash = async (
   bytes: Uint8Array
-): Promise<string> => {
-  const copy = new Uint8Array(bytes);
-  const digest = await crypto.subtle.digest('SHA-256', copy.buffer);
-  return `sha256:${[...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, '0')).join('')}`;
-};
+): Promise<string> => sha256ByteDigest(bytes);
 
 const buildLineage = (
   project: AssetProject,
@@ -207,11 +189,10 @@ const targetSealFor = (
 ): TargetArtifactSeal | null => {
   const targetArtifact = readTargetArtifact(artifact, true);
   if (targetArtifact === null) return null;
-  const prepared = preparedTargetDocuments.get(bundleDocument);
+  const preparedDigest = documentStateDigest(
+    prepareTargetArtifactDocument(project.document));
   const validDocumentRelationship = bundleDocument === project.document || (
-    prepared?.source === project.document &&
-    prepared.sourceDigest === documentStateDigest(project.document) &&
-    prepared.preparedDigest === documentStateDigest(bundleDocument));
+    preparedDigest === documentStateDigest(bundleDocument));
   if (!validDocumentRelationship ||
     !verifyExportBundleForProject(bundle, project) ||
     exportPresetForBundle(bundle) !== targetArtifact.target ||
@@ -220,7 +201,7 @@ const targetSealFor = (
     bundle.lineage.revision !== project.revision ||
     targetArtifact.projectId !== project.id ||
     targetArtifact.revision !== project.revision ||
-    targetArtifact.contentHash !== sha256DigestSync(targetArtifact.bytes)) return null;
+    targetArtifact.contentHash !== sha256ByteDigest(targetArtifact.bytes)) return null;
   let entries: ReturnType<typeof readStoredZip>;
   try {
     entries = readStoredZip(targetArtifact.bytes);
@@ -249,7 +230,7 @@ const targetSealFor = (
     if (entry.path === 'ashfox-lineage.json') continue;
     const expected = inventory.get(entry.path);
     if (expected === undefined || expected.byteLength !== entry.bytes.length ||
-      expected.sha256 !== sha256DigestSync(entry.bytes)) return null;
+      expected.sha256 !== sha256ByteDigest(entry.bytes)) return null;
   }
   const lineage = targetArtifact.lineage;
   if (!sameBuildLineage(lineage, project, targetArtifact.target,
@@ -274,29 +255,41 @@ const targetSealFor = (
   });
 };
 
-const sealTargetNesting = (artifact: ArtifactFile): boolean => {
-  const data = readTargetArtifact(artifact);
-  if (data === null) return false;
-  const lineageDescriptor = Object.getOwnPropertyDescriptor(artifact, 'lineage');
-  const adaptationsDescriptor = Object.getOwnPropertyDescriptor(artifact, 'adaptations');
-  if (lineageDescriptor === undefined || !('value' in lineageDescriptor) ||
-    lineageDescriptor.writable !== true || adaptationsDescriptor === undefined ||
-    !('value' in adaptationsDescriptor) || adaptationsDescriptor.writable !== true) {
-    return false;
-  }
-  Object.defineProperty(artifact, 'lineage', { ...lineageDescriptor, value: data.lineage });
-  Object.defineProperty(artifact, 'adaptations', { ...adaptationsDescriptor, value: data.adaptations });
-  return readTargetArtifact(artifact, true) !== null;
-};
-
-/** Seal bytes against the exact AssetProject and compiler bundle. */
-export const sealTargetArtifact = <T extends ArtifactFile>(
+/** Creates and seals one target artifact against the exact compiler bundle. */
+export const createSealedTargetArtifact = (
   project: AssetProject,
-  artifact: T,
   bundle: ExportBundle,
-  bundleDocument: ProjectDocument = project.document
-): T => {
-  if (!sealTargetNesting(artifact)) throw new TypeError(
+  bundleDocument: ProjectDocument,
+  entries: readonly Readonly<{ path: string; bytes: Uint8Array }>[]
+): TargetArtifactData => {
+  const target = exportPresetForBundle(bundle);
+  if (target === null) throw new TypeError(
+    'The compiler bundle does not identify one exact delivery preset.');
+  const targetVersion = bundle.target.version;
+  const bytes = createStoredZip(entries);
+  const contentHash = sha256ByteDigest(bytes);
+  const lineage = buildLineage(project, target, targetVersion, contentHash);
+  const adaptationCount = bundle.adaptations.converted.length +
+    bundle.adaptations.omitted.length;
+  const versionSuffix = ['bedrock', 'geckolib5', 'java_block'].includes(target)
+    ? `-${safeArtifactName(targetVersion)}` : '';
+  const artifact = readTargetArtifact({
+    projectId: project.id,
+    revision: project.revision,
+    target,
+    targetVersion,
+    contentHash,
+    lineage,
+    kind: 'target',
+    name: `${safeArtifactName(project.document.name)}-${safeArtifactName(
+      bundle.target.id)}${versionSuffix}.zip`,
+    contentType: 'application/zip',
+    bytes,
+    sourceFileCount: entries.length,
+    adaptationCount,
+    adaptations: bundle.adaptations
+  });
+  if (artifact === null) throw new TypeError(
     'Target artifact metadata does not match the exact immutable contract.');
   const seal = targetSealFor(project, artifact, bundle, bundleDocument);
   if (seal === null) throw new TypeError(
@@ -320,7 +313,7 @@ export const isArtifactCurrent = (
     sameBuildLineage(lineage, project, artifact.target, artifact.targetVersion) &&
     lineage.artifactSha256 === artifact.contentHash &&
     lineage.captureSha256 === (artifact.target === 'capture' ? artifact.contentHash : null) &&
-    artifact.contentHash === sha256DigestSync(artifact.bytes);
+    artifact.contentHash === sha256ByteDigest(artifact.bytes);
   if (!base) return false;
   if (kindDescriptor.value !== 'target') return true;
   const target = readTargetArtifact(artifact, true);

@@ -1,4 +1,3 @@
-import type { ProgramBinaryOperator } from '../../../project/program/syntax/contract';
 import type { SourceSpan } from '../../../project/source/contract';
 import {
   assetBooleanValue,
@@ -22,12 +21,10 @@ import {
   isAssetExactNumberWithinBudget,
   isAssetScalarUnit
 } from './value/contract';
-import { assetExactOperation } from './valueArithmetic';
+import type { AssetOperationResult } from './valueArithmetic';
 import {
   assetTypeCompatible,
-  assetVectorComponent,
-  assetVectorInfo,
-  assetVectorType
+  assetVectorInfo
 } from './valueTypes';
 import {
   cloneAssetValue,
@@ -35,6 +32,7 @@ import {
   lookupAssetValue,
   valueFromExact
 } from './valueRuntime';
+import { evaluateAssetBinary, evaluateAssetCall } from './valueOperation';
 const MAX_EXPRESSION_NODES = 16384;
 const MAX_SAFE = BigInt(Number.MAX_SAFE_INTEGER);
 const freeze = <T>(value: T): T => Object.freeze(value);
@@ -61,234 +59,8 @@ const failed = (
 const succeeded = (value: AssetValue): AssetExpressionEvaluationResult =>
   freeze({ ok: true, value });
 
-type OperationResult<T> =
-  | Readonly<{ readonly ok: true; readonly value: T }>
-  | Readonly<{
-      readonly ok: false;
-      readonly code: AssetValueDiagnosticCode;
-      readonly message: string;
-    }>;
-
-const success = <T>(value: T): Readonly<{ readonly ok: true; readonly value: T }> =>
+const success = <T>(value: T): AssetOperationResult<T> =>
   freeze({ ok: true, value });
-
-const equalValue = (left: AssetValue, right: AssetValue): boolean => {
-  const pending: Array<readonly [AssetValue, AssetValue]> = [[left, right]];
-  while (pending.length > 0) {
-    const pair = pending.pop()!;
-    const a = pair[0]; const b = pair[1];
-    if (a.kind !== b.kind) return false;
-    if (a.kind === 'number' && b.kind === 'number') {
-      if (a.value.unit !== b.value.unit ||
-        a.value.numerator * b.value.denominator !== b.value.numerator * a.value.denominator) return false;
-    } else if (a.kind === 'boolean' && b.kind === 'boolean') {
-      if (a.value !== b.value) return false;
-    } else if (a.kind === 'color' && b.kind === 'color') {
-      if (a.value !== b.value) return false;
-    } else if (a.kind === 'vector' && b.kind === 'vector') {
-      if (a.type !== b.type || a.values.length !== b.values.length) return false;
-      for (let index = 0; index < a.values.length; index += 1) {
-        pending.push([a.values[index]!, b.values[index]!]);
-      }
-    }
-  }
-  return true;
-};
-
-const compareNumber = (
-  operator: ProgramBinaryOperator,
-  left: AssetExactNumber,
-  right: AssetExactNumber
-): boolean | null => {
-  if (left.unit !== right.unit) return null;
-  const relation = left.numerator * right.denominator -
-    right.numerator * left.denominator;
-  if (operator === '==') return relation === 0n;
-  if (operator === '!=') return relation !== 0n;
-  if (operator === '<') return relation < 0n;
-  if (operator === '<=') return relation <= 0n;
-  if (operator === '>') return relation > 0n;
-  if (operator === '>=') return relation >= 0n;
-  return null;
-};
-
-const evaluateCall = (
-  name: 'vec2' | 'vec3' | 'abs' | 'min' | 'max' | 'clamp',
-  args: readonly AssetValue[]
-): OperationResult<AssetValue> => {
-  if (name === 'vec2' || name === 'vec3') {
-    const arity = name === 'vec2' ? 2 : 3;
-    if (args.length !== arity || args.some((value) => value.kind !== 'number')) return freeze({
-      ok: false,
-      code: 'asset.value.invalid-call',
-      message: name + ' requires exactly ' + arity + ' numeric arguments.'
-    });
-    const numbers = args as readonly AssetNumberValue[];
-    const component = assetVectorComponent(numbers.map((entry) => entry.type));
-    const type = component === null || component === 'plain' ? null :
-      assetVectorType(arity, component);
-    return type === null ? freeze({
-      ok: false,
-      code: 'asset.value.invalid-vector',
-      message: 'Vector arguments must use one supported shared unit.'
-    }) : success(assetVectorValue(numbers, type));
-  }
-  const validCount = name === 'abs' ? args.length === 1 :
-    name === 'clamp' ? args.length === 3 : args.length >= 1;
-  if (!validCount) return freeze({
-    ok: false,
-    code: 'asset.value.invalid-call',
-    message: 'Function received an invalid argument count.'
-  });
-  if (args.some((value) => value.kind !== 'number')) return freeze({
-    ok: false,
-    code: 'asset.value.invalid-type',
-    message: name + ' requires numeric arguments.'
-  });
-  const numbers = args as readonly AssetNumberValue[];
-  const first = numbers[0]!;
-  if (numbers.some((value) => value.value.unit !== first.value.unit)) return freeze({
-    ok: false,
-    code: 'asset.value.unit-mismatch',
-    message: 'Function arguments must use one shared unit.'
-  });
-  if (name === 'abs') {
-    const value = assetExactNumber(first.value.numerator < 0n
-      ? -first.value.numerator : first.value.numerator,
-    first.value.denominator, first.value.unit);
-    const result = valueFromExact(value);
-    return result === null ? freeze({
-      ok: false,
-      code: 'asset.value.invalid-type',
-      message: 'Plain arithmetic must produce an exact integer.'
-    }) : success(result);
-  }
-  if (name === 'min' || name === 'max') {
-    let selected = first.value;
-    for (const entry of numbers.slice(1)) {
-      const relation = compareNumber(name === 'min' ? '<' : '>', entry.value, selected);
-      if (relation === null) return freeze({
-        ok: false,
-        code: 'asset.value.unit-mismatch',
-        message: 'Function arguments must use one shared unit.'
-      });
-      if (relation) selected = entry.value;
-    }
-    const result = valueFromExact(selected);
-    return result === null ? freeze({
-      ok: false,
-      code: 'asset.value.invalid-type',
-      message: 'Plain arithmetic must produce an exact integer.'
-    }) : success(result);
-  }
-  const lower = compareNumber('<', first.value, numbers[1]!.value);
-  const upper = compareNumber('>', first.value, numbers[2]!.value);
-  if (lower === null || upper === null) return freeze({
-    ok: false,
-    code: 'asset.value.unit-mismatch',
-    message: 'Clamp arguments must use one shared unit.'
-  });
-  const selected = lower ? numbers[1]!.value : upper ? numbers[2]!.value : first.value;
-  const result = valueFromExact(selected);
-  return result === null ? freeze({
-    ok: false,
-    code: 'asset.value.invalid-type',
-    message: 'Plain arithmetic must produce an exact integer.'
-  }) : success(result);
-};
-
-const evaluateBinary = (
-  operator: ProgramBinaryOperator,
-  left: AssetValue,
-  right: AssetValue
-): OperationResult<AssetValue> => {
-  if (operator === '==' || operator === '!=') {
-    if (left.kind === 'number' && right.kind === 'number') {
-      const compared = compareNumber(operator, left.value, right.value);
-      return compared === null ? freeze({
-        ok: false,
-        code: 'asset.value.unit-mismatch',
-        message: 'Comparison operands must use compatible units.'
-      }) : success(assetBooleanValue(compared));
-    }
-    return success(assetBooleanValue(operator === '=='
-      ? equalValue(left, right) : !equalValue(left, right)));
-  }
-  if (operator === '<' || operator === '<=' || operator === '>' || operator === '>=') {
-    if (left.kind !== 'number' || right.kind !== 'number') return freeze({
-      ok: false,
-      code: 'asset.value.invalid-operator',
-      message: 'Ordered comparisons require numbers.'
-    });
-    const compared = compareNumber(operator, left.value, right.value);
-    return compared === null ? freeze({
-      ok: false,
-      code: 'asset.value.unit-mismatch',
-      message: 'Comparison operands must use compatible units.'
-    }) : success(assetBooleanValue(compared));
-  }
-  if (left.kind === 'number' && right.kind === 'number') {
-    const result = assetExactOperation(operator, left.value, right.value);
-    if (!result.ok) return result;
-    const value = valueFromExact(result.value);
-    return value === null ? freeze({
-      ok: false,
-      code: 'asset.value.invalid-type',
-      message: 'Plain arithmetic must produce an exact integer.'
-    }) : success(value);
-  }
-  if (left.kind === 'vector' || right.kind === 'vector') {
-    if (left.kind === 'vector' && right.kind === 'vector') {
-      if (operator !== '+' && operator !== '-' || left.type !== right.type) return freeze({
-        ok: false,
-        code: 'asset.value.unit-mismatch',
-        message: 'Vector operands must have the same shape and unit.'
-      });
-      const values: AssetNumberValue[] = [];
-      for (let index = 0; index < left.values.length; index += 1) {
-        const result = assetExactOperation(operator,
-          left.values[index]!.value, right.values[index]!.value);
-        if (!result.ok) return result;
-        const value = valueFromExact(result.value);
-        if (value === null) return freeze({
-          ok: false,
-          code: 'asset.value.invalid-type',
-          message: 'Vector arithmetic must remain in the closed value ABI.'
-        });
-        values.push(value);
-      }
-      return success(assetVectorValue(values, left.type));
-    }
-    const vector = left.kind === 'vector' ? left : right.kind === 'vector' ? right : null;
-    const scalar = left.kind === 'vector' ? right : left;
-    if (vector === null || scalar.kind !== 'number' || scalar.value.unit !== 'plain' ||
-      left.kind !== 'vector' && operator !== '*') return freeze({
-      ok: false,
-      code: 'asset.value.invalid-operator',
-      message: 'Vector scaling requires a plain scalar operand.'
-    });
-    const values: AssetNumberValue[] = [];
-    for (const entry of vector.values) {
-      const result = assetExactOperation(operator,
-        left.kind === 'vector' ? entry.value : scalar.value,
-        left.kind === 'vector' ? scalar.value : entry.value);
-      if (!result.ok) return result;
-      const value = valueFromExact(result.value);
-      if (value === null) return freeze({
-        ok: false,
-        code: 'asset.value.invalid-type',
-        message: 'Vector arithmetic must remain in the closed value ABI.'
-      });
-      values.push(value);
-    }
-    return success(assetVectorValue(values, vector.type));
-  }
-  return freeze({
-    ok: false,
-    code: 'asset.value.invalid-operator',
-    message: 'Operator requires numeric or vector operands.'
-  });
-};
 
 const childrenOf = (expression: AssetTypedExpression): readonly AssetTypedExpression[] => {
   switch (expression.kind) {
@@ -382,7 +154,7 @@ export const evaluateAssetExpression = (
     const children = childrenOf(current);
     const childValues = children.map((child) => values.get(child));
     if (childValues.some((value) => value === undefined)) continue;
-    let result: OperationResult<AssetValue>;
+    let result: AssetOperationResult<AssetValue>;
     if (current.kind === 'unary') {
       const operand = childValues[0]!;
       if (operand.kind !== 'number') {
@@ -428,7 +200,7 @@ export const evaluateAssetExpression = (
         continue;
       }
     } else if (current.kind === 'call') {
-      result = evaluateCall(current.name, childValues as AssetValue[]);
+      result = evaluateAssetCall(current.name, childValues as AssetValue[]);
     } else if (current.kind === 'member') {
       const object = childValues[0]!;
       if (object.kind !== 'vector') {
@@ -445,7 +217,8 @@ export const evaluateAssetExpression = (
       }
       result = success(selected);
     } else if (current.kind === 'binary') {
-      result = evaluateBinary(current.operator, childValues[0]!, childValues[1]!);
+      result = evaluateAssetBinary(
+        current.operator, childValues[0]!, childValues[1]!);
     } else {
       diagnostics.push(diagnostic('asset.value.invalid-type',
         'Expression node cannot be evaluated.', current.span));

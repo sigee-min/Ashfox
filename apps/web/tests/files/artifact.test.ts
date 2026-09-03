@@ -2,15 +2,13 @@ import assert from 'node:assert/strict';
 
 import { compileProjectBundle } from '@ashfox/engine-core';
 import {
-  artifactContentHash,
   createArtifactBinding,
+  createSealedTargetArtifact,
   exportPresetForBundle,
   isArtifactCurrent,
-  safeArtifactName,
-  sealTargetArtifact,
+  prepareTargetArtifactDocument,
   type ArtifactFile
 } from '../../src/features/files/artifactFile';
-import { createStoredZip } from '../../src/features/files/zip';
 import { createWorkbenchProject } from '../fixtures/project';
 
 const project = createWorkbenchProject();
@@ -67,38 +65,17 @@ export const test = (async (): Promise<void> => {
         ? file.data
         : (() => { throw new Error('The GLB fixture must not copy blobs.'); })()
   }));
-  const targetBytes = createStoredZip(entries);
-  const targetHash = await artifactContentHash(targetBytes);
-  const base = await createArtifactBinding(project, targetBytes, 'project');
-  const target = 'glb' as const;
-  const targetVersion = bundle.target.version;
-  const targetArtifact = {
-    ...base,
-    kind: 'target' as const,
-    target,
-    targetVersion,
-    contentHash: targetHash,
-    lineage: {
-      ...base.lineage!,
-      target,
-      targetVersion,
-      artifactSha256: targetHash,
-      captureSha256: null
-    },
-    name: `${safeArtifactName(project.document.name)}-${safeArtifactName(
-      bundle.target.id)}.zip`,
-    contentType: 'application/zip',
-    bytes: targetBytes,
-    sourceFileCount: entries.length,
-    adaptationCount: bundle.adaptations.converted.length +
-      bundle.adaptations.omitted.length,
-    adaptations: bundle.adaptations
-  };
-
-  sealTargetArtifact(project, targetArtifact, bundle);
+  const targetArtifact = createSealedTargetArtifact(project, bundle,
+    prepareTargetArtifactDocument(project.document), entries);
+  const targetBytes = targetArtifact.bytes;
   assert.equal(isArtifactCurrent(project, targetArtifact), true);
   assert.equal(Object.isFrozen(targetArtifact.lineage), true);
   assert.equal(Object.isFrozen(targetArtifact.adaptations), true);
+  assert.throws(() => createSealedTargetArtifact(project, bundle, {
+    ...project.document,
+    name: 'forged-delivery-document'
+  }, entries), /sealed export bundle/,
+  'target sealing recomputes the delivery document instead of trusting ambient state');
   assert.equal(isArtifactCurrent({
     ...project,
     revision: 'local-forged-revision'
